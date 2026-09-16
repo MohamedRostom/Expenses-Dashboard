@@ -67,7 +67,7 @@ services:
       timeout: 3s
       retries: 20
 
-  # Mock connectors (frankfurter, Notion, Monzo) arrive with their phases. Empty for now.
+  # Mock connectors (frankfurter, Notion) arrive with their phases. Empty for now.
   mocks:
     image: alpine:3
     command: ['sleep', 'infinity']

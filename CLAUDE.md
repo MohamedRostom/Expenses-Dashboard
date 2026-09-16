@@ -4,7 +4,7 @@ Project memory for Claude Code. Read this first in every session. It captures th
 
 ## What this project is
 
-A public, multi-user, multi-currency expense tracker with optional two-way Notion sync and webhook auto-capture (Monzo, generic). It grew out of Rostom's personal claude.ai dashboard ("Rostom's Desk"), which **stays in use and is not part of this repo**; this repo is the productised rewrite.
+A public, multi-user, multi-currency expense tracker with optional two-way Notion sync and webhook auto-capture (generic phone automations; bank integrations are excluded from v1, see ADR-0003). It grew out of Rostom's personal claude.ai dashboard ("Rostom's Desk"), which **stays in use and is not part of this repo**; this repo is the productised rewrite.
 
 Owner: Mohamed Rostom (GitHub `MohamedRostom`), Senior Software Engineer in Test. Expect test-first standards; every feature ships with tests that run in CI.
 
@@ -15,6 +15,7 @@ Working name: "Desk" — a real product name is an open decision (ADR-0002). Do 
 
 - `docs/adr/ADR-0001-platform-and-architecture.md` — the stack decision, options considered, feature specs F1–F6, testing strategy, security baseline.
 - `docs/ROADMAP.md` — phases 0–6 with exit criteria; the source of truth for *what to build next*.
+- `docs/adr/ADR-0003-no-bank-integration-in-v1.md` — no Monzo or other bank integration in v1; generic webhook and column-mapped import only.
 - `docs/adr/ADR-0002-naming-and-providers.md` — the five open decisions (product name, email provider, Neon-from-day-one, licence, analytics). Until it is accepted, treat them as undecided and ask.
 
 ## Decisions already made (do not reopen without an ADR)
@@ -74,9 +75,8 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 
 - Personal dashboard artifact (reference implementation of the month view, category bars, entries table, inbox/calendar panels): https://claude.ai/artifact/8NYn6oHidCGpzz9U6Mgz8d — the HTML is a useful port source for `apps/web` components.
 - Auto-logging guide (MacroDroid + Cloudflare Worker webhook design, reused for F5): https://claude.ai/artifact/77wgXNJHeP8PSEVu89mv1x
-- Rostom's personal Notion "💷 Expenses" database (schema the Notion connector should be able to create): database `7a5935c4ee5b4286842dd64d7be3abef`, data source `5aca6a01-dc37-4183-a5b3-2fa6f8efae8b`. Properties: Expense (title), Amount (number, pound), Date, Category (select), Paid with (select: Monzo, Card, Cash, Bank transfer, Other), Kind (select: Fixed, Variable, One-off), Notes, Month (formula `formatDate(prop("Date"), "YYYY-MM")`), Added via (select: Dashboard, Notion, Monzo (auto), Phone (auto)), Created.
+- Rostom's personal Notion "💷 Expenses" database (schema the Notion connector should be able to create): database `7a5935c4ee5b4286842dd64d7be3abef`, data source `5aca6a01-dc37-4183-a5b3-2fa6f8efae8b`. Properties the connector creates (FR-014 in the baseline spec): Expense (title), Amount (number), Currency (select), Date, Category (select), Paid with (select: Card, Cash, Bank transfer, Other), Kind (select: Fixed, Variable, One-off), Notes, Added via (select: Dashboard, Notion, Phone), Expense ID (text). Rostom's existing table also has Month (formula `formatDate(prop("Date"), "YYYY-MM")`) and Created, and lacks Currency and Expense ID; the connector offers to add them on connect.
 - Default category seed (from the personal budget): Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Groceries, Eating out, Transport, Cycling, Gym & health, Personal care, Clothing, Entertainment, Household, Driving lessons, Travel, Other. Fixed-kind defaults: Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Gym & health.
-- Monzo → category mapping used by the webhook design: groceries→Groceries, eating_out→Eating out, transport→Transport, bills→Utilities, entertainment→Entertainment, shopping→Clothing, personal_care→Personal care, holidays→Travel, family→Household, transfers/income→skip, everything else→Other.
 - Notion API version to target: `2025-09-03` (data sources). Rates API: https://api.frankfurter.app (no key).
 
 ## Current state (update this section as phases complete)

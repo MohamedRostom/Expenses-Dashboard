@@ -1,6 +1,6 @@
 # ADR-0001: Platform and architecture for the expenses product
 
-**Status:** Proposed
+**Status:** Proposed (F5 and the Monzo mentions in F3 and the testing strategy are amended by ADR-0003: no bank integration in v1)
 **Date:** 2026-09-16
 **Deciders:** Rostom (owner)
 **Working name:** "Desk" (to be replaced by a product name before the landing page is built)

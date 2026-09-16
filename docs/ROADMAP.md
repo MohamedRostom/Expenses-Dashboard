@@ -60,11 +60,11 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 **Build**
 - F3 data model: `expenses` (original amount/currency, rate, rate date, source, converted amount, override flag), `categories` (per user, seeded defaults, colour, monthly budget in default currency), soft delete + 30-day bin.
-- API: CRUD, month and year queries, category budgets, CSV import (Monzo export first, generic column mapping second), rate override on a single expense, "change default currency" background job that re-derives every row with progress reporting.
+- API: CRUD, month and year queries, category budgets, CSV import (generic column mapping), rate override on a single expense, "change default currency" background job that re-derives every row with progress reporting.
 - Web: month view ported from the current dashboard (three tiles, category-vs-budget bars, entries table, month switcher), add/edit form with currency picker defaulting to the user's currency, keyboard shortcuts (`n`, `[`, `]`), optimistic updates with undo toast, bin view, import wizard.
 - Charts v1 as a small SVG layer following the dataviz rules already used on the dashboard: category bars, month-over-month trend.
 
-**Tests introduced:** API suite for every route plus import edge cases (bad rows, duplicate rows, mixed currencies); Playwright: add GBP + EUR + EGP expenses on a GBP account and assert totals; edit/delete/restore; import a recorded Monzo CSV; visual snapshots of the charts in both themes; Lighthouse budget job (perf ≥ 90, a11y ≥ 95).
+**Tests introduced:** API suite for every route plus import edge cases (bad rows, duplicate rows, mixed currencies); Playwright: add GBP + EUR + EGP expenses on a GBP account and assert totals; edit/delete/restore; import a recorded sample CSV; visual snapshots of the charts in both themes; Lighthouse budget job (perf ≥ 90, a11y ≥ 95).
 
 **Exit criteria:** Rostom uses staging for a full week of real expenses instead of the Notion table, in at least two currencies, without a data fix.
 
@@ -76,12 +76,12 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 **Build**
 - F4 Notion: Notion public OAuth (not an internal integration), connector token encrypted at rest, database picker or "create one for me" with the known schema, direction choice, sync engine in `core` (diff by `last_edited_time` + `notion_page_id`, latest-edit-wins with an audit table), scheduled run every 5 min for connected users + immediate run after app-side writes, disconnect keeps data both sides.
-- F5 webhooks: per-user `/hooks/monzo/<token>` (dedupe on transaction id, category mapping editable in Settings, currency from the transaction) and `/hooks/generic/<token>` for phone automations; token rotation in Settings.
+- F5 webhooks: per-user `/hooks/generic/<token>` for phone automations (dedupe on a client-supplied id, category mapping editable in Settings, currency from the payload); token rotation in Settings. Bank webhooks are excluded from v1 (ADR-0003).
 - Connectors page in Settings showing status, last sync, errors, and a "sync now" button.
 
-**Tests introduced:** sync engine scenario suite against the fake Notion (create both sides, edit both sides, delete one side, rate-limited responses, clock skew); webhook contract tests with recorded Monzo payloads and replay safety; **first e2e-local suite** on the self-hosted runner against a real Notion test workspace, nightly.
+**Tests introduced:** sync engine scenario suite against the fake Notion (create both sides, edit both sides, delete one side, rate-limited responses, clock skew); webhook contract tests with recorded generic payloads and replay safety; **first e2e-local suite** on the self-hosted runner against a real Notion test workspace, nightly.
 
-**Exit criteria:** an expense added in the app appears in a connected Notion database within 5 minutes and vice versa; a replayed Monzo payload never creates a second row; nightly e2e-local is green three nights running.
+**Exit criteria:** an expense added in the app appears in a connected Notion database within 5 minutes and vice versa; a replayed generic payload never creates a second row; nightly e2e-local is green three nights running.
 
 ---
 
@@ -138,7 +138,7 @@ Not scheduled; captured so Phase 1's OAuth design leaves room for it.
 - Google Calendar panel (sensitive scope): refresh-token storage, Google OAuth verification submission, calendar read model, the "next 7 days" panel from the personal dashboard.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.
 - Receipt attachments (R2 storage) and OCR of amounts.
-- Bank feeds beyond Monzo via Open Banking (TrueLayer sandbox first).
+- Bank feeds via Open Banking (provider to be chosen; no bank integration in v1 per ADR-0003).
 
 ---
 
