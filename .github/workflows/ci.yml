@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm --filter @desk/e2e exec playwright install --with-deps chromium
       - run: docker compose -f infra/docker-compose.yml up --build --wait
         env:
           GIT_SHA: ${{ github.sha }}

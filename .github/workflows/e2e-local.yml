@@ -25,7 +25,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/setup
-      - run: pnpm exec playwright install chromium
+      - run: pnpm --filter @desk/e2e exec playwright install chromium
       - run: pnpm test:e2e -- --project=local --pass-with-no-tests
         env:
           CI: 'true'
