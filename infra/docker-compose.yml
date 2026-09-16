@@ -1,0 +1,73 @@
+# Full local stack, also what e2e-ci runs against:
+#   docker compose -f infra/docker-compose.yml up --build --wait
+# web (Vite dev server) on :5173 proxies /healthz to api on :3000.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: desk
+      POSTGRES_PASSWORD: desk
+      POSTGRES_DB: desk
+    ports:
+      - '5432:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U desk -d desk']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-compose}
+    environment:
+      DATABASE_URL: postgres://desk:desk@postgres:5432/desk
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      # distroless has no shell or curl; node is the only binary.
+      test:
+        [
+          'CMD',
+          '/nodejs/bin/node',
+          '-e',
+          "fetch('http://localhost:3000/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      target: deps
+    command: pnpm --filter @desk/web dev --host 0.0.0.0
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - '5173:5173'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Mock connectors (frankfurter, Notion, Monzo) arrive with their phases. Empty for now.
+  mocks:
+    image: alpine:3
+    command: ['sleep', 'infinity']
