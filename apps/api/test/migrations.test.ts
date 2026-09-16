@@ -23,7 +23,10 @@ describe('migrations', () => {
     try {
       const [row] = await db.insert(users).values({ email: 'a@example.com' }).returning();
       expect(row?.id).toMatch(/^[0-9a-f-]{36}$/);
-      await expect(db.insert(users).values({ email: 'a@example.com' })).rejects.toThrow(/unique/i);
+      // Drizzle wraps driver errors; 23505 is Postgres' unique_violation.
+      await expect(db.insert(users).values({ email: 'a@example.com' })).rejects.toMatchObject({
+        cause: { code: '23505' },
+      });
     } finally {
       await close();
     }
