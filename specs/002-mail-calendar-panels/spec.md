@@ -12,8 +12,9 @@ represent the person mails, calender after integrating with multiple platforms l
 yahoo, outlook, ..etc"
 
 Desk users connect one or more personal mail and calendar accounts from different providers and
-see, inside the dashboard, what is coming up and what has arrived: a "next days" calendar panel
-and an inbox panel, both across every connected account. This brings the two panels of the
+see, on a new "Today" page in the dashboard, what is coming up and what has arrived: a "next
+days" calendar panel and an inbox panel, both across every connected account. The expenses
+month view is unchanged. This brings the two panels of the
 owner's personal dashboard (see CLAUDE.md, "Personal dashboard artifact") to every Desk user.
 
 This spec reopens two recorded decisions and cannot proceed to planning until an ADR
@@ -28,6 +29,14 @@ Calendar in v2. See Assumptions.
 - Q: Should this feature include Google mail given the restricted-scope assessment? → A: Yes; Google mail is included and the external security assessment is accepted as a prerequisite milestone. ADR-0004 must reverse ADR-0001's "Gmail dropped" decision.
 - Q: Is the inbox panel read-only or can the user act on mail from it? → A: Read-only: see, filter and open in the provider. No mark-read, archive or reply.
 - Q: Should the mail panel feed the expense tracker? → A: No. Mail and calendar are dashboard panels only; no link to expenses and no message bodies are read.
+
+### Session 2026-09-17 (pre-planning)
+
+- Q: How many mail and calendar accounts may one user connect? → A: Ten.
+- Q: Where do the two panels appear in the app? → A: On a new "Today" page in the main navigation; the month view is unchanged.
+- Q: When should Desk refresh data from the providers? → A: Every five minutes while the user was active in the last 24 hours, immediately on opening Today when data is older than two minutes, hourly otherwise.
+- Q: How long are cached items kept for a user who stops visiting? → A: Purged after 30 days without a visit; credentials kept; refetched on return.
+- Q: Which messages count as unread and appear in the inbox panel? → A: The inbox folder only, excluding spam, archived and provider-sorted promotional or social mail.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -49,7 +58,7 @@ five minutes with the right account label; delete one in the provider and confir
 
 **Acceptance Scenarios**:
 
-1. **Given** a user with no connected accounts, **When** they open the dashboard, **Then** the
+1. **Given** a user with no connected accounts, **When** they open the Today page, **Then** the
    calendar panel shows an empty state that explains what connecting does and offers the
    supported providers.
 2. **Given** a connected calendar, **When** an event exists within the next seven days, **Then**
@@ -161,6 +170,10 @@ standard protocols and confirm the panels behave exactly as with the dedicated p
 - The same address connected twice (once for mail, once for calendar): shown as one account with
   both capabilities, not two.
 - Two accounts share a display name: labels are editable and default to the address.
+- An eleventh account: the connect button is disabled with the limit shown; disconnecting one
+  re-enables it.
+- A user returns after more than 30 days: panels show a loading state while everything is
+  refetched, not stale items.
 - All-day and multi-day events, events spanning midnight, and events in another time zone:
   shown on each day they cover, in the user's time zone, with "all day" where applicable.
 - Calendar invitations not yet accepted: shown with a "tentative" mark.
@@ -190,31 +203,41 @@ Connections
   and MUST be revoked at the provider on disconnect and on account deletion.
 - **FR-004**: Each connected account MUST have a user-editable label and colour, a paused
   state, a status (connected, reconnect needed, paused, error), a last-refresh time and the last
-  error, all visible in Settings.
+  error, all visible in Settings. A user MAY connect at most ten accounts; the eleventh connect
+  attempt is refused with a message naming the limit.
 - **FR-005**: Every connected account and every cached item MUST belong to exactly one user and
   MUST be invisible to every other user on every screen and request.
 
 Calendar panel
 
-- **FR-006**: The calendar panel MUST list every event starting within the next seven days from
+- **FR-006**: Both panels live on a "Today" page reachable from the main navigation; the
+  expenses month view MUST NOT load mail or calendar data. The calendar panel MUST list every
+  event starting within the next seven days from
   every connected, unpaused calendar, ordered by start time, showing title, day, start and end
   time in the user's time zone or "all day", location, tentative mark, and the account label
   and colour, with a link that opens the event in the provider.
 - **FR-007**: Users MUST be able to choose which calendars on an account feed the panel; the
   account's primary calendar is included by default.
-- **FR-008**: Changes made in the provider MUST be reflected in the panel within five minutes.
+- **FR-008**: For a user active in the last 24 hours, changes made in the provider MUST be
+  reflected in the panel within five minutes; for other users, within one hour. Opening the
+  Today page MUST trigger an immediate refresh when the cached data is older than two minutes,
+  with the panels showing the cached data meanwhile.
 
 Inbox panel
 
 - **FR-009**: The inbox panel MUST show, for every connected, unpaused mail account, the unread
-  count and the most recent messages (fixed cap per account, default fifty), newest first across
-  accounts, each with sender, subject, one-line preview, received time and account label, and a
+  count and the most recent messages of the inbox folder only (excluding spam, archived and
+  provider-sorted promotional or social mail; fixed cap per account, default fifty), newest first
+  across accounts, each with sender, subject, one-line preview, received time and account label, and a
   link that opens the message in the provider. The panel MUST be read-only: it requests only
   read access from each provider and offers no action on a message other than opening it.
-- **FR-010**: New mail MUST appear in the panel within five minutes of arrival.
+- **FR-010**: New mail MUST appear in the panel within the refresh window of FR-008 (five
+  minutes for active users, one hour otherwise, immediately on opening Today).
 - **FR-011**: Users MUST be able to filter the panel to one account.
 - **FR-012**: Desk MUST cache only message headers and a preview, never full bodies or
-  attachments, and MUST discard cached messages once they fall outside the per-account cap.
+  attachments, MUST discard cached messages once they fall outside the per-account cap, and
+  MUST purge every cached message and event of a user who has not visited for 30 days while
+  keeping the connection and its credentials, refetching on the next visit.
 
 Relationship to expenses
 
@@ -254,15 +277,16 @@ Privacy
 
 - **SC-001**: A user connects a mainstream calendar or mail account in under two minutes from
   clicking "connect" to seeing their first items in the panel.
-- **SC-002**: An event or message created in the provider appears in the panel within five
-  minutes in 95 % of trials over three consecutive nightly runs per provider.
+- **SC-002**: For an active user, an event or message created in the provider appears in the
+  panel within five minutes in 95 % of trials over three consecutive nightly runs per provider;
+  opening Today after a change shows it within ten seconds.
 - **SC-003**: The isolation test across every panel and every connection route with two users
   finds zero leaks.
 - **SC-004**: Disconnecting an account removes every cached item for it within one minute and
   provider access is revoked in the same operation.
-- **SC-005**: With five connected accounts and the per-account cap of fifty messages plus seven
-  days of events, both panels render in under one second on a mid-range phone over a mobile
-  connection.
+- **SC-005**: With the maximum of ten connected accounts, each at the per-account cap of fifty
+  messages plus seven days of events, the Today page renders in under one second on a mid-range
+  phone over a mobile connection, and the month view's own timing is unchanged.
 - **SC-006**: Every panel state (loading, empty, stale, reconnect, error) passes the
   accessibility audit with no serious or critical violations at 360 px and desktop width.
 - **SC-007**: Three people outside the project connect an account from at least two different
@@ -287,10 +311,12 @@ Privacy
   than a dedicated integration.
 - Time zone comes from the user's existing setting (Phase 3); events are always displayed in it.
 - Cached mail is headers and preview only, capped at fifty messages per account; cached events
-  are limited to a rolling window of seven days ahead plus one day behind.
-- Refresh runs every five minutes per account through the existing jobs runner, with
-  exponential backoff on failure, and pauses after twenty consecutive failures until the user
-  reconnects.
+  are limited to a rolling window of seven days ahead plus one day behind; both are purged after
+  30 days without a visit.
+- Refresh runs through the existing jobs runner: every five minutes per account for users
+  active in the last 24 hours, hourly otherwise, plus an on-open refresh; exponential backoff on
+  failure; paused after twenty consecutive failures until the user reconnects. At most ten
+  accounts per user bounds the fan-out.
 - English interface only, as for the rest of v1 and v2.
 - Out of scope: any action on mail from the panel (mark read, archive, reply, compose),
   calendar editing or event creation, notifications or push alerts, search across mail,
