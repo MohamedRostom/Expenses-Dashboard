@@ -1,0 +1,12 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+.wrangler
+.tmp
+playwright-report
+test-results
+packages/db/migrations/meta
+.specify
+.claude
+*.md

@@ -1,0 +1,23 @@
+/* Design tokens ported from the personal dashboard. Three theme states:
+   bare :root = light; system dark unless the user chose light; explicit dark. */
+:root {
+  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --color-bg: #f2f4f7;
+  --color-fg: #121820;
+  --color-accent: #1f6e5a;
+  --color-warn: #a8641a;
+  --color-critical: #a83a2e;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --color-bg: #121820;
+    --color-fg: #f2f4f7;
+    --color-accent: #5fbf9f;
+  }
+}
+:root[data-theme='dark'] {
+  --color-bg: #121820;
+  --color-fg: #f2f4f7;
+  --color-accent: #5fbf9f;
+}

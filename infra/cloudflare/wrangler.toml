@@ -1,0 +1,10 @@
+# Stage 2 Worker. Phase 0 only proves the bundle builds:
+#   pnpm worker:build   (wrangler deploy --dry-run)
+# Hyperdrive, KV and cron triggers are added in Phase 6.
+name = "desk-api"
+main = "../../apps/api/src/worker.ts"
+compatibility_date = "2025-09-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+GIT_SHA = "unknown"

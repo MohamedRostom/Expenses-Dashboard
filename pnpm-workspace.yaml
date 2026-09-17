@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+  - tests/*
+
+# Native postinstall scripts pnpm may run (it blocks all others by default).
+allowBuilds:
+  esbuild: true
+  workerd: true
+  ssh2: true
+  cpu-features: true
+  protobufjs: true

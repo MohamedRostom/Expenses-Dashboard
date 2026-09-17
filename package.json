@@ -1,0 +1,50 @@
+{
+  "name": "desk",
+  "private": true,
+  "type": "module",
+  "version": "0.0.0",
+  "packageManager": "pnpm@12.4.2",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "dev": "pnpm -r --parallel --filter @desk/api --filter @desk/web dev",
+    "build": "pnpm -r build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --filter @desk/core --filter @desk/api test",
+    "test:unit": "pnpm -r --filter @desk/core test",
+    "test:api": "pnpm --filter @desk/api test",
+    "test:e2e": "pnpm --filter @desk/e2e test",
+    "worker:build": "wrangler deploy --dry-run --config infra/cloudflare/wrangler.toml --outdir .wrangler/dry-run",
+    "db:migrate": "pnpm --filter @desk/db migrate",
+    "db:generate": "pnpm --filter @desk/db generate",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,vue,js,mjs,cjs}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
+    ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@vitest/coverage-v8": "^5.0.1",
+    "eslint": "^10.10.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-vue": "^10.11.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.5.1",
+    "prettier": "^3.9.6",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^5.0.1",
+    "wrangler": "^4.132.0"
+  }
+}

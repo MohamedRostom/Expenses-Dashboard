@@ -1,0 +1,26 @@
+{
+  "name": "@desk/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env src/node.ts",
+    "build": "esbuild src/node.ts --bundle --platform=node --target=node22 --format=esm --outfile=dist/node.js --banner:js=\"import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);\"",
+    "start": "node dist/node.js",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@desk/contracts": "workspace:*",
+    "@desk/core": "workspace:*",
+    "@desk/db": "workspace:*",
+    "@hono/node-server": "^2.1.1",
+    "hono": "^4.13.8",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.1.0",
+    "@types/node": "^22.20.2",
+    "esbuild": "^0.28.2"
+  }
+}
