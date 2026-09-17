@@ -23,7 +23,7 @@ jobs:
     environment: local-secrets
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm --filter @desk/e2e exec playwright install chromium
       - run: pnpm test:e2e -- --project=local --pass-with-no-tests

@@ -30,7 +30,7 @@ jobs:
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       - if: steps.gate.outputs.skip != 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - if: steps.gate.outputs.skip != 'true'
         uses: superfly/flyctl-actions/setup-flyctl@master
       - if: steps.gate.outputs.skip != 'true'
