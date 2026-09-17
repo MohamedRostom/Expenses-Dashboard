@@ -128,7 +128,9 @@ it and confirm no cached messages or events remain and the panels update.
 2. **Given** a paused account, **When** panels load, **Then** its items are hidden and no
    refresh runs for it until resumed.
 3. **Given** a disconnected account, **When** the user looks at Settings and both panels,
-   **Then** nothing from that account remains and Desk's access at the provider is revoked.
+   **Then** nothing from that account remains, the credential is destroyed, revocation was
+   attempted where the provider supports it, and otherwise the user was shown how to remove
+   Desk's access at the provider.
 4. **Given** the user deletes their Desk account, **When** deletion completes, **Then** every
    connected account's credentials and cached data are gone and access is revoked at each
    provider.
@@ -199,23 +201,34 @@ Connections
   app-specific password. Google mail MUST NOT be offered to users until Google's external
   security assessment for restricted scopes has been passed; until then the Google connect
   screen offers calendar only and says why.
-- **FR-003**: Provider credentials MUST be stored encrypted, never shown again after connection,
-  and MUST be revoked at the provider on disconnect and on account deletion.
-- **FR-004**: Each connected account MUST have a user-editable label and colour, a paused
-  state, a status (connected, reconnect needed, paused, error), a last-refresh time and the last
-  error, all visible in Settings. A user MAY connect at most ten accounts; the eleventh connect
-  attempt is refused with a message naming the limit.
+- **FR-003**: Provider credentials MUST be stored encrypted and never shown again after
+  connection. On disconnect and on account deletion Desk MUST destroy the stored credential
+  and MUST attempt revocation at the provider where the provider offers it (Google); where it
+  does not (Microsoft, standards-based), Desk MUST tell the user how to remove its access in
+  the provider's own settings. A failed revocation attempt is recorded in the audit log and
+  MUST NOT prevent the disconnect or deletion from completing.
+- **FR-004**: Each connected account MUST have a user-editable label and colour, a status
+  (connected, reconnect needed, paused, error), a last-refresh time and the last error, all
+  visible in Settings. "Paused" is set and cleared only by the user. "Reconnect needed" is set
+  when the provider rejects the credential and cleared by a successful reconnect. "Error" is
+  set after twenty consecutive failed refreshes, stops scheduled refreshes, and is cleared by a
+  successful reconnect or a successful user-triggered refresh. A user MAY connect at most ten
+  accounts (paused accounts count); the eleventh connect attempt is refused with a message
+  naming the limit.
 - **FR-005**: Every connected account and every cached item MUST belong to exactly one user and
   MUST be invisible to every other user on every screen and request.
 
 Calendar panel
 
 - **FR-006**: Both panels live on a "Today" page reachable from the main navigation; the
-  expenses month view MUST NOT load mail or calendar data. The calendar panel MUST list every
-  event starting within the next seven days from
-  every connected, unpaused calendar, ordered by start time, showing title, day, start and end
-  time in the user's time zone or "all day", location, tentative mark, and the account label
-  and colour, with a link that opens the event in the provider.
+  expenses month view MUST NOT load mail or calendar data. The calendar panel shows seven
+  display days, today to today plus six in the user's time zone, and MUST list on each display
+  day every event from every connected, unpaused calendar that covers any part of that day
+  (including events that started before today), ordered all-day first then by start time,
+  showing title, start and end time in the user's time zone or "all day", location, tentative
+  mark, and the account label and colour, with a link that opens the event in the provider.
+  Desk keeps cached occurrences from yesterday to today plus seven so day boundaries in any
+  zone are covered; declined invitations are not shown.
 - **FR-007**: Users MUST be able to choose which calendars on an account feed the panel; the
   account's primary calendar is included by default.
 - **FR-008**: For a user active in the last 24 hours, changes made in the provider MUST be
@@ -311,11 +324,11 @@ Privacy
   than a dedicated integration.
 - Time zone comes from the user's existing setting (Phase 3); events are always displayed in it.
 - Cached mail is headers and preview only, capped at fifty messages per account; cached events
-  are limited to a rolling window of seven days ahead plus one day behind; both are purged after
-  30 days without a visit.
+  are kept from yesterday to today plus seven (display is today to today plus six, FR-006);
+  both are purged after 30 days without a visit.
 - Refresh runs through the existing jobs runner: every five minutes per account for users
   active in the last 24 hours, hourly otherwise, plus an on-open refresh; exponential backoff on
-  failure; paused after twenty consecutive failures until the user reconnects. At most ten
+  failure up to one hour; status "error" after twenty consecutive failures (FR-004). At most ten
   accounts per user bounds the fan-out.
 - English interface only, as for the rest of v1 and v2.
 - Out of scope: any action on mail from the panel (mark read, archive, reply, compose),
