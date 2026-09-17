@@ -2,7 +2,7 @@
 #   docker build -f infra/fly/Dockerfile .
 # Stages: deps (install, also used by compose for the Vite dev server) -> build -> runtime (distroless).
 
-FROM node:22-bookworm-slim AS deps
+FROM node:26-bookworm-slim AS deps
 # Keep in step with "packageManager" in the root package.json.
 RUN npm install -g pnpm@12.4.2
 WORKDIR /app
