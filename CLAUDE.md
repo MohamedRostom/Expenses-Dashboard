@@ -68,6 +68,7 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 
 - Branches `phase-N/short-description`; one GitHub milestone per phase; labels `phase-N`, `area:web|api|core|infra|tests`, `needs-rostom`.
 - Conventional Commits. Commits and PRs end with the attribution lines the CLI adds.
+- **Never push, open a PR, or merge unless Rostom explicitly asks for that action** (constitution v1.1.0). Commit locally freely; "fix", "implement" or "finish" are not instructions to push. Leave the branch ready and say so.
 - Never commit secrets. `.env.example` lists every variable; the app refuses to start if one is missing.
 - Feature flags (`flags` table) gate anything merged before it is announced.
 - Prefer prose in docs over bullet walls; ADR format for decisions.

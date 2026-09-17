@@ -1,13 +1,14 @@
 <!--
 Sync Impact Report
-- Version change: (template, unversioned) -> 1.0.0
-- Modified principles: none (initial ratification; all six principles new)
-- Added sections: Core Principles (I-VI), Platform and Security Constraints,
-  Development Workflow and Quality Gates, Governance
+- Version change: 1.0.0 -> 1.1.0
+- Modified principles: none
+- Modified sections: Development Workflow and Quality Gates (new rule: no push, pull
+  request, merge or other publication without the owner's explicit instruction; local
+  commits remain allowed)
+- Added sections: none
 - Removed sections: none
 - Templates: plan/spec/tasks templates read this file at runtime; no changes made here
-- Follow-up TODOs: none. Product name, email provider, Stage 1 database, licence and
-  analytics stay open in docs/adr/ADR-0002 and are referenced, not decided, here.
+- Follow-up TODOs: mirror the rule in CLAUDE.md "Conventions" (separate change)
 -->
 
 # Desk Constitution
@@ -119,6 +120,13 @@ GitHub milestone per phase, labels `phase-N`, `area:web|api|core|infra|tests` an
 Nothing from a later phase starts until the current phase's exit criteria are green in CI.
 Commits follow Conventional Commits and carry the attribution lines the CLI adds.
 
+Nothing is pushed to the remote unless the owner has said so explicitly for that push. An
+agent or contributor MAY commit locally at any time, but MUST NOT run a push, open a pull
+request, merge, or otherwise publish commits without an explicit instruction naming that
+action; a general request to "fix", "implement" or "finish" something is not such an
+instruction. Rationale: a push is outward-facing and triggers CI, previews and deploys; the
+owner decides when work leaves the machine.
+
 CI on every PR runs, in order, lint, typecheck, unit, api (Testcontainers Postgres),
 worker-build and e2e-ci; a Fly preview app is deployed per PR and destroyed on close; `main`
 deploys to staging. The definition of done for every PR is: unit and API tests added, an e2e-ci
@@ -146,4 +154,4 @@ complexity (a new abstraction, dependency or service) MUST be justified in the P
 against Principle VI. `CLAUDE.md` is the runtime guidance file for agents and contributors and
 MUST be updated in the same PR as any decision that changes it.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-09-16
+**Version**: 1.1.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-09-17
