@@ -14,6 +14,18 @@ describe('migrations', () => {
     await container?.stop();
   });
 
+  it('serialises concurrent runs so two booting containers cannot race', async () => {
+    const container2 = await new PostgreSqlContainer('postgres:16-alpine').start();
+    try {
+      const url = container2.getConnectionUri();
+      await expect(
+        Promise.all([runMigrations(url), runMigrations(url), runMigrations(url)]),
+      ).resolves.toBeDefined();
+    } finally {
+      await container2.stop();
+    }
+  });
+
   it('applies from an empty database and is idempotent', async () => {
     const url = container.getConnectionUri();
     await runMigrations(url);

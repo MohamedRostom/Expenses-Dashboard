@@ -13,6 +13,11 @@ describe('parseEnv', () => {
     });
   });
 
+  it('refuses an empty DATABASE_URL and a non-numeric PORT, naming each', () => {
+    expect(() => parseEnv({ DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
+    expect(() => parseEnv({ DATABASE_URL: 'postgres://x', PORT: 'eighty' })).toThrow(/PORT/);
+  });
+
   it('treats an empty GIT_SHA as unknown and coerces PORT', () => {
     const env = parseEnv({ DATABASE_URL: 'postgres://x', PORT: '8080', GIT_SHA: '' });
     expect(env.PORT).toBe(8080);
