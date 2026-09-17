@@ -7,6 +7,15 @@ updates:
     groups:
       all-npm:
         patterns: ['*']
+    ignore:
+      # typescript-eslint doesn't support TS 7 yet (typescript-eslint/typescript-eslint#10940);
+      # bumping breaks `pnpm lint`. Revisit once that support lands.
+      - dependency-name: 'typescript'
+        versions: ['>=7']
+      # Keep @types/node aligned with the pinned Node 22 LTS runtime (CLAUDE.md); a newer major
+      # can typecheck against APIs Node 22 doesn't have.
+      - dependency-name: '@types/node'
+        versions: ['>=23']
   - package-ecosystem: github-actions
     directory: /
     schedule:
@@ -15,3 +24,8 @@ updates:
     directory: /infra/fly
     schedule:
       interval: weekly
+    ignore:
+      # Node 22 LTS is a pinned decision (CLAUDE.md); a major bump needs an ADR, not an
+      # automatic PR.
+      - dependency-name: 'node'
+        versions: ['>=23']
