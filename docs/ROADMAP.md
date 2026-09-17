@@ -135,7 +135,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 ## v2 (after Phase 6) — Calendar and beyond
 Not scheduled; captured so Phase 1's OAuth design leaves room for it.
-- Google Calendar panel (sensitive scope): refresh-token storage, Google OAuth verification submission, calendar read model, the "next 7 days" panel from the personal dashboard.
+- Mail and calendar panels (ADR-0004, spec `specs/002-mail-calendar-panels/`): per-connection refresh-token storage, Google OAuth verification, the "next 7 days" calendar panel and a read-only inbox panel across Google, Microsoft and standards-based providers; Google mail last, after the restricted-scope CASA assessment.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.
 - Receipt attachments (R2 storage) and OCR of amounts.
 - Bank feeds via Open Banking (provider to be chosen; no bank integration in v1 per ADR-0003).
