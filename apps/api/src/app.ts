@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import type { HealthResponseT } from '@desk/contracts';
 
-export type BuildInfo = { version: string; sha: string };
+export type BuildInfo = Omit<HealthResponseT, 'status'>;
 
 /** The Desk API. Runtime-agnostic: node.ts and worker.ts wrap it with their adapters. */
 export function createApp(build: BuildInfo) {

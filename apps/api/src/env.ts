@@ -11,12 +11,23 @@ export const envSchema = z.object({
 });
 export type Env = z.infer<typeof envSchema>;
 
+/** The subset of the schema the Workers entry point receives as bindings. */
+export const bindingsSchema = envSchema.pick({ GIT_SHA: true });
+export type Bindings = z.infer<typeof bindingsSchema>;
+
+function fail(issues: z.core.$ZodIssue[]): never {
+  const lines = issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
+  throw new Error(`Refusing to start, invalid environment:\n${lines.join('\n')}`);
+}
+
 /** Parses the environment and throws a readable error naming each missing or invalid variable. */
 export function parseEnv(source: Record<string, string | undefined>): Env {
   const result = envSchema.safeParse(source);
-  if (!result.success) {
-    const lines = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`);
-    throw new Error(`Refusing to start, invalid environment:\n${lines.join('\n')}`);
-  }
-  return result.data;
+  return result.success ? result.data : fail(result.error.issues);
+}
+
+/** Same contract for Cloudflare bindings, so both entry points refuse the same bad input. */
+export function parseBindings(source: unknown): Bindings {
+  const result = bindingsSchema.safeParse(source);
+  return result.success ? result.data : fail(result.error.issues);
 }

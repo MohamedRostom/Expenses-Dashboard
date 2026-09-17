@@ -33,7 +33,10 @@ jobs:
       - if: steps.gate.outputs.skip != 'true'
         uses: superfly/flyctl-actions/setup-flyctl@master
       - if: steps.gate.outputs.skip != 'true'
-        run: flyctl apps create "$APP" --org personal || true
+        run: |
+          if ! out=$(flyctl apps create "$APP" --org personal 2>&1); then
+            echo "$out" | grep -qi 'already' || { echo "$out"; exit 1; }
+          fi
       - if: steps.gate.outputs.skip != 'true'
         run: flyctl secrets set --app "$APP" --stage DATABASE_URL="${{ secrets.PREVIEW_DATABASE_URL }}"
       - if: steps.gate.outputs.skip != 'true'
@@ -54,4 +57,7 @@ jobs:
       - if: env.FLY_API_TOKEN != ''
         uses: superfly/flyctl-actions/setup-flyctl@master
       - if: env.FLY_API_TOKEN != ''
-        run: flyctl apps destroy "$APP" --yes || true
+        run: |
+          if ! out=$(flyctl apps destroy "$APP" --yes 2>&1); then
+            echo "$out" | grep -qi 'could not find' || { echo "$out"; exit 1; }
+          fi

@@ -18,10 +18,28 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="${{ secrets.STAGING_DATABASE_URL }}"
-      - run: >-
+      - id: gate
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::warning::FLY_API_TOKEN is not set; skipping the staging deploy"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$STAGING_DATABASE_URL" ]; then
+            echo "::error::STAGING_DATABASE_URL is not set; refusing to overwrite the live secret"
+            exit 1
+          fi
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      - if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v4
+      - if: steps.gate.outputs.skip != 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@master
+      - if: steps.gate.outputs.skip != 'true'
+        run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="$STAGING_DATABASE_URL"
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      - if: steps.gate.outputs.skip != 'true'
+        run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
-      - run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+      - if: steps.gate.outputs.skip != 'true'
+        run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz

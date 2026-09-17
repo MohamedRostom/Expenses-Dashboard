@@ -3,16 +3,16 @@
 # Stages: deps (install, also used by compose for the Vite dev server) -> build -> runtime (distroless).
 
 FROM node:22-bookworm-slim AS deps
+# Keep in step with "packageManager" in the root package.json.
 RUN npm install -g pnpm@12.4.2
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
-ARG GIT_SHA=unknown
 RUN pnpm --filter @desk/web build && pnpm --filter @desk/api build
 
-FROM gcr.io/distroless/nodejs22-debian12 AS runtime
+FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runtime
 WORKDIR /app
 ARG GIT_SHA=unknown
 ENV NODE_ENV=production PORT=3000 GIT_SHA=$GIT_SHA

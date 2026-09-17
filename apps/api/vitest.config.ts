@@ -8,8 +8,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       include: ['src/**/*.ts'],
-      // Entry points only wire adapters; they are exercised by e2e-ci, not unit tests.
-      exclude: ['src/node.ts', 'src/worker.ts'],
+      // node.ts only wires the server and is exercised by e2e-ci against the real container.
+      exclude: ['src/node.ts'],
       thresholds: { lines: 85 },
     },
   },
