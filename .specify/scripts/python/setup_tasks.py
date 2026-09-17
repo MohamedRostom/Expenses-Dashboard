@@ -87,6 +87,7 @@ def _check_dir(path: Path, description: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
+    sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252; the template has non-Latin-1 glyphs
     json_mode = False
     for arg in list(argv if argv is not None else sys.argv[1:]):
         if arg == "--json":
