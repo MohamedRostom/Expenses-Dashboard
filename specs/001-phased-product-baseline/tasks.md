@@ -121,23 +121,23 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 2
 
-- [ ] T047 [P] [US2] Write failing core tests in `packages/core/src/month-summary.test.ts`: totals exclude pending and binned rows, remaining may be negative, categories without budget count in spent only, year equals sum of months
-- [ ] T048 [P] [US2] Write failing API tests in `apps/api/test/expenses.test.ts`: create with client UUID v7 is idempotent, same-currency rate 1/source none, weekend fallback records rate date, seven-day gap leaves pending, later-date provider answer leaves pending, unsupported currency pending with note, zero amount rejected, future date > 1 year rejected, override retains fetched rate and clearing restores it, soft delete/restore/purge after 30 days, cursor pagination at 500
-- [ ] T049 [P] [US2] Write failing API tests in `apps/api/test/summary.test.ts`: `/summary/month` tiles, per-category over-budget, pending count; `/summary/year`; `/rates` preview
-- [ ] T050 [P] [US2] Write failing Playwright test `tests/e2e/tests/expenses.spec.ts`: three-currency totals, Sunday rate date visible, edit, delete, restore from bin, shortcuts `n` `[` `]`, ISO code shown on every amount, locale formatting
-- [ ] T051 [US2] Extend `apps/api/test/ownership.test.ts` with every expense, summary and rates route
+- [x] T047 [P] [US2] Write failing core tests in `packages/core/src/month-summary.test.ts`: totals exclude pending and binned rows, remaining may be negative, categories without budget count in spent only, year equals sum of months
+- [x] T048 [P] [US2] Write failing API tests in `apps/api/test/expenses.test.ts`: create with client UUID v7 is idempotent, same-currency rate 1/source none, weekend fallback records rate date, seven-day gap leaves pending, later-date provider answer leaves pending, unsupported currency pending with note, zero amount rejected, future date > 1 year rejected, override retains fetched rate and clearing restores it, soft delete/restore/purge after 30 days, cursor pagination at 500
+- [x] T049 [P] [US2] Write failing API tests in `apps/api/test/summary.test.ts`: `/summary/month` tiles, per-category over-budget, pending count; `/summary/year`; `/rates` preview
+- [x] T050 [P] [US2] Write failing Playwright test `tests/e2e/tests/expenses.spec.ts`: three-currency totals, Sunday rate date visible, edit, delete, restore from bin, shortcuts `n` `[` `]`, ISO code shown on every amount, locale formatting
+- [x] T051 [US2] Extend `apps/api/test/ownership.test.ts` with every expense, summary and rates route
 
 ### Implementation for User Story 2
 
-- [ ] T052 [P] [US2] Extend `packages/db/src/schema.ts` with `categories` and `expenses` per data-model.md (indexes, unique notion_page_id, cascade) and `pnpm db:generate --name expenses`
-- [ ] T053 [P] [US2] Add zod schemas in `packages/contracts/src/expenses.ts` (create/patch bodies with `amount: {minor, currency}`, list query, summary responses) and `packages/contracts/src/rates.ts`
-- [ ] T054 [P] [US2] Implement `packages/core/src/month-summary.ts` (tiles, per-category spend vs budget, over-budget flag, pending count) and `packages/core/src/year-summary.ts`
-- [ ] T055 [US2] Implement `apps/api/src/services/expenses.ts` (create/update with conversion via `services/rates.ts`, override, soft delete, restore, purge) and `apps/api/src/routes/expenses.ts` for `GET/POST /expenses`, `PATCH/DELETE /expenses/:id`, `POST /expenses/:id/restore`
-- [ ] T056 [US2] Implement `apps/api/src/routes/summary.ts` (`/summary/month`, `/summary/year`) and `apps/api/src/routes/rates.ts` (`GET /rates`)
-- [ ] T057 [P] [US2] Build `packages/ui/src/charts/CategoryBars.vue` (single hue, budget tick marks, critical fill when over budget) and `packages/ui/src/charts/DataTable.vue` (table alternative rendered alongside)
-- [ ] T058 [US2] Build `apps/web/src/views/MonthView.vue` (three tiles, category bars, entries table, month switcher, pending-rate count, skeleton/empty/error states) with `apps/web/src/stores/expenses.ts` and keyboard shortcuts in `apps/web/src/composables/useShortcuts.ts`
-- [ ] T059 [US2] Build `apps/web/src/components/ExpenseForm.vue` (currency picker defaulting to user currency, live conversion preview via `/rates`, rate override field, optimistic save with undo toast) and `apps/web/src/views/BinView.vue`
-- [ ] T060 [US2] Add `apps/web/src/utils/format.ts` (locale number and date formatting via `Intl`, ISO code always appended) with unit tests in `apps/web/src/utils/format.test.ts`
+- [x] T052 [P] [US2] Extend `packages/db/src/schema.ts` with `categories` and `expenses` per data-model.md (indexes, unique notion_page_id, cascade) and `pnpm db:generate --name expenses`
+- [x] T053 [P] [US2] Add zod schemas in `packages/contracts/src/expenses.ts` (create/patch bodies with `amount: {minor, currency}`, list query, summary responses) and `packages/contracts/src/rates.ts`
+- [x] T054 [P] [US2] Implement `packages/core/src/month-summary.ts` (tiles, per-category spend vs budget, over-budget flag, pending count) and `packages/core/src/year-summary.ts`
+- [x] T055 [US2] Implement `apps/api/src/services/expenses.ts` (create/update with conversion via `services/rates.ts`, override, soft delete, restore, purge) and `apps/api/src/routes/expenses.ts` for `GET/POST /expenses`, `PATCH/DELETE /expenses/:id`, `POST /expenses/:id/restore`
+- [x] T056 [US2] Implement `apps/api/src/routes/summary.ts` (`/summary/month`, `/summary/year`) and `apps/api/src/routes/rates.ts` (`GET /rates`)
+- [x] T057 [P] [US2] Build `packages/ui/src/charts/CategoryBars.vue` (single hue, budget tick marks, critical fill when over budget) and `packages/ui/src/charts/DataTable.vue` (table alternative rendered alongside)
+- [x] T058 [US2] Build `apps/web/src/views/MonthView.vue` (three tiles, category bars, entries table, month switcher, pending-rate count, skeleton/empty/error states) with `apps/web/src/stores/expenses.ts` and keyboard shortcuts in `apps/web/src/composables/useShortcuts.ts`
+- [x] T059 [US2] Build `apps/web/src/components/ExpenseForm.vue` (currency picker defaulting to user currency, live conversion preview via `/rates`, rate override field, optimistic save with undo toast) and `apps/web/src/views/BinView.vue`
+- [x] T060 [US2] Add `apps/web/src/utils/format.ts` (locale number and date formatting via `Intl`, ISO code always appended) with unit tests in `apps/web/src/utils/format.test.ts`
 
 **Checkpoint**: SC-003 achievable on staging; SC-010 checked with a seeded 20,000-expense user (`packages/db/src/seed.ts`).
 

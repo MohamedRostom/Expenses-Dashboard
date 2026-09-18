@@ -5,13 +5,18 @@ import { startHarness, type ApiClient, type Harness } from './harness.js';
  * isolation). Each row creates a resource as user B, then hits `path` (with user B's resource
  * id substituted) as user A, and expects not_found (404) — never user B's data.
  *
- * T036: Phase 1 id-addressed routes only. Routes intentionally excluded because they have no
- * "someone else's" resource in the URL (self-operations or public/no-ownership-concept routes):
+ * T036/T051: Phase 1 + Phase 2 id-addressed routes. Routes intentionally excluded because they
+ * have no "someone else's" resource in the URL (self-operations or public/no-ownership-concept
+ * routes):
  * GET /me, PATCH /me, GET /me/export, DELETE /me, GET /me/sessions — act on the caller only;
  * GET /currencies, GET /flags — no per-user id in the path;
  * POST /auth/*, GET /auth/google/* — public, pre-session;
  * DELETE /me/password, DELETE /me/oauth/:provider — act on the caller's own account, addressed
  * by provider name (not another user's resource id), so there is no "user B's" row to fetch.
+ * GET /expenses, POST /expenses — scoped to the caller's own rows implicitly (no foreign id in
+ * the path/body to substitute); GET /summary/month, GET /summary/year — read the caller's own
+ * expenses/categories only, addressed by month/year query params, not a resource id; GET /rates —
+ * a stateless FX preview keyed by date/currency pair, not tied to any user's data at all.
  */
 type Row = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
@@ -19,6 +24,8 @@ type Row = {
   path: string;
   /** Creates the resource as user B and returns its id, to substitute for `:id` in `path`. */
   createForeignId: (userB: ApiClient) => Promise<string>;
+  /** Request body for PATCH; defaults to {} when omitted. */
+  body?: unknown;
 };
 
 const routes: Row[] = [
@@ -43,7 +50,46 @@ const routes: Row[] = [
       return job.id;
     },
   },
+  {
+    method: 'PATCH',
+    path: '/expenses/:id',
+    body: { description: 'attempted takeover' },
+    async createForeignId(userB) {
+      return await createExpense(userB);
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/expenses/:id',
+    async createForeignId(userB) {
+      return await createExpense(userB);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/expenses/:id/restore',
+    async createForeignId(userB) {
+      const id = await createExpense(userB);
+      const del = await userB.delete(`/expenses/${id}`);
+      if (del.status !== 204) throw new Error('expected user B to soft-delete their expense');
+      return id;
+    },
+  },
 ];
+
+async function createExpense(userB: ApiClient): Promise<string> {
+  const res = await userB.post('/expenses', {
+    description: 'ownership fixture',
+    amount: { minor: 500, currency: 'GBP' },
+    date: '2026-09-01',
+    categoryId: null,
+    paidWith: 'card',
+    kind: 'variable',
+  });
+  const { expense } = (await res.json()) as { expense?: { id: string } };
+  if (!expense) throw new Error('expected user B to create an expense');
+  return expense.id;
+}
 
 describe('ownership matrix', () => {
   let harness: Harness;
@@ -69,7 +115,7 @@ describe('ownership matrix', () => {
         : row.method === 'POST'
           ? await userA.post(path)
           : row.method === 'PATCH'
-            ? await userA.patch(path)
+            ? await userA.patch(path, row.body ?? {})
             : await userA.delete(path);
 
     expect(res.status).toBe(404);
