@@ -2,7 +2,9 @@ name: e2e-local
 
 # Suites that need real accounts, real devices or OAuth round-trips. Runs on Rostom's
 # self-hosted runner (label desk-local), nightly and on demand, only from main, never
-# blocking a PR. Secrets live in the approval-gated environment `local-secrets`.
+# blocking a PR. Secrets live in the approval-gated environment `local-secrets`. Off until the
+# repository variable E2E_LOCAL_ENABLED is 'true', so nightly runs do not queue for a runner
+# that is not registered yet.
 on:
   workflow_dispatch:
   schedule:
@@ -18,7 +20,7 @@ permissions:
 
 jobs:
   e2e-local:
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && vars.E2E_LOCAL_ENABLED == 'true'
     runs-on: [self-hosted, desk-local]
     environment: local-secrets
     timeout-minutes: 60

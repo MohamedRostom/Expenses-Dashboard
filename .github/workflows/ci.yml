@@ -17,7 +17,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.filter.outputs.code }}
-      config: ${{ steps.filter.outputs.config }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -35,24 +34,27 @@ jobs:
               - 'pnpm-lock.yaml'
               - 'package.json'
               - 'pnpm-workspace.yaml'
-              - 'turbo.json'
-            config:
-              - '.github/workflows/**'
-              - '.github/actions/**'
+              - '.nvmrc'
+              - 'tsconfig.base.json'
+              - 'eslint.config.js'
+              - '.prettier*'
 
   lint:
+    timeout-minutes: 10
     needs: detect-changes
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm audit --audit-level high
 
   typecheck:
+    timeout-minutes: 10
     needs: [lint, detect-changes]
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -60,8 +62,9 @@ jobs:
       - run: pnpm typecheck
 
   unit:
+    timeout-minutes: 10
     needs: [typecheck, detect-changes]
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -69,8 +72,9 @@ jobs:
       - run: pnpm test:unit
 
   api:
+    timeout-minutes: 20
     needs: [unit, detect-changes]
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -78,8 +82,9 @@ jobs:
       - run: pnpm test:api
 
   worker-build:
+    timeout-minutes: 10
     needs: [api, detect-changes]
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -87,8 +92,9 @@ jobs:
       - run: pnpm worker:build
 
   e2e-ci:
+    timeout-minutes: 30
     needs: [worker-build, detect-changes]
-    if: needs.detect-changes.outputs.code == 'true' || needs.detect-changes.outputs.config == 'true'
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

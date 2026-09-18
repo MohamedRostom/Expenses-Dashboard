@@ -31,7 +31,7 @@ jobs:
       - if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v7
       - if: steps.gate.outputs.skip != 'true'
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
       - if: steps.gate.outputs.skip != 'true'
         run: |
           if ! out=$(flyctl apps create "$APP" --org personal 2>&1); then
@@ -55,7 +55,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - if: env.FLY_API_TOKEN != ''
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
       - if: env.FLY_API_TOKEN != ''
         run: |
           if ! out=$(flyctl apps destroy "$APP" --yes 2>&1); then

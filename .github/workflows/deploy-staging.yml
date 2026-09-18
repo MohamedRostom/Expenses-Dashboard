@@ -32,7 +32,7 @@ jobs:
       - if: steps.gate.outputs.skip != 'true'
         uses: actions/checkout@v7
       - if: steps.gate.outputs.skip != 'true'
-        uses: superfly/flyctl-actions/setup-flyctl@master
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
       - if: steps.gate.outputs.skip != 'true'
         run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="$STAGING_DATABASE_URL"
         env:

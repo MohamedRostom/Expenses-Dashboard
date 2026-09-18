@@ -333,7 +333,7 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 - [ ] T120 [P] Keep `CHANGELOG.md` current with one line per PR across all phases and update `CLAUDE.md` "Current state" at each phase exit
 - [ ] T121 [P] Generate OpenAPI from `packages/contracts` (`packages/contracts/scripts/openapi.ts`) and publish `packages/contracts/openapi.json`; add a CI check that it is up to date
-- [ ] T122 [P] Add `pnpm audit --audit-level high` to the `lint` job in `.github/workflows/ci.yml`
+- [x] T122 [P] Add `pnpm audit --audit-level high` to the `lint` job in `.github/workflows/ci.yml` (done 2026-09-18)
 - [ ] T123 Run the full quickstart.md validation per phase before each phase PR is merged and record results in the PR description; record the people-based checks (SC-006 three observed sign-ups, SC-009 15-second phone add) with dates and pass/fail in the Phase 4 PR, marked `needs-rostom` in `docs/ROADMAP.md` until run
 - [ ] T124 [P] Accept ADR-0001 and ADR-0002 (owner) and rename "Desk" across `apps/`, `infra/` and docs once the product name is decided
 
