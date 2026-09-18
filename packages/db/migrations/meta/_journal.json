@@ -8,6 +8,13 @@
       "when": 1789589371600,
       "tag": "0000_brave_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789734241486,
+      "tag": "0001_accounts",
+      "breakpoints": true
     }
   ]
 }

@@ -25,12 +25,12 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 **Purpose**: Land the planning set and grow the Phase 0 skeleton to the layout the plan needs.
 
 - [x] T001 Planning set committed on this branch (2026-09-17); the delivery branch starts from it
-- [ ] T002 [P] Create `infra/mocks/` as a workspace package `@desk/mocks` (`package.json`, `tsconfig.json`, `src/server.ts` Hono app on :4000 with `GET /clock` and `POST /clock` for a frozen clock) and add `mocks` service (`build: {context: .., target: deps}`, `command: pnpm --filter @desk/mocks start`) replacing the alpine placeholder in `infra/docker-compose.yml`
-- [ ] T003 [P] Add `mailpit` service (`axllent/mailpit`, ports 1025 and 8025) to `infra/docker-compose.yml` and `SMTP_URL=smtp://mailpit:1025` to the `api` service environment
-- [ ] T004 [P] Add `fast-check` to `packages/core` devDependencies and `@axe-core/playwright` to `tests/e2e` devDependencies; verify `pnpm worker:build` still passes
-- [ ] T005 [P] Create `packages/connectors/rates/` and `packages/connectors/notion/` folders with `index.ts`, `fake.ts`, `fixtures/` and update `packages/connectors/package.json` exports (`./rates`, `./notion`)
-- [ ] T006 [P] Extend `.env.example` with every variable named in quickstart.md (`SESSION_SECRET`, `SECRET_BOX_KEY`, `RESEND_API_KEY`, `SMTP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET`, `APP_ORIGIN`, `TEST_MODE`) with one-line comments
-- [ ] T007 Add `pnpm jobs:tick` script (`apps/api/src/jobs/tick.ts` entry, runs `runDueJobs()` once and exits) to `apps/api/package.json` and a Fly scheduled machine note in `infra/fly/fly.toml` comments
+- [x] T002 [P] Create `infra/mocks/` as a workspace package `@desk/mocks` (`package.json`, `tsconfig.json`, `src/server.ts` Hono app on :4000 with `GET /clock` and `POST /clock` for a frozen clock) and add `mocks` service (`build: {context: .., target: deps}`, `command: pnpm --filter @desk/mocks start`) replacing the alpine placeholder in `infra/docker-compose.yml`
+- [x] T003 [P] Add `mailpit` service (`axllent/mailpit`, ports 1025 and 8025) to `infra/docker-compose.yml` and `SMTP_URL=smtp://mailpit:1025` to the `api` service environment
+- [x] T004 [P] Add `fast-check` to `packages/core` devDependencies and `@axe-core/playwright` to `tests/e2e` devDependencies; verify `pnpm worker:build` still passes
+- [x] T005 [P] Create `packages/connectors/rates/` and `packages/connectors/notion/` folders with `index.ts`, `fake.ts`, `fixtures/` and update `packages/connectors/package.json` exports (`./rates`, `./notion`)
+- [x] T006 [P] Extend `.env.example` with every variable named in quickstart.md (`SESSION_SECRET`, `SECRET_BOX_KEY`, `RESEND_API_KEY`, `SMTP_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NOTION_CLIENT_ID`, `NOTION_CLIENT_SECRET`, `APP_ORIGIN`, `TEST_MODE`) with one-line comments
+- [x] T007 Add `pnpm jobs:tick` script (`apps/api/src/jobs/tick.ts` entry, runs `runDueJobs()` once and exits) to `apps/api/package.json` and a Fly scheduled machine note in `infra/fly/fly.toml` comments
 
 ---
 
@@ -42,38 +42,38 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Money core (tests first)
 
-- [ ] T008 [P] Write failing property tests in `packages/core/src/money/money.test.ts`: `Money` rejects non-safe integers and zero, parse/format round-trip for every currency in the ISO 4217 table, sums are exact integers
-- [ ] T009 [P] Write failing property tests in `packages/core/src/money/convert.test.ts`: half-even rounding fixtures (0.5 cases both directions), `convert(sum) - sum(convert)` within one minor unit per row, exponent changes 0/2/3
-- [ ] T010 Implement `packages/core/src/money/currencies.ts` (ISO 4217 code, name, exponent table) and `packages/core/src/money/money.ts` (`Money`, `parseMajor`, `formatMajor`, `add`, `negate`)
-- [ ] T011 Implement `packages/core/src/money/convert.ts` (`convert(money, rate: string, to)` using scaled-integer multiplication and `roundHalfEven`) and export all from `packages/core/src/index.ts`
+- [x] T008 [P] Write failing property tests in `packages/core/src/money/money.test.ts`: `Money` rejects non-safe integers and zero, parse/format round-trip for every currency in the ISO 4217 table, sums are exact integers
+- [x] T009 [P] Write failing property tests in `packages/core/src/money/convert.test.ts`: half-even rounding fixtures (0.5 cases both directions), `convert(sum) - sum(convert)` within one minor unit per row, exponent changes 0/2/3
+- [x] T010 Implement `packages/core/src/money/currencies.ts` (ISO 4217 code, name, exponent table) and `packages/core/src/money/money.ts` (`Money`, `parseMajor`, `formatMajor`, `add`, `negate`)
+- [x] T011 Implement `packages/core/src/money/convert.ts` (`convert(money, rate: string, to)` using scaled-integer multiplication and `roundHalfEven`) and export all from `packages/core/src/index.ts`
 
 ### Runtime interfaces (Principle II)
 
-- [ ] T012 [P] Write failing tests in `apps/api/test/adapters/password.test.ts` (hash verifies, wrong password fails, `needsRehash` on changed params) and implement `PasswordHasher` interface in `apps/api/src/adapters/password.ts` with `hash-wasm` Argon2id (19 MiB, 2 iterations, parallelism 1)
-- [ ] T013 [P] Write failing tests in `apps/api/test/adapters/session-store.test.ts` (create/get/touch/revoke/revokeAllExcept, expiry = min(lastSeen+30d, created+90d)) and implement `SessionStore` interface plus `PgSessionStore` in `apps/api/src/adapters/session-store.ts`
-- [ ] T014 [P] Write failing tests in `apps/api/test/adapters/rate-limiter.test.ts` (fixed window, per key, prune) and implement `RateLimiter` interface plus `PgRateLimiter` in `apps/api/src/adapters/rate-limiter.ts`
-- [ ] T015 [P] Write failing tests in `apps/api/test/adapters/mailer.test.ts` (capturing fake records `to`, `subject`, links) and implement `Mailer` interface with `ResendMailer` (fetch) and `SmtpMailer` (Node-only, Mailpit) plus `CapturingMailer` in `apps/api/src/adapters/mailer.ts`
-- [ ] T016 [P] Write failing tests in `apps/api/test/adapters/secret-box.test.ts` (AES-256-GCM seal/open round-trip, tamper fails) and implement `SecretBox` in `apps/api/src/adapters/secret-box.ts` using WebCrypto
-- [ ] T017 [P] Implement `Logger` (one JSON line per event to stdout with request id, hashed user id, route, status, duration) in `apps/api/src/adapters/logger.ts` and a `requestLogger` middleware in `apps/api/src/middleware/request-logger.ts` with a test in `apps/api/test/adapters/logger.test.ts` asserting one parseable JSON line per request with those fields and no raw user id
-- [ ] T018 Write failing tests in `apps/api/test/jobs/runner.test.ts` (claim with SKIP LOCKED, progress, retry up to 5, cancel by user) and implement `JobRunner` (`enqueue`, `runDueJobs`, `cancelForUser`) in `apps/api/src/jobs/runner.ts` with a `jobs` registry in `apps/api/src/jobs/index.ts`
+- [x] T012 [P] Write failing tests in `apps/api/test/adapters/password.test.ts` (hash verifies, wrong password fails, `needsRehash` on changed params) and implement `PasswordHasher` interface in `apps/api/src/adapters/password.ts` with `hash-wasm` Argon2id (19 MiB, 2 iterations, parallelism 1)
+- [x] T013 [P] Write failing tests in `apps/api/test/adapters/session-store.test.ts` (create/get/touch/revoke/revokeAllExcept, expiry = min(lastSeen+30d, created+90d)) and implement `SessionStore` interface plus `PgSessionStore` in `apps/api/src/adapters/session-store.ts`
+- [x] T014 [P] Write failing tests in `apps/api/test/adapters/rate-limiter.test.ts` (fixed window, per key, prune) and implement `RateLimiter` interface plus `PgRateLimiter` in `apps/api/src/adapters/rate-limiter.ts`
+- [x] T015 [P] Write failing tests in `apps/api/test/adapters/mailer.test.ts` (capturing fake records `to`, `subject`, links) and implement `Mailer` interface with `ResendMailer` (fetch) and `SmtpMailer` (Node-only, Mailpit) plus `CapturingMailer` in `apps/api/src/adapters/mailer.ts`
+- [x] T016 [P] Write failing tests in `apps/api/test/adapters/secret-box.test.ts` (AES-256-GCM seal/open round-trip, tamper fails) and implement `SecretBox` in `apps/api/src/adapters/secret-box.ts` using WebCrypto
+- [x] T017 [P] Implement `Logger` (one JSON line per event to stdout with request id, hashed user id, route, status, duration) in `apps/api/src/adapters/logger.ts` and a `requestLogger` middleware in `apps/api/src/middleware/request-logger.ts` with a test in `apps/api/test/adapters/logger.test.ts` asserting one parseable JSON line per request with those fields and no raw user id
+- [x] T018 Write failing tests in `apps/api/test/jobs/runner.test.ts` (claim with SKIP LOCKED, progress, retry up to 5, cancel by user) and implement `JobRunner` (`enqueue`, `runDueJobs`, `cancelForUser`) in `apps/api/src/jobs/runner.ts` with a `jobs` registry in `apps/api/src/jobs/index.ts`
 
 ### Schema and contracts
 
-- [ ] T019 Extend `packages/db/src/schema.ts` with Phase 1 tables from data-model.md (`users` columns `email_verified_at`, `password_hash`, `default_currency`, `theme`, `time_zone`, `onboarding_completed_at`; `oauth_accounts`, `sessions`, `email_tokens`, `rate_limits`, `fx_rates`, `jobs`, `flags`, `user_flags`, `audit_log`) with cascade deletes and indexes, then `pnpm db:generate --name accounts`
-- [ ] T019a Create `packages/db/src/seed.ts` (idempotent: flag rows with `default_on = false`, the e2e seeded user and, behind `--load`, one user with 20,000 expenses across five years for SC-010) with `pnpm db:seed` in `packages/db/package.json`, run by the compose `api` service after `db:migrate` and by the e2e-ci job; later specs add their own rows to this file
-- [ ] T020 [P] Add the error envelope schema and codes (`validation_failed`, `unauthenticated`, `not_found`, `rate_limited`, `conflict`, `rate_unavailable`) to `packages/contracts/src/errors.ts` and export
-- [ ] T021 [P] Extend `apps/api/src/env.ts` schema with the new variables from T006 (required: `SESSION_SECRET`, `SECRET_BOX_KEY`, `APP_ORIGIN`; provider keys optional but validated as a group) and update `apps/api/test/env.test.ts`
+- [x] T019 Extend `packages/db/src/schema.ts` with Phase 1 tables from data-model.md (`users` columns `email_verified_at`, `password_hash`, `default_currency`, `theme`, `time_zone`, `onboarding_completed_at`; `oauth_accounts`, `sessions`, `email_tokens`, `rate_limits`, `fx_rates`, `jobs`, `flags`, `user_flags`, `audit_log`) with cascade deletes and indexes, then `pnpm db:generate --name accounts`
+- [x] T019a Create `packages/db/src/seed.ts` (idempotent: flag rows with `default_on = false`, the e2e seeded user and, behind `--load`, one user with 20,000 expenses across five years for SC-010) with `pnpm db:seed` in `packages/db/package.json`, run by the compose `api` service after `db:migrate` and by the e2e-ci job; later specs add their own rows to this file
+- [x] T020 [P] Add the error envelope schema and codes (`validation_failed`, `unauthenticated`, `not_found`, `rate_limited`, `conflict`, `rate_unavailable`) to `packages/contracts/src/errors.ts` and export
+- [x] T021 [P] Extend `apps/api/src/env.ts` schema with the new variables from T006 (required: `SESSION_SECRET`, `SECRET_BOX_KEY`, `APP_ORIGIN`; provider keys optional but validated as a group) and update `apps/api/test/env.test.ts`
 
 ### API middleware and test harness
 
-- [ ] T022 Implement `apps/api/src/middleware/session.ts` (reads `__Host-desk_session`, loads user, sets `c.var.user`), `apps/api/src/middleware/csrf.ts` (double-submit on non-GET), `apps/api/src/middleware/errors.ts` (maps thrown `ApiError` and zod errors to the envelope) and wire them in `apps/api/src/app.ts` with a `createApp(deps)` signature taking db, hasher, sessions, limiter, mailer, secretBox, rates, jobs, clock
-- [ ] T023 Implement `apps/api/src/middleware/secure-headers.ts` (Hono `secureHeaders` with per-request nonce, HSTS) and nonce injection into `index.html` in `apps/api/src/node.ts` static serving; set Vite `html.cspNonce` in `apps/web/vite.config.ts`
-- [ ] T024 Create the API test harness `apps/api/test/harness.ts`: starts one Testcontainers Postgres per file, runs migrations, builds `createApp` with fakes (CapturingMailer, fake rates, frozen clock), exposes `asUser(email)` returning a client with cookie and CSRF header
-- [ ] T025 [P] Create the ownership matrix scaffold `apps/api/test/ownership.test.ts` that iterates a `routes` table (method, path, body factory) as user A against user B's ids and asserts `not_found` or empty; initially covers `/me`, `/me/sessions/:id`, `/jobs/:id`
-- [ ] T026 [P] Create Playwright fixtures in `tests/e2e/fixtures/index.ts` (`signUpAndVerify(page, email)` via Mailpit API at :8025, `freezeClock(date)` via mocks :4000, `axeCheck(page)`) and `tests/e2e/fixtures/sample-export.csv`
-- [ ] T027 [P] Seed `packages/ui`: base components `Button.vue`, `Input.vue`, `Select.vue`, `Dialog.vue`, `Toast.vue`, `Skeleton.vue`, `EmptyState.vue`, `ErrorState.vue` in `packages/ui/src/components/` using `tokens.css`, exported from `packages/ui/src/index.ts`
-- [ ] T028 [P] Add `apps/web/src/api/client.ts` (typed fetch wrapper that sends the CSRF header, parses the error envelope, throws `ApiError`) and `apps/web/src/stores/session.ts` (Pinia store with `user`, `load`, `logout`)
-- [ ] T029 Add `apps/web/src/router.ts` guards (`requiresAuth` redirect to `/login`) and route stubs for `/login`, `/register`, `/verify`, `/forgot`, `/reset`, `/settings`, `/`, `/year`, `/import`, `/bin`, `/onboarding`
+- [x] T022 Implement `apps/api/src/middleware/session.ts` (reads `__Host-desk_session`, loads user, sets `c.var.user`), `apps/api/src/middleware/csrf.ts` (double-submit on non-GET), `apps/api/src/middleware/errors.ts` (maps thrown `ApiError` and zod errors to the envelope) and wire them in `apps/api/src/app.ts` with a `createApp(deps)` signature taking db, hasher, sessions, limiter, mailer, secretBox, rates, jobs, clock
+- [x] T023 Implement `apps/api/src/middleware/secure-headers.ts` (Hono `secureHeaders` with per-request nonce, HSTS) and nonce injection into `index.html` in `apps/api/src/node.ts` static serving; set Vite `html.cspNonce` in `apps/web/vite.config.ts`
+- [x] T024 Create the API test harness `apps/api/test/harness.ts`: starts one Testcontainers Postgres per file, runs migrations, builds `createApp` with fakes (CapturingMailer, fake rates, frozen clock), exposes `asUser(email)` returning a client with cookie and CSRF header
+- [x] T025 [P] Create the ownership matrix scaffold `apps/api/test/ownership.test.ts` that iterates a `routes` table (method, path, body factory) as user A against user B's ids and asserts `not_found` or empty; initially covers `/me`, `/me/sessions/:id`, `/jobs/:id`
+- [x] T026 [P] Create Playwright fixtures in `tests/e2e/fixtures/index.ts` (`signUpAndVerify(page, email)` via Mailpit API at :8025, `freezeClock(date)` via mocks :4000, `axeCheck(page)`) and `tests/e2e/fixtures/sample-export.csv`
+- [x] T027 [P] Seed `packages/ui`: base components `Button.vue`, `Input.vue`, `Select.vue`, `Dialog.vue`, `Toast.vue`, `Skeleton.vue`, `EmptyState.vue`, `ErrorState.vue` in `packages/ui/src/components/` using `tokens.css`, exported from `packages/ui/src/index.ts`
+- [x] T028 [P] Add `apps/web/src/api/client.ts` (typed fetch wrapper that sends the CSRF header, parses the error envelope, throws `ApiError`) and `apps/web/src/stores/session.ts` (Pinia store with `user`, `load`, `logout`)
+- [x] T029 Add `apps/web/src/router.ts` guards (`requiresAuth` redirect to `/login`) and route stubs for `/login`, `/register`, `/verify`, `/forgot`, `/reset`, `/settings`, `/`, `/year`, `/import`, `/bin`, `/onboarding`
 
 **Checkpoint**: Foundation ready. `pnpm test` green with coverage on core and api; e2e-ci still passes with the Hello page.
 

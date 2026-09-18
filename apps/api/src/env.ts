@@ -1,18 +1,35 @@
 import { z } from 'zod';
 
 /** Every variable the Node entry point reads. Keep .env.example in sync. */
-export const envSchema = z.object({
+const envObjectSchema = z.object({
   DATABASE_URL: z.string().min(1),
   PORT: z.coerce.number().int().positive().default(3000),
   GIT_SHA: z
     .string()
     .optional()
     .transform((s) => (s && s.length > 0 ? s : 'unknown')),
+  SESSION_SECRET: z.string().min(1),
+  SECRET_BOX_KEY: z.string().min(1),
+  APP_ORIGIN: z.string().min(1),
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  NOTION_CLIENT_ID: z.string().optional(),
+  NOTION_CLIENT_SECRET: z.string().optional(),
 });
+
+export const envSchema = envObjectSchema
+  .refine((env) => Boolean(env.GOOGLE_CLIENT_ID) === Boolean(env.GOOGLE_CLIENT_SECRET), {
+    message: 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together or not at all',
+    path: ['GOOGLE_CLIENT_ID'],
+  })
+  .refine((env) => Boolean(env.NOTION_CLIENT_ID) === Boolean(env.NOTION_CLIENT_SECRET), {
+    message: 'NOTION_CLIENT_ID and NOTION_CLIENT_SECRET must be set together or not at all',
+    path: ['NOTION_CLIENT_ID'],
+  });
 export type Env = z.infer<typeof envSchema>;
 
 /** The subset of the schema the Workers entry point receives as bindings. */
-export const bindingsSchema = envSchema.pick({ GIT_SHA: true });
+export const bindingsSchema = envObjectSchema.pick({ GIT_SHA: true });
 export type Bindings = z.infer<typeof bindingsSchema>;
 
 function fail(issues: z.core.$ZodIssue[]): never {

@@ -21,3 +21,10 @@ primary_region = "lhr"
 [[vm]]
   size = "shared-cpu-1x"
   memory = "256mb"
+
+# Background jobs (currency change, rate warm/retry, housekeeping, Notion sync) run via
+# `pnpm --filter @desk/api jobs:tick`, not this http_service. Fly does not yet have a native
+# scheduled-machine primitive we use here; run it as a `flyctl machine run` on a cron trigger
+# from an external scheduler (e.g. GitHub Actions schedule calling `flyctl ssh console -C
+# "pnpm --filter @desk/api jobs:tick"`), or a dedicated always-off machine woken by `flyctl
+# machine start` on the same cadence. Revisit once Fly ships first-class cron.
