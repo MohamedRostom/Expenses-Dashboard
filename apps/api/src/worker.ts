@@ -1,34 +1,50 @@
+import postgres from 'postgres';
+import { createDb } from '@desk/db';
 import pkg from '../package.json' with { type: 'json' };
 import { createApp, type AppDeps } from './app.js';
-import { parseBindings } from './env.js';
+import { parseWorkersBindings, type WorkersBindings } from './env.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
+import { KvSessionStore, type KVNamespace } from './adapters/session-store-kv.js';
+import { JobRunner } from './jobs/runner.js';
+import type { Db as QueryDb } from './adapters/rate-limiter.js';
 
 // Stage 2 entry point (Cloudflare Workers). Same app object as node.ts, different adapter.
-// Hyperdrive/KV-backed deps are wired in Phase 6; Phase 0/1 only prove the bundle builds, so
-// every dep below throws lazily if a route actually reaches it (ponytail: same pattern as
-// apps/api/src/jobs/tick.ts's todoDb — no Workers wiring to build until Phase 6 needs it).
+// T117: db (Hyperdrive) and sessions (KV) are wired for real; hasher/limiter/mailer/secretBox/
+// rates/notion/google stay lazy placeholders — out of this task's scope, later tasks wire them
+// the same way (ponytail: same lazy-Proxy pattern as apps/api/src/jobs/tick.ts's todoDb, now
+// scoped to just the deps this task didn't name).
 function notWired(name: string): never {
-  throw new Error(`worker.ts: ${name} not wired until Phase 6`);
+  throw new Error(`worker.ts: ${name} not wired yet`);
 }
 
-function buildDeps(gitSha: string): AppDeps {
+function buildDeps(env: WorkersBindings & { GIT_SHA: string }, jobRunner: JobRunner): AppDeps {
   const lazy = new Proxy({}, { get: (_t, prop) => notWired(String(prop)) });
+  const { db } = createDb(env.HYPERDRIVE.connectionString);
   return {
-    db: lazy as AppDeps['db'],
+    db,
     hasher: lazy as AppDeps['hasher'],
-    sessions: lazy as AppDeps['sessions'],
+    sessions: new KvSessionStore(env.SESSIONS_KV as KVNamespace),
     limiter: lazy as AppDeps['limiter'],
     mailer: lazy as AppDeps['mailer'],
     secretBox: lazy as AppDeps['secretBox'],
     breachChecker: new HibpBreachChecker(),
     rates: lazy as AppDeps['rates'],
-    jobs: undefined,
+    jobs: jobRunner,
     clock: { now: () => new Date() },
-    build: { version: pkg.version, sha: gitSha },
-    // Not wired until Phase 6 (Cloudflare secrets) — /auth/google/* and /notion/* 404 on
-    // Workers for now.
+    build: { version: pkg.version, sha: env.GIT_SHA },
+    // Not wired until a later task adds Cloudflare secrets — /auth/google/* and /notion/* 404
+    // on Workers for now.
     google: undefined,
     notion: undefined,
+  };
+}
+
+/** Bridges postgres.js (over the Hyperdrive connection string) to the `.query(sql, params)`
+ * port JobRunner wants — same shape as node.ts's rawClient bridge. */
+function queryDbFor(connectionString: string): QueryDb {
+  const client = postgres(connectionString);
+  return {
+    query: async (sql, params) => ({ rows: await client.unsafe(sql, params as never[]) }),
   };
 }
 
@@ -37,7 +53,19 @@ let app: ReturnType<typeof createApp> | undefined;
 export default {
   async fetch(request: Request, env: unknown): Promise<Response> {
     // Bindings are fixed per isolate, so validating and building once is safe.
-    app ??= createApp(buildDeps(parseBindings(env).GIT_SHA));
+    if (!app) {
+      const bindings = parseWorkersBindings(env);
+      const jobRunner = new JobRunner(queryDbFor(bindings.HYPERDRIVE.connectionString));
+      app = createApp(buildDeps(bindings, jobRunner));
+    }
     return app.fetch(request);
+  },
+
+  // T117: cron trigger (see infra/cloudflare/wrangler.toml [triggers]) — runs any due jobs
+  // once per invocation, same job table/handlers as the Fly `jobs:tick` scheduled machine.
+  async scheduled(_event: unknown, env: unknown): Promise<void> {
+    const bindings = parseWorkersBindings(env);
+    const jobRunner = new JobRunner(queryDbFor(bindings.HYPERDRIVE.connectionString));
+    await jobRunner.runDueJobs();
   },
 };

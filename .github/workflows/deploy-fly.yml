@@ -1,0 +1,96 @@
+name: deploy-fly
+
+# v0.* tags -> deploy to desk-staging, smoke test, promote the same build to desk-production.
+# v1.* tags go to deploy-cf.yml instead (Cloudflare cut-over, T118) — this workflow ignores them.
+# Needs repo secrets FLY_API_TOKEN, STAGING_DATABASE_URL and (for the promote step)
+# PRODUCTION_DATABASE_URL. desk-production does not exist yet — Rostom runs
+# `fly apps create desk-production` once before the promote job can succeed.
+on:
+  push:
+    tags:
+      - 'v0.*'
+
+concurrency:
+  group: deploy-fly
+
+permissions:
+  contents: read
+
+env:
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+jobs:
+  deploy-staging:
+    runs-on: ubuntu-latest
+    if: "!startsWith(github.ref_name, 'v1.')"
+    steps:
+      - id: gate
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::warning::FLY_API_TOKEN is not set; this tag push will fail at the flyctl step below — that's expected until Rostom configures Fly (see CLAUDE.md)"
+          fi
+          if [ -z "$STAGING_DATABASE_URL" ]; then
+            echo "::error::STAGING_DATABASE_URL is not set; refusing to overwrite the live secret"
+            exit 1
+          fi
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="$STAGING_DATABASE_URL"
+        env:
+          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      - run: >-
+          flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
+          --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
+      - run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+
+  smoke-staging:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - run: pnpm --filter @desk/e2e exec playwright install --with-deps chromium
+      - run: pnpm --filter @desk/e2e exec playwright test smoke.spec.ts --project=local
+        env:
+          E2E_LOCAL_BASE_URL: https://desk-staging.fly.dev
+          E2E_SEEDED_PASSWORD: ${{ secrets.E2E_SEEDED_PASSWORD }}
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: smoke-staging-report
+          path: tests/e2e/playwright-report
+          retention-days: 7
+
+  # Promotes the exact image just proven on staging to desk-production. Rostom must run
+  # `fly apps create desk-production` at least once before this job can succeed — flyctl
+  # deploy fails cleanly against a nonexistent app rather than silently creating one.
+  promote-production:
+    needs: smoke-staging
+    runs-on: ubuntu-latest
+    steps:
+      - id: gate
+        run: |
+          if [ -z "$PRODUCTION_DATABASE_URL" ]; then
+            echo "::error::PRODUCTION_DATABASE_URL is not set; refusing to overwrite the live secret"
+            exit 1
+          fi
+        env:
+          PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      - uses: actions/checkout@v7
+      - uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - run: flyctl secrets set --app desk-production --stage DATABASE_URL="$PRODUCTION_DATABASE_URL"
+        env:
+          PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+      - run: >-
+          flyctl deploy . --app desk-production --dockerfile infra/fly/Dockerfile
+          --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
+      - id: promote-check
+        run: curl --fail --retry 5 --retry-delay 5 https://desk-production.fly.dev/healthz
+      # Rollback: on any failure above, revert desk-production to its previous release. The
+      # exact command (run manually or here) is:
+      #   flyctl releases rollback --app desk-production
+      # (no --version rolls back to the release immediately prior to the one just deployed).
+      - if: failure()
+        run: flyctl releases rollback --app desk-production

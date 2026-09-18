@@ -53,3 +53,30 @@ export function parseBindings(source: unknown): Bindings {
   const result = bindingsSchema.safeParse(source);
   return result.success ? result.data : fail(result.error.issues);
 }
+
+/**
+ * T117: the two Stage 2 resource bindings from wrangler.toml, on top of the string vars above.
+ * These are runtime objects (a Hyperdrive handle, a KVNamespace), not env strings, so they
+ * are asserted present rather than zod-validated — zod has nothing useful to check on a class
+ * instance the platform hands us.
+ */
+export interface WorkersBindings {
+  HYPERDRIVE: { connectionString: string };
+  SESSIONS_KV: unknown;
+}
+
+export function parseWorkersBindings(source: unknown): Bindings & WorkersBindings {
+  const bindings = parseBindings(source);
+  const env = source as Partial<WorkersBindings>;
+  if (!env.HYPERDRIVE?.connectionString) {
+    throw new Error(
+      'Refusing to start, invalid environment:\n  HYPERDRIVE: missing binding (see infra/cloudflare/wrangler.toml [[hyperdrive]])',
+    );
+  }
+  if (!env.SESSIONS_KV) {
+    throw new Error(
+      'Refusing to start, invalid environment:\n  SESSIONS_KV: missing binding (see infra/cloudflare/wrangler.toml [[kv_namespaces]])',
+    );
+  }
+  return { ...bindings, HYPERDRIVE: env.HYPERDRIVE, SESSIONS_KV: env.SESSIONS_KV };
+}
