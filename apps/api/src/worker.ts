@@ -1,6 +1,7 @@
 import pkg from '../package.json' with { type: 'json' };
 import { createApp, type AppDeps } from './app.js';
 import { parseBindings } from './env.js';
+import { HibpBreachChecker } from './adapters/breach-checker.js';
 
 // Stage 2 entry point (Cloudflare Workers). Same app object as node.ts, different adapter.
 // Hyperdrive/KV-backed deps are wired in Phase 6; Phase 0/1 only prove the bundle builds, so
@@ -19,10 +20,13 @@ function buildDeps(gitSha: string): AppDeps {
     limiter: lazy as AppDeps['limiter'],
     mailer: lazy as AppDeps['mailer'],
     secretBox: lazy as AppDeps['secretBox'],
+    breachChecker: new HibpBreachChecker(),
     rates: undefined,
     jobs: undefined,
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: gitSha },
+    // Not wired until Phase 6 (Cloudflare secrets) — /auth/google/* 404s on Workers for now.
+    google: undefined,
   };
 }
 

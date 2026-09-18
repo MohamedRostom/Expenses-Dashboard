@@ -208,6 +208,9 @@ importers:
 
   apps/api:
     dependencies:
+      '@desk/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@desk/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
@@ -229,6 +232,9 @@ importers:
       hono:
         specifier: ^4.13.8
         version: 4.13.8
+      jose:
+        specifier: ^5.9.6
+        version: 5.10.0
       nodemailer:
         specifier: ^7.0.0
         version: 7.0.13
@@ -2448,6 +2454,9 @@ packages:
 
   jackspeak@3.4.3:
     resolution: {integrity: sha512-OGlZQpz2yfahA/Rd1Y8Cd9SIEsqvXkLVoSw/cgwhnhFMDbsQFeZYoJJ7bIZBS9BcamUW96asq/npPWugM+RQBw==}
+
+  jose@5.10.0:
+    resolution: {integrity: sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
@@ -5107,6 +5116,8 @@ snapshots:
       '@isaacs/cliui': 8.0.2
     optionalDependencies:
       '@pkgjs/parseargs': 0.11.0
+
+  jose@5.10.0: {}
 
   js-tokens@10.0.0: {}
 

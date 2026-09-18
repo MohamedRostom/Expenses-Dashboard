@@ -2,24 +2,47 @@ import { startHarness, type ApiClient, type Harness } from './harness.js';
 
 /**
  * Ownership matrix (CLAUDE.md "Testing rules": every route x user A / user B must prove
- * isolation). Each row hits `path` as user A but substituted with user B's id, and expects
- * not_found (404) or an empty result — never user B's data.
+ * isolation). Each row creates a resource as user B, then hits `path` (with user B's resource
+ * id substituted) as user A, and expects not_found (404) — never user B's data.
  *
- * T025: /me, /me/sessions/:id and /jobs/:id don't exist as routes yet (no apps/api/src/routes
- * directory today). Phase 3 (T036) populates this array as those routes land; the loop below
- * runs over zero rows until then, so this file compiles and passes vacuously rather than
- * asserting against routes that don't exist.
+ * T036: Phase 1 id-addressed routes only. Routes intentionally excluded because they have no
+ * "someone else's" resource in the URL (self-operations or public/no-ownership-concept routes):
+ * GET /me, PATCH /me, GET /me/export, DELETE /me, GET /me/sessions — act on the caller only;
+ * GET /currencies, GET /flags — no per-user id in the path;
+ * POST /auth/*, GET /auth/google/* — public, pre-session;
+ * DELETE /me/password, DELETE /me/oauth/:provider — act on the caller's own account, addressed
+ * by provider name (not another user's resource id), so there is no "user B's" row to fetch.
  */
 type Row = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';
-  /** Path template; `:id` is replaced with user B's id when called as user A. */
+  /** Path template; `:id` is replaced with the id `createForeignId` returns. */
   path: string;
-  bodyFactory?: (otherUserId: string) => unknown;
+  /** Creates the resource as user B and returns its id, to substitute for `:id` in `path`. */
+  createForeignId: (userB: ApiClient) => Promise<string>;
 };
 
 const routes: Row[] = [
-  // { method: 'GET', path: '/me/sessions/:id' },
-  // { method: 'GET', path: '/jobs/:id' },
+  {
+    method: 'DELETE',
+    path: '/me/sessions/:id',
+    async createForeignId(userB) {
+      const res = await userB.get('/me/sessions');
+      const { sessions } = (await res.json()) as { sessions: { id: string }[] };
+      const session = sessions[0];
+      if (!session) throw new Error('expected user B to have a session');
+      return session.id;
+    },
+  },
+  {
+    method: 'GET',
+    path: '/jobs/:id',
+    async createForeignId(userB) {
+      const res = await userB.patch('/me', { defaultCurrency: 'USD' });
+      const { job } = (await res.json()) as { job?: { id: string } };
+      if (!job) throw new Error('expected a currency change to enqueue a job');
+      return job.id;
+    },
+  },
 ];
 
 describe('ownership matrix', () => {
@@ -37,25 +60,20 @@ describe('ownership matrix', () => {
     await harness?.close();
   });
 
-  it.each(routes)("$method $path as user A against user B's id is isolated", async (row) => {
-    const path = row.path.replace(':id', userB.userId);
-    const body = row.bodyFactory?.(userB.userId);
+  it.each(routes)("$method $path as user A against user B's resource is isolated", async (row) => {
+    const foreignId = await row.createForeignId(userB);
+    const path = row.path.replace(':id', foreignId);
     const res =
       row.method === 'GET'
         ? await userA.get(path)
         : row.method === 'POST'
-          ? await userA.post(path, body)
+          ? await userA.post(path)
           : row.method === 'PATCH'
-            ? await userA.patch(path, body)
+            ? await userA.patch(path)
             : await userA.delete(path);
 
-    if (res.status === 404) return;
-    expect(res.status).toBeLessThan(300);
-    const json = (await res.json()) as unknown;
-    expect(Array.isArray(json) ? json : Object.keys(json as object)).toHaveLength(0);
-  });
-
-  it('has no rows yet — placeholder until Phase 3 routes land (T036)', () => {
-    expect(routes).toEqual([]);
+    expect(res.status).toBe(404);
+    const json = (await res.json()) as { error?: { code?: string } };
+    expect(json.error?.code).toBe('not_found');
   });
 });

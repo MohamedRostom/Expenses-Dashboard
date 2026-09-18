@@ -9,6 +9,7 @@ import { PgSessionStore } from '../src/adapters/session-store.js';
 import { PgRateLimiter } from '../src/adapters/rate-limiter.js';
 import { CapturingMailer } from '../src/adapters/mailer.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
+import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
 import type { Db as QueryDb } from '../src/adapters/rate-limiter.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
@@ -28,7 +29,7 @@ export type ApiClient = {
   get(path: string): Promise<Response>;
   post(path: string, body?: unknown): Promise<Response>;
   patch(path: string, body?: unknown): Promise<Response>;
-  delete(path: string): Promise<Response>;
+  delete(path: string, body?: unknown): Promise<Response>;
 };
 
 export type Harness = {
@@ -60,7 +61,7 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
     get: (path) => request('GET', path),
     post: (path, body) => request('POST', path, body),
     patch: (path, body) => request('PATCH', path, body),
-    delete: (path) => request('DELETE', path),
+    delete: (path, body) => request('DELETE', path, body),
   };
 }
 
@@ -95,12 +96,18 @@ export async function startHarness(): Promise<Harness> {
     limiter: new PgRateLimiter(queryDb),
     mailer,
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
+    breachChecker: new FakeBreachChecker(),
     // ponytail: rates connector doesn't exist yet — AppDeps.rates is `unknown`, so a plain stub
     // satisfies it until a real FakeRates type lands.
     rates: { rate: async () => ({ rate: 1, date: '2026-09-18', source: 'test' }) },
     jobs: undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
+    google: {
+      clientId: 'test-client-id',
+      clientSecret: 'test-client-secret',
+      appOrigin: 'https://app.test',
+    },
   } satisfies AppDeps);
 
   async function asUser(email: string) {

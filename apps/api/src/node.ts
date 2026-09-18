@@ -12,6 +12,7 @@ import { PgSessionStore } from './adapters/session-store.js';
 import { PgRateLimiter } from './adapters/rate-limiter.js';
 import { SmtpMailer, ResendMailer, type Mailer } from './adapters/mailer.js';
 import { createSecretBox } from './adapters/secret-box.js';
+import { HibpBreachChecker } from './adapters/breach-checker.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 
 // Stage 1 entry point (Fly.io container). Migrations run on start; the built web app is
@@ -48,10 +49,19 @@ const app = createApp({
   limiter: new PgRateLimiter(queryDb),
   mailer,
   secretBox: createSecretBox(env.SECRET_BOX_KEY),
+  breachChecker: new HibpBreachChecker(),
   rates: undefined,
   jobs: undefined,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
+  google:
+    env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? {
+          clientId: env.GOOGLE_CLIENT_ID,
+          clientSecret: env.GOOGLE_CLIENT_SECRET,
+          appOrigin: env.APP_ORIGIN,
+        }
+      : undefined,
 });
 
 app.use('/*', async (c, next) => {

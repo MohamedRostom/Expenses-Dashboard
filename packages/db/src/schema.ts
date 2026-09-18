@@ -144,7 +144,10 @@ export const auditLog = pgTable(
   'audit_log',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    // Deliberately NOT cascaded: data-model.md requires audit rows to survive account
+    // deletion, pseudonymised (see DELETE /me in routes/me.ts, which nulls this column and
+    // records a one-way hash in `details` before the user row is deleted).
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
     actor: text('actor').notNull(),
     action: text('action').notNull(),
     subject: text('subject').notNull(),

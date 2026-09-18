@@ -11,7 +11,8 @@
     "typecheck": "tsc -p tsconfig.json",
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/migrate-cli.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "flags": "tsx src/flags-cli.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",

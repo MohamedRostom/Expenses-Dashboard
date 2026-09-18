@@ -65,6 +65,8 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     limiter: new FakeRateLimiter(),
     mailer: new CapturingMailer(),
     secretBox: { seal: async (s) => s, open: async (s) => s },
+    breachChecker: { check: async () => false },
+    google: undefined,
     rates: undefined,
     jobs: undefined,
     clock: { now: () => new Date('2026-09-18T00:00:00Z') },

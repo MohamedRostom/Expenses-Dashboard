@@ -1,0 +1,8 @@
+{
+  "_comment": "Hand-authored from documented frankfurter.app response shape, not live-recorded (no network access in this sandbox). Follow-up: record via VCR/nock against the live API.",
+  "request": { "date": "2026-09-18", "from": "GBP", "to": "EUR" },
+  "response": {
+    "status": 200,
+    "body": { "amount": 1.0, "base": "GBP", "date": "2026-09-18", "rates": { "EUR": 1.1532 } }
+  }
+}

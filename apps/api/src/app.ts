@@ -6,12 +6,17 @@ import type { SessionStore } from './adapters/session-store.js';
 import type { RateLimiter } from './adapters/rate-limiter.js';
 import type { Mailer } from './adapters/mailer.js';
 import type { SecretBox } from './adapters/secret-box.js';
+import type { BreachChecker } from './adapters/breach-checker.js';
 import { logger as defaultLogger } from './adapters/logger.js';
 import { requestLogger, type RequestLoggerVariables } from './middleware/request-logger.js';
 import { sessionMiddleware, type SessionVariables } from './middleware/session.js';
 import { csrf } from './middleware/csrf.js';
 import { errorHandler } from './middleware/errors.js';
 import { secureHeadersMiddleware, type CspNonceVariables } from './middleware/secure-headers.js';
+import { authRoutes } from './routes/auth.js';
+import { createGoogleRoutes, type GoogleConfig } from './routes/google.js';
+import { createMeRoutes } from './routes/me.js';
+import { createMiscRoutes } from './routes/misc.js';
 
 export type BuildInfo = Omit<HealthResponseT, 'status'>;
 
@@ -27,10 +32,13 @@ export type AppDeps = {
   limiter: RateLimiter;
   mailer: Mailer;
   secretBox: SecretBox;
+  breachChecker: BreachChecker;
   rates: RatesDep;
   jobs: JobsDep;
   clock: Clock;
   build: BuildInfo;
+  /** Undefined until GOOGLE_CLIENT_ID/SECRET are configured (env.ts) — /auth/google/* 404s. */
+  google: GoogleConfig | undefined;
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -45,6 +53,31 @@ export function createApp(deps: AppDeps) {
   app.use('*', csrf);
 
   app.onError(errorHandler);
+
+  app.route('/auth', authRoutes(deps));
+  if (deps.google) {
+    app.route(
+      '/auth/google',
+      createGoogleRoutes({
+        db: deps.db,
+        sessions: deps.sessions,
+        clock: deps.clock,
+        google: deps.google,
+      }),
+    );
+  }
+
+  app.route(
+    '/',
+    createMeRoutes({
+      db: deps.db,
+      hasher: deps.hasher,
+      mailer: deps.mailer,
+      sessionStore: deps.sessions,
+      clock: deps.clock,
+    }),
+  );
+  app.route('/', createMiscRoutes(deps.db));
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {
