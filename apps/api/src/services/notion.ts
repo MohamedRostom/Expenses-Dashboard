@@ -66,12 +66,9 @@ export function createNotionService(
   expensesService: ExpensesService,
   clock: Clock,
 ) {
-  // ponytail: in-memory per-process debounce (Map<userId, epoch ms of the last sync-now>) —
-  // fine for Stage 1's single Fly container; a Workers deployment (Stage 2) would need this
-  // moved to a DB-backed "last requested at" column. The separate "trigger a sync immediately
-  // after an app-side write" debounce from research.md R8 is NOT wired into the expense
-  // write routes yet — the 5-minute notion.sync cron (jobs/notion-sync.ts) is the only
-  // automatic trigger today; add the write-triggered debounce when 5 minutes proves too slow.
+  // ponytail: both debounce maps below are in-memory per-process — fine for Stage 1's single
+  // Fly container; a Workers deployment (Stage 2) would need these moved to a DB-backed
+  // "last requested at" column, since timers don't survive across isolates.
   const lastSyncRequestAt = new Map<string, number>();
   const DEBOUNCE_MS = 10_000;
   const pendingWriteTriggers = new Map<string, ReturnType<typeof setTimeout>>();
