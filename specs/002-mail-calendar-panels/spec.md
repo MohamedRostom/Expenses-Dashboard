@@ -254,9 +254,12 @@ Inbox panel
 
 Relationship to expenses
 
-- **FR-013**: This feature MUST NOT read message bodies or attachments, MUST NOT create,
-  suggest or link expenses from mail or calendar data, and MUST keep its data separate from the
-  expense tables; the panels are presentation only.
+- **FR-013**: This feature MUST NOT store message bodies or attachments and MUST NOT read them
+  except that, where a provider offers no preview of its own (standards-based IMAP), Desk MAY
+  read at most the first 200 bytes of the text part to build the one-line preview and discards
+  the rest; this is stated on the privacy page. It MUST NOT create, suggest or link expenses
+  from mail or calendar data, and MUST keep its data separate from the expense tables; the
+  panels are presentation only.
 
 States and errors
 

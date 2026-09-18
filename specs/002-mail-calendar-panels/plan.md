@@ -18,7 +18,7 @@ behind a per-provider feature flag until the restricted-scope assessment passes 
 
 ## Technical Context
 
-**Language/Version**: TypeScript 6.0 (strict), Node 22 LTS, pnpm 12 workspaces; unchanged from
+**Language/Version**: TypeScript (strict; version pinned in the root `package.json`), Node 22 LTS, pnpm 12 workspaces; unchanged from
 the baseline.
 
 **Primary Dependencies**: everything from the baseline plan (Hono, Vue 3, Drizzle, zod, jose,
@@ -52,7 +52,7 @@ purge; per-provider feature flags; Google mail dark until CASA; every route scop
 English UI; provider quota respected with backoff and a twenty-failure pause.
 
 **Scale/Scope**: 1,000 users × up to ten accounts = at most 10,000 refresh jobs per five
-minutes worst case, realistically a few hundred active; one new page, one settings section, ~14
+minutes worst case, realistically a few hundred active; one new page, one settings section, twelve
 routes, four provider clients, one job with a scheduler tick.
 
 ## Constitution Check
@@ -90,7 +90,7 @@ specs/002-mail-calendar-panels/
 apps/web/src/
 ├── views/TodayView.vue                 # calendar panel + inbox panel, per-panel states
 ├── views/ConnectionsView.vue           # settings section: list, connect, standards form, edit
-├── components/today/CalendarPanel.vue, InboxPanel.vue, AccountChip.vue, PanelState.vue
+├── components/today/CalendarPanel.vue, InboxPanel.vue, AccountChip.vue   # states via packages/ui PanelFrame
 └── stores/today.ts                     # fetches /today, polls while visible, triggers refresh
 
 apps/api/src/
