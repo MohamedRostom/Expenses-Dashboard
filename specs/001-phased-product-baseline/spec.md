@@ -356,8 +356,8 @@ expense, category, budget and connection is intact.
   currency; no month mixes currencies.
 - A user changes their default currency while a previous change is still running: the second
   request waits for the first and the user sees a single progress indicator.
-- Two devices edit the same expense offline: the later edit wins, the earlier version is kept in
-  the change history, and both devices converge.
+- Two devices add the same expense offline with the same client-generated identity: one row
+  results when both come online; offline edits and deletes are not queued (FR-018).
 - A captured message carries a negative amount (a refund): it creates a negative expense in the
   mapped category so month totals net it off.
 - An import file has a mix of date formats, blank amounts, unknown currencies or more decimals

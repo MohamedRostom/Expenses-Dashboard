@@ -1,0 +1,35 @@
+# Path and branch rules for actions/labeler (labels from CLAUDE.md "Conventions").
+'area:web':
+  - changed-files:
+      - any-glob-to-any-file: ['apps/web/**', 'apps/landing/**', 'packages/ui/**']
+'area:api':
+  - changed-files:
+      - any-glob-to-any-file:
+          ['apps/api/**', 'packages/db/**', 'packages/contracts/**', 'packages/connectors/**']
+'area:core':
+  - changed-files:
+      - any-glob-to-any-file: ['packages/core/**']
+'area:infra':
+  - changed-files:
+      - any-glob-to-any-file:
+          ['infra/**', '.github/**', 'package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml']
+'area:tests':
+  - changed-files:
+      - any-glob-to-any-file: ['tests/**', '**/*.test.ts', '**/*.spec.ts']
+'documentation':
+  - changed-files:
+      - any-glob-to-any-file: ['docs/**', 'specs/**', '**/*.md']
+'phase-0':
+  - head-branch: ['^phase-0/']
+'phase-1':
+  - head-branch: ['^phase-1/']
+'phase-2':
+  - head-branch: ['^phase-2/']
+'phase-3':
+  - head-branch: ['^phase-3/']
+'phase-4':
+  - head-branch: ['^phase-4/']
+'phase-5':
+  - head-branch: ['^phase-5/']
+'phase-6':
+  - head-branch: ['^phase-6/']

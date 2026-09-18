@@ -1,13 +1,13 @@
 <!--
 Sync Impact Report
-- Version change: (template, unversioned) -> 1.0.0
-- Modified principles: none (initial ratification; all six principles new)
-- Added sections: Core Principles (I-VI), Platform and Security Constraints,
-  Development Workflow and Quality Gates, Governance
+- Version change: 1.1.0 -> 1.1.1
+- Modified principles: VI (clarification: the feature-flag rule covers user-facing
+  features; a change to the look of existing screens is not a feature and needs no flag)
+- Modified sections: none
+- Added sections: none
 - Removed sections: none
 - Templates: plan/spec/tasks templates read this file at runtime; no changes made here
-- Follow-up TODOs: none. Product name, email provider, Stage 1 database, licence and
-  analytics stay open in docs/adr/ADR-0002 and are referenced, not decided, here.
+- Follow-up TODOs: ADR-0006 (visual identity) cites this clarification when it is written
 -->
 
 # Desk Constitution
@@ -84,8 +84,9 @@ evenings cannot afford to re-derive context; the documents are the memory.
 
 Build the smallest thing that satisfies the test: no speculative abstractions, no interface with
 a single implementation unless Principle II requires it, no configuration for values that never
-change, no new dependency where a few lines or a platform feature will do. Anything merged
-before it is announced sits behind a feature flag in the `flags` table. What ships MUST look
+change, no new dependency where a few lines or a platform feature will do. Any user-facing
+feature merged before it is announced sits behind a feature flag in the `flags` table; a change
+to the look of existing screens is not a feature and needs no flag. What ships MUST look
 finished: every panel has skeleton, empty and error states; error copy branches on the error
 code, never one generic banner; charts are a small hand-written SVG layer following the
 project's dataviz rules; design tokens (IBM Plex Sans/Mono, the green accent, three theme
@@ -119,6 +120,13 @@ GitHub milestone per phase, labels `phase-N`, `area:web|api|core|infra|tests` an
 Nothing from a later phase starts until the current phase's exit criteria are green in CI.
 Commits follow Conventional Commits and carry the attribution lines the CLI adds.
 
+Nothing is pushed to the remote unless the owner has said so explicitly for that push. An
+agent or contributor MAY commit locally at any time, but MUST NOT run a push, open a pull
+request, merge, or otherwise publish commits without an explicit instruction naming that
+action; a general request to "fix", "implement" or "finish" something is not such an
+instruction. Rationale: a push is outward-facing and triggers CI, previews and deploys; the
+owner decides when work leaves the machine.
+
 CI on every PR runs, in order, lint, typecheck, unit, api (Testcontainers Postgres),
 worker-build and e2e-ci; a Fly preview app is deployed per PR and destroyed on close; `main`
 deploys to staging. The definition of done for every PR is: unit and API tests added, an e2e-ci
@@ -146,4 +154,4 @@ complexity (a new abstraction, dependency or service) MUST be justified in the P
 against Principle VI. `CLAUDE.md` is the runtime guidance file for agents and contributors and
 MUST be updated in the same PR as any decision that changes it.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-09-16
+**Version**: 1.1.1 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-09-18

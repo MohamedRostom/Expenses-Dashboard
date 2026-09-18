@@ -1,6 +1,6 @@
 # ADR-0001: Platform and architecture for the expenses product
 
-**Status:** Proposed (F5 and the Monzo mentions in F3 and the testing strategy are amended by ADR-0003: no bank integration in v1)
+**Status:** Proposed (v1 scope on Gmail and Calendar is amended by ADR-0004: mail and calendar panels in v2, Google mail included after the CASA assessment. F5 and the Monzo mentions in F3 and the testing strategy are amended by ADR-0003: no bank integration in v1)
 **Date:** 2026-09-16
 **Deciders:** Rostom (owner)
 **Working name:** "Desk" (to be replaced by a product name before the landing page is built)
@@ -196,7 +196,7 @@ Argon2id passwords, server-side sessions with rotation on login, CSRF double-sub
 | M4 | Premium UI + PWA + landing (2 weeks) | F6; Lighthouse budgets; name and logo chosen |
 | M5 | Stage 1 public beta | Tag v0.1.0, invite users, collect feedback for 2–4 weeks |
 | M6 | Stage 2 cut-over | Cloudflare deploy, Neon migration, DNS flip, tag v1.0.0 |
-| v2 | Google Calendar panel | OAuth with Calendar scope, Google verification submitted |
+| v2 | Mail and calendar panels (ADR-0004) | Per-connection OAuth, Google verification and CASA assessment, read-only panels across providers |
 
 ## Open items (decide during M0)
 

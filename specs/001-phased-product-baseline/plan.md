@@ -18,13 +18,13 @@ ADR-0002 remain the owner's and are planned with stated defaults.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.9 (strict), Node 22 LTS, pnpm 12 workspaces
+**Language/Version**: TypeScript (strict; version pinned in the root `package.json`), Node 22 LTS, pnpm 12 workspaces
 
 **Primary Dependencies**: Vue 3.5 + Vite 8 + Pinia + vue-router (web), Hono 4 (API, Node and
 Workers adapters), Drizzle ORM 0.45 + postgres.js (data), zod 4 (contracts), fast-check
 (property tests), vite-plugin-pwa (PWA), vite-ssg (landing). Added per phase and each must pass
 `worker-build`: hash-wasm (Argon2id), jose (OIDC token verification), papaparse (CSV),
-@axe-core/playwright and @lhci/cli (quality gates). See [research.md](research.md).
+@axe-core/playwright and @lhci/cli (quality gates), idb (browser-only, offline add-queue in `apps/web`), @sentry/node in the Node adapter and @sentry/cloudflare in the Worker adapter (each imported only by its own entry point). See [research.md](research.md).
 
 **Storage**: Postgres 16 via Drizzle SQL migrations applied on start; Stage 1 Fly Postgres or
 Neon (ADR-0002 item 3, Neon assumed), Stage 2 Neon through Cloudflare Hyperdrive. Sessions in

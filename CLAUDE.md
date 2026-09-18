@@ -16,6 +16,8 @@ Working name: "Desk" — a real product name is an open decision (ADR-0002). Do 
 - `docs/adr/ADR-0001-platform-and-architecture.md` — the stack decision, options considered, feature specs F1–F6, testing strategy, security baseline.
 - `docs/ROADMAP.md` — phases 0–6 with exit criteria; the source of truth for *what to build next*.
 - `docs/adr/ADR-0003-no-bank-integration-in-v1.md` — no Monzo or other bank integration in v1; generic webhook and column-mapped import only.
+- `docs/adr/ADR-0004-mail-and-calendar-panels.md` — v2 mail and calendar panels across Google, Microsoft and standards-based providers; Google mail included, gated on the CASA assessment; read-only, no link to expenses. Spec: `specs/002-mail-calendar-panels/`.
+- `docs/adr/ADR-0005-weather-source.md` — Open-Meteo (keyless, non-commercial tier, CC-BY attribution) as the only source for the weather, sunrise and place-search widgets (no reverse geocoder; device location resolves approximately and is confirmed by the user); revisit before any monetisation. Spec: `specs/003-dashboard-widgets/`.
 - `docs/adr/ADR-0002-naming-and-providers.md` — the five open decisions (product name, email provider, Neon-from-day-one, licence, analytics). Until it is accepted, treat them as undecided and ask.
 
 ## Decisions already made (do not reopen without an ADR)
@@ -29,7 +31,7 @@ Working name: "Desk" — a real product name is an open decision (ADR-0002). Do 
 - **Data source of truth:** the app's own database. Notion is an optional per-user two-way sync via Notion's **public OAuth** (not an internal integration token).
 - **Currency:** user has a default currency. Each expense stores `amount_original`, `currency_original`, `rate_to_default`, `rate_date`, `rate_source`, `amount_default`, `rate_overridden`. Money is integer minor units — never floats. Rates from frankfurter.app (ECB), cached daily in `fx_rates`; weekends/holidays fall back to the previous published rate and record which date was used. Changing default currency re-derives every row in a background job.
 - **Hosting:** Stage 1 Fly.io free allowance (staging + preview per PR). Stage 2 Cloudflare Workers + Pages + KV + Cron Triggers, Neon Postgres. Any dependency must pass the `worker-build` CI job (`wrangler deploy --dry-run`); if it can't, wrap it behind an interface with a Workers-compatible implementation before merging.
-- **v1 scope:** expenses only. Google Calendar is v2. Gmail is dropped from the public product (restricted scope → CASA audit).
+- **v1 scope:** expenses only. v2 adds read-only mail and calendar panels across providers (ADR-0004); Google mail ships only after the restricted-scope CASA assessment passes, everything else before. Sign-in scopes stay `openid email profile`; connector scopes are granted per connection, never on the sign-in grant.
 - **Rejected options** (see ADR-0001): Python/FastAPI (breaks native Cloudflare Stage 2), Nuxt (couples API to UI), GitHub Pages static hosting (no server for secrets).
 
 ## Repository layout (target — create as phases need it)
@@ -67,8 +69,9 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 
 - Branches `phase-N/short-description`; one GitHub milestone per phase; labels `phase-N`, `area:web|api|core|infra|tests`, `needs-rostom`.
 - Conventional Commits. Commits and PRs end with the attribution lines the CLI adds.
+- **Never push, open a PR, or merge unless Rostom explicitly asks for that action** (constitution v1.1.0). Commit locally freely; "fix", "implement" or "finish" are not instructions to push. Leave the branch ready and say so.
 - Never commit secrets. `.env.example` lists every variable; the app refuses to start if one is missing.
-- Feature flags (`flags` table) gate anything merged before it is announced.
+- Feature flags (`flags` table) gate any user-facing feature merged before it is announced (a change to the look of existing screens needs no flag, constitution 1.1.1).
 - Prefer prose in docs over bullet walls; ADR format for decisions.
 
 ## External identifiers (safe to keep here — none are secrets)

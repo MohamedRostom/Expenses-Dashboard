@@ -13,16 +13,48 @@ permissions:
   contents: read
 
 jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'apps/**'
+              - 'packages/**'
+              - 'infra/**'
+              - 'tests/**'
+              - '.github/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+              - 'pnpm-workspace.yaml'
+              - '.nvmrc'
+              - 'tsconfig.base.json'
+              - 'eslint.config.js'
+              - '.prettier*'
+
   lint:
+    timeout-minutes: 10
+    needs: detect-changes
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm lint
       - run: pnpm format:check
+      - run: pnpm audit --audit-level high
 
   typecheck:
-    needs: lint
+    timeout-minutes: 10
+    needs: [lint, detect-changes]
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -30,7 +62,9 @@ jobs:
       - run: pnpm typecheck
 
   unit:
-    needs: typecheck
+    timeout-minutes: 10
+    needs: [typecheck, detect-changes]
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -38,7 +72,9 @@ jobs:
       - run: pnpm test:unit
 
   api:
-    needs: unit
+    timeout-minutes: 20
+    needs: [unit, detect-changes]
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -46,7 +82,9 @@ jobs:
       - run: pnpm test:api
 
   worker-build:
-    needs: api
+    timeout-minutes: 10
+    needs: [api, detect-changes]
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -54,7 +92,9 @@ jobs:
       - run: pnpm worker:build
 
   e2e-ci:
-    needs: worker-build
+    timeout-minutes: 30
+    needs: [worker-build, detect-changes]
+    if: needs.detect-changes.outputs.code == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
