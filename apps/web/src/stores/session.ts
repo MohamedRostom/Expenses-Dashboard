@@ -8,6 +8,7 @@ export interface User {
   defaultCurrency: string;
   theme: 'light' | 'dark' | 'system';
   timeZone: string;
+  onboardingCompletedAt?: string | null;
 }
 
 export const useSessionStore = defineStore('session', {

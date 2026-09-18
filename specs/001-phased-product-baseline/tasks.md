@@ -244,17 +244,17 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 7
 
-- [ ] T090 [P] [US7] Write failing unit tests in `apps/web/src/offline/queue.test.ts`: enqueue with UUID v7, flush on online, rejected rows kept with reason, queue survives session expiry, local totals include queued rows as estimated
-- [ ] T091 [P] [US7] Write failing Playwright tests `tests/e2e/tests/offline.spec.ts` (context offline, add, online, single row) and `tests/e2e/tests/pwa.spec.ts` (manifest with `/add` shortcut, service worker registered, install criteria)
-- [ ] T092 [P] [US7] Write failing Playwright test `tests/e2e/tests/onboarding.spec.ts` (first sign-in guide: currency, first expense, optional Notion; skip and resume; dismiss) and add Pixel 7 and iPhone 14 device projects plus axe on every page object to `tests/e2e/playwright.config.ts`
+- [x] T090 [P] [US7] Write failing unit tests in `apps/web/src/offline/queue.test.ts`: enqueue with UUID v7, flush on online, rejected rows kept with reason, queue survives session expiry, local totals include queued rows as estimated
+- [x] T091 [P] [US7] Write failing Playwright tests `tests/e2e/tests/offline.spec.ts` (context offline, add, online, single row) and `tests/e2e/tests/pwa.spec.ts` (manifest with `/add` shortcut, service worker registered, install criteria)
+- [x] T092 [P] [US7] Write failing Playwright test `tests/e2e/tests/onboarding.spec.ts` (first sign-in guide: currency, first expense, optional Notion; skip and resume; dismiss) and add Pixel 7 and iPhone 14 device projects plus axe on every page object to `tests/e2e/playwright.config.ts`
 
 ### Implementation for User Story 7
 
-- [ ] T093 [P] [US7] Configure `vite-plugin-pwa` in `apps/web/vite.config.ts` (generateSW, navigation fallback, font runtime cache, manifest with `shortcuts` to `/add`, icons in `apps/web/public/icons/`) and an install prompt composable `apps/web/src/composables/useInstallPrompt.ts` (after second visit)
-- [ ] T094 [US7] Implement `apps/web/src/offline/queue.ts` (IndexedDB via `idb`, flush on `online`, app start and Background Sync where available, pending badge count) and wire `ExpenseForm.vue` and `MonthView.vue` to it; add `/add` route opening the form focused
-- [ ] T095 [P] [US7] Audit every panel for skeleton, empty and error states with distinct copy per failure kind (offline, session expired, validation, rate unavailable, connector error, server error) in `apps/web/src/components/PanelState.vue` and `apps/web/src/utils/errors.ts`
-- [ ] T096 [US7] Build `apps/web/src/views/OnboardingView.vue` (three steps, skip, resume until `onboardingCompletedAt`) and `PATCH /me` support for `onboardingCompletedAt` in `apps/api/src/routes/me.ts`
-- [ ] T097 [US7] Responsive pass at 360 px for `MonthView.vue`, `ExpenseForm.vue`, `SettingsView.vue`, `ImportView.vue`, `ConnectorsView.vue`; fix axe findings to zero serious/critical
+- [x] T093 [P] [US7] Configure `vite-plugin-pwa` in `apps/web/vite.config.ts` (generateSW, navigation fallback, font runtime cache, manifest with `shortcuts` to `/add`, icons in `apps/web/public/icons/`) and an install prompt composable `apps/web/src/composables/useInstallPrompt.ts` (after second visit)
+- [x] T094 [US7] Implement `apps/web/src/offline/queue.ts` (IndexedDB via `idb`, flush on `online`, app start and Background Sync where available, pending badge count) and wire `ExpenseForm.vue` and `MonthView.vue` to it; add `/add` route opening the form focused
+- [x] T095 [P] [US7] Audit every panel for skeleton, empty and error states with distinct copy per failure kind (offline, session expired, validation, rate unavailable, connector error, server error) in `apps/web/src/components/PanelState.vue` and `apps/web/src/utils/errors.ts`
+- [x] T096 [US7] Build `apps/web/src/views/OnboardingView.vue` (three steps, skip, resume until `onboardingCompletedAt`) and `PATCH /me` support for `onboardingCompletedAt` in `apps/api/src/routes/me.ts`
+- [x] T097 [US7] Responsive pass at 360 px for `MonthView.vue`, `ExpenseForm.vue`, `SettingsView.vue`, `ImportView.vue`, `ConnectorsView.vue`; fix axe findings to zero serious/critical
 
 **Checkpoint**: installed on the owner's phone with two-tap add.
 

@@ -260,51 +260,53 @@ onMounted(loadProfiles);
     <section v-else-if="step === 3">
       <h2>3. Preview</h2>
       <Skeleton v-if="loading" height="12rem" />
-      <table v-else class="desk-import-preview" data-testid="import-preview-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Status</th>
-            <th>Date</th>
-            <th>Amount</th>
-            <th>Description</th>
-            <th>Skip</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="row in rows" :key="row.rowNumber" :data-status="row.status">
-            <td>{{ row.rowNumber }}</td>
-            <td>
-              <span class="desk-import-status-badge" :data-status="row.status">{{
-                row.status
-              }}</span>
-              <span v-if="row.error">— {{ row.error }}</span>
-            </td>
-            <td>
-              <input
-                v-if="row.status === 'error'"
-                :value="fixes[row.rowNumber]?.date ?? row.parsed?.date ?? ''"
-                @input="
-                  fixes[row.rowNumber] = {
-                    ...fixes[row.rowNumber],
-                    date: ($event.target as HTMLInputElement).value,
-                  }
-                "
-              />
-              <template v-else>{{ row.parsed?.date }}</template>
-            </td>
-            <td>{{ row.parsed?.amountMinor }} {{ row.parsed?.currency }}</td>
-            <td>{{ row.parsed?.description }}</td>
-            <td>
-              <input
-                type="checkbox"
-                :checked="skipRows.has(row.rowNumber)"
-                @change="toggleSkip(row.rowNumber)"
-              />
-            </td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else class="desk-import-preview-wrap">
+        <table class="desk-import-preview" data-testid="import-preview-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Status</th>
+              <th>Date</th>
+              <th>Amount</th>
+              <th>Description</th>
+              <th>Skip</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="row in rows" :key="row.rowNumber" :data-status="row.status">
+              <td>{{ row.rowNumber }}</td>
+              <td>
+                <span class="desk-import-status-badge" :data-status="row.status">{{
+                  row.status
+                }}</span>
+                <span v-if="row.error">— {{ row.error }}</span>
+              </td>
+              <td>
+                <input
+                  v-if="row.status === 'error'"
+                  :value="fixes[row.rowNumber]?.date ?? row.parsed?.date ?? ''"
+                  @input="
+                    fixes[row.rowNumber] = {
+                      ...fixes[row.rowNumber],
+                      date: ($event.target as HTMLInputElement).value,
+                    }
+                  "
+                />
+                <template v-else>{{ row.parsed?.date }}</template>
+              </td>
+              <td>{{ row.parsed?.amountMinor }} {{ row.parsed?.currency }}</td>
+              <td>{{ row.parsed?.description }}</td>
+              <td>
+                <input
+                  type="checkbox"
+                  :checked="skipRows.has(row.rowNumber)"
+                  @change="toggleSkip(row.rowNumber)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <Button :disabled="loading" @click="commit">{{
         loading ? 'Committing…' : 'Commit import'
@@ -334,6 +336,9 @@ onMounted(loadProfiles);
   display: grid;
   gap: 0.75rem;
   max-width: 24rem;
+}
+.desk-import-preview-wrap {
+  overflow-x: auto;
 }
 .desk-import-preview {
   width: 100%;

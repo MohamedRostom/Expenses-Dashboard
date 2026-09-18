@@ -7,8 +7,9 @@ import VersionHistory from './VersionHistory.vue';
 import { apiFetch } from '../api/client.js';
 import { useSessionStore } from '../stores/session.js';
 import { useExpensesStore } from '../stores/expenses.js';
+import { enqueue } from '../offline/queue.js';
 
-const props = defineProps<{ expense?: ExpenseResponseT | undefined }>();
+const props = defineProps<{ expense?: ExpenseResponseT | undefined; autofocus?: boolean }>();
 const emit = defineEmits<{ saved: []; cancel: [] }>();
 
 const session = useSessionStore();
@@ -35,7 +36,10 @@ const categoryOptions = computed(() => [
     .filter((c) => !c.archivedAt || c.id === props.expense?.categoryId)
     .map((c) => ({ value: c.id, label: c.name })),
 ]);
+const formEl = ref<HTMLFormElement | null>(null);
+
 onMounted(async () => {
+  if (props.autofocus) formEl.value?.querySelector('input')?.focus();
   try {
     const res = await apiFetch<{ categories: CategoryResponseT[] }>('/categories');
     categories.value = res.categories;
@@ -89,6 +93,10 @@ const convertedPreview = computed(() => {
 
 async function onSubmit() {
   submitError.value = null;
+  if (isEdit.value && !navigator.onLine) {
+    submitError.value = 'Editing needs a connection — only new expenses can be added offline';
+    return;
+  }
   const minor = Math.round(Number(amountMajor.value) * 100);
   if (!description.value || !Number.isFinite(minor) || minor <= 0) {
     submitError.value = 'Enter a description and a positive amount';
@@ -96,6 +104,20 @@ async function onSubmit() {
   }
   submitting.value = true;
   try {
+    if (!isEdit.value && !navigator.onLine) {
+      // ponytail: add-only offline (research.md R13) — edits still require the network.
+      await enqueue({
+        description: description.value,
+        amount: { minor, currency: currency.value },
+        date: date.value,
+        categoryId: categoryId.value || null,
+        paidWith: paidWith.value as never,
+        kind: kind.value as never,
+        notes: notes.value || undefined,
+      });
+      emit('saved');
+      return;
+    }
     if (isEdit.value && props.expense) {
       await expenses.update(props.expense.id, {
         description: description.value,
@@ -128,7 +150,7 @@ async function onSubmit() {
 </script>
 
 <template>
-  <form class="desk-expense-form" @submit.prevent="onSubmit">
+  <form ref="formEl" class="desk-expense-form" @submit.prevent="onSubmit">
     <Input v-model="description" label="Description" />
     <div class="desk-expense-form-row">
       <Input v-model="amountMajor" type="number" label="Amount" />
@@ -180,11 +202,16 @@ async function onSubmit() {
   gap: 0.75rem;
   font-family: var(--font-sans);
   color: var(--color-fg);
-  min-width: 20rem;
+  width: 100%;
+  max-width: 20rem;
 }
 .desk-expense-form-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
+}
+.desk-expense-form-row > * {
+  flex: 1 1 8rem;
 }
 .desk-expense-form-preview {
   font-family: var(--font-mono);

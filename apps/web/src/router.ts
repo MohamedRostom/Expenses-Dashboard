@@ -14,6 +14,7 @@ import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
 import OnboardingView from './views/OnboardingView.vue';
 import CategoriesView from './views/CategoriesView.vue';
+import AddView from './views/AddView.vue';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView },
@@ -35,6 +36,7 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   { path: '/', name: 'home', component: MonthView, meta: { requiresAuth: true } },
+  { path: '/add', name: 'add', component: AddView, meta: { requiresAuth: true } },
   { path: '/year', name: 'year', component: YearView, meta: { requiresAuth: true } },
   { path: '/import', name: 'import', component: ImportView, meta: { requiresAuth: true } },
   { path: '/bin', name: 'bin', component: BinView, meta: { requiresAuth: true } },
@@ -67,5 +69,8 @@ router.beforeEach(async (to) => {
     await session.load();
   }
   if (!session.user) return { name: 'login' };
+  if (!session.user.onboardingCompletedAt && to.name !== 'onboarding') {
+    return { name: 'onboarding' };
+  }
   return true;
 });

@@ -7,6 +7,7 @@ import type {
 } from '@desk/contracts';
 import { apiFetch, ApiError } from '../api/client.js';
 import { useToast } from '@desk/ui';
+import { uuidv7 } from '../offline/uuid.js';
 
 /** YYYY-MM for the current month, in the viewer's local time. */
 export function currentMonth(): string {
@@ -40,15 +41,12 @@ export const useExpensesStore = defineStore('expenses', {
       }
     },
 
-    /** Optimistic create: id is generated client-side (uuid v4 — see ponytail note
-     * below) so the row appears immediately; rolled back with an undo toast on
-     * failure, and offered an "Undo" action on success (delete-within-a-few-seconds). */
+    /** Optimistic create: id is generated client-side (uuid v7, time-ordered — same
+     * generator the offline queue uses, apps/web/src/offline/uuid.ts) so the row appears
+     * immediately; rolled back with an undo toast on failure, and offered an "Undo" action
+     * on success (delete-within-a-few-seconds). */
     async create(input: Omit<CreateExpenseRequestT, 'id'>) {
-      // ponytail: crypto.randomUUID() gives v4, not v7. Spec wants v7 for
-      // cursor time-ordering; no `uuid` dependency exists anywhere in the repo
-      // (API itself uses crypto.randomUUID() v4 — see apps/api/src/services/expenses.ts),
-      // so add v7 only if cursor ordering becomes a real problem.
-      const id = crypto.randomUUID();
+      const id = uuidv7();
       const optimistic: ExpenseResponseT = {
         id,
         description: input.description,

@@ -18,12 +18,22 @@ import { useExpensesStore } from '../stores/expenses.js';
 import { useShortcuts } from '../composables/useShortcuts.js';
 import { formatDate, formatMoney } from '../utils/format.js';
 import ExpenseForm from '../components/ExpenseForm.vue';
+import { estimatedTotal, list as listQueue, type QueuedExpense } from '../offline/queue.js';
 
 const store = useExpensesStore();
 const showDialog = ref(false);
 const editing = ref<ExpenseResponseT | null>(null);
 const trendPoints = ref<TrendPoint[]>([]);
 const categoryNames = ref<Record<string, string>>({});
+const queued = ref<QueuedExpense[]>([]);
+
+async function loadQueue() {
+  queued.value = await listQueue();
+}
+const pendingQueued = computed(() => queued.value.filter((r) => r.status === 'pending'));
+const estimatedPending = computed(() =>
+  store.summary ? estimatedTotal(queued.value, store.summary.currency) : 0,
+);
 
 async function loadCategoryNames() {
   try {
@@ -51,7 +61,18 @@ onMounted(() => {
   store.loadMonth();
   loadTrend();
   loadCategoryNames();
+  loadQueue();
+  window.addEventListener('online', onBackOnline);
 });
+
+// Give flush() (fired on the same 'online' event, from initOfflineQueue) a moment to finish
+// before reloading — then refresh both the queue and the authoritative month totals.
+function onBackOnline() {
+  setTimeout(() => {
+    loadQueue();
+    store.loadMonth();
+  }, 500);
+}
 
 const monthLabel = computed(() => store.currentMonth);
 
@@ -90,6 +111,7 @@ function openEdit(expense: ExpenseResponseT) {
 function onSaved() {
   showDialog.value = false;
   store.loadMonth();
+  loadQueue();
 }
 async function onDelete(id: string) {
   await store.remove(id);
@@ -104,6 +126,9 @@ async function onDelete(id: string) {
         <span class="desk-month-label">{{ monthLabel }}</span>
         <button type="button" aria-label="Next month" @click="shiftMonth(1)">›</button>
       </div>
+      <span v-if="pendingQueued.length > 0" class="desk-pending-badge" data-testid="pending-count">
+        {{ pendingQueued.length }} pending
+      </span>
       <Button @click="openAdd">Add expense</Button>
     </header>
 
@@ -140,6 +165,13 @@ async function onDelete(id: string) {
           }}</span>
         </div>
       </section>
+      <p
+        v-if="estimatedPending > 0"
+        class="desk-month-view-pending"
+        data-testid="estimated-pending"
+      >
+        + {{ formatMoney(estimatedPending, store.summary.currency) }} estimated, not yet synced
+      </p>
 
       <section
         v-if="trendPoints.length > 1"
@@ -151,7 +183,7 @@ async function onDelete(id: string) {
       </section>
 
       <EmptyState
-        v-if="store.expenses.length === 0"
+        v-if="store.expenses.length === 0 && pendingQueued.length === 0"
         title="No expenses this month"
         description="Add one to get started."
       />
@@ -161,29 +193,43 @@ async function onDelete(id: string) {
           <DataTable :categories="categoryBars" />
         </section>
 
-        <table class="desk-entries-table">
-          <thead>
-            <tr>
-              <th scope="col">Date</th>
-              <th scope="col">Description</th>
-              <th scope="col">Category</th>
-              <th scope="col">Amount</th>
-              <th scope="col"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="e in store.expenses" :key="e.id">
-              <td>{{ formatDate(e.date) }}</td>
-              <td>{{ e.description }}</td>
-              <td>{{ e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—' }}</td>
-              <td>{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
-              <td class="desk-entries-actions">
-                <button type="button" @click="openEdit(e)">Edit</button>
-                <button type="button" @click="onDelete(e.id)">Delete</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="desk-entries-table-wrap">
+          <table class="desk-entries-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Description</th>
+                <th scope="col">Category</th>
+                <th scope="col">Amount</th>
+                <th scope="col"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="q in pendingQueued"
+                :key="q.id"
+                class="desk-entries-pending"
+                data-testid="pending-row"
+              >
+                <td>{{ formatDate(q.input.date) }}</td>
+                <td>{{ q.input.description }} <span class="desk-pending-badge">pending</span></td>
+                <td>{{ q.input.categoryId ? (categoryNames[q.input.categoryId] ?? '—') : '—' }}</td>
+                <td>{{ formatMoney(q.input.amount.minor, q.input.amount.currency) }}</td>
+                <td></td>
+              </tr>
+              <tr v-for="e in store.expenses" :key="e.id">
+                <td>{{ formatDate(e.date) }}</td>
+                <td>{{ e.description }}</td>
+                <td>{{ e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—' }}</td>
+                <td>{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
+                <td class="desk-entries-actions">
+                  <button type="button" @click="openEdit(e)">Edit</button>
+                  <button type="button" @click="onDelete(e.id)">Delete</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </template>
     </template>
 
@@ -234,6 +280,16 @@ async function onDelete(id: string) {
   color: var(--color-warn);
   margin: 0;
 }
+.desk-pending-badge {
+  font-size: 0.75rem;
+  color: var(--color-warn);
+  border: 1px solid var(--color-warn);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+}
+.desk-entries-pending {
+  opacity: 0.75;
+}
 .desk-month-view-tiles {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
@@ -266,6 +322,9 @@ async function onDelete(id: string) {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+.desk-entries-table-wrap {
+  overflow-x: auto;
 }
 .desk-entries-table {
   width: 100%;
