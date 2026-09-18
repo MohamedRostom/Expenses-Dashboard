@@ -25,6 +25,7 @@ services:
     environment:
       DATABASE_URL: postgres://desk:desk@postgres:5432/desk
       SMTP_URL: smtp://mailpit:1025
+      NOTION_API_BASE: http://mocks:4000/notion
     ports:
       - '3000:3000'
     depends_on:

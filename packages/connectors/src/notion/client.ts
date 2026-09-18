@@ -123,6 +123,48 @@ export class NotionClient {
     return (await res.json()) as NotionPageResult;
   }
 
+  /** Lists databases the integration can see (POST /search filtered to object=database). */
+  async searchDatabases(): Promise<
+    Array<{ id: string; title: string; properties: Record<string, unknown> }>
+  > {
+    const res = await this.request('/search', {
+      method: 'POST',
+      body: JSON.stringify({ filter: { property: 'object', value: 'database' } }),
+    });
+    const body = (await res.json()) as {
+      results: Array<{
+        id: string;
+        title?: Array<{ plain_text?: string }>;
+        properties: Record<string, unknown>;
+      }>;
+    };
+    return body.results.map((r) => ({
+      id: r.id,
+      title: r.title?.[0]?.plain_text ?? 'Untitled',
+      properties: r.properties,
+    }));
+  }
+
+  /** Creates a new database under `parentPageId` with the known layout pre-set. Returns the
+   * data source id to query/write against (2025-09-03 databases are containers of data
+   * sources); falls back to the database id itself if the response has no `data_sources`
+   * (the fake/mocks model a single-data-source database this way). */
+  async createDatabase(
+    parentPageId: string,
+    title: string,
+  ): Promise<{ id: string; dataSourceId: string }> {
+    const res = await this.request('/databases', {
+      method: 'POST',
+      body: JSON.stringify({
+        parent: { page_id: parentPageId },
+        title: [{ text: { content: title } }],
+        properties: KNOWN_LAYOUT,
+      }),
+    });
+    const body = (await res.json()) as { id: string; data_sources?: Array<{ id: string }> };
+    return { id: body.id, dataSourceId: body.data_sources?.[0]?.id ?? body.id };
+  }
+
   /** Checks the database's existing properties against KNOWN_LAYOUT and creates any that are
    * missing (additive only — never removes or renames an existing property, per CLAUDE.md's
    * "Rostom's existing table ... lacks Currency and Expense ID; the connector offers to add

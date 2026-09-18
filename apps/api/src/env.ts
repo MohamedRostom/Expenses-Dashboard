@@ -15,6 +15,7 @@ const envObjectSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
+  NOTION_API_BASE: z.string().optional(),
 });
 
 export const envSchema = envObjectSchema

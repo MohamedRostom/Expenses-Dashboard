@@ -40,6 +40,7 @@ function toResponse(row: ExpenseRow): ExpenseResponseT {
     amountDefault: row.amountDefault,
     rateOverridden: row.rateOverridden,
     addedVia: row.addedVia as ExpenseResponseT['addedVia'],
+    notionPageId: row.notionPageId,
     deletedAt: row.deletedAt ? row.deletedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

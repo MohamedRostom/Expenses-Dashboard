@@ -25,8 +25,10 @@ function buildDeps(gitSha: string): AppDeps {
     jobs: undefined,
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: gitSha },
-    // Not wired until Phase 6 (Cloudflare secrets) — /auth/google/* 404s on Workers for now.
+    // Not wired until Phase 6 (Cloudflare secrets) — /auth/google/* and /notion/* 404 on
+    // Workers for now.
     google: undefined,
+    notion: undefined,
   };
 }
 

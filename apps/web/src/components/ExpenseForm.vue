@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import type { CategoryResponseT, ExpenseResponseT, RatePreviewResponseT } from '@desk/contracts';
 import { Button, Input, Select } from '@desk/ui';
 import CurrencyPicker from './CurrencyPicker.vue';
+import VersionHistory from './VersionHistory.vue';
 import { apiFetch } from '../api/client.js';
 import { useSessionStore } from '../stores/session.js';
 import { useExpensesStore } from '../stores/expenses.js';
@@ -162,6 +163,8 @@ async function onSubmit() {
     />
 
     <p v-if="submitError" role="alert" class="desk-expense-form-error">{{ submitError }}</p>
+
+    <VersionHistory v-if="props.expense?.notionPageId" :expense-id="props.expense.id" />
 
     <div class="desk-expense-form-actions">
       <Button type="submit" :loading="submitting">{{ isEdit ? 'Save' : 'Add expense' }}</Button>

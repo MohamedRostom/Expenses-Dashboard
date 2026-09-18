@@ -7,6 +7,7 @@ import { registerJob } from './index.js';
 import { currencyChangeJob, categoriesRowSource, type RateLookup } from './currency-change.js';
 import { ratesWarmJob, ratesRetryJob } from './rates.js';
 import { housekeepingJob } from './housekeeping.js';
+import { notionSyncJob, type NotionSyncDeps } from './notion-sync.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 
 export function registerAllJobs(deps: {
@@ -14,9 +15,12 @@ export function registerAllJobs(deps: {
   getRate: RateLookup;
   ratesProvider: RatesProvider;
   limiter: RateLimiter;
+  /** Undefined until the Notion OAuth pair (env.ts NOTION_CLIENT_ID/SECRET) is configured. */
+  notionSync?: NotionSyncDeps;
 }): void {
   registerJob('currency.change', currencyChangeJob(deps.getRate, categoriesRowSource(deps.db)));
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));
+  if (deps.notionSync) registerJob('notion.sync', notionSyncJob(deps.notionSync));
 }

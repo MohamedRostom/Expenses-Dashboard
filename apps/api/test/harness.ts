@@ -5,6 +5,8 @@ import { runMigrations } from '@desk/db/migrate';
 import { createDb, users, type Db } from '@desk/db';
 import { FakeRates } from '@desk/connectors/rates';
 import type { RatesProvider } from '@desk/connectors/rates';
+import { FakeNotion } from '@desk/connectors/notion';
+import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
@@ -41,7 +43,10 @@ export type Harness = {
   mailer: CapturingMailer;
   clock: TestClock;
   /** Creates (or reuses) a user by email and returns a client authenticated as them. */
-  asUser(email: string): Promise<ApiClient & { userId: string }>;
+  asUser(email: string): Promise<ApiClient & { userId: string; sessionToken: string }>;
+  /** The FakeNotion instance backing NOTION_API_BASE for this harness — seed pages or call
+   * failNextWith('unauthorized'/'rate_limited') to script scenarios. */
+  notionFake: FakeNotion;
   close(): Promise<void>;
 };
 
@@ -100,6 +105,14 @@ export async function startHarness(
   };
   const sessions = new PgSessionStore(queryDb);
 
+  const notionFake = new FakeNotion([]);
+  const notionMockApp = createNotionMockApp(notionFake);
+  const notionFetch: typeof fetch = async (input, init) => {
+    const url = typeof input === 'string' ? input : input.toString();
+    const path = url.replace('https://notion.mock', '');
+    return notionMockApp.request(path, init);
+  };
+
   const app = createApp({
     db,
     hasher: passwordHasher,
@@ -116,6 +129,13 @@ export async function startHarness(
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
       appOrigin: 'https://app.test',
+    },
+    notion: {
+      clientId: 'test-notion-client-id',
+      clientSecret: 'test-notion-client-secret',
+      appOrigin: 'https://app.test',
+      apiBase: 'https://notion.mock',
+      fetchImpl: notionFetch,
     },
   } satisfies AppDeps);
 
@@ -137,7 +157,7 @@ export async function startHarness(
     const tokenHash = await hashToken(token);
     await sessions.create({ userId: row.id, tokenHash });
 
-    return { ...client(app, token), userId: row.id };
+    return { ...client(app, token), userId: row.id, sessionToken: token };
   }
 
   return {
@@ -146,6 +166,7 @@ export async function startHarness(
     mailer,
     clock,
     asUser,
+    notionFake,
     async close() {
       await rawClient.end();
       await closeDb();

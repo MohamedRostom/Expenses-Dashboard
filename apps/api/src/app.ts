@@ -24,9 +24,11 @@ import { createCategoriesRoutes } from './routes/categories.js';
 import { createImportsRoutes } from './routes/imports.js';
 import { createHooksRoutes } from './routes/hooks.js';
 import { createCaptureRoutes } from './routes/capture.js';
+import { createNotionRoutes } from './routes/notion.js';
 import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
 import { createCaptureService } from './services/capture.js';
+import { createNotionService, type NotionConfig } from './services/notion.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
 export type BuildInfo = Omit<HealthResponseT, 'status'>;
@@ -50,6 +52,8 @@ export type AppDeps = {
   build: BuildInfo;
   /** Undefined until GOOGLE_CLIENT_ID/SECRET are configured (env.ts) — /auth/google/* 404s. */
   google: GoogleConfig | undefined;
+  /** Undefined until NOTION_CLIENT_ID/SECRET are configured (env.ts) — /notion/* 404s. */
+  notion: NotionConfig | undefined;
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -88,6 +92,18 @@ export function createApp(deps: AppDeps) {
       clock: deps.clock,
     }),
   );
+  // Built up front (not inside the `if (deps.notion)` block below) so its debounced
+  // triggerSyncSoon can be wired into the expenses routes' onWrite hook (T080 R8).
+  const notionService = deps.notion
+    ? createNotionService(
+        deps.db,
+        deps.secretBox,
+        deps.notion,
+        createExpensesService(deps.db, createRatesService(deps.db, deps.rates), deps.clock),
+        deps.clock,
+      )
+    : undefined;
+
   app.route('/', createMiscRoutes(deps.db));
   app.route('/', createSummaryRoutes(deps.db));
   app.route('/', createRatesRoutes(deps.db, deps.rates));
@@ -97,6 +113,7 @@ export function createApp(deps: AppDeps) {
       db: deps.db,
       rates: createRatesService(deps.db, deps.rates),
       clock: deps.clock,
+      onWrite: notionService ? (userId) => notionService.triggerSyncSoon(userId) : undefined,
     }),
   );
   app.route('/', createCategoriesRoutes(deps.db));
@@ -120,6 +137,10 @@ export function createApp(deps: AppDeps) {
   );
   app.route('/', createHooksRoutes(captureService));
   app.route('/', createCaptureRoutes(captureService));
+
+  if (notionService && deps.notion) {
+    app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
+  }
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {

@@ -73,6 +73,7 @@ export const ExpenseResponse = z.object({
   amountDefault: z.number().int().nullable(),
   rateOverridden: z.boolean(),
   addedVia: AddedVia,
+  notionPageId: z.string().nullable().optional(),
   deletedAt: z.string().nullable(),
   createdAt: z.string(),
   updatedAt: z.string(),

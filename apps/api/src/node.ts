@@ -63,6 +63,15 @@ const app = createApp({
           appOrigin: env.APP_ORIGIN,
         }
       : undefined,
+  notion:
+    env.NOTION_CLIENT_ID && env.NOTION_CLIENT_SECRET
+      ? {
+          clientId: env.NOTION_CLIENT_ID,
+          clientSecret: env.NOTION_CLIENT_SECRET,
+          appOrigin: env.APP_ORIGIN,
+          apiBase: env.NOTION_API_BASE,
+        }
+      : undefined,
 });
 
 app.use('/*', async (c, next) => {

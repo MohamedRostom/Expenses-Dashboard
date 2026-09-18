@@ -96,6 +96,13 @@ const routes: Row[] = [
     },
   },
   {
+    method: 'GET',
+    path: '/expenses/:id/versions',
+    async createForeignId(userB) {
+      return await createExpense(userB);
+    },
+  },
+  {
     method: 'POST',
     path: '/imports/:id/commit',
     async createForeignId(userB) {

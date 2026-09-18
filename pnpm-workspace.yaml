@@ -2,6 +2,7 @@ packages:
   - apps/*
   - packages/*
   - tests/*
+  - infra/mocks
 
 # Native postinstall scripts pnpm may run (it blocks all others by default).
 allowBuilds:

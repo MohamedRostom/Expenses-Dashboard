@@ -91,6 +91,29 @@ export class FakeNotion {
     return updated;
   }
 
+  async searchDatabases(): Promise<
+    Array<{ id: string; title: string; properties: Record<string, unknown> }>
+  > {
+    this.maybeFail();
+    return [
+      {
+        id: 'fake-db-1',
+        title: '💷 Expenses',
+        properties: Object.fromEntries([...this.databaseProperties].map((n) => [n, {}])),
+      },
+    ];
+  }
+
+  async createDatabase(
+    _parentPageId: string,
+    title: string,
+  ): Promise<{ id: string; dataSourceId: string }> {
+    this.maybeFail();
+    const id = `fake-db-created-${title.replace(/\s+/g, '-').toLowerCase()}`;
+    for (const name of Object.keys(KNOWN_LAYOUT)) this.databaseProperties.add(name);
+    return { id, dataSourceId: id };
+  }
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- kept for parity with the real NotionClient's signature that callers rely on.
   async ensureLayout(_databaseId: string): Promise<{ added: string[] }> {
     this.maybeFail();

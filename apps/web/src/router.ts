@@ -8,6 +8,7 @@ import ForgotView from './views/ForgotView.vue';
 import ResetView from './views/ResetView.vue';
 import SettingsView from './views/SettingsView.vue';
 import CaptureView from './views/CaptureView.vue';
+import ConnectorsView from './views/ConnectorsView.vue';
 import YearView from './views/YearView.vue';
 import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
@@ -25,6 +26,12 @@ const routes: RouteRecordRaw[] = [
     path: '/settings/capture',
     name: 'settings-capture',
     component: CaptureView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/settings/connectors',
+    name: 'settings-connectors',
+    component: ConnectorsView,
     meta: { requiresAuth: true },
   },
   { path: '/', name: 'home', component: MonthView, meta: { requiresAuth: true } },
