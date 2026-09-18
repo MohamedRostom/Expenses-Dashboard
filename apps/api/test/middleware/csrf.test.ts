@@ -17,6 +17,24 @@ describe('csrf middleware', () => {
     expect(res.status).toBe(200);
   });
 
+  it('issues the csrf cookie on a GET that has none, so a fresh browser can make its first POST', async () => {
+    const res = await buildApp().request('/x');
+    const setCookie = res.headers.get('set-cookie') ?? '';
+    expect(setCookie).toMatch(/^desk_csrf=[^;]+; Max-Age=\d+; Path=\/; Secure; SameSite=Lax$/);
+    // The value the browser stores is the one the client will echo back in the header.
+    const token = setCookie.match(/^desk_csrf=([^;]+)/)?.[1] ?? '';
+    const post = await buildApp().request('/x', {
+      method: 'POST',
+      headers: { cookie: `desk_csrf=${token}`, 'x-csrf-token': token },
+    });
+    expect(post.status).toBe(200);
+  });
+
+  it('does not rotate an existing csrf cookie on GET', async () => {
+    const res = await buildApp().request('/x', { headers: { cookie: 'desk_csrf=abc123' } });
+    expect(res.headers.get('set-cookie')).toBeNull();
+  });
+
   it('allows a non-GET request when the cookie and header match', async () => {
     const res = await buildApp().request('/x', {
       method: 'POST',

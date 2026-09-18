@@ -26,6 +26,10 @@ services:
       DATABASE_URL: postgres://desk:desk@postgres:5432/desk
       SMTP_URL: smtp://mailpit:1025
       NOTION_API_BASE: http://mocks:4000/notion
+      # Dev-only fixed values — never reuse these outside compose/e2e-ci.
+      SESSION_SECRET: dev-session-secret-not-for-production-use-000000
+      SECRET_BOX_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      APP_ORIGIN: http://localhost:5173
     ports:
       - '3000:3000'
     depends_on:
@@ -74,7 +78,9 @@ services:
       context: ..
       dockerfile: infra/fly/Dockerfile
       target: deps
-    command: sh -c "pnpm --filter @desk/landing build && pnpm --filter @desk/landing preview -- --host 0.0.0.0"
+    # No `--` before --host: pnpm forwards extra args as-is, so vite would receive a literal `--`,
+    # stop parsing options there, and bind localhost only (healthcheck + host port both fail).
+    command: sh -c "pnpm --filter @desk/landing build && pnpm --filter @desk/landing preview --host 0.0.0.0"
     ports:
       - '5174:5174'
     healthcheck:

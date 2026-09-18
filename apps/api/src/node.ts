@@ -31,14 +31,16 @@ const queryDb: QueryDb = {
   query: async (sql, params) => ({ rows: await rawClient.unsafe(sql, params as never[]) }),
 };
 
+// SMTP_URL is the documented variable (.env.example, compose: smtp://mailpit:1025).
+const smtp = new URL(process.env['SMTP_URL'] ?? 'smtp://localhost:1025');
 const mailer: Mailer = process.env['RESEND_API_KEY']
   ? new ResendMailer(
       process.env['RESEND_API_KEY'],
       process.env['MAIL_FROM'] ?? 'noreply@example.com',
     )
   : new SmtpMailer({
-      host: process.env['SMTP_HOST'] ?? 'localhost',
-      port: Number(process.env['SMTP_PORT'] ?? 1025),
+      host: smtp.hostname,
+      port: Number(smtp.port || 1025),
       from: process.env['MAIL_FROM'] ?? 'noreply@example.com',
     });
 
@@ -76,14 +78,13 @@ const app = createApp({
       : undefined,
 });
 
-app.use('/*', async (c, next) => {
-  if (c.req.path === '/' || c.req.path === '/index.html') {
-    const html = await readFile('./public/index.html', 'utf8');
-    return c.html(html.replaceAll('%NONCE%', c.get('cspNonce')));
-  }
-  return next();
-});
 app.use('/*', serveStatic({ root: './public' }));
+app.use('/*', async (c) => {
+  // SPA fallback: any route serveStatic didn't match (client routes like /login, /register, ...)
+  // gets index.html with the per-request CSP nonce substituted in.
+  const html = await readFile('./public/index.html', 'utf8');
+  return c.html(html.replaceAll('%NONCE%', c.get('cspNonce')));
+});
 
 serve({ fetch: app.fetch, port: env.PORT }, (info) => {
   console.log(`desk api ${pkg.version} (${env.GIT_SHA}) listening on :${info.port}`);

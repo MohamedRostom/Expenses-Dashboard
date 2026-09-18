@@ -11,9 +11,15 @@ const AUTH_ENDPOINT = `${ISSUER}/o/oauth2/v2/auth`;
 const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 
-/** Parses a `Set-Cookie` header into just its `name=value` pair (ignores attributes). */
+/** Picks the OAuth state cookie's `name=value` pair out of a `Set-Cookie` header (the csrf
+ * middleware also issues `desk_csrf` on GET, so the header can carry more than one cookie). */
 function cookiePair(setCookie: string): string {
-  return setCookie.split(';')[0]!;
+  const pair = setCookie
+    .split(/,\s*(?=[^;,]+=)/)
+    .map((c) => c.split(';')[0]!)
+    .find((c) => c.startsWith('desk_oauth'));
+  if (!pair) throw new Error(`no oauth cookie in: ${setCookie}`);
+  return pair;
 }
 
 describe('GET /auth/google/start + /auth/google/callback', () => {
