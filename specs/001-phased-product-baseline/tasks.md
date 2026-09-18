@@ -310,15 +310,15 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 10
 
-- [ ] T109 [P] [US10] Write failing API tests in `apps/api/test/feedback.test.ts` (2,000-char limit, consent-gated metadata, per-user rate limit) and `apps/api/test/healthz.test.ts` extension for `db: ok | degraded`
-- [ ] T110 [P] [US10] Write `tests/load/smoke.js` (k6: 50 virtual users, month view p95 under 500 ms server, thresholds fail the run)
-- [ ] T111 [P] [US10] Write `tests/e2e/tests/smoke.spec.ts` tagged `@local` for post-deploy: `/healthz`, seeded user login, add and delete one expense
+- [x] T109 [P] [US10] Write failing API tests in `apps/api/test/feedback.test.ts` (2,000-char limit, consent-gated metadata, per-user rate limit) and `apps/api/test/healthz.test.ts` extension for `db: ok | degraded`
+- [x] T110 [P] [US10] Write `tests/load/smoke.js` (k6: 50 virtual users, month view p95 under 500 ms server, thresholds fail the run)
+- [x] T111 [P] [US10] Write `tests/e2e/tests/smoke.spec.ts` tagged `@local` for post-deploy: `/healthz`, seeded user login, add and delete one expense
 
 ### Implementation for User Story 10
 
-- [ ] T112 [P] [US10] Extend `packages/db/src/schema.ts` with `feedback` and `pnpm db:generate --name feedback`; implement `apps/api/src/routes/feedback.ts` and `apps/web/src/components/FeedbackWidget.vue` (disabled offline, rate-limit message); daily digest job `apps/api/src/jobs/feedback-digest.ts`
-- [ ] T113 [P] [US10] Add Sentry behind the `Logger` interface (`@sentry/node` in `apps/api/src/adapters/logger-node.ts`, `@sentry/cloudflare` in `apps/api/src/adapters/logger-worker.ts`) with `SENTRY_DSN` optional in `.env.example`
-- [ ] T114 [P] [US10] Add nightly backup job `infra/fly/backup.sh` (pg_dump to Cloudflare R2, 30-day retention) scheduled via the Fly machine, and `docs/runbooks/restore.md` with the four-hour drill procedure and per-user verification query in `packages/db/src/verify-totals.sql`
+- [x] T112 [P] [US10] Extend `packages/db/src/schema.ts` with `feedback` and `pnpm db:generate --name feedback`; implement `apps/api/src/routes/feedback.ts` and `apps/web/src/components/FeedbackWidget.vue` (disabled offline, rate-limit message); daily digest job `apps/api/src/jobs/feedback-digest.ts`
+- [x] T113 [P] [US10] Add Sentry behind the `Logger` interface (`@sentry/node` in `apps/api/src/adapters/logger-node.ts`, `@sentry/cloudflare` in `apps/api/src/adapters/logger-worker.ts`) with `SENTRY_DSN` optional in `.env.example`
+- [x] T114 [P] [US10] Add nightly backup job `infra/fly/backup.sh` (pg_dump to Cloudflare R2, 30-day retention) scheduled via the Fly machine, and `docs/runbooks/restore.md` with the four-hour drill procedure and per-user verification query in `packages/db/src/verify-totals.sql`
 - [ ] T115 [US10] Add `.github/workflows/deploy-fly.yml` (tag `v0.*`: build, deploy staging, run `smoke.spec.ts`, promote to `desk-production` app, `fly releases rollback` on failure) and an external uptime check note (one-minute interval, alert after three failures) in `docs/runbooks/uptime.md`
 - [ ] T116 [US10] Tag `v0.1.0` per roadmap Phase 5
 - [ ] T117 [US10] Implement Stage 2 bindings in `apps/api/src/worker.ts` (Hyperdrive connection string, `KvSessionStore` in `apps/api/src/adapters/session-store-kv.ts`, cron `scheduled` handler calling `runDueJobs`) and `infra/cloudflare/wrangler.toml` (Hyperdrive, KV, cron triggers, Pages assets)
@@ -331,8 +331,8 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ## Phase 13: Polish & Cross-Cutting Concerns
 
-- [ ] T120 [P] Keep `CHANGELOG.md` current with one line per PR across all phases and update `CLAUDE.md` "Current state" at each phase exit
-- [ ] T121 [P] Generate OpenAPI from `packages/contracts` (`packages/contracts/scripts/openapi.ts`) and publish `packages/contracts/openapi.json`; add a CI check that it is up to date
+- [x] T120 [P] Keep `CHANGELOG.md` current with one line per PR across all phases and update `CLAUDE.md` "Current state" at each phase exit
+- [x] T121 [P] Generate OpenAPI from `packages/contracts` (`packages/contracts/scripts/openapi.ts`) and publish `packages/contracts/openapi.json`; add a CI check that it is up to date
 - [x] T122 [P] Add `pnpm audit --audit-level high` to the `lint` job in `.github/workflows/ci.yml` (done 2026-09-18)
 - [ ] T123 Run the full quickstart.md validation per phase before each phase PR is merged and record results in the PR description; record the people-based checks (SC-006 three observed sign-ups, SC-009 15-second phone add) with dates and pass/fail in the Phase 4 PR, marked `needs-rostom` in `docs/ROADMAP.md` until run
 - [ ] T124 [P] Accept ADR-0001 and ADR-0002 (owner) and rename "Desk" across `apps/`, `infra/` and docs once the product name is decided

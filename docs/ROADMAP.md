@@ -100,6 +100,8 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 **Exit criteria:** installable on Rostom's phone with a two-tap add; Lighthouse all four categories ≥ 90 on landing and app; three people outside the project can sign up from the landing page without help.
 
+**`needs-rostom`:** SC-006 (three observed outside sign-ups from the landing page) and SC-009 (a returning user logs an expense on a mid-range phone in 15 seconds over a real network) require real people and cannot be run by an agent. Not yet run — no date, no pass/fail recorded. Run these before the Phase 4 PR is merged and record the date and result in that PR description per `specs/001-phased-product-baseline/tasks.md` T123.
+
 ---
 
 ## Phase 5 — Stage 1 public beta (Fly.io)

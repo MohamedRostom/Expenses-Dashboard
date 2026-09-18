@@ -7,7 +7,11 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "generate:openapi": "tsx scripts/openapi.ts"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.13"
   },
   "dependencies": {
     "zod": "^4.6.5"

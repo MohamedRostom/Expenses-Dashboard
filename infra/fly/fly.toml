@@ -28,3 +28,7 @@ primary_region = "lhr"
 # from an external scheduler (e.g. GitHub Actions schedule calling `flyctl ssh console -C
 # "pnpm --filter @desk/api jobs:tick"`), or a dedicated always-off machine woken by `flyctl
 # machine start` on the same cadence. Revisit once Fly ships first-class cron.
+#
+# T114: nightly backup (infra/fly/backup.sh, pg_dump to Cloudflare R2) runs the same way, on
+# its own nightly schedule: `flyctl ssh console -C "infra/fly/backup.sh"`. See
+# docs/runbooks/restore.md for the restore procedure.

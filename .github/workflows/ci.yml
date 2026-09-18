@@ -50,6 +50,8 @@ jobs:
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm audit --audit-level high
+      - run: pnpm --filter @desk/contracts generate:openapi
+      - run: git diff --exit-code packages/contracts/openapi.json
 
   typecheck:
     timeout-minutes: 10

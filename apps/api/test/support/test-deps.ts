@@ -12,6 +12,11 @@ type UserRow = typeof users.$inferSelect;
 export class FakeDb {
   constructor(private readonly seeded: UserRow[] = []) {}
 
+  /** T109 healthz: SELECT 1 trivial query — resolves so the default fake reports db: 'ok'. */
+  async execute(): Promise<unknown> {
+    return [];
+  }
+
   select() {
     return {
       from: () => ({

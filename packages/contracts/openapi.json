@@ -1,0 +1,3911 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Desk API",
+    "version": "0.0.0",
+    "description": "Generated from packages/contracts/src via scripts/openapi.ts. Route list is hand-mapped from specs/001-phased-product-baseline/contracts/api.md; schemas are auto-converted from zod."
+  },
+  "paths": {
+    "/healthz": {
+      "get": {
+        "summary": "Liveness/readiness",
+        "responses": {
+          "200": {
+            "description": "Liveness/readiness",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Register with email + password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/auth/verify": {
+      "post": {
+        "summary": "Verify email token",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Verify email token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerifyResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "summary": "Log in",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Log in",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "summary": "Log out current session",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/auth/google/start": {
+      "get": {
+        "summary": "Begin Google OIDC",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/auth/google/callback": {
+      "get": {
+        "summary": "Google OIDC callback",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/auth/password/forgot": {
+      "post": {
+        "summary": "Request password reset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/auth/password/reset": {
+      "post": {
+        "summary": "Reset password",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/me": {
+      "get": {
+        "summary": "Current user",
+        "responses": {
+          "200": {
+            "description": "Current user",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "summary": "Update profile/settings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchMeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update profile/settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatchMeResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DeleteMeRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/me/email": {
+      "post": {
+        "summary": "Request email change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangeEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/me/email/confirm": {
+      "post": {
+        "summary": "Confirm email change",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmEmailRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Confirm email change",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfirmEmailResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/sessions": {
+      "get": {
+        "summary": "List sessions",
+        "responses": {
+          "200": {
+            "description": "List sessions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/export": {
+      "get": {
+        "summary": "Export account data",
+        "responses": {
+          "200": {
+            "description": "Export account data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportDocument"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/currencies": {
+      "get": {
+        "summary": "List ISO 4217 currencies",
+        "responses": {
+          "200": {
+            "description": "List ISO 4217 currencies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrenciesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{id}": {
+      "get": {
+        "summary": "Background job status",
+        "responses": {
+          "200": {
+            "description": "Background job status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JobResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/flags": {
+      "get": {
+        "summary": "Resolved feature flags",
+        "responses": {
+          "200": {
+            "description": "Resolved feature flags",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FlagsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses": {
+      "get": {
+        "summary": "List expenses",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ListExpensesQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "List expenses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExpensesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create expense (idempotent by client id)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateExpenseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create expense (idempotent by client id)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/{id}": {
+      "patch": {
+        "summary": "Update expense",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchExpenseRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update expense",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpenseResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Soft-delete expense",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/summary/month": {
+      "get": {
+        "summary": "Month summary",
+        "responses": {
+          "200": {
+            "description": "Month summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MonthSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary/year": {
+      "get": {
+        "summary": "Year summary",
+        "responses": {
+          "200": {
+            "description": "Year summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YearSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary/category/{id}": {
+      "get": {
+        "summary": "Category drilldown",
+        "responses": {
+          "200": {
+            "description": "Category drilldown",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryDrilldown"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary/forecast": {
+      "get": {
+        "summary": "Budget forecast",
+        "responses": {
+          "200": {
+            "description": "Budget forecast",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForecastSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/summary/compare": {
+      "get": {
+        "summary": "Month comparison",
+        "responses": {
+          "200": {
+            "description": "Month comparison",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompareSummary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "summary": "List categories",
+        "responses": {
+          "200": {
+            "description": "List categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCategoriesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create category",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Create category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "patch": {
+        "summary": "Update category",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchCategoryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Update category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/profiles": {
+      "get": {
+        "summary": "List import profiles",
+        "responses": {
+          "200": {
+            "description": "List import profiles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListImportProfilesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/profiles/{name}": {
+      "put": {
+        "summary": "Save import profile",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveImportProfileRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Save import profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportProfileResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports": {
+      "post": {
+        "summary": "Upload + preview import batch",
+        "responses": {
+          "200": {
+            "description": "Upload + preview import batch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/{id}/commit": {
+      "post": {
+        "summary": "Commit import batch",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommitImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Commit import batch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommitImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/imports/{id}/undo": {
+      "post": {
+        "summary": "Undo import batch",
+        "responses": {
+          "200": {
+            "description": "Undo import batch",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UndoImportResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/rates": {
+      "get": {
+        "summary": "Preview an FX rate",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RatePreviewQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Preview an FX rate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RatePreviewResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notion/connection": {
+      "get": {
+        "summary": "Notion connection status",
+        "responses": {
+          "200": {
+            "description": "Notion connection status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotionConnectionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Connect/reconfigure Notion",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetNotionConnectionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connect/reconfigure Notion",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotionConnectionResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Disconnect Notion",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/notion/databases": {
+      "get": {
+        "summary": "List candidate Notion databases",
+        "responses": {
+          "200": {
+            "description": "List candidate Notion databases",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListNotionDatabasesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/notion/sync": {
+      "post": {
+        "summary": "Sync now",
+        "responses": {
+          "200": {
+            "description": "Sync now",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SyncNotionResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/expenses/{id}/versions": {
+      "get": {
+        "summary": "Expense change history",
+        "responses": {
+          "200": {
+            "description": "Expense change history",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListExpenseVersionsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capture/tokens": {
+      "get": {
+        "summary": "List capture tokens",
+        "responses": {
+          "200": {
+            "description": "List capture tokens",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListCaptureTokensResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capture/tokens/{label}/rotate": {
+      "post": {
+        "summary": "Rotate capture token",
+        "responses": {
+          "200": {
+            "description": "Rotate capture token",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RotateCaptureTokenResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/capture/mapping": {
+      "get": {
+        "summary": "Capture category mapping",
+        "responses": {
+          "200": {
+            "description": "Capture category mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureMappingResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Set capture category mapping",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetCaptureMappingRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Set capture category mapping",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaptureMappingResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/hooks/generic/{token}": {
+      "post": {
+        "summary": "Generic phone-automation webhook (unauthenticated)",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenericWebhookBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Generic phone-automation webhook (unauthenticated)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenericWebhookResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddedVia": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["dashboard", "notion", "phone", "import"]
+      },
+      "AmountInput": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "minor": {
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          }
+        },
+        "required": ["minor", "currency"],
+        "additionalProperties": false
+      },
+      "CaptureMappingEntry": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string",
+            "minLength": 1
+          },
+          "categoryId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": ["label", "categoryId"],
+        "additionalProperties": false
+      },
+      "CaptureMappingResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "categoryId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["label", "categoryId"],
+              "additionalProperties": false
+            }
+          },
+          "unmappedLabels": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["mappings", "unmappedLabels"],
+        "additionalProperties": false
+      },
+      "CaptureTokenSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "lastUsedAt": {
+            "type": ["string", "null"]
+          },
+          "revokedAt": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "label", "createdAt", "lastUsedAt", "revokedAt"],
+        "additionalProperties": false
+      },
+      "CategoryDrilldown": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string"
+                },
+                "spent": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "budget": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": ["month", "spent", "budget"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["categoryId", "months"],
+        "additionalProperties": false
+      },
+      "CategoryKind": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["fixed", "variable", "one_off"]
+      },
+      "CategoryResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "colour": {
+            "type": "string"
+          },
+          "defaultKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["fixed", "variable", "one_off"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "budgetMinor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "archivedAt": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "colour",
+          "defaultKind",
+          "budgetMinor",
+          "sortOrder",
+          "archivedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CategorySpend": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "categoryId": {
+            "type": "string"
+          },
+          "spent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "budget": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overBudget": {
+            "type": "boolean"
+          }
+        },
+        "required": ["categoryId", "spent", "budget", "overBudget"],
+        "additionalProperties": false
+      },
+      "ChangeEmailRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "newEmail": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": ["newEmail"],
+        "additionalProperties": false
+      },
+      "ColumnMapping": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "id": {
+            "type": "string"
+          },
+          "dateFormat": {
+            "type": "string",
+            "enum": ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"]
+          },
+          "decimalSeparator": {
+            "type": "string",
+            "enum": [".", ","]
+          }
+        },
+        "required": ["date", "amount", "currency", "description", "dateFormat", "decimalSeparator"],
+        "additionalProperties": false
+      },
+      "CommitImportRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "skipRows": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "fixes": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "amountMinor": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "categoryId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "additionalProperties": false
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "CommitImportResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "batch": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "rowCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "status": {
+                "type": "string",
+                "enum": ["previewing", "importing", "done", "undone", "failed"]
+              },
+              "createdExpenses": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "duplicates": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "errors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rowNumber": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "parsed": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string"
+                            },
+                            "amountMinor": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "categoryHint": {
+                              "type": "string"
+                            },
+                            "externalId": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["date", "amountMinor", "currency", "description"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok", "duplicate", "error", "skipped"]
+                    },
+                    "error": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["rowNumber", "parsed", "status", "error"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "fileName",
+              "rowCount",
+              "status",
+              "createdExpenses",
+              "duplicates",
+              "errors"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["batch"],
+        "additionalProperties": false
+      },
+      "CompareSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "a": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "b": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "delta": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["categoryId", "a", "b", "delta"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["a", "b", "byCategory"],
+        "additionalProperties": false
+      },
+      "ConfirmEmailRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": ["token"],
+        "additionalProperties": false
+      },
+      "ConfirmEmailResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      },
+      "CreateCategoryRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "colour": {
+            "type": "string",
+            "minLength": 1
+          },
+          "defaultKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["fixed", "variable", "one_off"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "budgetMinor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": ["name", "colour"],
+        "additionalProperties": false
+      },
+      "CreateExpenseRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "minor": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              }
+            },
+            "required": ["minor", "currency"],
+            "additionalProperties": false
+          },
+          "date": {
+            "type": "string"
+          },
+          "categoryId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidWith": {
+            "type": "string",
+            "enum": ["card", "cash", "bank_transfer", "other"]
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["fixed", "variable", "one_off"]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": ["description", "amount", "date", "categoryId", "paidWith", "kind"],
+        "additionalProperties": false
+      },
+      "CreateImportResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "batch": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "rowCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "status": {
+                "type": "string",
+                "enum": ["previewing", "importing", "done", "undone", "failed"]
+              },
+              "createdExpenses": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "duplicates": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "errors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rowNumber": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "parsed": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string"
+                            },
+                            "amountMinor": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "categoryHint": {
+                              "type": "string"
+                            },
+                            "externalId": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["date", "amountMinor", "currency", "description"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok", "duplicate", "error", "skipped"]
+                    },
+                    "error": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["rowNumber", "parsed", "status", "error"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "fileName",
+              "rowCount",
+              "status",
+              "createdExpenses",
+              "duplicates",
+              "errors"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["batch"],
+        "additionalProperties": false
+      },
+      "CreateNotionDatabaseRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "parentPageId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": ["parentPageId", "title"],
+        "additionalProperties": false
+      },
+      "CurrenciesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "currencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "exponent": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["code", "name", "exponent"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["currencies"],
+        "additionalProperties": false
+      },
+      "CurrencyEntry": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "exponent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["code", "name", "exponent"],
+        "additionalProperties": false
+      },
+      "DateFormat": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"]
+      },
+      "DecimalSeparator": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [".", ","]
+      },
+      "DeleteMeRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "password": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ErrorCode": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "validation_failed",
+          "unauthenticated",
+          "not_found",
+          "rate_limited",
+          "conflict",
+          "rate_unavailable"
+        ]
+      },
+      "ErrorEnvelope": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "validation_failed",
+                  "unauthenticated",
+                  "not_found",
+                  "rate_limited",
+                  "conflict",
+                  "rate_unavailable"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "details": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              }
+            },
+            "required": ["code", "message"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["error"],
+        "additionalProperties": false
+      },
+      "ExpenseKind": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["fixed", "variable", "one_off"]
+      },
+      "ExpenseResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "date": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": ["string", "null"]
+          },
+          "paidWith": {
+            "type": "string",
+            "enum": ["card", "cash", "bank_transfer", "other"]
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["fixed", "variable", "one_off"]
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "amountOriginal": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "currencyOriginal": {
+            "type": "string"
+          },
+          "rateToDefault": {
+            "type": ["string", "null"]
+          },
+          "rateDate": {
+            "type": ["string", "null"]
+          },
+          "rateSource": {
+            "type": ["string", "null"]
+          },
+          "amountDefault": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rateOverridden": {
+            "type": "boolean"
+          },
+          "addedVia": {
+            "type": "string",
+            "enum": ["dashboard", "notion", "phone", "import"]
+          },
+          "notionPageId": {
+            "type": ["string", "null"]
+          },
+          "deletedAt": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "description",
+          "date",
+          "categoryId",
+          "paidWith",
+          "kind",
+          "notes",
+          "amountOriginal",
+          "currencyOriginal",
+          "rateToDefault",
+          "rateDate",
+          "rateSource",
+          "amountDefault",
+          "rateOverridden",
+          "addedVia",
+          "deletedAt",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ExpenseVersion": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["app", "notion", "sync_conflict"]
+          },
+          "snapshot": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "editedAt": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "source", "snapshot", "editedAt", "createdAt"],
+        "additionalProperties": false
+      },
+      "ExportDocument": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "exportedAt": {
+            "type": "string"
+          },
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "expenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "importBatches": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "propertyNames": {
+                "type": "string"
+              },
+              "additionalProperties": {}
+            }
+          },
+          "notion": {
+            "type": "object",
+            "properties": {
+              "connected": {
+                "type": "boolean"
+              },
+              "direction": {
+                "type": ["string", "null"]
+              },
+              "databaseId": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["connected", "direction", "databaseId"],
+            "additionalProperties": false
+          },
+          "version": {
+            "type": "number",
+            "const": 1
+          }
+        },
+        "required": [
+          "exportedAt",
+          "user",
+          "categories",
+          "expenses",
+          "importBatches",
+          "notion",
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "FeedbackRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "contactOk": {
+            "type": "boolean"
+          }
+        },
+        "required": ["page", "message", "contactOk"],
+        "additionalProperties": false
+      },
+      "FlagsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "flags": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            }
+          }
+        },
+        "required": ["flags"],
+        "additionalProperties": false
+      },
+      "ForecastSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spentToDate": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "committedFixed": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "forecast": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "basis": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["month", "currency", "spentToDate", "committedFixed", "forecast", "basis"],
+        "additionalProperties": false
+      },
+      "ForgotPasswordRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        },
+        "required": ["email"],
+        "additionalProperties": false
+      },
+      "GenericWebhookBody": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": ["string", "number"]
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "date": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "paidWith": {
+            "type": "string",
+            "enum": ["card", "cash", "bank_transfer", "other"]
+          },
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
+        "required": ["amount", "currency", "description"],
+        "additionalProperties": false
+      },
+      "GenericWebhookResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expenseId": {
+            "type": "string"
+          },
+          "duplicate": {
+            "type": "boolean"
+          }
+        },
+        "required": ["expenseId", "duplicate"],
+        "additionalProperties": false
+      },
+      "HealthResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          },
+          "version": {
+            "type": "string"
+          },
+          "sha": {
+            "type": "string"
+          },
+          "db": {
+            "type": "string",
+            "enum": ["ok", "degraded"]
+          }
+        },
+        "required": ["status", "version", "sha", "db"],
+        "additionalProperties": false
+      },
+      "ImportBatchResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "fileName": {
+            "type": "string"
+          },
+          "rowCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "status": {
+            "type": "string",
+            "enum": ["previewing", "importing", "done", "undone", "failed"]
+          },
+          "createdExpenses": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "duplicates": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "errors": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rowNumber": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "parsed": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "amountMinor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "currency": {
+                          "type": "string"
+                        },
+                        "description": {
+                          "type": "string"
+                        },
+                        "categoryHint": {
+                          "type": "string"
+                        },
+                        "externalId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["date", "amountMinor", "currency", "description"],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["ok", "duplicate", "error", "skipped"]
+                },
+                "error": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["rowNumber", "parsed", "status", "error"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "id",
+          "fileName",
+          "rowCount",
+          "status",
+          "createdExpenses",
+          "duplicates",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "ImportBatchStatus": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["previewing", "importing", "done", "undone", "failed"]
+      },
+      "ImportProfileResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mapping": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "dateFormat": {
+                "type": "string",
+                "enum": ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"]
+              },
+              "decimalSeparator": {
+                "type": "string",
+                "enum": [".", ","]
+              }
+            },
+            "required": [
+              "date",
+              "amount",
+              "currency",
+              "description",
+              "dateFormat",
+              "decimalSeparator"
+            ],
+            "additionalProperties": false
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name", "mapping", "createdAt", "updatedAt"],
+        "additionalProperties": false
+      },
+      "ImportRowResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "rowNumber": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "parsed": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string"
+                  },
+                  "amountMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "categoryHint": {
+                    "type": "string"
+                  },
+                  "externalId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["date", "amountMinor", "currency", "description"],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok", "duplicate", "error", "skipped"]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["rowNumber", "parsed", "status", "error"],
+        "additionalProperties": false
+      },
+      "ImportRowStatus": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["ok", "duplicate", "error", "skipped"]
+      },
+      "JobResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["queued", "running", "done", "failed"]
+          },
+          "progressDone": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "progressTotal": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "name", "status", "progressDone", "progressTotal", "error"],
+        "additionalProperties": false
+      },
+      "JobStatus": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["queued", "running", "done", "failed"]
+      },
+      "ListCaptureTokensResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "tokens": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "lastUsedAt": {
+                  "type": ["string", "null"]
+                },
+                "revokedAt": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["id", "label", "createdAt", "lastUsedAt", "revokedAt"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["tokens"],
+        "additionalProperties": false
+      },
+      "ListCategoriesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "categories": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "colour": {
+                  "type": "string"
+                },
+                "defaultKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": ["fixed", "variable", "one_off"]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "budgetMinor": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "sortOrder": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "archivedAt": {
+                  "type": ["string", "null"]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "colour",
+                "defaultKind",
+                "budgetMinor",
+                "sortOrder",
+                "archivedAt",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["categories"],
+        "additionalProperties": false
+      },
+      "ListExpenseVersionsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "versions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "source": {
+                  "type": "string",
+                  "enum": ["app", "notion", "sync_conflict"]
+                },
+                "snapshot": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                },
+                "editedAt": {
+                  "type": "string"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "source", "snapshot", "editedAt", "createdAt"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["versions"],
+        "additionalProperties": false
+      },
+      "ListExpensesQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "includeDeleted": {
+            "type": "boolean"
+          },
+          "cursor": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "ListExpensesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "expenses": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string"
+                },
+                "categoryId": {
+                  "type": ["string", "null"]
+                },
+                "paidWith": {
+                  "type": "string",
+                  "enum": ["card", "cash", "bank_transfer", "other"]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": ["fixed", "variable", "one_off"]
+                },
+                "notes": {
+                  "type": ["string", "null"]
+                },
+                "amountOriginal": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "currencyOriginal": {
+                  "type": "string"
+                },
+                "rateToDefault": {
+                  "type": ["string", "null"]
+                },
+                "rateDate": {
+                  "type": ["string", "null"]
+                },
+                "rateSource": {
+                  "type": ["string", "null"]
+                },
+                "amountDefault": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rateOverridden": {
+                  "type": "boolean"
+                },
+                "addedVia": {
+                  "type": "string",
+                  "enum": ["dashboard", "notion", "phone", "import"]
+                },
+                "notionPageId": {
+                  "type": ["string", "null"]
+                },
+                "deletedAt": {
+                  "type": ["string", "null"]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "description",
+                "date",
+                "categoryId",
+                "paidWith",
+                "kind",
+                "notes",
+                "amountOriginal",
+                "currencyOriginal",
+                "rateToDefault",
+                "rateDate",
+                "rateSource",
+                "amountDefault",
+                "rateOverridden",
+                "addedVia",
+                "deletedAt",
+                "createdAt",
+                "updatedAt"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "month": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "spent": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "budgeted": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "byCategory": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "categoryId": {
+                      "type": "string"
+                    },
+                    "spent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "budget": {
+                      "anyOf": [
+                        {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "overBudget": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["categoryId", "spent", "budget", "overBudget"],
+                  "additionalProperties": false
+                }
+              },
+              "pendingRates": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "month",
+              "currency",
+              "spent",
+              "budgeted",
+              "remaining",
+              "byCategory",
+              "pendingRates"
+            ],
+            "additionalProperties": false
+          },
+          "nextCursor": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["expenses", "summary"],
+        "additionalProperties": false
+      },
+      "ListImportProfilesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "profiles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mapping": {
+                  "type": "object",
+                  "properties": {
+                    "date": {
+                      "type": "string"
+                    },
+                    "amount": {
+                      "type": "string"
+                    },
+                    "currency": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "category": {
+                      "type": "string"
+                    },
+                    "id": {
+                      "type": "string"
+                    },
+                    "dateFormat": {
+                      "type": "string",
+                      "enum": ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"]
+                    },
+                    "decimalSeparator": {
+                      "type": "string",
+                      "enum": [".", ","]
+                    }
+                  },
+                  "required": [
+                    "date",
+                    "amount",
+                    "currency",
+                    "description",
+                    "dateFormat",
+                    "decimalSeparator"
+                  ],
+                  "additionalProperties": false
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "updatedAt": {
+                  "type": "string"
+                }
+              },
+              "required": ["id", "name", "mapping", "createdAt", "updatedAt"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["profiles"],
+        "additionalProperties": false
+      },
+      "ListNotionDatabasesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "databases": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "compatible": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["id", "title", "compatible"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["databases"],
+        "additionalProperties": false
+      },
+      "LoginRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "password": {
+            "type": "string"
+          }
+        },
+        "required": ["email", "password"],
+        "additionalProperties": false
+      },
+      "LoginResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      },
+      "MeResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      },
+      "MonthSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "month": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "spent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "budgeted": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "byCategory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "spent": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "budget": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "overBudget": {
+                  "type": "boolean"
+                }
+              },
+              "required": ["categoryId", "spent", "budget", "overBudget"],
+              "additionalProperties": false
+            }
+          },
+          "pendingRates": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "month",
+          "currency",
+          "spent",
+          "budgeted",
+          "remaining",
+          "byCategory",
+          "pendingRates"
+        ],
+        "additionalProperties": false
+      },
+      "NotionConnectionResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "workspaceName": {
+            "type": "string"
+          },
+          "databaseId": {
+            "type": ["string", "null"]
+          },
+          "dataSourceId": {
+            "type": ["string", "null"]
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["to_notion", "from_notion", "both"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["connected", "error", "disconnected"]
+          },
+          "lastSyncAt": {
+            "type": ["string", "null"]
+          },
+          "lastError": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": [
+          "workspaceName",
+          "databaseId",
+          "dataSourceId",
+          "direction",
+          "status",
+          "lastSyncAt",
+          "lastError"
+        ],
+        "additionalProperties": false
+      },
+      "NotionConnectionStatus": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["connected", "error", "disconnected"]
+      },
+      "NotionDatabaseOption": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "compatible": {
+            "type": "boolean"
+          }
+        },
+        "required": ["id", "title", "compatible"],
+        "additionalProperties": false
+      },
+      "NotionDirection": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["to_notion", "from_notion", "both"]
+      },
+      "PaidWith": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["card", "cash", "bank_transfer", "other"]
+      },
+      "PatchCategoryRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "colour": {
+            "type": "string",
+            "minLength": 1
+          },
+          "defaultKind": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": ["fixed", "variable", "one_off"]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "budgetMinor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchExpenseRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "object",
+            "properties": {
+              "minor": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "currency": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 3
+              }
+            },
+            "required": ["minor", "currency"],
+            "additionalProperties": false
+          },
+          "date": {
+            "type": "string"
+          },
+          "categoryId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "paidWith": {
+            "type": "string",
+            "enum": ["card", "cash", "bank_transfer", "other"]
+          },
+          "kind": {
+            "type": "string",
+            "enum": ["fixed", "variable", "one_off"]
+          },
+          "notes": {
+            "type": ["string", "null"]
+          },
+          "rateOverride": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "rate": {
+                    "type": "string"
+                  }
+                },
+                "required": ["rate"],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchMeRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "theme": {
+            "type": "string"
+          },
+          "defaultCurrency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "onboardingCompletedAt": {
+            "type": ["string", "null"]
+          }
+        },
+        "additionalProperties": false
+      },
+      "PatchMeResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          },
+          "job": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": ["id"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      },
+      "RatePreviewQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "to": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          }
+        },
+        "required": ["from", "to"],
+        "additionalProperties": false
+      },
+      "RatePreviewResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "rate": {
+                "type": "string"
+              },
+              "rateDate": {
+                "type": "string"
+              },
+              "source": {
+                "type": "string"
+              }
+            },
+            "required": ["rate", "rateDate", "source"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "unsupported": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": ["unsupported"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "RegisterRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          },
+          "defaultCurrency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3
+          },
+          "timeZone": {
+            "type": "string"
+          }
+        },
+        "required": ["email", "password", "defaultCurrency", "timeZone"],
+        "additionalProperties": false
+      },
+      "ResetPasswordRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 12,
+            "maxLength": 128
+          }
+        },
+        "required": ["token", "password"],
+        "additionalProperties": false
+      },
+      "RotateCaptureTokenResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "lastUsedAt": {
+                "type": ["string", "null"]
+              },
+              "revokedAt": {
+                "type": ["string", "null"]
+              }
+            },
+            "required": ["id", "label", "createdAt", "lastUsedAt", "revokedAt"],
+            "additionalProperties": false
+          },
+          "secret": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": ["token", "secret", "url"],
+        "additionalProperties": false
+      },
+      "SaveImportProfileRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mapping": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string"
+              },
+              "currency": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "category": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "dateFormat": {
+                "type": "string",
+                "enum": ["YYYY-MM-DD", "DD/MM/YYYY", "MM/DD/YYYY"]
+              },
+              "decimalSeparator": {
+                "type": "string",
+                "enum": [".", ","]
+              }
+            },
+            "required": [
+              "date",
+              "amount",
+              "currency",
+              "description",
+              "dateFormat",
+              "decimalSeparator"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["mapping"],
+        "additionalProperties": false
+      },
+      "SessionSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "current": {
+            "type": "boolean"
+          },
+          "lastSeenAt": {
+            "type": "string"
+          },
+          "userAgent": {
+            "type": ["string", "null"]
+          }
+        },
+        "required": ["id", "current", "lastSeenAt", "userAgent"],
+        "additionalProperties": false
+      },
+      "SessionsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "current": {
+                  "type": "boolean"
+                },
+                "lastSeenAt": {
+                  "type": "string"
+                },
+                "userAgent": {
+                  "type": ["string", "null"]
+                }
+              },
+              "required": ["id", "current", "lastSeenAt", "userAgent"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["sessions"],
+        "additionalProperties": false
+      },
+      "SetCaptureMappingRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "mappings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "categoryId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["label", "categoryId"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["mappings"],
+        "additionalProperties": false
+      },
+      "SetNotionConnectionRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "databaseId": {
+            "type": "string"
+          },
+          "dataSourceId": {
+            "type": "string"
+          },
+          "direction": {
+            "type": "string",
+            "enum": ["to_notion", "from_notion", "both"]
+          }
+        },
+        "required": ["databaseId", "dataSourceId", "direction"],
+        "additionalProperties": false
+      },
+      "SyncNotionResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["connected", "error", "disconnected"]
+          },
+          "lastSyncAt": {
+            "type": ["string", "null"]
+          },
+          "lastError": {
+            "type": ["string", "null"]
+          },
+          "applied": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "skipped": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "conflicts": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["status", "lastSyncAt", "lastError", "applied", "skipped", "conflicts"],
+        "additionalProperties": false
+      },
+      "UndoImportResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "batch": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "fileName": {
+                "type": "string"
+              },
+              "rowCount": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "status": {
+                "type": "string",
+                "enum": ["previewing", "importing", "done", "undone", "failed"]
+              },
+              "createdExpenses": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "duplicates": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "errors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "rows": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "rowNumber": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "parsed": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string"
+                            },
+                            "amountMinor": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            "currency": {
+                              "type": "string"
+                            },
+                            "description": {
+                              "type": "string"
+                            },
+                            "categoryHint": {
+                              "type": "string"
+                            },
+                            "externalId": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["date", "amountMinor", "currency", "description"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": ["ok", "duplicate", "error", "skipped"]
+                    },
+                    "error": {
+                      "type": ["string", "null"]
+                    }
+                  },
+                  "required": ["rowNumber", "parsed", "status", "error"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "fileName",
+              "rowCount",
+              "status",
+              "createdExpenses",
+              "duplicates",
+              "errors"
+            ],
+            "additionalProperties": false
+          },
+          "undone": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["batch", "undone"],
+        "additionalProperties": false
+      },
+      "UserResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "defaultCurrency": {
+            "type": "string"
+          },
+          "theme": {
+            "type": "string"
+          },
+          "timeZone": {
+            "type": "string"
+          },
+          "onboardingCompletedAt": {
+            "type": ["string", "null"]
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "defaultCurrency",
+          "theme",
+          "timeZone",
+          "onboardingCompletedAt",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "VerifyRequest": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": ["token"],
+        "additionalProperties": false
+      },
+      "VerifyResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "defaultCurrency": {
+                "type": "string"
+              },
+              "theme": {
+                "type": "string"
+              },
+              "timeZone": {
+                "type": "string"
+              },
+              "onboardingCompletedAt": {
+                "type": ["string", "null"]
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "email",
+              "defaultCurrency",
+              "theme",
+              "timeZone",
+              "onboardingCompletedAt",
+              "createdAt"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["user"],
+        "additionalProperties": false
+      },
+      "YearSummary": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "months": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "month": {
+                  "type": "string"
+                },
+                "spent": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "budgeted": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": ["month", "spent", "budgeted"],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["year", "currency", "months"],
+        "additionalProperties": false
+      }
+    }
+  }
+}

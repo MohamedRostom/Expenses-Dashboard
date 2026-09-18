@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { sql } from 'drizzle-orm';
 import type { HealthResponseT } from '@desk/contracts';
 import type { Db } from '@desk/db';
 import type { PasswordHasher } from './adapters/password.js';
@@ -7,7 +8,7 @@ import type { RateLimiter } from './adapters/rate-limiter.js';
 import type { Mailer } from './adapters/mailer.js';
 import type { SecretBox } from './adapters/secret-box.js';
 import type { BreachChecker } from './adapters/breach-checker.js';
-import { logger as defaultLogger } from './adapters/logger.js';
+import { logger as defaultLogger, type Logger } from './adapters/logger.js';
 import { requestLogger, type RequestLoggerVariables } from './middleware/request-logger.js';
 import { sessionMiddleware, type SessionVariables } from './middleware/session.js';
 import { csrf } from './middleware/csrf.js';
@@ -25,13 +26,14 @@ import { createImportsRoutes } from './routes/imports.js';
 import { createHooksRoutes } from './routes/hooks.js';
 import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
+import { createFeedbackRoutes } from './routes/feedback.js';
 import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
 import { createCaptureService } from './services/capture.js';
 import { createNotionService, type NotionConfig } from './services/notion.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
-export type BuildInfo = Omit<HealthResponseT, 'status'>;
+export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
 /** JobRunner (research.md R7) lands in a later task — placeholder for now. */
 export type RatesDep = RatesProvider;
@@ -50,6 +52,9 @@ export type AppDeps = {
   jobs: JobsDep;
   clock: Clock;
   build: BuildInfo;
+  /** T113: defaults to the plain JSON-stdout logger; node.ts/worker.ts pass
+   * createNodeLogger/createWorkerLogger(env.SENTRY_DSN) once Sentry is wired in. */
+  logger?: Logger;
   /** Undefined until GOOGLE_CLIENT_ID/SECRET are configured (env.ts) — /auth/google/* 404s. */
   google: GoogleConfig | undefined;
   /** Undefined until NOTION_CLIENT_ID/SECRET are configured (env.ts) — /notion/* 404s. */
@@ -63,7 +68,7 @@ export function createApp(deps: AppDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
 
   app.use('*', secureHeadersMiddleware);
-  app.use('*', requestLogger(defaultLogger));
+  app.use('*', requestLogger(deps.logger ?? defaultLogger));
   app.use('*', sessionMiddleware(deps.db, deps.sessions));
   app.use('*', csrf);
 
@@ -142,11 +147,23 @@ export function createApp(deps: AppDeps) {
     app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
   }
 
-  app.get('/healthz', (c) => {
+  app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
+
+  app.get('/healthz', async (c) => {
+    // T109: trivial query with a short timeout — never lets a slow/broken DB fail the whole
+    // check; 'degraded' communicates it instead, still 200.
+    const dbStatus = await Promise.race([
+      Promise.resolve()
+        .then(() => deps.db.execute(sql`SELECT 1`))
+        .then(() => 'ok' as const)
+        .catch(() => 'degraded' as const),
+      new Promise<'degraded'>((resolve) => setTimeout(() => resolve('degraded'), 1500)),
+    ]);
     const body: HealthResponseT = {
       status: 'ok',
       version: deps.build.version,
       sha: deps.build.sha,
+      db: dbStatus,
     };
     return c.json(body);
   });

@@ -381,3 +381,20 @@ export const expenseVersions = pgTable(
     index('expense_versions_user_id_idx').on(t.userId),
   ],
 );
+
+// T112: beta feedback widget submissions. user_id is nullable — anonymous visitors can submit.
+// user_agent (and any future identifying metadata) is only populated when contactOk is true
+// (consent-gated per data-model.md/POST /feedback design notes).
+export const feedback = pgTable(
+  'feedback',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+    page: text('page').notNull(),
+    message: text('message').notNull(),
+    contactOk: boolean('contact_ok').notNull().default(false),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('feedback_created_at_idx').on(t.createdAt)],
+);

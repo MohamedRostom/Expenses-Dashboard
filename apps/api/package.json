@@ -24,7 +24,8 @@
     "nodemailer": "^7.0.0",
     "drizzle-orm": "^0.45.2",
     "postgres": "^3.4.9",
-    "papaparse": "^5.4.1"
+    "papaparse": "^5.4.1",
+    "@sentry/node": "^7.120.4"
   },
   "devDependencies": {
     "@testcontainers/postgresql": "^12.1.0",

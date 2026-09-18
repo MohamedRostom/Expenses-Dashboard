@@ -1,7 +1,10 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+import FeedbackWidget from './components/FeedbackWidget.vue';
+</script>
 
 <template>
   <RouterView />
+  <FeedbackWidget />
 </template>
 
 <style>

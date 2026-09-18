@@ -1,4 +1,9 @@
-export { HealthResponse, type HealthResponseT } from './health.js';
+export {
+  HealthResponse,
+  type HealthResponseT,
+  FeedbackRequest,
+  type FeedbackRequestT,
+} from './health.js';
 export { ErrorCode, type ErrorCodeT, ErrorEnvelope, type ErrorEnvelopeT } from './errors.js';
 export {
   UserResponse,

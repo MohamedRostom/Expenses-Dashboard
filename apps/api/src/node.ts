@@ -15,6 +15,7 @@ import { createSecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 import { FrankfurterRates } from '@desk/connectors/rates';
+import { createNodeLogger } from './adapters/logger-node.js';
 
 // Stage 1 entry point (Fly.io container). Migrations run on start; the built web app is
 // served from ./public next to the bundle so one process serves both.
@@ -55,6 +56,7 @@ const app = createApp({
   jobs: undefined,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
+  logger: createNodeLogger(env.SENTRY_DSN),
   google:
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? {

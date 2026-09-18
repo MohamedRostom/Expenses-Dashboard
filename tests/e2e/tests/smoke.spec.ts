@@ -1,0 +1,39 @@
+import { expect, test } from '@playwright/test';
+
+// T111 @local: post-deploy smoke, run on `desk-local` against the real staging URL (never
+// blocks a PR — see playwright.config.ts's `local` project and CLAUDE.md testing rules).
+// Uses the seeded e2e user (packages/db/src/seed.ts) rather than signing up, so it needs no
+// Mailpit access on the deployed target.
+const SEEDED_EMAIL = 'e2e@desk.test';
+const SEEDED_PASSWORD = process.env['E2E_SEEDED_PASSWORD'] ?? 'correct horse battery staple';
+
+test('post-deploy smoke: healthz, seeded login, add and delete one expense @local', async ({
+  page,
+  baseURL,
+  request,
+}) => {
+  const healthRes = await request.get(`${baseURL}/healthz`);
+  expect(healthRes.ok()).toBe(true);
+  const health = await healthRes.json();
+  expect(health.status).toBe('ok');
+  expect(['ok', 'degraded']).toContain(health.db);
+
+  await page.goto('/login');
+  await page.getByLabel(/email/i).fill(SEEDED_EMAIL);
+  await page.getByLabel(/password/i).fill(SEEDED_PASSWORD);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await expect(page).toHaveURL('/');
+
+  const description = `Smoke test ${Date.now()}`;
+  await page.getByRole('button', { name: /add expense/i }).click();
+  await page.getByLabel(/description/i).fill(description);
+  await page.getByLabel(/^amount$/i).fill('1.23');
+  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await expect(page.getByText(description)).toBeVisible();
+
+  await page
+    .getByRole('row', { name: new RegExp(description) })
+    .getByRole('button', { name: /delete/i })
+    .click();
+  await expect(page.getByText(description)).toHaveCount(0);
+});

@@ -8,6 +8,7 @@ import { currencyChangeJob, categoriesRowSource, type RateLookup } from './curre
 import { ratesWarmJob, ratesRetryJob } from './rates.js';
 import { housekeepingJob } from './housekeeping.js';
 import { notionSyncJob, type NotionSyncDeps } from './notion-sync.js';
+import { feedbackDigestJob, type FeedbackDigestDeps } from './feedback-digest.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 
 export function registerAllJobs(deps: {
@@ -17,10 +18,13 @@ export function registerAllJobs(deps: {
   limiter: RateLimiter;
   /** Undefined until the Notion OAuth pair (env.ts NOTION_CLIENT_ID/SECRET) is configured. */
   notionSync?: NotionSyncDeps;
+  /** T112: always registered — feedbackDigestJob itself no-ops the send when digestEmail is unset. */
+  feedbackDigest?: FeedbackDigestDeps;
 }): void {
   registerJob('currency.change', currencyChangeJob(deps.getRate, categoriesRowSource(deps.db)));
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));
   if (deps.notionSync) registerJob('notion.sync', notionSyncJob(deps.notionSync));
+  if (deps.feedbackDigest) registerJob('feedback.digest', feedbackDigestJob(deps.feedbackDigest));
 }
