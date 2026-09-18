@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@desk/contracts": "workspace:*",
+    "@desk/core": "workspace:*",
     "@desk/ui": "workspace:*",
     "pinia": "^4.0.3",
     "vue": "^3.5.42",

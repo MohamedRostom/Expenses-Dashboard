@@ -21,7 +21,7 @@ function buildDeps(gitSha: string): AppDeps {
     mailer: lazy as AppDeps['mailer'],
     secretBox: lazy as AppDeps['secretBox'],
     breachChecker: new HibpBreachChecker(),
-    rates: undefined,
+    rates: lazy as AppDeps['rates'],
     jobs: undefined,
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: gitSha },

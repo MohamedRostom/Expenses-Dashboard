@@ -14,6 +14,7 @@ import { SmtpMailer, ResendMailer, type Mailer } from './adapters/mailer.js';
 import { createSecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
+import { FrankfurterRates } from '@desk/connectors/rates';
 
 // Stage 1 entry point (Fly.io container). Migrations run on start; the built web app is
 // served from ./public next to the bundle so one process serves both.
@@ -50,7 +51,7 @@ const app = createApp({
   mailer,
   secretBox: createSecretBox(env.SECRET_BOX_KEY),
   breachChecker: new HibpBreachChecker(),
-  rates: undefined,
+  rates: new FrankfurterRates(),
   jobs: undefined,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },

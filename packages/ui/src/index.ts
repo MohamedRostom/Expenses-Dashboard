@@ -9,3 +9,6 @@ export { default as EmptyState } from './components/EmptyState.vue';
 export { default as ErrorState } from './components/ErrorState.vue';
 export { useToast } from './composables/useToast.js';
 export type { ToastMessage } from './composables/useToast.js';
+export { default as CategoryBars } from './charts/CategoryBars.vue';
+export type { CategoryBarData } from './charts/CategoryBars.vue';
+export { default as DataTable } from './charts/DataTable.vue';

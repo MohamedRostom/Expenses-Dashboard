@@ -263,6 +263,9 @@ importers:
       '@desk/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@desk/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@desk/ui':
         specifier: workspace:*
         version: link:../../packages/ui

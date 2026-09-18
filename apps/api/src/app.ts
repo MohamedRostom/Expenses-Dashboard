@@ -17,11 +17,16 @@ import { authRoutes } from './routes/auth.js';
 import { createGoogleRoutes, type GoogleConfig } from './routes/google.js';
 import { createMeRoutes } from './routes/me.js';
 import { createMiscRoutes } from './routes/misc.js';
+import { createSummaryRoutes } from './routes/summary.js';
+import { createRatesRoutes } from './routes/rates.js';
+import { createExpensesRoutes } from './routes/expenses.js';
+import { createRatesService } from './services/rates.js';
+import type { RatesProvider } from '@desk/connectors/rates';
 
 export type BuildInfo = Omit<HealthResponseT, 'status'>;
 
-/** RatesProvider and JobRunner (research.md R6/R7) land in later tasks — placeholder for now. */
-export type RatesDep = unknown;
+/** JobRunner (research.md R7) lands in a later task — placeholder for now. */
+export type RatesDep = RatesProvider;
 export type JobsDep = unknown;
 export type Clock = { now(): Date };
 
@@ -78,6 +83,16 @@ export function createApp(deps: AppDeps) {
     }),
   );
   app.route('/', createMiscRoutes(deps.db));
+  app.route('/', createSummaryRoutes(deps.db));
+  app.route('/', createRatesRoutes(deps.db, deps.rates));
+  app.route(
+    '/',
+    createExpensesRoutes({
+      db: deps.db,
+      rates: createRatesService(deps.db, deps.rates),
+      clock: deps.clock,
+    }),
+  );
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {

@@ -3,6 +3,8 @@ import postgres from 'postgres';
 import { eq } from 'drizzle-orm';
 import { runMigrations } from '@desk/db/migrate';
 import { createDb, users, type Db } from '@desk/db';
+import { FakeRates } from '@desk/connectors/rates';
+import type { RatesProvider } from '@desk/connectors/rates';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
@@ -65,8 +67,12 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
   };
 }
 
-/** Starts one Testcontainers Postgres 16, migrates it, and builds a real createApp for tests. */
-export async function startHarness(): Promise<Harness> {
+/** Starts one Testcontainers Postgres 16, migrates it, and builds a real createApp for tests.
+ * `ratesProvider` defaults to FakeRates (deterministic fixtures) — pass a custom RatesProvider
+ * to exercise edge cases (anomalous/stale rate dates) the fixtures don't cover. */
+export async function startHarness(
+  ratesProvider: RatesProvider = new FakeRates(),
+): Promise<Harness> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     'postgres:16-alpine',
   ).start();
@@ -97,9 +103,7 @@ export async function startHarness(): Promise<Harness> {
     mailer,
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
     breachChecker: new FakeBreachChecker(),
-    // ponytail: rates connector doesn't exist yet — AppDeps.rates is `unknown`, so a plain stub
-    // satisfies it until a real FakeRates type lands.
-    rates: { rate: async () => ({ rate: 1, date: '2026-09-18', source: 'test' }) },
+    rates: ratesProvider,
     jobs: undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },

@@ -2,6 +2,7 @@ import type { AppDeps } from '../../src/app.js';
 import type { Session, SessionStore } from '../../src/adapters/session-store.js';
 import type { RateLimiter } from '../../src/adapters/rate-limiter.js';
 import { CapturingMailer } from '../../src/adapters/mailer.js';
+import { FakeRates } from '@desk/connectors/rates';
 import type { users } from '@desk/db';
 
 type UserRow = typeof users.$inferSelect;
@@ -67,7 +68,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     secretBox: { seal: async (s) => s, open: async (s) => s },
     breachChecker: { check: async () => false },
     google: undefined,
-    rates: undefined,
+    rates: new FakeRates(),
     jobs: undefined,
     clock: { now: () => new Date('2026-09-18T00:00:00Z') },
     build: { version: '0.0.0-test', sha: 'testsha' },

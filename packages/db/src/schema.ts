@@ -1,4 +1,6 @@
+import { sql } from 'drizzle-orm';
 import {
+  bigint,
   boolean,
   date,
   index,
@@ -155,4 +157,65 @@ export const auditLog = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('audit_log_user_id_idx').on(t.userId)],
+);
+
+export const categories = pgTable(
+  'categories',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    colour: text('colour').notNull(),
+    defaultKind: text('default_kind'),
+    budgetMinor: bigint('budget_minor', { mode: 'number' }),
+    sortOrder: integer('sort_order').notNull().default(0),
+    archivedAt: timestamp('archived_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('categories_user_id_idx').on(t.userId),
+    uniqueIndex('categories_user_id_name_unique').on(t.userId, t.name),
+  ],
+);
+
+export const expenses = pgTable(
+  'expenses',
+  {
+    // Client-generated UUID v7; no defaultRandom so an insert without an id fails loudly.
+    id: uuid('id').primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    categoryId: uuid('category_id').references(() => categories.id, { onDelete: 'set null' }),
+    description: text('description').notNull(),
+    expenseDate: date('expense_date').notNull(),
+    paidWith: text('paid_with').notNull(),
+    kind: text('kind').notNull(),
+    notes: text('notes'),
+    amountOriginal: bigint('amount_original', { mode: 'number' }).notNull(),
+    currencyOriginal: text('currency_original').notNull(),
+    rateToDefault: numeric('rate_to_default', { precision: 20, scale: 10 }),
+    rateDate: date('rate_date'),
+    rateSource: text('rate_source'),
+    amountDefault: bigint('amount_default', { mode: 'number' }),
+    rateOverridden: boolean('rate_overridden').notNull().default(false),
+    addedVia: text('added_via').notNull(),
+    importBatchId: uuid('import_batch_id'),
+    notionPageId: text('notion_page_id'),
+    notionLastEditedAt: timestamp('notion_last_edited_at', { withTimezone: true }),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('expenses_user_id_expense_date_idx').on(t.userId, t.expenseDate),
+    index('expenses_user_id_deleted_at_idx').on(t.userId, t.deletedAt),
+    index('expenses_user_id_category_id_idx').on(t.userId, t.categoryId),
+    uniqueIndex('expenses_user_id_notion_page_id_unique')
+      .on(t.userId, t.notionPageId)
+      .where(sql`notion_page_id IS NOT NULL`),
+  ],
 );
