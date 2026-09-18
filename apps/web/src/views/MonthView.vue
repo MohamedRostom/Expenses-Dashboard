@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import type { ExpenseResponseT } from '@desk/contracts';
+import type { ExpenseResponseT, YearSummaryT } from '@desk/contracts';
 import {
   Button,
   CategoryBars,
@@ -9,8 +9,11 @@ import {
   EmptyState,
   ErrorState,
   Skeleton,
+  TrendSparkline,
   type CategoryBarData,
+  type TrendPoint,
 } from '@desk/ui';
+import { apiFetch } from '../api/client.js';
 import { useExpensesStore } from '../stores/expenses.js';
 import { useShortcuts } from '../composables/useShortcuts.js';
 import { formatDate, formatMoney } from '../utils/format.js';
@@ -19,8 +22,36 @@ import ExpenseForm from '../components/ExpenseForm.vue';
 const store = useExpensesStore();
 const showDialog = ref(false);
 const editing = ref<ExpenseResponseT | null>(null);
+const trendPoints = ref<TrendPoint[]>([]);
+const categoryNames = ref<Record<string, string>>({});
 
-onMounted(() => store.loadMonth());
+async function loadCategoryNames() {
+  try {
+    const res = await apiFetch<{ categories: { id: string; name: string }[] }>('/categories');
+    categoryNames.value = Object.fromEntries(res.categories.map((c) => [c.id, c.name]));
+  } catch {
+    categoryNames.value = {};
+  }
+}
+
+async function loadTrend() {
+  const year = store.currentMonth.slice(0, 4);
+  try {
+    const res = await apiFetch<YearSummaryT>(`/summary/year?year=${year}`);
+    trendPoints.value = res.months
+      .filter((m) => m.month <= store.currentMonth)
+      .slice(-6)
+      .map((m) => ({ month: m.month, spent: m.spent }));
+  } catch {
+    trendPoints.value = [];
+  }
+}
+
+onMounted(() => {
+  store.loadMonth();
+  loadTrend();
+  loadCategoryNames();
+});
 
 const monthLabel = computed(() => store.currentMonth);
 
@@ -29,6 +60,7 @@ function shiftMonth(delta: number) {
   const d = new Date(Date.UTC(y!, m! - 1 + delta, 1));
   const next = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
   store.loadMonth(next);
+  loadTrend();
 }
 
 useShortcuts({
@@ -41,7 +73,7 @@ const categoryBars = computed<CategoryBarData[]>(
   () =>
     store.summary?.byCategory.map((c) => ({
       id: c.categoryId,
-      name: c.categoryId,
+      name: categoryNames.value[c.categoryId] ?? c.categoryId,
       spent: c.spent,
       budget: c.budget,
     })) ?? [],
@@ -109,6 +141,15 @@ async function onDelete(id: string) {
         </div>
       </section>
 
+      <section
+        v-if="trendPoints.length > 1"
+        class="desk-month-view-trend"
+        data-testid="trend-sparkline"
+      >
+        <span class="desk-tile-label">Trend</span>
+        <TrendSparkline :points="trendPoints" />
+      </section>
+
       <EmptyState
         v-if="store.expenses.length === 0"
         title="No expenses this month"
@@ -134,7 +175,7 @@ async function onDelete(id: string) {
             <tr v-for="e in store.expenses" :key="e.id">
               <td>{{ formatDate(e.date) }}</td>
               <td>{{ e.description }}</td>
-              <td>{{ e.categoryId ?? '—' }}</td>
+              <td>{{ e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—' }}</td>
               <td>{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
               <td class="desk-entries-actions">
                 <button type="button" @click="openEdit(e)">Edit</button>
@@ -215,6 +256,11 @@ async function onDelete(id: string) {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: 1.25rem;
+}
+.desk-month-view-trend {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 .desk-month-view-breakdown {
   display: flex;

@@ -10,3 +10,4 @@ export {
   type MonthSummaryResult,
 } from './month-summary.js';
 export { yearSummary, type MonthTotal, type YearSummaryResult } from './year-summary.js';
+export { DEFAULT_CATEGORIES, type DefaultCategory } from './categories.js';

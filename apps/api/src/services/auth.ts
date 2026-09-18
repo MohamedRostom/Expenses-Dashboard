@@ -9,6 +9,7 @@ import type { Clock } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
 import { verifyMail } from '../mail/verify.js';
 import { resetMail } from '../mail/reset.js';
+import { seedDefaultCategories } from './categories.js';
 
 type UserRow = typeof users.$inferSelect;
 
@@ -82,6 +83,7 @@ export async function register(
     .returning();
   if (!user) throw new Error('register: insert returned no row');
 
+  await seedDefaultCategories(deps.db, user.id);
   await sendVerifyMail(deps, user);
   await writeAudit(deps, { userId: user.id, actor: user.id, action: 'register', subject: user.id });
 }

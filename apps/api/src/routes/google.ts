@@ -8,6 +8,7 @@ import type { SessionStore } from '../adapters/session-store.js';
 import type { AppVariables, Clock } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
 import { SESSION_COOKIE } from '../middleware/session.js';
+import { seedDefaultCategories } from '../services/categories.js';
 
 const CSRF_COOKIE = 'desk_csrf';
 const OAUTH_STATE_COOKIE = 'desk_oauth_state';
@@ -201,6 +202,7 @@ export function createGoogleRoutes(deps: GoogleDeps) {
         .returning();
       if (!created) throw new Error('google callback: user insert returned no row');
       userId = created.id;
+      await seedDefaultCategories(deps.db, userId);
     }
 
     await deps.db.insert(oauthAccounts).values({

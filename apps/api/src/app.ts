@@ -20,6 +20,7 @@ import { createMiscRoutes } from './routes/misc.js';
 import { createSummaryRoutes } from './routes/summary.js';
 import { createRatesRoutes } from './routes/rates.js';
 import { createExpensesRoutes } from './routes/expenses.js';
+import { createCategoriesRoutes } from './routes/categories.js';
 import { createRatesService } from './services/rates.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
@@ -93,6 +94,7 @@ export function createApp(deps: AppDeps) {
       clock: deps.clock,
     }),
   );
+  app.route('/', createCategoriesRoutes(deps.db));
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {

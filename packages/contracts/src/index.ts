@@ -84,3 +84,15 @@ export {
   RatePreviewResponse,
   type RatePreviewResponseT,
 } from './rates.js';
+export {
+  CategoryKind,
+  type CategoryKindT,
+  CreateCategoryRequest,
+  type CreateCategoryRequestT,
+  PatchCategoryRequest,
+  type PatchCategoryRequestT,
+  CategoryResponse,
+  type CategoryResponseT,
+  ListCategoriesResponse,
+  type ListCategoriesResponseT,
+} from './categories.js';

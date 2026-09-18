@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
-import type { ExpenseResponseT, RatePreviewResponseT } from '@desk/contracts';
+import { computed, onMounted, ref, watch } from 'vue';
+import type { CategoryResponseT, ExpenseResponseT, RatePreviewResponseT } from '@desk/contracts';
 import { Button, Input, Select } from '@desk/ui';
 import CurrencyPicker from './CurrencyPicker.vue';
 import { apiFetch } from '../api/client.js';
@@ -26,9 +26,22 @@ const showRateOverride = ref(false);
 const submitting = ref(false);
 const submitError = ref<string | null>(null);
 
-// categoryId: no GET /categories route yet (lands in US3, T063-T065). Field is
-// left unset/optional — omitted from the UI rather than faked with dummy data.
-const categoryId = props.expense?.categoryId ?? null;
+const categoryId = ref<string>(props.expense?.categoryId ?? '');
+const categories = ref<CategoryResponseT[]>([]);
+const categoryOptions = computed(() => [
+  { value: '', label: 'No category' },
+  ...categories.value
+    .filter((c) => !c.archivedAt || c.id === props.expense?.categoryId)
+    .map((c) => ({ value: c.id, label: c.name })),
+]);
+onMounted(async () => {
+  try {
+    const res = await apiFetch<{ categories: CategoryResponseT[] }>('/categories');
+    categories.value = res.categories;
+  } catch {
+    categories.value = [];
+  }
+});
 
 const paidWithOptions = [
   { value: 'card', label: 'Card' },
@@ -87,7 +100,7 @@ async function onSubmit() {
         description: description.value,
         amount: { minor, currency: currency.value },
         date: date.value,
-        categoryId,
+        categoryId: categoryId.value || null,
         paidWith: paidWith.value as never,
         kind: kind.value as never,
         notes: notes.value || null,
@@ -98,7 +111,7 @@ async function onSubmit() {
         description: description.value,
         amount: { minor, currency: currency.value },
         date: date.value,
-        categoryId,
+        categoryId: categoryId.value || null,
         paidWith: paidWith.value as never,
         kind: kind.value as never,
         notes: notes.value || undefined,
@@ -128,7 +141,7 @@ async function onSubmit() {
       <input v-model="date" class="desk-input" type="date" />
     </label>
 
-    <!-- categoryId: /categories doesn't exist yet (US3, T063-T065) — field omitted -->
+    <Select v-model="categoryId" label="Category" :options="categoryOptions" />
 
     <Select v-model="paidWith" label="Paid with" :options="paidWithOptions" />
     <Select v-model="kind" label="Kind" :options="kindOptions" />

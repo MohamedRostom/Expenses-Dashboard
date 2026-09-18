@@ -75,7 +75,32 @@ const routes: Row[] = [
       return id;
     },
   },
+  {
+    method: 'PATCH',
+    path: '/categories/:id',
+    body: { name: 'attempted takeover' },
+    async createForeignId(userB) {
+      return await createCategory(userB);
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/categories/:id',
+    async createForeignId(userB) {
+      return await createCategory(userB);
+    },
+  },
 ];
+
+async function createCategory(userB: ApiClient): Promise<string> {
+  const res = await userB.post('/categories', {
+    name: `ownership fixture ${crypto.randomUUID()}`,
+    colour: '#123456',
+  });
+  const { category } = (await res.json()) as { category?: { id: string } };
+  if (!category) throw new Error('expected user B to create a category');
+  return category.id;
+}
 
 async function createExpense(userB: ApiClient): Promise<string> {
   const res = await userB.post('/expenses', {

@@ -11,6 +11,7 @@ import YearView from './views/YearView.vue';
 import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
 import OnboardingView from './views/OnboardingView.vue';
+import CategoriesView from './views/CategoriesView.vue';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView },
@@ -23,6 +24,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/year', name: 'year', component: YearView, meta: { requiresAuth: true } },
   { path: '/import', name: 'import', component: ImportView, meta: { requiresAuth: true } },
   { path: '/bin', name: 'bin', component: BinView, meta: { requiresAuth: true } },
+  {
+    path: '/categories',
+    name: 'categories',
+    component: CategoriesView,
+    meta: { requiresAuth: true },
+  },
   {
     path: '/onboarding',
     name: 'onboarding',

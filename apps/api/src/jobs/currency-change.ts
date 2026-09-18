@@ -4,6 +4,7 @@
 // batching/progress/idempotency SHAPE is real and covered by currency-change.test.ts against an
 // injected fake RowSource; swapping in a Drizzle-backed RowSource later is a one-function change.
 import type { JobHandler } from './index.js';
+import type { Db } from '@desk/db';
 
 export const BATCH_SIZE = 500;
 
@@ -69,6 +70,52 @@ export const NULL_ROW_SOURCE: RowSource = {
     // no-op
   },
 };
+
+/** T064/US3: real RowSource over `categories.budget_minor` — the only per-user money field a
+ * currency change needs to re-derive today (expenses keep their original-currency amount and
+ * are re-converted lazily via their own rate lookup, not by this job). ponytail: only categories
+ * with a budget are counted/converted; unbudgeted ones have nothing to do. */
+export function categoriesRowSource(db: Db): RowSource {
+  return {
+    async countTotal(userId) {
+      const { categories, and, eq, isNotNull } = await categoriesDeps();
+      const rows = await db
+        .select({ id: categories.id })
+        .from(categories)
+        .where(and(eq(categories.userId, userId), isNotNull(categories.budgetMinor)));
+      return rows.length;
+    },
+    async fetchBatch(userId, offset, limit) {
+      const { categories, and, eq, isNotNull } = await categoriesDeps();
+      const rows = await db
+        .select()
+        .from(categories)
+        .where(and(eq(categories.userId, userId), isNotNull(categories.budgetMinor)))
+        .orderBy(categories.sortOrder)
+        .offset(offset)
+        .limit(limit);
+      return rows.map((r) => ({
+        id: r.id,
+        amountMinor: r.budgetMinor as number,
+        currency: '', // unused: categories store no per-row currency, conversion is rate-only
+      }));
+    },
+    async applyConversion(row, rate) {
+      const { categories, eq } = await categoriesDeps();
+      const converted = Math.round(row.amountMinor * Number(rate));
+      await db
+        .update(categories)
+        .set({ budgetMinor: converted, updatedAt: new Date() })
+        .where(eq(categories.id, row.id));
+    },
+  };
+}
+
+async function categoriesDeps() {
+  const { categories } = await import('@desk/db');
+  const { and, eq, isNotNull } = await import('drizzle-orm');
+  return { categories, and, eq, isNotNull };
+}
 
 /** Registers as `currency.change`. `getRate` is RatesService['getRate'] with the same-currency
  * shortcut already handled upstream (research.md R6). */

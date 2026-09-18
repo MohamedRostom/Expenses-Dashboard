@@ -12,3 +12,5 @@ export type { ToastMessage } from './composables/useToast.js';
 export { default as CategoryBars } from './charts/CategoryBars.vue';
 export type { CategoryBarData } from './charts/CategoryBars.vue';
 export { default as DataTable } from './charts/DataTable.vue';
+export { default as TrendSparkline } from './charts/TrendSparkline.vue';
+export type { TrendPoint } from './charts/TrendSparkline.vue';

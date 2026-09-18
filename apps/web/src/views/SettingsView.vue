@@ -111,6 +111,13 @@ async function changeCurrency(value: string) {
     });
     if (res.user) session.user = res.user as typeof session.user;
     if (res.job) {
+      // ponytail: no server-side "budgets need review" flag exists yet — a session-storage
+      // marker is enough to show CategoriesView's review banner after a currency change.
+      try {
+        sessionStorage.setItem('desk_currency_changed_at', new Date().toISOString());
+      } catch {
+        // storage unavailable (private mode etc.) — banner simply won't show, not fatal
+      }
       pollJob(res.job.id);
     } else {
       currencySubmitting.value = false;

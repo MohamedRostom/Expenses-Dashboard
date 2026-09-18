@@ -151,14 +151,14 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 3
 
-- [ ] T061 [P] [US3] Write failing API tests in `apps/api/test/categories.test.ts`: seeded 18 defaults with fixed kinds on sign-up, rename/recolour/archive, delete reassigns to "Other", "Other" undeletable, budget applies to any month, archived categories leave budget tiles, budgets converted and flagged on currency change
-- [ ] T062 [P] [US3] Write failing Playwright test `tests/e2e/tests/budgets.spec.ts`: over-budget bar and table state, negative remaining tile, month-over-month trend visible
+- [x] T061 [P] [US3] Write failing API tests in `apps/api/test/categories.test.ts`: seeded 18 defaults with fixed kinds on sign-up, rename/recolour/archive, delete reassigns to "Other", "Other" undeletable, budget applies to any month, archived categories leave budget tiles, budgets converted and flagged on currency change
+- [x] T062 [P] [US3] Write failing Playwright test `tests/e2e/tests/budgets.spec.ts`: over-budget bar and table state, negative remaining tile, month-over-month trend visible
 
 ### Implementation for User Story 3
 
-- [ ] T063 [P] [US3] Add category schemas in `packages/contracts/src/categories.ts` and the default category seed list in `packages/core/src/categories.ts`
-- [ ] T064 [US3] Implement `apps/api/src/services/categories.ts` (seed on sign-up hook from T039, CRUD, archive, reassign-then-delete) and `apps/api/src/routes/categories.ts`; extend ownership matrix
-- [ ] T065 [US3] Build `apps/web/src/views/CategoriesView.vue` (list, colour, kind, budget editor, archive, review-budgets banner after a currency change) and `packages/ui/src/charts/TrendSparkline.vue` wired into `MonthView.vue`
+- [x] T063 [P] [US3] Add category schemas in `packages/contracts/src/categories.ts` and the default category seed list in `packages/core/src/categories.ts`
+- [x] T064 [US3] Implement `apps/api/src/services/categories.ts` (seed on sign-up hook from T039, CRUD, archive, reassign-then-delete) and `apps/api/src/routes/categories.ts`; extend ownership matrix
+- [x] T065 [US3] Build `apps/web/src/views/CategoriesView.vue` (list, colour, kind, budget editor, archive, review-budgets banner after a currency change) and `packages/ui/src/charts/TrendSparkline.vue` wired into `MonthView.vue`
 
 **Checkpoint**: Stories 1 to 3 usable together on staging.
 
