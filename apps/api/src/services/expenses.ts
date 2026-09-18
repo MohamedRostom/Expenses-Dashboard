@@ -106,6 +106,7 @@ export function createExpensesService(db: Db, rates: RatesService, clock: Clock)
     userId: string,
     defaultCurrency: string,
     input: CreateExpenseRequestT,
+    addedVia: ExpenseResponseT['addedVia'] = 'dashboard',
   ): Promise<{ expense: ExpenseResponseT; created: boolean }> {
     const id = input.id ?? crypto.randomUUID();
 
@@ -144,7 +145,7 @@ export function createExpensesService(db: Db, rates: RatesService, clock: Clock)
       rateDate: conv.rateDate,
       rateSource: conv.rateSource,
       amountDefault: conv.amountDefault,
-      addedVia: 'dashboard',
+      addedVia,
     };
     await db.insert(expensesTable).values(values).onConflictDoNothing();
 

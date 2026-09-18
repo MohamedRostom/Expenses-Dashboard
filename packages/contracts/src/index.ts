@@ -126,3 +126,21 @@ export {
   UndoImportResponse,
   type UndoImportResponseT,
 } from './imports.js';
+export {
+  GenericWebhookBody,
+  type GenericWebhookBodyT,
+  GenericWebhookResponse,
+  type GenericWebhookResponseT,
+  CaptureTokenSummary,
+  type CaptureTokenSummaryT,
+  ListCaptureTokensResponse,
+  type ListCaptureTokensResponseT,
+  RotateCaptureTokenResponse,
+  type RotateCaptureTokenResponseT,
+  CaptureMappingEntry,
+  type CaptureMappingEntryT,
+  CaptureMappingResponse,
+  type CaptureMappingResponseT,
+  SetCaptureMappingRequest,
+  type SetCaptureMappingRequestT,
+} from './capture.js';

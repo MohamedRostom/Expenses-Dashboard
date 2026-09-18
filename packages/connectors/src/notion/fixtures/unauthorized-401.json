@@ -1,0 +1,12 @@
+{
+  "request": { "note": "access token revoked by the workspace admin" },
+  "response": {
+    "status": 401,
+    "body": {
+      "object": "error",
+      "status": 401,
+      "code": "unauthorized",
+      "message": "API token is invalid."
+    }
+  }
+}

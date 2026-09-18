@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  customType,
   date,
   index,
   inet,
@@ -15,6 +16,13 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+/** Raw bytes column (token hashes, encrypted secrets) — drizzle-orm has no built-in `bytea`. */
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return 'bytea';
+  },
+});
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -280,5 +288,96 @@ export const expenses = pgTable(
     uniqueIndex('expenses_user_id_notion_page_id_unique')
       .on(t.userId, t.notionPageId)
       .where(sql`notion_page_id IS NOT NULL`),
+  ],
+);
+
+// T086: Phase 3 capture (data-model.md "Phase 3: Notion and capture").
+export const captureTokens = pgTable(
+  'capture_tokens',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: bytea('token_hash').notNull().unique(),
+    label: text('label').notNull().default('generic'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true }),
+  },
+  (t) => [index('capture_tokens_user_id_idx').on(t.userId)],
+);
+
+export const captureReceipts = pgTable(
+  'capture_receipts',
+  {
+    tokenId: uuid('token_id')
+      .notNull()
+      .references(() => captureTokens.id, { onDelete: 'cascade' }),
+    receiptKey: text('receipt_key').notNull(),
+    expenseId: uuid('expense_id').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.tokenId, t.receiptKey] })],
+);
+
+export const captureCategoryMap = pgTable(
+  'capture_category_map',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    categoryId: uuid('category_id')
+      .notNull()
+      .references(() => categories.id, { onDelete: 'cascade' }),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.label] })],
+);
+
+// T077: Phase 3 Notion sync (data-model.md "Phase 3: Notion and capture").
+export const notionConnections = pgTable(
+  'notion_connections',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .unique()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    workspaceId: text('workspace_id').notNull(),
+    workspaceName: text('workspace_name').notNull(),
+    botId: text('bot_id').notNull(),
+    accessTokenEnc: bytea('access_token_enc').notNull(),
+    databaseId: text('database_id'),
+    dataSourceId: text('data_source_id'),
+    direction: text('direction').notNull(),
+    status: text('status').notNull().default('connected'),
+    lastSyncAt: timestamp('last_sync_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    cursor: timestamp('cursor', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('notion_connections_user_id_idx').on(t.userId)],
+);
+
+export const expenseVersions = pgTable(
+  'expense_versions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    expenseId: uuid('expense_id')
+      .notNull()
+      .references(() => expenses.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    source: text('source').notNull(),
+    snapshot: jsonb('snapshot').notNull(),
+    editedAt: timestamp('edited_at', { withTimezone: true }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('expense_versions_expense_id_idx').on(t.expenseId),
+    index('expense_versions_user_id_idx').on(t.userId),
   ],
 );

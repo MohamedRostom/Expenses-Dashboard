@@ -14,6 +14,11 @@ export const csrf: MiddlewareHandler = async (c, next) => {
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
     return next();
   }
+  // Generic capture webhook (contracts/generic-webhook.md): unauthenticated by design, no
+  // session/cookie exists to double-submit — the path token itself is the credential.
+  if (c.req.path.startsWith('/hooks/')) {
+    return next();
+  }
 
   const cookieValue = getCookie(c, CSRF_COOKIE);
   const headerValue = c.req.header(CSRF_HEADER);

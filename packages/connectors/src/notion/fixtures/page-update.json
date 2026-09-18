@@ -1,0 +1,27 @@
+{
+  "request": {
+    "pageId": "page-aaa",
+    "properties": { "Amount": { "number": 4.0 } }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "object": "page",
+      "id": "page-aaa",
+      "last_edited_time": "2026-09-13T11:00:00.000Z",
+      "archived": false,
+      "properties": {
+        "Expense": { "title": [{ "plain_text": "Coffee" }] },
+        "Amount": { "number": 4.0 },
+        "Currency": { "select": { "name": "GBP" } },
+        "Date": { "date": { "start": "2026-09-10" } },
+        "Category": { "select": { "name": "Eating out" } },
+        "Paid with": { "select": { "name": "Card" } },
+        "Kind": { "select": { "name": "Variable" } },
+        "Notes": { "rich_text": [] },
+        "Added via": { "select": { "name": "Notion" } },
+        "Expense ID": { "rich_text": [] }
+      }
+    }
+  }
+}

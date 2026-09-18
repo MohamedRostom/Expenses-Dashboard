@@ -1,0 +1,49 @@
+{
+  "request": { "dataSourceId": "5aca6a01-dc37-4183-a5b3-2fa6f8efae8b", "cursor": null },
+  "response": {
+    "status": 200,
+    "body": {
+      "object": "list",
+      "results": [
+        {
+          "object": "page",
+          "id": "page-aaa",
+          "last_edited_time": "2026-09-10T10:00:00.000Z",
+          "archived": false,
+          "properties": {
+            "Expense": { "title": [{ "plain_text": "Coffee" }] },
+            "Amount": { "number": 3.5 },
+            "Currency": { "select": { "name": "GBP" } },
+            "Date": { "date": { "start": "2026-09-10" } },
+            "Category": { "select": { "name": "Eating out" } },
+            "Paid with": { "select": { "name": "Card" } },
+            "Kind": { "select": { "name": "Variable" } },
+            "Notes": { "rich_text": [] },
+            "Added via": { "select": { "name": "Notion" } },
+            "Expense ID": { "rich_text": [] }
+          }
+        },
+        {
+          "object": "page",
+          "id": "page-bbb",
+          "last_edited_time": "2026-09-11T09:30:00.000Z",
+          "archived": false,
+          "properties": {
+            "Expense": { "title": [{ "plain_text": "Groceries" }] },
+            "Amount": { "number": 42 },
+            "Currency": { "select": { "name": "GBP" } },
+            "Date": { "date": { "start": "2026-09-11" } },
+            "Category": { "select": { "name": "Groceries" } },
+            "Paid with": { "select": { "name": "Card" } },
+            "Kind": { "select": { "name": "Variable" } },
+            "Notes": { "rich_text": [] },
+            "Added via": { "select": { "name": "Notion" } },
+            "Expense ID": { "rich_text": [] }
+          }
+        }
+      ],
+      "next_cursor": "cursor-page-2",
+      "has_more": true
+    }
+  }
+}

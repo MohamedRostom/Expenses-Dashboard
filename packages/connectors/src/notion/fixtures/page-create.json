@@ -1,0 +1,38 @@
+{
+  "request": {
+    "databaseId": "7a5935c4ee5b4286842dd64d7be3abef",
+    "properties": {
+      "Expense": { "title": [{ "text": { "content": "Taxi" } }] },
+      "Amount": { "number": 12.5 },
+      "Currency": { "select": { "name": "GBP" } },
+      "Date": { "date": { "start": "2026-09-12" } },
+      "Category": { "select": { "name": "Transport" } },
+      "Paid with": { "select": { "name": "Card" } },
+      "Kind": { "select": { "name": "Variable" } },
+      "Notes": { "rich_text": [] },
+      "Added via": { "select": { "name": "Dashboard" } },
+      "Expense ID": { "rich_text": [{ "text": { "content": "exp-taxi-1" } }] }
+    }
+  },
+  "response": {
+    "status": 200,
+    "body": {
+      "object": "page",
+      "id": "page-taxi-1",
+      "last_edited_time": "2026-09-12T08:00:00.000Z",
+      "archived": false,
+      "properties": {
+        "Expense": { "title": [{ "plain_text": "Taxi" }] },
+        "Amount": { "number": 12.5 },
+        "Currency": { "select": { "name": "GBP" } },
+        "Date": { "date": { "start": "2026-09-12" } },
+        "Category": { "select": { "name": "Transport" } },
+        "Paid with": { "select": { "name": "Card" } },
+        "Kind": { "select": { "name": "Variable" } },
+        "Notes": { "rich_text": [] },
+        "Added via": { "select": { "name": "Dashboard" } },
+        "Expense ID": { "rich_text": [{ "plain_text": "exp-taxi-1" }] }
+      }
+    }
+  }
+}

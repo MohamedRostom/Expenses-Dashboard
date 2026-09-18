@@ -20,3 +20,24 @@ export {
   type ParsedRow,
   type ParseRowResult,
 } from './import/parse-row.js';
+export {
+  toNotionProperties,
+  fromNotionProperties,
+  type LocalExpenseLike,
+  type NotionPage,
+  type NotionPageProperties,
+  type MappedRemote,
+} from './sync/mapping.js';
+export {
+  diff,
+  type LocalRow,
+  type RemoteRow,
+  type InvalidRemoteRow,
+  type Direction,
+  type SyncCursor,
+  type ToNotionEntry,
+  type ToLocalEntry,
+  type Conflict,
+  type Skipped,
+  type DiffResult,
+} from './sync/diff.js';

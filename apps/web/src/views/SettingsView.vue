@@ -31,6 +31,11 @@ const THEME_OPTIONS = [
 const theme = ref<string>(session.user?.theme ?? 'system');
 const themeSubmitting = ref(false);
 
+const timeZone = ref<string>(
+  session.user?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
+);
+const timeZoneSubmitting = ref(false);
+
 const sessions = ref<SessionSummaryT[]>([]);
 const sessionsLoading = ref(true);
 const sessionsError = ref('');
@@ -146,6 +151,22 @@ async function changeTheme(value: string) {
   }
 }
 
+async function changeTimeZone() {
+  timeZoneSubmitting.value = true;
+  try {
+    const res = await apiFetch<PatchMeResponseT>('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ timeZone: timeZone.value }),
+    });
+    if (res.user) session.user = res.user as typeof session.user;
+    toast.push('Time zone updated.');
+  } catch (err) {
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  } finally {
+    timeZoneSubmitting.value = false;
+  }
+}
+
 async function revokeSession(id: string) {
   try {
     await apiFetch<void>(`/me/sessions/${id}`, { method: 'DELETE' });
@@ -239,6 +260,17 @@ async function confirmDelete() {
     </section>
 
     <section>
+      <h2>Time zone</h2>
+      <p>Used to default the date on captures sent from your phone (e.g. iOS Shortcuts).</p>
+      <form @submit.prevent="changeTimeZone">
+        <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
+        <Button type="submit" :loading="timeZoneSubmitting" :disabled="timeZoneSubmitting">
+          Save time zone
+        </Button>
+      </form>
+    </section>
+
+    <section>
       <h2>Sessions</h2>
       <p v-if="sessionsLoading">Loading sessions…</p>
       <p v-else-if="sessionsError" role="alert" class="error-text">{{ sessionsError }}</p>
@@ -251,6 +283,14 @@ async function confirmDelete() {
           </Button>
         </li>
       </ul>
+    </section>
+
+    <section>
+      <h2>Phone capture</h2>
+      <p>Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.</p>
+      <Button variant="secondary" @click="router.push('/settings/capture')">
+        Manage capture address
+      </Button>
     </section>
 
     <section>

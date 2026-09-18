@@ -7,6 +7,7 @@ export interface User {
   email: string;
   defaultCurrency: string;
   theme: 'light' | 'dark' | 'system';
+  timeZone: string;
 }
 
 export const useSessionStore = defineStore('session', {

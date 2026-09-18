@@ -22,8 +22,11 @@ import { createRatesRoutes } from './routes/rates.js';
 import { createExpensesRoutes } from './routes/expenses.js';
 import { createCategoriesRoutes } from './routes/categories.js';
 import { createImportsRoutes } from './routes/imports.js';
+import { createHooksRoutes } from './routes/hooks.js';
+import { createCaptureRoutes } from './routes/capture.js';
 import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
+import { createCaptureService } from './services/capture.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
 export type BuildInfo = Omit<HealthResponseT, 'status'>;
@@ -108,6 +111,15 @@ export function createApp(deps: AppDeps) {
       ),
     }),
   );
+
+  const captureService = createCaptureService(
+    deps.db,
+    createExpensesService(deps.db, createRatesService(deps.db, deps.rates), deps.clock),
+    deps.limiter,
+    deps.clock,
+  );
+  app.route('/', createHooksRoutes(captureService));
+  app.route('/', createCaptureRoutes(captureService));
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {

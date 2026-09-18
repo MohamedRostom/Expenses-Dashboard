@@ -17,6 +17,11 @@ import { startHarness, type ApiClient, type Harness } from './harness.js';
  * the path/body to substitute); GET /summary/month, GET /summary/year — read the caller's own
  * expenses/categories only, addressed by month/year query params, not a resource id; GET /rates —
  * a stateless FX preview keyed by date/currency pair, not tied to any user's data at all.
+ * T088: GET /capture/tokens, POST /capture/tokens/:label/rotate, GET/PUT /capture/mapping —
+ * addressed by the caller's own userId (via requireAuth) and a label string, never another
+ * user's resource id, so there is no "user B's" row to fetch; POST /hooks/generic/:token is
+ * unauthenticated by design (the path token is the credential) and is covered instead by
+ * hooks.test.ts (unknown/revoked token -> 404, per-token 60/min rate limit).
  */
 type Row = {
   method: 'GET' | 'POST' | 'PATCH' | 'DELETE';

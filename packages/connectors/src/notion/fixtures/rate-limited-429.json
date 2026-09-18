@@ -1,0 +1,13 @@
+{
+  "request": { "note": "any request while the 3rps token bucket is exhausted server-side too" },
+  "response": {
+    "status": 429,
+    "headers": { "Retry-After": "1" },
+    "body": {
+      "object": "error",
+      "status": 429,
+      "code": "rate_limited",
+      "message": "You have been rate limited. Please try again in a bit."
+    }
+  }
+}

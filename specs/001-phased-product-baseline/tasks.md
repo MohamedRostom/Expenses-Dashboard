@@ -195,16 +195,16 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 5
 
-- [ ] T073 [P] [US5] Write failing core scenario tests in `packages/core/src/sync/diff.test.ts`: create both sides, edit both sides, delete one side, clock skew, tie goes to Desk, invalid remote row skipped, first sync imports existing rows when Notion is a source, direction change semantics, full reconcile on switch to both
-- [ ] T074 [P] [US5] Write failing contract test `packages/connectors/notion/client.test.ts` replaying recorded 2025-09-03 fixtures (data source query with cursor, page create/update/archive, 429 with Retry-After, 401 revoked) against `NotionClient` and `FakeNotion`
+- [x] T073 [P] [US5] Write failing core scenario tests in `packages/core/src/sync/diff.test.ts`: create both sides, edit both sides, delete one side, clock skew, tie goes to Desk, invalid remote row skipped, first sync imports existing rows when Notion is a source, direction change semantics, full reconcile on switch to both
+- [x] T074 [P] [US5] Write failing contract test `packages/connectors/notion/client.test.ts` replaying recorded 2025-09-03 fixtures (data source query with cursor, page create/update/archive, 429 with Retry-After, 401 revoked) against `NotionClient` and `FakeNotion`
 - [ ] T075 [P] [US5] Write failing API tests in `apps/api/test/notion.test.ts`: OAuth callback stores encrypted token, databases listing with compatibility check, create database with known layout, connection PUT/DELETE keeps rows and links, sync job runs and writes `expense_versions`, error state on revoked token, sync-now debounce, reconnecting to the same table resumes the links and to a different table starts fresh (FR-014)
 - [ ] T076 [P] [US5] Write failing e2e-local test `tests/e2e/tests/notion.spec.ts` tagged `@local` (three trials per direction, five-minute wait, versions visible)
 
 ### Implementation for User Story 5
 
-- [ ] T077 [P] [US5] Extend `packages/db/src/schema.ts` with `notion_connections` and `expense_versions` and `pnpm db:generate --name notion`
-- [ ] T078 [P] [US5] Implement `packages/connectors/notion/client.ts` (API version 2025-09-03, token bucket 3 rps, Retry-After handling, known layout constant with Expense ID property, `ensureLayout`), `packages/connectors/notion/fake.ts` and fixtures
-- [ ] T079 [P] [US5] Implement `packages/core/src/sync/diff.ts` (pure `diff(local, remote, cursor, direction)` returning `toNotion`, `toLocal`, `conflicts`, `skipped`) and field mapping in `packages/core/src/sync/mapping.ts`
+- [x] T077 [P] [US5] Extend `packages/db/src/schema.ts` with `notion_connections` and `expense_versions` and `pnpm db:generate --name notion`
+- [x] T078 [P] [US5] Implement `packages/connectors/notion/client.ts` (API version 2025-09-03, token bucket 3 rps, Retry-After handling, known layout constant with Expense ID property, `ensureLayout`), `packages/connectors/notion/fake.ts` and fixtures
+- [x] T079 [P] [US5] Implement `packages/core/src/sync/diff.ts` (pure `diff(local, remote, cursor, direction)` returning `toNotion`, `toLocal`, `conflicts`, `skipped`) and field mapping in `packages/core/src/sync/mapping.ts`
 - [ ] T080 [US5] Implement `apps/api/src/services/notion.ts` (OAuth start/callback with SecretBox, list databases, create database, apply diff in a transaction writing versions, status transitions) and job `notion.sync` in `apps/api/src/jobs/notion-sync.ts` (every 5 min per connected user plus debounced trigger after expense writes)
 - [ ] T081 [US5] Implement `apps/api/src/routes/notion.ts` (`/notion/start`, `/notion/callback`, `GET/PUT/DELETE /notion/connection`, `/notion/databases`, `POST /notion/sync`, `GET /expenses/:id/versions`); extend ownership matrix
 - [ ] T082 [US5] Build `apps/web/src/views/ConnectorsView.vue` (connect, pick or create table, direction, status with last sync and errors including skipped rows, sync now, disconnect) and `apps/web/src/components/VersionHistory.vue` on the expense form
@@ -222,15 +222,15 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 6
 
-- [ ] T084 [P] [US6] Write failing API tests in `apps/api/test/hooks.test.ts` per contracts/generic-webhook.md: 201 create with `addedVia = phone`, 200 duplicate by id, duplicate by body-plus-minute without id, negative amount refund, unmapped label to "Other" and label recorded, date default in user time zone, revoked token 404, 60/min 429 counted in audit, body over 4 KB rejected, row exists within one minute while rate pending
-- [ ] T085 [P] [US6] Write failing API tests in `apps/api/test/capture-settings.test.ts`: tokens list without secret, rotate returns new URL once and revokes old, mapping GET/PUT
+- [x] T084 [P] [US6] Write failing API tests in `apps/api/test/hooks.test.ts` per contracts/generic-webhook.md: 201 create with `addedVia = phone`, 200 duplicate by id, duplicate by body-plus-minute without id, negative amount refund, unmapped label to "Other" and label recorded, date default in user time zone, revoked token 404, 60/min 429 counted in audit, body over 4 KB rejected, row exists within one minute while rate pending
+- [x] T085 [P] [US6] Write failing API tests in `apps/api/test/capture-settings.test.ts`: tokens list without secret, rotate returns new URL once and revokes old, mapping GET/PUT
 
 ### Implementation for User Story 6
 
-- [ ] T086 [P] [US6] Extend `packages/db/src/schema.ts` with `capture_tokens`, `capture_receipts`, `capture_category_map` and `pnpm db:generate --name capture`
-- [ ] T087 [P] [US6] Add webhook and capture-settings schemas in `packages/contracts/src/capture.ts` (amount as string or number parsed with the currency exponent)
-- [ ] T088 [US6] Implement `apps/api/src/services/capture.ts` (token issue/rotate with hashed storage, receipt key derivation, mapping, audit of refusals) and routes `apps/api/src/routes/hooks.ts` (`POST /hooks/generic/:token`, unauthenticated, per-token limiter) and `apps/api/src/routes/capture.ts` (`/capture/tokens`, `/capture/tokens/:label/rotate`, `/capture/mapping`); extend ownership matrix
-- [ ] T089 [US6] Build `apps/web/src/views/CaptureView.vue` under Settings (address shown once with copy button and iOS Shortcut example, rotate, label mapping table with unmapped badges) and add the time-zone field to `SettingsView.vue` (default from browser at sign-up in `RegisterView.vue`)
+- [x] T086 [P] [US6] Extend `packages/db/src/schema.ts` with `capture_tokens`, `capture_receipts`, `capture_category_map` and `pnpm db:generate --name capture`
+- [x] T087 [P] [US6] Add webhook and capture-settings schemas in `packages/contracts/src/capture.ts` (amount as string or number parsed with the currency exponent)
+- [x] T088 [US6] Implement `apps/api/src/services/capture.ts` (token issue/rotate with hashed storage, receipt key derivation, mapping, audit of refusals) and routes `apps/api/src/routes/hooks.ts` (`POST /hooks/generic/:token`, unauthenticated, per-token limiter) and `apps/api/src/routes/capture.ts` (`/capture/tokens`, `/capture/tokens/:label/rotate`, `/capture/mapping`); extend ownership matrix
+- [x] T089 [US6] Build `apps/web/src/views/CaptureView.vue` under Settings (address shown once with copy button and iOS Shortcut example, rotate, label mapping table with unmapped badges) and add the time-zone field to `SettingsView.vue` (default from browser at sign-up in `RegisterView.vue`)
 
 **Checkpoint**: Roadmap Phase 3 exit criteria met.
 

@@ -7,6 +7,7 @@ import VerifyView from './views/VerifyView.vue';
 import ForgotView from './views/ForgotView.vue';
 import ResetView from './views/ResetView.vue';
 import SettingsView from './views/SettingsView.vue';
+import CaptureView from './views/CaptureView.vue';
 import YearView from './views/YearView.vue';
 import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
@@ -20,6 +21,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/forgot', name: 'forgot', component: ForgotView },
   { path: '/reset', name: 'reset', component: ResetView },
   { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  {
+    path: '/settings/capture',
+    name: 'settings-capture',
+    component: CaptureView,
+    meta: { requiresAuth: true },
+  },
   { path: '/', name: 'home', component: MonthView, meta: { requiresAuth: true } },
   { path: '/year', name: 'year', component: YearView, meta: { requiresAuth: true } },
   { path: '/import', name: 'import', component: ImportView, meta: { requiresAuth: true } },
