@@ -131,3 +131,42 @@ export const YearSummary = z.object({
   ),
 });
 export type YearSummaryT = z.infer<typeof YearSummary>;
+
+/** GET /summary/category/:id response */
+export const CategoryDrilldown = z.object({
+  categoryId: z.string(),
+  months: z.array(
+    z.object({
+      month: z.string(),
+      spent: z.number().int(),
+      budget: z.number().int().nullable(),
+    }),
+  ),
+});
+export type CategoryDrilldownT = z.infer<typeof CategoryDrilldown>;
+
+/** GET /summary/forecast response */
+export const ForecastSummary = z.object({
+  month: z.string(),
+  currency: z.string(),
+  spentToDate: z.number().int(),
+  committedFixed: z.number().int(),
+  forecast: z.number().int(),
+  basis: z.array(z.string()),
+});
+export type ForecastSummaryT = z.infer<typeof ForecastSummary>;
+
+/** GET /summary/compare response */
+export const CompareSummary = z.object({
+  a: z.string(),
+  b: z.string(),
+  byCategory: z.array(
+    z.object({
+      categoryId: z.string(),
+      a: z.number().int(),
+      b: z.number().int(),
+      delta: z.number().int(),
+    }),
+  ),
+});
+export type CompareSummaryT = z.infer<typeof CompareSummary>;

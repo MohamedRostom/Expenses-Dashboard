@@ -14,3 +14,5 @@ export type { CategoryBarData } from './charts/CategoryBars.vue';
 export { default as DataTable } from './charts/DataTable.vue';
 export { default as TrendSparkline } from './charts/TrendSparkline.vue';
 export type { TrendPoint } from './charts/TrendSparkline.vue';
+export { default as YearBars } from './charts/YearBars.vue';
+export type { YearBarData } from './charts/YearBars.vue';

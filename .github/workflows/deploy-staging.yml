@@ -43,3 +43,26 @@ jobs:
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
       - if: steps.gate.outputs.skip != 'true'
         run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+
+  # Static landing site. Off by default — gated on the repository variable LANDING_ENABLED so it
+  # cannot publish under the "Desk" working name before ADR-0002 (product name) is decided.
+  deploy-landing:
+    if: vars.LANDING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - id: gate
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::warning::FLY_API_TOKEN is not set; skipping the landing deploy"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v7
+      - if: steps.gate.outputs.skip != 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - if: steps.gate.outputs.skip != 'true'
+        run: >-
+          flyctl deploy . --config infra/fly/fly.landing.toml --dockerfile infra/fly/Dockerfile.landing
+          --remote-only --ha=false
+      - if: steps.gate.outputs.skip != 'true'
+        run: curl --fail --retry 5 --retry-delay 5 https://desk-landing.fly.dev/

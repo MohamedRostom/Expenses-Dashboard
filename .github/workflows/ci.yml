@@ -106,6 +106,9 @@ jobs:
       - run: pnpm test:e2e -- --project=ci
         env:
           CI: 'true'
+      - run: pnpm --filter @desk/e2e lighthouse
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: failure()

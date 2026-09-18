@@ -77,6 +77,12 @@ export {
   type ListExpensesResponseT,
   YearSummary,
   type YearSummaryT,
+  CategoryDrilldown,
+  type CategoryDrilldownT,
+  ForecastSummary,
+  type ForecastSummaryT,
+  CompareSummary,
+  type CompareSummaryT,
 } from './expenses.js';
 export {
   RatePreviewQuery,

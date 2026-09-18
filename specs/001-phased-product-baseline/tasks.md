@@ -268,15 +268,15 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 8
 
-- [ ] T098 [P] [US8] Write failing core tests in `packages/core/src/forecast.test.ts` (formula, missing inputs named in basis, no fixed budgets, no spend) and `packages/core/src/compare.test.ts`
-- [ ] T099 [P] [US8] Write failing API tests in `apps/api/test/insights.test.ts` for `/summary/category/:id`, `/summary/forecast`, `/summary/compare`; extend ownership matrix
-- [ ] T100 [P] [US8] Write failing Playwright test `tests/e2e/tests/year.spec.ts` with visual snapshots of year and drill-down charts in light and dark
+- [x] T098 [P] [US8] Write failing core tests in `packages/core/src/forecast.test.ts` (formula, missing inputs named in basis, no fixed budgets, no spend) and `packages/core/src/compare.test.ts`
+- [x] T099 [P] [US8] Write failing API tests in `apps/api/test/insights.test.ts` for `/summary/category/:id`, `/summary/forecast`, `/summary/compare`; extend ownership matrix
+- [x] T100 [P] [US8] Write failing Playwright test `tests/e2e/tests/year.spec.ts` with visual snapshots of year and drill-down charts in light and dark
 
 ### Implementation for User Story 8
 
-- [ ] T101 [P] [US8] Implement `packages/core/src/forecast.ts` and `packages/core/src/compare.ts`
-- [ ] T102 [US8] Implement the three routes in `apps/api/src/routes/summary.ts`
-- [ ] T103 [US8] Build `apps/web/src/views/YearView.vue`, `apps/web/src/views/CategoryView.vue`, `apps/web/src/components/MonthCompare.vue`, `apps/web/src/components/ForecastTile.vue` and `packages/ui/src/charts/YearBars.vue`
+- [x] T101 [P] [US8] Implement `packages/core/src/forecast.ts` and `packages/core/src/compare.ts`
+- [x] T102 [US8] Implement the three routes in `apps/api/src/routes/summary.ts`
+- [x] T103 [US8] Build `apps/web/src/views/YearView.vue`, `apps/web/src/views/CategoryView.vue`, `apps/web/src/components/MonthCompare.vue`, `apps/web/src/components/ForecastTile.vue` and `packages/ui/src/charts/YearBars.vue`
 
 **Checkpoint**: insights available on staging.
 
@@ -290,13 +290,13 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 9
 
-- [ ] T105 [P] [US9] Write failing Playwright test `tests/e2e/tests/landing.spec.ts` (phone viewport: call to action, three steps and privacy link visible without horizontal scroll; axe) and add `@lhci/cli` config `tests/e2e/lighthouserc.json` asserting performance >= 90, accessibility >= 95 and PWA category on landing and app
+- [x] T105 [P] [US9] Write failing Playwright test `tests/e2e/tests/landing.spec.ts` (phone viewport: call to action, three steps and privacy link visible without horizontal scroll; axe) and add `@lhci/cli` config `tests/e2e/lighthouserc.json` asserting performance >= 90, accessibility >= 95 and PWA category on landing and app
 
 ### Implementation for User Story 9
 
-- [ ] T106 [P] [US9] Create `apps/landing` workspace (`vite-ssg`, `package.json`, `vite.config.ts`, `src/pages/index.vue`, `src/pages/privacy.vue`, `src/pages/terms.vue`) sharing `packages/ui` tokens; name and screenshots read from `apps/landing/src/content.ts` so the ADR-0002 name is a one-line change
-- [ ] T107 [US9] Add a `lighthouse` step to the `e2e-ci` job in `.github/workflows/ci.yml` running `lhci autorun` against the compose stack and the built landing site
-- [ ] T108 [US9] Add a `landing` deploy target (static, Fly or Cloudflare Pages) to `.github/workflows/deploy-staging.yml` guarded by a `LANDING_ENABLED` repository variable so it cannot publish under the working name
+- [x] T106 [P] [US9] Create `apps/landing` workspace (`vite-ssg`, `package.json`, `vite.config.ts`, `src/pages/index.vue`, `src/pages/privacy.vue`, `src/pages/terms.vue`) sharing `packages/ui` tokens; name and screenshots read from `apps/landing/src/content.ts` so the ADR-0002 name is a one-line change
+- [x] T107 [US9] Add a `lighthouse` step to the `e2e-ci` job in `.github/workflows/ci.yml` running `lhci autorun` against the compose stack and the built landing site
+- [x] T108 [US9] Add a `landing` deploy target (static, Fly or Cloudflare Pages) to `.github/workflows/deploy-staging.yml` guarded by a `LANDING_ENABLED` repository variable so it cannot publish under the working name
 
 **Checkpoint**: Roadmap Phase 4 exit criteria met once the name exists.
 

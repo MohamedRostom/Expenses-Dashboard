@@ -14,6 +14,7 @@ import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
 import OnboardingView from './views/OnboardingView.vue';
 import CategoriesView from './views/CategoriesView.vue';
+import CategoryView from './views/CategoryView.vue';
 import AddView from './views/AddView.vue';
 
 const routes: RouteRecordRaw[] = [
@@ -44,6 +45,12 @@ const routes: RouteRecordRaw[] = [
     path: '/categories',
     name: 'categories',
     component: CategoriesView,
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/categories/:id',
+    name: 'category',
+    component: CategoryView,
     meta: { requiresAuth: true },
   },
   {

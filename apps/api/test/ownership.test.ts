@@ -14,8 +14,9 @@ import { startHarness, type ApiClient, type Harness } from './harness.js';
  * DELETE /me/password, DELETE /me/oauth/:provider — act on the caller's own account, addressed
  * by provider name (not another user's resource id), so there is no "user B's" row to fetch.
  * GET /expenses, POST /expenses — scoped to the caller's own rows implicitly (no foreign id in
- * the path/body to substitute); GET /summary/month, GET /summary/year — read the caller's own
- * expenses/categories only, addressed by month/year query params, not a resource id; GET /rates —
+ * the path/body to substitute); GET /summary/month, GET /summary/year, GET /summary/forecast,
+ * GET /summary/compare — read the caller's own expenses/categories only, addressed by
+ * month/year/a/b query params, not a resource id; GET /rates —
  * a stateless FX preview keyed by date/currency pair, not tied to any user's data at all.
  * T088: GET /capture/tokens, POST /capture/tokens/:label/rotate, GET/PUT /capture/mapping —
  * addressed by the caller's own userId (via requireAuth) and a label string, never another
@@ -114,6 +115,13 @@ const routes: Row[] = [
     path: '/imports/:id/undo',
     async createForeignId(userB) {
       return await createImportBatch(userB);
+    },
+  },
+  {
+    method: 'GET',
+    path: '/summary/category/:id',
+    async createForeignId(userB) {
+      return await createCategory(userB);
     },
   },
 ];

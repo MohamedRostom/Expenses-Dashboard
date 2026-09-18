@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { useRoute } from 'vue-router';
 import type { ExpenseResponseT, YearSummaryT } from '@desk/contracts';
 import {
   Button,
@@ -18,8 +19,10 @@ import { useExpensesStore } from '../stores/expenses.js';
 import { useShortcuts } from '../composables/useShortcuts.js';
 import { formatDate, formatMoney } from '../utils/format.js';
 import ExpenseForm from '../components/ExpenseForm.vue';
+import ForecastTile from '../components/ForecastTile.vue';
 import { estimatedTotal, list as listQueue, type QueuedExpense } from '../offline/queue.js';
 
+const route = useRoute();
 const store = useExpensesStore();
 const showDialog = ref(false);
 const editing = ref<ExpenseResponseT | null>(null);
@@ -58,7 +61,8 @@ async function loadTrend() {
 }
 
 onMounted(() => {
-  store.loadMonth();
+  const month = typeof route.query.month === 'string' ? route.query.month : undefined;
+  store.loadMonth(month);
   loadTrend();
   loadCategoryNames();
   loadQueue();
@@ -165,6 +169,8 @@ async function onDelete(id: string) {
           }}</span>
         </div>
       </section>
+
+      <ForecastTile :month="store.currentMonth" />
       <p
         v-if="estimatedPending > 0"
         class="desk-month-view-pending"

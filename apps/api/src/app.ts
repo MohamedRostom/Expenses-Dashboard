@@ -105,7 +105,7 @@ export function createApp(deps: AppDeps) {
     : undefined;
 
   app.route('/', createMiscRoutes(deps.db));
-  app.route('/', createSummaryRoutes(deps.db));
+  app.route('/', createSummaryRoutes(deps.db, deps.clock));
   app.route('/', createRatesRoutes(deps.db, deps.rates));
   app.route(
     '/',

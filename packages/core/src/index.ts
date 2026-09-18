@@ -10,6 +10,8 @@ export {
   type MonthSummaryResult,
 } from './month-summary.js';
 export { yearSummary, type MonthTotal, type YearSummaryResult } from './year-summary.js';
+export { forecast, type ForecastResult } from './forecast.js';
+export { compareMonths, type CompareResult, type MonthSummaryLike } from './compare.js';
 export { DEFAULT_CATEGORIES, type DefaultCategory } from './categories.js';
 export { fingerprint } from './import/fingerprint.js';
 export {
