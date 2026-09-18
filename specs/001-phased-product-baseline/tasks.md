@@ -172,16 +172,16 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 
 ### Tests for User Story 4
 
-- [ ] T066 [P] [US4] Write failing core tests in `packages/core/src/import/fingerprint.test.ts` (normalisation: lowercase, trim, punctuation removed, whitespace collapsed; property: same row same fingerprint) and `packages/core/src/import/parse-row.test.ts` (date formats, decimal separators, too many decimals, unknown currency errors)
-- [ ] T067 [P] [US4] Write failing API tests in `apps/api/test/imports.test.ts`: UTF-8 with and without BOM, comma/semicolon/tab detection, 5 MB and 10,000-row limits, preview creates nothing, commit with skips and fixes, duplicates by mapped id and by fingerprint, undo bins edited rows and reports count, profiles CRUD, and a timed case: 1,000 rows with `FakeRates` pre-cached previews and commits in under 60 s (SC-004)
-- [ ] T068 [P] [US4] Write failing Playwright test `tests/e2e/tests/import.spec.ts` with `tests/e2e/fixtures/sample-export.csv`: map columns, preview, commit, re-import reports duplicates, undo
+- [x] T066 [P] [US4] Write failing core tests in `packages/core/src/import/fingerprint.test.ts` (normalisation: lowercase, trim, punctuation removed, whitespace collapsed; property: same row same fingerprint) and `packages/core/src/import/parse-row.test.ts` (date formats, decimal separators, too many decimals, unknown currency errors)
+- [x] T067 [P] [US4] Write failing API tests in `apps/api/test/imports.test.ts`: UTF-8 with and without BOM, comma/semicolon/tab detection, 5 MB and 10,000-row limits, preview creates nothing, commit with skips and fixes, duplicates by mapped id and by fingerprint, undo bins edited rows and reports count, profiles CRUD, and a timed case: 1,000 rows with `FakeRates` pre-cached previews and commits in under 60 s (SC-004)
+- [x] T068 [P] [US4] Write failing Playwright test `tests/e2e/tests/import.spec.ts` with `tests/e2e/fixtures/sample-export.csv`: map columns, preview, commit, re-import reports duplicates, undo
 
 ### Implementation for User Story 4
 
-- [ ] T069 [P] [US4] Extend `packages/db/src/schema.ts` with `import_profiles`, `import_batches`, `import_rows` and `pnpm db:generate --name imports`
-- [ ] T070 [P] [US4] Implement `packages/core/src/import/fingerprint.ts` and `packages/core/src/import/parse-row.ts` (mapping definition type, row parsing to `Money` and date, error codes)
-- [ ] T071 [US4] Implement `apps/api/src/services/imports.ts` (papaparse with delimiter detection and limits, preview into `import_rows`, duplicate check against expenses and external ids, commit, undo) and `apps/api/src/routes/imports.ts` (`/imports/profiles`, `POST /imports`, `/imports/:id/commit`, `/imports/:id/undo`); extend ownership matrix
-- [ ] T072 [US4] Build `apps/web/src/views/ImportView.vue` wizard (upload, column mapping with saved profiles, preview table with per-row status and inline fixes, commit summary, undo)
+- [x] T069 [P] [US4] Extend `packages/db/src/schema.ts` with `import_profiles`, `import_batches`, `import_rows` and `pnpm db:generate --name imports`
+- [x] T070 [P] [US4] Implement `packages/core/src/import/fingerprint.ts` and `packages/core/src/import/parse-row.ts` (mapping definition type, row parsing to `Money` and date, error codes)
+- [x] T071 [US4] Implement `apps/api/src/services/imports.ts` (papaparse with delimiter detection and limits, preview into `import_rows`, duplicate check against expenses and external ids, commit, undo) and `apps/api/src/routes/imports.ts` (`/imports/profiles`, `POST /imports`, `/imports/:id/commit`, `/imports/:id/undo`); extend ownership matrix
+- [x] T072 [US4] Build `apps/web/src/views/ImportView.vue` wizard (upload, column mapping with saved profiles, preview table with per-row status and inline fixes, commit summary, undo)
 
 **Checkpoint**: Roadmap Phase 2 exit criteria met; tag nothing yet.
 

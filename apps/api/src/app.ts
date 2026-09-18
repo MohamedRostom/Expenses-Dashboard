@@ -21,7 +21,9 @@ import { createSummaryRoutes } from './routes/summary.js';
 import { createRatesRoutes } from './routes/rates.js';
 import { createExpensesRoutes } from './routes/expenses.js';
 import { createCategoriesRoutes } from './routes/categories.js';
+import { createImportsRoutes } from './routes/imports.js';
 import { createRatesService } from './services/rates.js';
+import { createExpensesService } from './services/expenses.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
 export type BuildInfo = Omit<HealthResponseT, 'status'>;
@@ -95,6 +97,17 @@ export function createApp(deps: AppDeps) {
     }),
   );
   app.route('/', createCategoriesRoutes(deps.db));
+  app.route(
+    '/',
+    createImportsRoutes({
+      db: deps.db,
+      expensesService: createExpensesService(
+        deps.db,
+        createRatesService(deps.db, deps.rates),
+        deps.clock,
+      ),
+    }),
+  );
 
   app.get('/healthz', (c) => {
     const body: HealthResponseT = {

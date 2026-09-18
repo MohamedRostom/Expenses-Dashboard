@@ -30,6 +30,7 @@ export type TestClock = Clock & { set(date: Date): void };
 export type ApiClient = {
   get(path: string): Promise<Response>;
   post(path: string, body?: unknown): Promise<Response>;
+  put(path: string, body?: unknown): Promise<Response>;
   patch(path: string, body?: unknown): Promise<Response>;
   delete(path: string, body?: unknown): Promise<Response>;
 };
@@ -52,7 +53,10 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
     const headers: Record<string, string> = { cookie: cookieHeader };
     if (method !== 'GET') headers[CSRF_HEADER] = csrfToken;
     const init: RequestInit = { method, headers };
-    if (body !== undefined) {
+    if (body instanceof FormData) {
+      // Let fetch set the multipart Content-Type (with boundary) itself.
+      init.body = body;
+    } else if (body !== undefined) {
       headers['content-type'] = 'application/json';
       init.body = JSON.stringify(body);
     }
@@ -62,6 +66,7 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
   return {
     get: (path) => request('GET', path),
     post: (path, body) => request('POST', path, body),
+    put: (path, body) => request('PUT', path, body),
     patch: (path, body) => request('PATCH', path, body),
     delete: (path, body) => request('DELETE', path, body),
   };

@@ -181,6 +181,69 @@ export const categories = pgTable(
   ],
 );
 
+export const importProfiles = pgTable(
+  'import_profiles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    mapping: jsonb('mapping').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('import_profiles_user_id_idx').on(t.userId),
+    uniqueIndex('import_profiles_user_id_name_unique').on(t.userId, t.name),
+  ],
+);
+
+export const importBatches = pgTable(
+  'import_batches',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    profileId: uuid('profile_id').references(() => importProfiles.id, { onDelete: 'set null' }),
+    fileName: text('file_name').notNull(),
+    rowCount: integer('row_count').notNull(),
+    status: text('status').notNull().default('previewing'),
+    createdExpenses: integer('created_expenses').notNull().default(0),
+    duplicates: integer('duplicates').notNull().default(0),
+    errors: integer('errors').notNull().default(0),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+  },
+  (t) => [index('import_batches_user_id_idx').on(t.userId)],
+);
+
+export const importRows = pgTable(
+  'import_rows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    batchId: uuid('batch_id')
+      .notNull()
+      .references(() => importBatches.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    rowNumber: integer('row_number').notNull(),
+    raw: jsonb('raw').notNull(),
+    parsed: jsonb('parsed'),
+    fingerprint: text('fingerprint'),
+    externalId: text('external_id'),
+    status: text('status').notNull(),
+    error: text('error'),
+    expenseId: uuid('expense_id'),
+  },
+  (t) => [
+    index('import_rows_batch_id_idx').on(t.batchId),
+    index('import_rows_user_id_fingerprint_idx').on(t.userId, t.fingerprint),
+  ],
+);
+
 export const expenses = pgTable(
   'expenses',
   {

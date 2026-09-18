@@ -11,3 +11,12 @@ export {
 } from './month-summary.js';
 export { yearSummary, type MonthTotal, type YearSummaryResult } from './year-summary.js';
 export { DEFAULT_CATEGORIES, type DefaultCategory } from './categories.js';
+export { fingerprint } from './import/fingerprint.js';
+export {
+  parseRow,
+  type ColumnMapping,
+  type DateFormat,
+  type DecimalSeparator,
+  type ParsedRow,
+  type ParseRowResult,
+} from './import/parse-row.js';

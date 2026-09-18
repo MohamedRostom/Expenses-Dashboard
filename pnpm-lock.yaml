@@ -238,6 +238,9 @@ importers:
       nodemailer:
         specifier: ^7.0.0
         version: 7.0.13
+      papaparse:
+        specifier: ^5.4.1
+        version: 5.7.0
       postgres:
         specifier: ^3.4.9
         version: 3.4.9
@@ -254,6 +257,9 @@ importers:
       '@types/nodemailer':
         specifier: ^7.0.0
         version: 7.0.12
+      '@types/papaparse':
+        specifier: ^5.3.14
+        version: 5.5.2
       esbuild:
         specifier: ^0.28.2
         version: 0.28.2
@@ -308,6 +314,9 @@ importers:
 
   packages/core:
     devDependencies:
+      '@types/node':
+        specifier: ^22.20.2
+        version: 22.20.2
       fast-check:
         specifier: ^4.5.0
         version: 4.10.1
@@ -1545,6 +1554,9 @@ packages:
   '@types/nodemailer@7.0.12':
     resolution: {integrity: sha512-80vKwiIsVSyFA1rRovH59jNPLBOuc6dRZIHEu40gXTkBkZnQv8vog1xSGEb9j5q/tdMAs5ivvDR2pLTU0hGHXA==}
 
+  '@types/papaparse@5.5.2':
+    resolution: {integrity: sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA==}
+
   '@types/ssh2-streams@0.1.13':
     resolution: {integrity: sha512-faHyY3brO9oLEA0QlcO8N2wT7R0+1sHWZvQ+y3rMLwdY1ZyS1z0W3t65j9PqT4HmQ6ALzNe7RZlNuCNE0wBSWA==}
 
@@ -2704,6 +2716,9 @@ packages:
 
   package-json-from-dist@1.0.1:
     resolution: {integrity: sha512-UEZIS3/by4OC8vL3P2dTXRETpebLI2NiI5vIrjaD/5UtrkFX/tNbwjTSRAGC/+7CAo2pIcBaRgWmcBBHcsaCIw==}
+
+  papaparse@5.7.0:
+    resolution: {integrity: sha512-qBGxg/7Q3Kl9Wfhrz2Z74UnvnHTXLNG6jmKJFeBvP2+y4lV7So+7SR62+Zd47JvdrCkX+nDcnr0ObPzek/+6RA==}
 
   parse5@7.3.0:
     resolution: {integrity: sha512-IInvU7fabl34qmi9gY8XOVxhYyMyuH2xUNpb2q8/Y+7552KlejkRvqvD19nMoUW/uQGGbqNpA6Tufu5FL5BZgw==}
@@ -4145,6 +4160,10 @@ snapshots:
     dependencies:
       '@types/node': 22.20.2
 
+  '@types/papaparse@5.5.2':
+    dependencies:
+      '@types/node': 22.20.2
+
   '@types/ssh2-streams@0.1.13':
     dependencies:
       '@types/node': 22.20.2
@@ -5357,6 +5376,8 @@ snapshots:
       p-limit: 3.1.0
 
   package-json-from-dist@1.0.1: {}
+
+  papaparse@5.7.0: {}
 
   parse5@7.3.0:
     dependencies:

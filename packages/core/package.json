@@ -11,6 +11,7 @@
     "test": "vitest run --coverage"
   },
   "devDependencies": {
+    "@types/node": "^22.20.2",
     "fast-check": "^4.5.0"
   }
 }

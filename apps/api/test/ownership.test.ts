@@ -90,7 +90,41 @@ const routes: Row[] = [
       return await createCategory(userB);
     },
   },
+  {
+    method: 'POST',
+    path: '/imports/:id/commit',
+    async createForeignId(userB) {
+      return await createImportBatch(userB);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/imports/:id/undo',
+    async createForeignId(userB) {
+      return await createImportBatch(userB);
+    },
+  },
 ];
+
+const CSV_MAPPING = {
+  date: 'date',
+  amount: 'amount',
+  currency: 'currency',
+  description: 'description',
+  dateFormat: 'YYYY-MM-DD' as const,
+  decimalSeparator: '.' as const,
+};
+
+async function createImportBatch(userB: ApiClient): Promise<string> {
+  const csv = 'date,amount,currency,description\n2026-09-01,5.00,GBP,ownership fixture\n';
+  const form = new FormData();
+  form.append('file', new File([csv], 'fixture.csv', { type: 'text/csv' }));
+  form.append('mapping', JSON.stringify(CSV_MAPPING));
+  const res = await userB.post('/imports', form);
+  const { batch } = (await res.json()) as { batch?: { id: string } };
+  if (!batch) throw new Error('expected user B to create an import batch');
+  return batch.id;
+}
 
 async function createCategory(userB: ApiClient): Promise<string> {
   const res = await userB.post('/categories', {
