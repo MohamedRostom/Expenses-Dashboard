@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-label="Desk — Expenses Dashboard">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#121820"/>
+      <stop offset="1" stop-color="#1a2430"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="320" rx="16" fill="url(#bg)"/>
+
+  <!-- month bars motif: accent green, dashed budget line, one over-budget bar in critical red -->
+  <g transform="translate(820 60)">
+    <g fill="#5fbf9f" opacity="0.9">
+      <rect x="0"   y="120" width="36" height="80"  rx="4"/>
+      <rect x="52"  y="70"  width="36" height="130" rx="4"/>
+      <rect x="104" y="95"  width="36" height="105" rx="4"/>
+      <rect x="156" y="40"  width="36" height="160" rx="4"/>
+      <rect x="260" y="110" width="36" height="90"  rx="4"/>
+    </g>
+    <rect x="208" y="10" width="36" height="190" rx="4" fill="#a83a2e" opacity="0.9"/>
+    <line x1="-8" y1="52" x2="304" y2="52" stroke="#e6ebf0" stroke-width="2" stroke-dasharray="6 6" opacity="0.5"/>
+    <text x="304" y="44" fill="#e6ebf0" opacity="0.6" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="14" text-anchor="end">budget</text>
+    <line x1="-8" y1="200" x2="304" y2="200" stroke="#e6ebf0" stroke-width="2" opacity="0.25"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="72" y="150" fill="#e6ebf0" font-family="'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="88" font-weight="600" letter-spacing="-2">Desk</text>
+  <text x="72" y="196" fill="#5fbf9f" font-family="'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="500">Expenses Dashboard</text>
+  <text x="72" y="238" fill="#e6ebf0" opacity="0.7" font-family="'IBM Plex Mono', ui-monospace, monospace" font-size="16">multi-user · multi-currency · Notion sync · webhook capture</text>
+</svg>
