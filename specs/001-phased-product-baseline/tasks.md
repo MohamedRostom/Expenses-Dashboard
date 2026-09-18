@@ -72,7 +72,7 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 - [ ] T026 [P] Create Playwright fixtures in `tests/e2e/fixtures/index.ts` (`signUpAndVerify(page, email)` via Mailpit API at :8025, `freezeClock(date)` via mocks :4000, `axeCheck(page)`) and `tests/e2e/fixtures/sample-export.csv`
 - [ ] T027 [P] Seed `packages/ui`: base components `Button.vue`, `Input.vue`, `Select.vue`, `Dialog.vue`, `Toast.vue`, `Skeleton.vue`, `EmptyState.vue`, `ErrorState.vue` in `packages/ui/src/components/` using `tokens.css`, exported from `packages/ui/src/index.ts`
 - [ ] T028 [P] Add `apps/web/src/api/client.ts` (typed fetch wrapper that sends the CSRF header, parses the error envelope, throws `ApiError`) and `apps/web/src/stores/session.ts` (Pinia store with `user`, `load`, `logout`)
-- [ ] T029 Add `apps/web/src/router.ts` guards (`requiresAuth` redirect to `/login`) and route stubs for `/login`, `/register`, `/verify`, `/reset`, `/settings`, `/`, `/year`, `/import`, `/bin`, `/onboarding`
+- [ ] T029 Add `apps/web/src/router.ts` guards (`requiresAuth` redirect to `/login`) and route stubs for `/login`, `/register`, `/verify`, `/forgot`, `/reset`, `/settings`, `/`, `/year`, `/import`, `/bin`, `/onboarding`
 
 **Checkpoint**: Foundation ready. `pnpm test` green with coverage on core and api; e2e-ci still passes with the Hello page.
 

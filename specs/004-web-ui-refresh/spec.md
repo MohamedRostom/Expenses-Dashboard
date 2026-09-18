@@ -276,8 +276,9 @@ App screens
 
 Building blocks
 
-- **FR-012**: Shared building blocks (buttons, inputs, selects, sheets, toasts, panel frames,
-  skeletons, empty and error states, tables, tiles) MUST be the only source of those elements on
+- **FR-012**: Shared building blocks (buttons, inputs, selects, tabs, menu buttons, theme
+  toggle, keyboard hints, sheets, toasts, panel frames, skeletons, empty and error states,
+  tables, tiles) MUST be the only source of those elements on
   every screen, each with documented variants and states in both themes and a usage example in
   one browsable catalogue.
 - **FR-013**: Tokens (type, spacing, colour roles, motion) MUST live in exactly one place; a

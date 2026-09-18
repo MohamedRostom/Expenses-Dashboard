@@ -71,7 +71,7 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 - Conventional Commits. Commits and PRs end with the attribution lines the CLI adds.
 - **Never push, open a PR, or merge unless Rostom explicitly asks for that action** (constitution v1.1.0). Commit locally freely; "fix", "implement" or "finish" are not instructions to push. Leave the branch ready and say so.
 - Never commit secrets. `.env.example` lists every variable; the app refuses to start if one is missing.
-- Feature flags (`flags` table) gate anything merged before it is announced.
+- Feature flags (`flags` table) gate any user-facing feature merged before it is announced (a change to the look of existing screens needs no flag, constitution 1.1.1).
 - Prefer prose in docs over bullet walls; ADR format for decisions.
 
 ## External identifiers (safe to keep here — none are secrets)
