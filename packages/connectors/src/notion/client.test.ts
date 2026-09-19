@@ -48,14 +48,15 @@ describe('NotionClient (replaying hand-authored 2025-09-03 fixtures)', () => {
     expect(result.has_more).toBe(false);
   });
 
-  it('createPage: posts to /pages and returns the created page', async () => {
-    const fetchImpl = vi.fn(async () => jsonResponse(200, createFixture.response.body));
+  it('createPage: posts to /pages with a data_source_id parent (C10: 2025-09-03 shape)', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { parent: Record<string, unknown> };
+      expect(body.parent).toEqual({ type: 'data_source_id', data_source_id: 'ds-taxi' });
+      return jsonResponse(200, createFixture.response.body);
+    });
     const client = new NotionClient('token', fetchImpl as unknown as typeof fetch);
 
-    const page = await client.createPage(
-      createFixture.request.databaseId,
-      createFixture.request.properties,
-    );
+    const page = await client.createPage('ds-taxi', createFixture.request.properties);
 
     expect(page.id).toBe('page-taxi-1');
   });
@@ -114,18 +115,49 @@ describe('NotionClient (replaying hand-authored 2025-09-03 fixtures)', () => {
     await expect(client.queryDataSource('ds-1')).rejects.toBeInstanceOf(NotionAuthError);
   });
 
-  it('ensureLayout: adds missing known-layout properties, leaves existing ones alone', async () => {
-    const fetchImpl = vi
-      .fn()
-      .mockResolvedValueOnce(jsonResponse(200, { properties: { Expense: {}, Amount: {} } }))
-      .mockResolvedValueOnce(jsonResponse(200, { properties: {} }));
+  it('ensureLayout: reads/writes /data_sources/:id, not /databases/:id (C10)', async () => {
+    const urls: string[] = [];
+    const fetchImpl = vi.fn(async (url: string) => {
+      urls.push(url);
+      return urls.length === 1
+        ? jsonResponse(200, { properties: { Expense: {}, Amount: {} } })
+        : jsonResponse(200, { properties: {} });
+    });
     const client = new NotionClient('token', fetchImpl as unknown as typeof fetch);
 
-    const result = await client.ensureLayout('db-1');
+    const result = await client.ensureLayout('ds-1');
 
+    expect(urls.every((u) => u.includes('/data_sources/ds-1'))).toBe(true);
     expect(result.added).toContain('Currency');
     expect(result.added).toContain('Expense ID');
     expect(result.added).not.toContain('Expense');
+  });
+
+  it('searchDatabases: filters on object=data_source and returns databaseId/dataSourceId (C10)', async () => {
+    const fetchImpl = vi.fn(async (_url: string, init: RequestInit) => {
+      const body = JSON.parse(init.body as string) as { filter: { value: string } };
+      expect(body.filter.value).toBe('data_source');
+      return jsonResponse(200, {
+        results: [
+          {
+            id: 'ds-1',
+            name: '💷 Expenses',
+            parent: { type: 'database_id', database_id: 'db-1' },
+            properties: {},
+          },
+        ],
+      });
+    });
+    const client = new NotionClient('token', fetchImpl as unknown as typeof fetch);
+
+    const [db] = await client.searchDatabases();
+
+    expect(db).toEqual({
+      databaseId: 'db-1',
+      dataSourceId: 'ds-1',
+      title: '💷 Expenses',
+      properties: {},
+    });
   });
 });
 

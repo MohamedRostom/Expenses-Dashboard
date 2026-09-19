@@ -72,7 +72,7 @@ describe('POST /feedback', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        cookie: `__Host-desk_session=${user.sessionToken}; desk_csrf=test-csrf-token`,
+        cookie: `__Host-desk_session=${user.sessionToken}; __Host-desk_csrf=test-csrf-token`,
         'x-csrf-token': 'test-csrf-token',
         'user-agent': 'vitest-agent/1.0',
       },
@@ -97,7 +97,7 @@ describe('POST /feedback', () => {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        cookie: 'desk_csrf=anon-csrf-token',
+        cookie: '__Host-desk_csrf=anon-csrf-token',
         'x-csrf-token': 'anon-csrf-token',
       },
       body: JSON.stringify({ page: '/landing', message: 'anonymous note', contactOk: false }),

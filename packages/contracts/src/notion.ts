@@ -25,7 +25,8 @@ export const SetNotionConnectionRequest = z.object({
 export type SetNotionConnectionRequestT = z.infer<typeof SetNotionConnectionRequest>;
 
 export const NotionDatabaseOption = z.object({
-  id: z.string(),
+  databaseId: z.string(),
+  dataSourceId: z.string(),
   title: z.string(),
   compatible: z.boolean(),
 });

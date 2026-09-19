@@ -27,7 +27,10 @@ describe('categories', () => {
 
   const csrfHeaders = { 'content-type': 'application/json', 'x-csrf-token': 'test-csrf-token' };
   function withCsrf(cookies = ''): Record<string, string> {
-    return { ...csrfHeaders, cookie: `desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}` };
+    return {
+      ...csrfHeaders,
+      cookie: `__Host-desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}`,
+    };
   }
 
   /** Goes through the real register()->verify() flow (not harness.asUser, which inserts the
@@ -55,7 +58,7 @@ describe('categories', () => {
     const setCookie = res.headers.get('set-cookie') ?? '';
     const cookieVal = setCookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))?.[1];
     if (!cookieVal) throw new Error('verify did not set session cookie');
-    const cookieHeader = `${SESSION_COOKIE}=${cookieVal}; desk_csrf=test-csrf-token`;
+    const cookieHeader = `${SESSION_COOKIE}=${cookieVal}; __Host-desk_csrf=test-csrf-token`;
 
     async function request(method: string, path: string, body?: unknown): Promise<Response> {
       const headers: Record<string, string> = { cookie: cookieHeader };

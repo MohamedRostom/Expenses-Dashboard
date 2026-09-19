@@ -14,6 +14,22 @@ export default defineConfig({
       registerType: 'autoUpdate',
       workbox: {
         navigateFallback: '/index.html',
+        // C9: same API prefixes as the dev proxy list below — the SW must never serve the SPA
+        // shell for these (OAuth redirects, capture webhooks, etc. need the real response).
+        navigateFallbackDenylist: [
+          /^\/auth/,
+          /^\/capture/,
+          /^\/categories/,
+          /^\/currencies/,
+          /^\/expenses/,
+          /^\/feedback/,
+          /^\/healthz/,
+          /^\/imports/,
+          /^\/jobs/,
+          /^\/me/,
+          /^\/notion/,
+          /^\/summary/,
+        ],
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,

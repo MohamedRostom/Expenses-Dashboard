@@ -4,6 +4,9 @@ import { PaidWith } from './expenses.js';
 /** POST /hooks/generic/:token body (contracts/generic-webhook.md). `amount` as string or
  * number is parsed against the resolved currency's exponent in the service, not here. */
 export const GenericWebhookBody = z.object({
+  // Deliberately allows a negative amount (test/hooks.test.ts: "negative amount is a valid
+  // refund") — unlike AmountInput (expenses.ts), which is .positive() for the dashboard's own
+  // add-expense form. Only zero is invalid, rejected by core's Money() in the service.
   amount: z.union([z.string(), z.number()]),
   currency: z.string().length(3),
   description: z.string().min(1).max(200),

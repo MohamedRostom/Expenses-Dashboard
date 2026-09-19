@@ -12,16 +12,24 @@ const summary = ref<YearSummaryT | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const year = ref(String(new Date().getFullYear()));
+let loadSeq = 0;
 
 async function load() {
+  // Same stale-response race as MonthView's month switching: rapid prev/next year clicks fire
+  // overlapping requests, and a slower earlier one resolving later must not clobber the result
+  // of a faster, more recent one.
+  const seq = ++loadSeq;
   loading.value = true;
   error.value = null;
   try {
-    summary.value = await apiFetch<YearSummaryT>(`/summary/year?year=${year.value}`);
+    const res = await apiFetch<YearSummaryT>(`/summary/year?year=${year.value}`);
+    if (seq !== loadSeq) return;
+    summary.value = res;
   } catch (err) {
+    if (seq !== loadSeq) return;
     error.value = err instanceof ApiError ? err.code : String(err);
   } finally {
-    loading.value = false;
+    if (seq === loadSeq) loading.value = false;
   }
 }
 
@@ -65,7 +73,12 @@ function onSelectMonth(month: string) {
 
       <EmptyState v-if="total === 0" title="No expenses this year" />
       <template v-else>
-        <YearBars :months="bars" :currency="summary.currency" @select="onSelectMonth" />
+        <YearBars
+          :months="bars"
+          :currency="summary.currency"
+          :format-money="(m) => formatMoney(m, summary!.currency)"
+          @select="onSelectMonth"
+        />
         <MonthCompare />
       </template>
     </template>

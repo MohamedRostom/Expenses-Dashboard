@@ -21,6 +21,11 @@ function uniqueEmail(tag: string): string {
 }
 
 test.describe('Notion two-way sync @local', () => {
+  // NOTION_TEST_PARENT_PAGE_URL only gates whether this suite runs at all — this flow connects
+  // to an existing "💷 Expenses" database (CLAUDE.md's reference schema) rather than creating a
+  // new one under that parent page, so the URL itself isn't otherwise read here. Kept as the
+  // skip condition anyway: its presence is what signals a real, reachable Notion workspace is
+  // configured for desk-local.
   test.skip(
     !process.env['NOTION_TEST_PARENT_PAGE_URL'],
     'requires a real Notion workspace — set NOTION_TEST_PARENT_PAGE_URL (desk-local runner only)',
@@ -30,6 +35,9 @@ test.describe('Notion two-way sync @local', () => {
     test(`syncs ${direction} across three trials and versions become visible @local`, async ({
       page,
     }) => {
+      // Playwright's default test timeout is 30s; this test deliberately waits a full 5 minutes
+      // for the notion.sync cron below, so it needs its own timeout well past that.
+      test.setTimeout(8 * 60 * 1000);
       const email = uniqueEmail(`notion-${direction}`);
       await signUpAndVerify(page, email, PASSWORD);
 

@@ -108,6 +108,13 @@ export function createCategoriesService(db: Db) {
       const { archived, ...rest } = input;
       const archivedAt = archived === undefined ? undefined : archived ? new Date() : null;
 
+      // remove()'s "Other cannot be deleted" guard is name-based — renaming Other away first
+      // would silently defeat it (and remove() would then create a fresh, empty "Other" with a
+      // different id the next time it's needed). Block the rename at the source instead.
+      if (current.name === OTHER_NAME && rest.name !== undefined && rest.name !== OTHER_NAME) {
+        throw new ApiError('conflict', 'The "Other" category cannot be renamed', 409);
+      }
+
       const [row] = await db
         .update(categoriesTable)
         .set({

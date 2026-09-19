@@ -17,7 +17,7 @@ import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
 import type { Db as QueryDb } from '../src/adapters/rate-limiter.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
-const CSRF_COOKIE = 'desk_csrf';
+const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_HEADER = 'x-csrf-token';
 const TEST_SECRET_BOX_KEY = Buffer.alloc(32, 7).toString('base64');
 

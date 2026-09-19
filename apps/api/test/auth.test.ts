@@ -19,7 +19,10 @@ describe('auth', () => {
 
   const csrfHeaders = { 'content-type': 'application/json', 'x-csrf-token': 'test-csrf-token' };
   function withCsrf(cookies = ''): Record<string, string> {
-    return { ...csrfHeaders, cookie: `desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}` };
+    return {
+      ...csrfHeaders,
+      cookie: `__Host-desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}`,
+    };
   }
 
   async function registerAndVerify(
@@ -82,6 +85,61 @@ describe('auth', () => {
       }),
     });
     expect(res2.status).toBe(202);
+  });
+
+  it('login refuses an unverified account (FR-001)', async () => {
+    const email = `unverified-${crypto.randomUUID()}@example.com`;
+    await h.app.request('/auth/register', {
+      method: 'POST',
+      headers: withCsrf(),
+      body: JSON.stringify({
+        email,
+        password: 'a-good-long-password',
+        defaultCurrency: 'GBP',
+        timeZone: 'UTC',
+      }),
+    });
+
+    const res = await h.app.request('/auth/login', {
+      method: 'POST',
+      headers: withCsrf(),
+      body: JSON.stringify({ email, password: 'a-good-long-password' }),
+    });
+    expect(res.status).toBe(403);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('email_unverified');
+  });
+
+  it('POST /auth/verify/resend sends a new verify link for an unverified account', async () => {
+    const email = `resend-${crypto.randomUUID()}@example.com`;
+    await h.app.request('/auth/register', {
+      method: 'POST',
+      headers: withCsrf(),
+      body: JSON.stringify({
+        email,
+        password: 'a-good-long-password',
+        defaultCurrency: 'GBP',
+        timeZone: 'UTC',
+      }),
+    });
+    const before = h.mailer.sent.filter((m) => m.to === email).length;
+
+    const res = await h.app.request('/auth/verify/resend', {
+      method: 'POST',
+      headers: withCsrf(),
+      body: JSON.stringify({ email }),
+    });
+    expect(res.status).toBe(202);
+    expect(h.mailer.sent.filter((m) => m.to === email).length).toBe(before + 1);
+  });
+
+  it('POST /auth/verify/resend is a no-op (still 202) for an unknown email', async () => {
+    const res = await h.app.request('/auth/verify/resend', {
+      method: 'POST',
+      headers: withCsrf(),
+      body: JSON.stringify({ email: `nobody-${crypto.randomUUID()}@example.com` }),
+    });
+    expect(res.status).toBe(202);
   });
 
   it('register refuses breached passwords', async () => {

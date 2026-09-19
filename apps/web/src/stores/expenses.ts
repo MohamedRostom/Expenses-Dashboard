@@ -15,6 +15,8 @@ export function currentMonth(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+let loadMonthSeq = 0;
+
 export const useExpensesStore = defineStore('expenses', {
   state: () => ({
     expenses: [] as ExpenseResponseT[],
@@ -26,18 +28,25 @@ export const useExpensesStore = defineStore('expenses', {
   actions: {
     async loadMonth(month?: string) {
       if (month) this.currentMonth = month;
+      // Request sequencing: rapid prev/next clicks fire overlapping loads, and a slower earlier
+      // response resolving after a faster later one would otherwise overwrite the current
+      // month's data with a different month's — only the most recently *started* call may
+      // apply its result.
+      const seq = ++loadMonthSeq;
       this.loading = true;
       this.error = null;
       try {
         const res = await apiFetch<{ expenses: ExpenseResponseT[]; summary: MonthSummaryT }>(
           `/expenses?month=${encodeURIComponent(this.currentMonth)}`,
         );
+        if (seq !== loadMonthSeq) return;
         this.expenses = res.expenses;
         this.summary = res.summary;
       } catch (err) {
+        if (seq !== loadMonthSeq) return;
         this.error = err instanceof ApiError ? err.code : String(err);
       } finally {
-        this.loading = false;
+        if (seq === loadMonthSeq) this.loading = false;
       }
     },
 

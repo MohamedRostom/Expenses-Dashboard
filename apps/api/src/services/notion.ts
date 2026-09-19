@@ -65,6 +65,9 @@ export function createNotionService(
   config: NotionConfig,
   expensesService: ExpensesService,
   clock: Clock,
+  /** C1: enqueues the recurring `notion.sync` job the first time a table is connected — without
+   * this nothing ever schedules the 5-minute cron sync (only the debounced write trigger ran). */
+  enqueue?: (name: string, payload: unknown, opts?: { userId?: string }) => Promise<string>,
 ) {
   // ponytail: both debounce maps below are in-memory per-process — fine for Stage 1's single
   // Fly container; a Workers deployment (Stage 2) would need these moved to a DB-backed
@@ -163,7 +166,7 @@ export function createNotionService(
           workspaceId: token.workspace_id,
           workspaceName: token.workspace_name,
           botId: token.bot_id,
-          accessTokenEnc: Buffer.from(enc),
+          accessTokenEnc: new TextEncoder().encode(enc),
           status: 'connected',
           lastError: null,
           updatedAt: clock.now(),
@@ -175,7 +178,7 @@ export function createNotionService(
         workspaceId: token.workspace_id,
         workspaceName: token.workspace_name,
         botId: token.bot_id,
-        accessTokenEnc: Buffer.from(enc),
+        accessTokenEnc: new TextEncoder().encode(enc),
         direction: 'both',
         status: 'connected',
       });
@@ -190,14 +193,19 @@ export function createNotionService(
 
   async function listDatabases(userId: string) {
     const conn = await requireConnection(userId);
-    const token = await secretBox.open(conn.accessTokenEnc.toString());
+    const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
     const dbs = await client(token).searchDatabases();
-    return dbs.map((d) => ({ id: d.id, title: d.title, compatible: isCompatible(d.properties) }));
+    return dbs.map((d) => ({
+      databaseId: d.databaseId,
+      dataSourceId: d.dataSourceId,
+      title: d.title,
+      compatible: isCompatible(d.properties),
+    }));
   }
 
   async function createDatabase(userId: string, parentPageId: string, title: string) {
     const conn = await requireConnection(userId);
-    const token = await secretBox.open(conn.accessTokenEnc.toString());
+    const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
     return await client(token).createDatabase(parentPageId, title);
   }
 
@@ -214,6 +222,7 @@ export function createNotionService(
   ) {
     const conn = await requireConnection(userId);
     const changingDatabase = conn.databaseId !== null && conn.databaseId !== input.databaseId;
+    const isFirstConnection = conn.databaseId === null;
 
     await db
       .update(notionConnections)
@@ -235,6 +244,10 @@ export function createNotionService(
         .set({ notionPageId: null, notionLastEditedAt: null })
         .where(eq(expensesTable.userId, userId));
     }
+
+    if (isFirstConnection && enqueue) {
+      await enqueue('notion.sync', { userId }, { userId });
+    }
   }
 
   /** DELETE /notion/connection: keeps the row and every expense's notion_page_id, only stops
@@ -245,7 +258,7 @@ export function createNotionService(
       .update(notionConnections)
       .set({
         status: 'disconnected',
-        accessTokenEnc: Buffer.from(''),
+        accessTokenEnc: new Uint8Array(),
         updatedAt: clock.now(),
       })
       .where(eq(notionConnections.userId, userId));
@@ -312,7 +325,7 @@ export function createNotionService(
     try {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       const defaultCurrency = user?.defaultCurrency ?? 'GBP';
-      const token = await secretBox.open(conn.accessTokenEnc.toString());
+      const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
       const notion = client(token);
 
       const remotePages: NotionPageResult[] = [];
@@ -344,7 +357,7 @@ export function createNotionService(
           addedVia: ADDED_VIA_TO_NOTION[entry.row.addedVia] ?? 'Dashboard',
         });
         if (entry.op === 'create') {
-          const page = await notion.createPage(conn.databaseId, props);
+          const page = await notion.createPage(conn.dataSourceId, props);
           await db
             .update(expensesTable)
             .set({ notionPageId: page.id, notionLastEditedAt: new Date(page.last_edited_time) })
@@ -419,19 +432,37 @@ export function createNotionService(
               .set({ deletedAt: clock.now() })
               .where(eq(expensesTable.id, local.id));
           } else {
+            // Route through the expenses service's own patch() instead of a raw column update:
+            // that's what recomputes amountDefault against the new amount/currency/date — a
+            // direct db.update() left it stale, so an edit made in Notion silently corrupted
+            // the default-currency total until the next unrelated re-save. Also resolves the
+            // category name (previously ignored entirely on a Notion-side edit).
+            const category = entry.row.categoryName
+              ? (
+                  await db
+                    .select()
+                    .from(categoriesTable)
+                    .where(
+                      and(
+                        eq(categoriesTable.userId, userId),
+                        eq(categoriesTable.name, entry.row.categoryName),
+                      ),
+                    )
+                    .limit(1)
+                )[0]
+              : undefined;
+            await expensesService.patch(userId, defaultCurrency, local.id, {
+              description: entry.row.description,
+              amount: { minor: entry.row.amountOriginal, currency: entry.row.currencyOriginal },
+              date: entry.row.expenseDate,
+              categoryId: entry.row.categoryName ? (category?.id ?? null) : undefined,
+              paidWith: entry.row.paidWith as 'card' | 'cash' | 'bank_transfer' | 'other',
+              kind: entry.row.kind as 'fixed' | 'variable' | 'one_off',
+              notes: entry.row.notes,
+            });
             await db
               .update(expensesTable)
-              .set({
-                description: entry.row.description,
-                amountOriginal: entry.row.amountOriginal,
-                currencyOriginal: entry.row.currencyOriginal,
-                expenseDate: entry.row.expenseDate,
-                paidWith: entry.row.paidWith,
-                kind: entry.row.kind,
-                notes: entry.row.notes,
-                notionLastEditedAt: new Date(entry.row.lastEditedTime),
-                updatedAt: clock.now(),
-              })
+              .set({ notionLastEditedAt: new Date(entry.row.lastEditedTime) })
               .where(eq(expensesTable.id, local.id));
           }
           await writeVersion(local.id, userId, 'notion', entry.row, entry.row.lastEditedTime);

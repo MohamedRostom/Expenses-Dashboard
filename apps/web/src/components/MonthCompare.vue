@@ -1,18 +1,21 @@
 <script setup lang="ts">
 /** This-month-vs-last-month deltas: total and top categories, via /summary/compare. */
 import { computed, onMounted, ref } from 'vue';
-import type { CompareSummaryT } from '@desk/contracts';
+import type { CategoryResponseT, CompareSummaryT } from '@desk/contracts';
 import { Skeleton } from '@desk/ui';
-import { apiFetch, ApiError } from '../api/client.js';
+import { apiFetch } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { currentMonth } from '../stores/expenses.js';
 import { useSessionStore } from '../stores/session.js';
+import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
+import PanelState from './PanelState.vue';
 
 const session = useSessionStore();
 const currency = computed(() => session.user?.defaultCurrency ?? 'GBP');
 const compare = ref<CompareSummaryT | null>(null);
+const categoryNames = ref<Record<string, string>>({});
 const loading = ref(false);
-const error = ref<string | null>(null);
+const errorKind = ref<PanelErrorKind | null>(null);
 
 function previousMonth(month: string): string {
   const [y, m] = month.split('-').map(Number);
@@ -20,15 +23,24 @@ function previousMonth(month: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
+function categoryLabel(id: string): string {
+  return categoryNames.value[id] ?? id;
+}
+
 async function load() {
   loading.value = true;
-  error.value = null;
+  errorKind.value = null;
   try {
     const a = currentMonth();
     const b = previousMonth(a);
-    compare.value = await apiFetch<CompareSummaryT>(`/summary/compare?a=${a}&b=${b}`);
+    const [compareRes, categoriesRes] = await Promise.all([
+      apiFetch<CompareSummaryT>(`/summary/compare?a=${a}&b=${b}`),
+      apiFetch<{ categories: CategoryResponseT[] }>('/categories'),
+    ]);
+    compare.value = compareRes;
+    categoryNames.value = Object.fromEntries(categoriesRes.categories.map((c) => [c.id, c.name]));
   } catch (err) {
-    error.value = err instanceof ApiError ? err.code : String(err);
+    errorKind.value = toPanelErrorKind(err);
   } finally {
     loading.value = false;
   }
@@ -57,10 +69,12 @@ defineExpose({ load });
       </p>
       <ul v-if="topCategories.length > 0" class="desk-month-compare-list">
         <li v-for="c in topCategories" :key="c.categoryId">
-          {{ c.categoryId }}: {{ c.delta >= 0 ? '+' : '' }}{{ formatMoney(c.delta, currency) }}
+          {{ categoryLabel(c.categoryId) }}: {{ c.delta >= 0 ? '+' : ''
+          }}{{ formatMoney(c.delta, currency) }}
         </li>
       </ul>
     </template>
+    <PanelState v-else-if="errorKind" kind="error" :code="errorKind" />
   </div>
 </template>
 

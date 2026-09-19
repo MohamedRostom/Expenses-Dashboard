@@ -19,7 +19,10 @@ describe('password reset', () => {
 
   const csrfHeaders = { 'content-type': 'application/json', 'x-csrf-token': 'test-csrf-token' };
   function withCsrf(cookies = ''): Record<string, string> {
-    return { ...csrfHeaders, cookie: `desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}` };
+    return {
+      ...csrfHeaders,
+      cookie: `__Host-desk_csrf=test-csrf-token${cookies ? '; ' + cookies : ''}`,
+    };
   }
 
   async function registerAndVerify(

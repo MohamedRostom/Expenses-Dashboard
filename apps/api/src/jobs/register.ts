@@ -4,7 +4,13 @@
 import type { RatesProvider } from '@desk/connectors/rates';
 import type { Db } from '@desk/db';
 import { registerJob } from './index.js';
-import { currencyChangeJob, categoriesRowSource, type RateLookup } from './currency-change.js';
+import {
+  currencyChangeJob,
+  categoriesRowSource,
+  expensesRowSource,
+  combinedRowSource,
+  type RateLookup,
+} from './currency-change.js';
 import { ratesWarmJob, ratesRetryJob } from './rates.js';
 import { housekeepingJob } from './housekeeping.js';
 import { notionSyncJob, type NotionSyncDeps } from './notion-sync.js';
@@ -21,7 +27,13 @@ export function registerAllJobs(deps: {
   /** T112: always registered — feedbackDigestJob itself no-ops the send when digestEmail is unset. */
   feedbackDigest?: FeedbackDigestDeps;
 }): void {
-  registerJob('currency.change', currencyChangeJob(deps.getRate, categoriesRowSource(deps.db)));
+  registerJob(
+    'currency.change',
+    currencyChangeJob(
+      deps.getRate,
+      combinedRowSource(categoriesRowSource(deps.db), expensesRowSource(deps.db)),
+    ),
+  );
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));

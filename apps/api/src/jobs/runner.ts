@@ -27,14 +27,23 @@ export class JobRunner {
   }
 
   async runDueJobs(): Promise<void> {
+    // A bare SELECT ... FOR UPDATE SKIP LOCKED (even inside a transaction) only holds the row
+    // lock for that statement/transaction — it never changes `status`, so a second ticker's
+    // SELECT run concurrently sees the same rows as still 'queued' and claims them too. One
+    // UPDATE ... RETURNING is atomic: the row is claimed (status='running') in the same
+    // statement that finds it, so a second ticker's identical UPDATE simply matches nothing.
     const { rows: claimed } = await this.db.query<{
       id: string;
       name: string;
       payload: unknown;
       attempts: number;
     }>(
-      `SELECT * FROM jobs WHERE status = 'queued' AND run_after <= $1
-       ORDER BY run_after FOR UPDATE SKIP LOCKED LIMIT $2`,
+      `UPDATE jobs SET status = 'running', started_at = $1
+       WHERE id IN (
+         SELECT id FROM jobs WHERE status = 'queued' AND run_after <= $1
+         ORDER BY run_after FOR UPDATE SKIP LOCKED LIMIT $2
+       )
+       RETURNING *`,
       [new Date(), BATCH_SIZE],
     );
 

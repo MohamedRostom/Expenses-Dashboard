@@ -15,8 +15,21 @@ async function mount(path: string, signedIn: boolean) {
       { path: '/login', name: 'login', component: stub },
       { path: '/', name: 'home', component: stub, meta: { requiresAuth: true } },
       { path: '/year', name: 'year', component: stub, meta: { requiresAuth: true } },
-      { path: '/categories', name: 'categories', component: stub, meta: { requiresAuth: true } },
+      {
+        path: '/settings/categories',
+        name: 'categories',
+        component: stub,
+        meta: { requiresAuth: true },
+      },
       { path: '/settings', name: 'settings', component: stub, meta: { requiresAuth: true } },
+      {
+        path: '/settings/connectors',
+        name: 'settings-connectors',
+        component: stub,
+        meta: { requiresAuth: true },
+      },
+      { path: '/import', name: 'import', component: stub, meta: { requiresAuth: true } },
+      { path: '/bin', name: 'bin', component: stub, meta: { requiresAuth: true } },
       { path: '/onboarding', name: 'onboarding', component: stub, meta: { requiresAuth: true } },
     ],
   });

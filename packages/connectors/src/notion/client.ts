@@ -56,6 +56,8 @@ export class NotionClient {
 
     const res = await this.fetchImpl(`${this.baseUrl}${path}`, {
       ...init,
+      // No timeout previously — a hung connection to Notion would block sync indefinitely.
+      signal: AbortSignal.timeout(10_000),
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
         'Notion-Version': NOTION_VERSION,
@@ -69,7 +71,14 @@ export class NotionClient {
     }
 
     if (res.status === 429 && retriesLeft > 0) {
-      const retryAfterSeconds = Number(res.headers.get('Retry-After') ?? '1');
+      // Notion's own docs cap Retry-After well under a minute, but nothing stops a malicious or
+      // buggy upstream from sending an enormous value — clamp so a single retry can't stall a
+      // request (or the job runner processing it) for an unbounded amount of time.
+      const MAX_RETRY_AFTER_SECONDS = 30;
+      const retryAfterSeconds = Math.min(
+        Number(res.headers.get('Retry-After') ?? '1') || 1,
+        MAX_RETRY_AFTER_SECONDS,
+      );
       await new Promise((resolve) => setTimeout(resolve, retryAfterSeconds * 1000));
       return this.request(path, init, retriesLeft - 1);
     }
@@ -95,13 +104,17 @@ export class NotionClient {
     return body;
   }
 
+  /** C10: 2025-09-03 pages are created against a data source, not a database directly. */
   async createPage(
-    databaseId: string,
+    dataSourceId: string,
     properties: Record<string, unknown>,
   ): Promise<NotionPageResult> {
     const res = await this.request('/pages', {
       method: 'POST',
-      body: JSON.stringify({ parent: { database_id: databaseId }, properties }),
+      body: JSON.stringify({
+        parent: { type: 'data_source_id', data_source_id: dataSourceId },
+        properties,
+      }),
     });
     return (await res.json()) as NotionPageResult;
   }
@@ -123,32 +136,43 @@ export class NotionClient {
     return (await res.json()) as NotionPageResult;
   }
 
-  /** Lists databases the integration can see (POST /search filtered to object=database). */
+  /** C10: 2025-09-03 search no longer has a `database` object — a database is a container of
+   * data sources, so this lists data sources (POST /search filtered to object=data_source) and
+   * returns each one's own id (to query/write against) alongside its parent database id
+   * (to detect "same database, different data source" on reconnect). */
   async searchDatabases(): Promise<
-    Array<{ id: string; title: string; properties: Record<string, unknown> }>
+    Array<{
+      databaseId: string;
+      dataSourceId: string;
+      title: string;
+      properties: Record<string, unknown>;
+    }>
   > {
     const res = await this.request('/search', {
       method: 'POST',
-      body: JSON.stringify({ filter: { property: 'object', value: 'database' } }),
+      body: JSON.stringify({ filter: { property: 'object', value: 'data_source' } }),
     });
     const body = (await res.json()) as {
       results: Array<{
         id: string;
+        name?: string;
         title?: Array<{ plain_text?: string }>;
+        parent?: { type: 'database_id'; database_id: string };
         properties: Record<string, unknown>;
       }>;
     };
     return body.results.map((r) => ({
-      id: r.id,
-      title: r.title?.[0]?.plain_text ?? 'Untitled',
+      databaseId: r.parent?.database_id ?? r.id,
+      dataSourceId: r.id,
+      title: r.name ?? r.title?.[0]?.plain_text ?? 'Untitled',
       properties: r.properties,
     }));
   }
 
-  /** Creates a new database under `parentPageId` with the known layout pre-set. Returns the
-   * data source id to query/write against (2025-09-03 databases are containers of data
-   * sources); falls back to the database id itself if the response has no `data_sources`
-   * (the fake/mocks model a single-data-source database this way). */
+  /** Creates a new database under `parentPageId` with the known layout pre-set on its initial
+   * data source (2025-09-03: `properties` moves under `initial_data_source`, and the response's
+   * `data_sources[0].id` is what queries/writes go against — the database id itself is only a
+   * container). */
   async createDatabase(
     parentPageId: string,
     title: string,
@@ -158,28 +182,28 @@ export class NotionClient {
       body: JSON.stringify({
         parent: { page_id: parentPageId },
         title: [{ text: { content: title } }],
-        properties: KNOWN_LAYOUT,
+        initial_data_source: { properties: KNOWN_LAYOUT },
       }),
     });
     const body = (await res.json()) as { id: string; data_sources?: Array<{ id: string }> };
     return { id: body.id, dataSourceId: body.data_sources?.[0]?.id ?? body.id };
   }
 
-  /** Checks the database's existing properties against KNOWN_LAYOUT and creates any that are
+  /** Checks the data source's existing properties against KNOWN_LAYOUT and creates any that are
    * missing (additive only — never removes or renames an existing property, per CLAUDE.md's
    * "Rostom's existing table ... lacks Currency and Expense ID; the connector offers to add
-   * them on connect"). */
-  async ensureLayout(databaseId: string): Promise<{ added: string[] }> {
-    const res = await this.request(`/databases/${databaseId}`, { method: 'GET' });
-    const db = (await res.json()) as { properties: Record<string, unknown> };
+   * them on connect"). C10: properties live on `/data_sources/{id}`, not `/databases/{id}`. */
+  async ensureLayout(dataSourceId: string): Promise<{ added: string[] }> {
+    const res = await this.request(`/data_sources/${dataSourceId}`, { method: 'GET' });
+    const ds = (await res.json()) as { properties: Record<string, unknown> };
 
-    const missing = Object.keys(KNOWN_LAYOUT).filter((name) => !(name in db.properties));
+    const missing = Object.keys(KNOWN_LAYOUT).filter((name) => !(name in ds.properties));
     if (missing.length === 0) return { added: [] };
 
     const patchProperties: Record<string, unknown> = {};
     for (const name of missing) patchProperties[name] = KNOWN_LAYOUT[name];
 
-    await this.request(`/databases/${databaseId}`, {
+    await this.request(`/data_sources/${dataSourceId}`, {
       method: 'PATCH',
       body: JSON.stringify({ properties: patchProperties }),
     });

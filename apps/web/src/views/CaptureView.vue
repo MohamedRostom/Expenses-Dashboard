@@ -8,6 +8,7 @@ import type {
   RotateCaptureTokenResponseT,
 } from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
+import { formatDateTime } from '../utils/format.js';
 
 const toast = useToast();
 
@@ -128,7 +129,7 @@ function allLabels(): string[] {
         <ul v-if="tokens.length > 0" class="token-list">
           <li v-for="t in tokens" :key="t.id">
             {{ t.label }} — {{ t.revokedAt ? 'revoked' : 'active' }}
-            <span v-if="t.lastUsedAt"> · last used {{ t.lastUsedAt }}</span>
+            <span v-if="t.lastUsedAt"> · last used {{ formatDateTime(t.lastUsedAt) }}</span>
           </li>
         </ul>
         <p v-else>No capture address yet.</p>

@@ -41,9 +41,11 @@ async function toApiError(res: Response): Promise<ApiError> {
       );
     }
   } catch {
-    // fall through to generic error below
+    // fall through to generic error below — a non-JSON body (e.g. a proxy's 502 HTML page)
+    // lands here, and 'validation_failed' would be actively misleading for a 5xx.
   }
-  return new ApiError('validation_failed', res.statusText || 'Request failed', res.status);
+  const code: ErrorCodeT = res.status >= 500 ? 'internal' : 'validation_failed';
+  return new ApiError(code, res.statusText || 'Request failed', res.status);
 }
 
 /** Typed fetch wrapper: sends the CSRF header on mutating requests, parses the
@@ -52,7 +54,7 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   const method = (init.method ?? 'GET').toUpperCase();
   const headers = new Headers(init.headers);
   if (method !== 'GET' && method !== 'HEAD') {
-    const csrf = readCookie('desk_csrf');
+    const csrf = readCookie('__Host-desk_csrf');
     if (csrf) headers.set('X-CSRF-Token', csrf);
   }
   if (init.body && !headers.has('Content-Type')) {

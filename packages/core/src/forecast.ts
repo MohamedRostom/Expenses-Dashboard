@@ -37,6 +37,8 @@ export function forecast(
     basis.push('no variable spend history yet');
   }
 
-  const total = spendToDate + fixedBudgetsRemaining + runRateContribution;
+  // spendToDate/fixedBudgetsRemaining are already integer minor units; runRateContribution is a
+  // division and can land on a fraction — money is never a float (CLAUDE.md), so round the sum.
+  const total = Math.round(spendToDate + fixedBudgetsRemaining + runRateContribution);
   return { total, basis };
 }

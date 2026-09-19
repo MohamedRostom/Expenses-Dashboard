@@ -29,4 +29,9 @@ withDefaults(defineProps<{ height?: string; width?: string }>(), {
     background-position: 0 50%;
   }
 }
+@media (prefers-reduced-motion: reduce) {
+  .desk-skeleton {
+    animation: none;
+  }
+}
 </style>

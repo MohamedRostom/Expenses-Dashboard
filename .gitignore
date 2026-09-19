@@ -12,5 +12,6 @@ __pycache__/
 playwright-report/
 test-results/
 blob-report/
+lighthouse-reports/
 .DS_Store
 LOCAL_DEVELOPMENT.md

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { Button, ErrorState, Skeleton } from '@desk/ui';
+import { Button, ErrorState, Input, Skeleton } from '@desk/ui';
 import { ApiError, apiFetch } from '../api/client.js';
 import { useSessionStore, type User } from '../stores/session.js';
 
@@ -11,6 +11,11 @@ const session = useSessionStore();
 
 const status = ref<'pending' | 'success' | 'error'>('pending');
 const error = ref<ApiError | null>(null);
+
+// "Get a new link" used to send the user to /register, which silently no-ops for an existing
+// (even unverified) email — there was no actual way to get a new link for an expired one.
+const resendEmail = ref('');
+const resendState = ref<'idle' | 'sending' | 'sent'>('idle');
 
 onMounted(async () => {
   const token = String(route.query.token ?? '');
@@ -33,6 +38,23 @@ onMounted(async () => {
       err instanceof ApiError ? err : new ApiError('validation_failed', 'Verification failed', 0);
   }
 });
+
+async function resend() {
+  if (!resendEmail.value) return;
+  resendState.value = 'sending';
+  try {
+    await apiFetch('/auth/verify/resend', {
+      method: 'POST',
+      body: JSON.stringify({ email: resendEmail.value }),
+    });
+  } catch {
+    // Always show "sent" regardless — the endpoint itself never reveals whether the email
+    // exists, so a network-level failure is the only distinguishable case, and even that isn't
+    // worth surfacing differently here.
+  } finally {
+    resendState.value = 'sent';
+  }
+}
 </script>
 
 <template>
@@ -43,10 +65,16 @@ onMounted(async () => {
       v-else-if="status === 'error'"
       :code="error?.code ?? 'validation_failed'"
       title="That link expired or was already used"
-      description="Request a new verification email to finish signing up."
+      description="Enter your email to get a new verification link."
     >
       <template #action>
-        <Button variant="secondary" @click="router.push('/register')">Get a new link</Button>
+        <p v-if="resendState === 'sent'">
+          If that email has an account, a new verification link is on its way.
+        </p>
+        <form v-else class="resend-form" @submit.prevent="resend">
+          <Input v-model="resendEmail" type="email" label="Email" placeholder="you@example.com" />
+          <Button type="submit" :loading="resendState === 'sending'">Get a new link</Button>
+        </form>
       </template>
     </ErrorState>
   </div>
@@ -61,5 +89,10 @@ onMounted(async () => {
   gap: 1rem;
   font-family: var(--font-sans);
   color: var(--color-fg);
+}
+.resend-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 </style>

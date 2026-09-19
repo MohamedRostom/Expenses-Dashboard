@@ -23,9 +23,12 @@ export function createNodeLogger(dsn: string | undefined): Logger {
       baseLogger.log(event);
       if (!dsn) return;
       if (event['status'] !== undefined && (event['status'] as number) >= 500) {
-        Sentry.captureException(new Error(`${event.route} responded ${event['status']}`), {
-          extra: event,
-        });
+        // Prefer the real exception middleware/errors.ts attached (real stack, real message)
+        // over a synthetic one that only ever said "route responded 500".
+        const real = event['errorObject'];
+        const error =
+          real instanceof Error ? real : new Error(`${event.route} responded ${event['status']}`);
+        Sentry.captureException(error, { extra: event });
       } else if (event['error']) {
         Sentry.captureMessage(String(event['error']), { level: 'error', extra: event });
       }

@@ -2,7 +2,6 @@ import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const MAILPIT_URL = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
-const MOCKS_URL = process.env['MOCKS_URL'] ?? 'http://localhost:4000';
 
 type MailpitMessage = { ID: string; To: { Address: string }[] };
 type MailpitMessagesResponse = { messages: MailpitMessage[] };
@@ -45,18 +44,6 @@ async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<str
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`signUpAndVerify: no verification email for ${email} within ${timeoutMs}ms`);
-}
-
-/** Freezes the mocks server's clock (infra/mocks/src/server.ts) at `date`. */
-export async function freezeClock(date: Date): Promise<void> {
-  const res = await fetch(`${MOCKS_URL}/clock`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ iso: date.toISOString() }),
-  });
-  if (!res.ok) {
-    throw new Error(`freezeClock: POST /clock failed with status ${res.status}`);
-  }
 }
 
 /** Runs axe against the current page and throws with violation details if any serious/critical ones are found. */

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { eq } from 'drizzle-orm';
+import { and, eq, gte, lt } from 'drizzle-orm';
 import {
   monthSummary,
   yearSummary,
@@ -30,8 +30,20 @@ export function createSummaryRoutes(db: Db, clock: Clock) {
       throw new ApiError('validation_failed', 'month must be YYYY-MM', 400);
     }
 
+    const monthStart = `${month}-01`;
+    const [y, m] = month.split('-').map(Number);
+    const monthEnd = new Date(Date.UTC(y as number, m as number, 1)).toISOString().slice(0, 10);
     const [expenseRows, categoryRows] = await Promise.all([
-      db.select().from(expenses).where(eq(expenses.userId, user.id)),
+      db
+        .select()
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.userId, user.id),
+            gte(expenses.expenseDate, monthStart),
+            lt(expenses.expenseDate, monthEnd),
+          ),
+        ),
       db.select().from(categories).where(eq(categories.userId, user.id)),
     ]);
 
@@ -66,7 +78,16 @@ export function createSummaryRoutes(db: Db, clock: Clock) {
     }
 
     const [expenseRows, categoryRows] = await Promise.all([
-      db.select().from(expenses).where(eq(expenses.userId, user.id)),
+      db
+        .select()
+        .from(expenses)
+        .where(
+          and(
+            eq(expenses.userId, user.id),
+            gte(expenses.expenseDate, `${year}-01-01`),
+            lt(expenses.expenseDate, `${Number(year) + 1}-01-01`),
+          ),
+        ),
       db.select().from(categories).where(eq(categories.userId, user.id)),
     ]);
 

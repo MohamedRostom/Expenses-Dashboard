@@ -11,6 +11,7 @@ import {
   Skeleton,
   useToast,
 } from '@desk/ui';
+import { formatMajor, parseMajor } from '@desk/core';
 import { apiFetch, ApiError } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
@@ -83,14 +84,17 @@ function openEdit(c: CategoryResponseT) {
     name: c.name,
     colour: c.colour,
     defaultKind: c.defaultKind ?? '',
-    budgetMajor: c.budgetMinor != null ? (c.budgetMinor / 100).toString() : '',
+    budgetMajor:
+      c.budgetMinor != null
+        ? formatMajor({ minor: c.budgetMinor, currency: session.user?.defaultCurrency ?? 'GBP' })
+        : '',
   };
   showDialog.value = true;
 }
 
 async function save() {
   const budgetMinor = form.value.budgetMajor
-    ? Math.round(Number(form.value.budgetMajor) * 100)
+    ? parseMajor(form.value.budgetMajor, session.user?.defaultCurrency ?? 'GBP').minor
     : null;
   const payload = {
     name: form.value.name,

@@ -70,7 +70,7 @@ test('category drill-down view lists spend by month, light and dark', async ({ p
   await signUpAndVerify(page, email, PASSWORD);
   await expect(page).toHaveURL('/');
 
-  await page.goto('/categories');
+  await page.goto('/settings/categories');
   await expect(page.getByText('Groceries')).toBeVisible();
 
   // Navigate directly using the category id exposed via the edit dialog isn't available in the
@@ -81,7 +81,7 @@ test('category drill-down view lists spend by month, light and dark', async ({ p
   const groceries = categories.find((c) => c.name === 'Groceries');
   expect(groceries).toBeDefined();
 
-  await page.goto(`/categories/${groceries!.id}`);
+  await page.goto(`/settings/categories/${groceries!.id}`);
   await axeCheck(page);
   await expect(page.getByRole('heading', { name: /category history/i })).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();

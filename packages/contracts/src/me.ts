@@ -19,7 +19,7 @@ export const PatchMeResponse = z.object({
 export type PatchMeResponseT = z.infer<typeof PatchMeResponse>;
 
 export const ChangeEmailRequest = z.object({
-  newEmail: z.string().email(),
+  newEmail: z.string().email().toLowerCase().trim(),
   password: z.string().optional(),
 });
 export type ChangeEmailRequestT = z.infer<typeof ChangeEmailRequest>;

@@ -69,14 +69,14 @@ function connect() {
 }
 
 async function saveTable() {
-  const chosen = databases.value.find((d) => d.id === selectedDatabaseId.value);
+  const chosen = databases.value.find((d) => d.databaseId === selectedDatabaseId.value);
   if (!chosen) return;
   try {
     await apiFetch('/notion/connection', {
       method: 'PUT',
       body: JSON.stringify({
-        databaseId: chosen.id,
-        dataSourceId: chosen.id,
+        databaseId: chosen.databaseId,
+        dataSourceId: chosen.dataSourceId,
         direction: direction.value,
       }),
     });
@@ -148,7 +148,7 @@ onMounted(load);
           label="Notion database"
           :options="
             databases.map((d) => ({
-              value: d.id,
+              value: d.databaseId,
               label: `${d.title}${d.compatible ? '' : ' (incompatible)'}`,
             }))
           "

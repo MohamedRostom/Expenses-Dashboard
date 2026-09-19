@@ -2,11 +2,11 @@ import type { MiddlewareHandler } from 'hono';
 import { getCookie, setCookie } from 'hono/cookie';
 import { ApiError } from '../lib/api-error.js';
 
-const CSRF_COOKIE = 'desk_csrf';
+const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_HEADER = 'x-csrf-token';
 
 /**
- * Double-submit CSRF (research.md R2): on every non-GET request the `desk_csrf` cookie value
+ * Double-submit CSRF (research.md R2): on every non-GET request the `__Host-desk_csrf` cookie value
  * must equal the `X-CSRF-Token` header. GET/HEAD/OPTIONS are read-only and exempt — and a
  * GET with no cookie yet issues one, otherwise a fresh browser could never make its first POST
  * (login/register rotate it again on success, see routes/auth.ts setSessionCookies).

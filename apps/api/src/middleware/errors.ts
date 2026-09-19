@@ -23,10 +23,13 @@ export const errorHandler: ErrorHandler = (err, c) => {
     return c.json(body, 400);
   }
 
-  // Unknown error: log server-side (request-logger covers status), leak nothing to the client.
+  // Unknown error: log server-side (request-logger covers status) with the real exception
+  // attached to the context so request-logger can pass it to the Sentry wrapper as-is instead
+  // of a synthetic Error with no stack — and leak nothing to the client.
   console.error(err);
+  c.set('lastError', err instanceof Error ? err : new Error(String(err)));
   const body: ErrorEnvelopeT = {
-    error: { code: 'validation_failed', message: 'Internal server error' },
+    error: { code: 'internal', message: 'Internal server error' },
   };
   return c.json(body, 500);
 };

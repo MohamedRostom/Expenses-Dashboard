@@ -22,7 +22,14 @@ export class FrankfurterRates implements RatesProvider {
 
   async rate(date: string, from: CurrencyCode, to: CurrencyCode): Promise<RateOutcome> {
     const url = `${BASE_URL}/${date}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
-    const res = await this.fetchImpl(url);
+    // No timeout here previously — a hung connection would block the expense create/patch
+    // request (or the currency-change/rates.warm job) indefinitely.
+    let res: Response;
+    try {
+      res = await this.fetchImpl(url, { signal: AbortSignal.timeout(5000) });
+    } catch {
+      return { unsupported: true };
+    }
     if (!res.ok) return { unsupported: true };
 
     const body = (await res.json()) as FrankfurterBody;

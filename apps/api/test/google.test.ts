@@ -12,7 +12,7 @@ const TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 
 /** Picks the OAuth state cookie's `name=value` pair out of a `Set-Cookie` header (the csrf
- * middleware also issues `desk_csrf` on GET, so the header can carry more than one cookie). */
+ * middleware also issues `__Host-desk_csrf` on GET, so the header can carry more than one cookie). */
 function cookiePair(setCookie: string): string {
   const pair = setCookie
     .split(/,\s*(?=[^;,]+=)/)

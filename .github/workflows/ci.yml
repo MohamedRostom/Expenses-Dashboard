@@ -111,6 +111,15 @@ jobs:
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+      # Was "temporary-public-storage" (LHCI's own hosted service) — the reports include full
+      # page content/screenshots, and this is a private product. Kept as a normal (private,
+      # repo-scoped) Actions artifact instead.
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: lighthouse-reports
+          path: tests/e2e/lighthouse-reports
+          retention-days: 7
       - if: failure()
         run: docker compose -f infra/docker-compose.yml logs
       - if: failure()

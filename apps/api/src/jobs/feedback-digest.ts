@@ -16,12 +16,23 @@ export type FeedbackDigestDeps = {
   enqueue: (name: string, payload: unknown, opts?: { runAfter?: Date }) => Promise<string>;
 };
 
+/** User-submitted feedback text goes straight into this HTML email — escape it or it's a
+ * stored-XSS vector against whoever reads the digest (Rostom's own inbox). */
+function escapeHtml(s: string): string {
+  return s
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
 function renderDigest(rows: (typeof feedback.$inferSelect)[]): string {
   if (rows.length === 0) return '<p>No feedback in the last 24 hours.</p>';
   const items = rows
     .map(
       (r) =>
-        `<li><strong>${r.page}</strong> (${r.contactOk ? 'ok to contact' : 'anonymous'}): ${r.message}</li>`,
+        `<li><strong>${escapeHtml(r.page)}</strong> (${r.contactOk ? 'ok to contact' : 'anonymous'}): ${escapeHtml(r.message)}</li>`,
     )
     .join('');
   return `<p>${rows.length} feedback submission(s) in the last 24 hours:</p><ul>${items}</ul>`;

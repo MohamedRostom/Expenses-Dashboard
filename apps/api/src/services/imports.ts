@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import {
   importProfiles,
   importBatches,
@@ -142,14 +142,18 @@ export function createImportsService(db: Db, expensesService: ExpensesService) {
     }
 
     const { byFingerprint } = await existingFingerprints(userId);
+    // Bug: this used to compare the import's externalId column against expenses.id (the
+    // internal UUID primary key) — a mapped external id from a source system essentially never
+    // matches a UUID, so "mapped id column takes precedence over the fingerprint" was dead code.
+    // The actual record of "external ids already imported for this user" is import_rows itself.
     const existingExternalIds = mapping.id
       ? new Set(
           (
             await db
-              .select({ id: expensesTable.id })
-              .from(expensesTable)
-              .where(eq(expensesTable.userId, userId))
-          ).map((r) => r.id),
+              .select({ externalId: importRows.externalId })
+              .from(importRows)
+              .where(and(eq(importRows.userId, userId), isNotNull(importRows.externalId)))
+          ).map((r) => r.externalId as string),
         )
       : new Set<string>();
 
@@ -241,9 +245,16 @@ export function createImportsService(db: Db, expensesService: ExpensesService) {
 
     const rows = await db.select().from(importRows).where(eq(importRows.batchId, batchId));
     const skip = new Set(input.skipRows ?? []);
-    let created = 0;
+    // Resumable: a row that already has an expenseId was created by an earlier, interrupted
+    // commit() attempt (crash, deploy restart) — batch.status only flips to 'done' at the very
+    // end, so a retry would otherwise re-run expensesService.create() for every row and produce
+    // duplicate expenses. Not a full transaction (expensesService.create does its own
+    // statements against this same `db`, not a tx-scoped one) — this is the resumability half
+    // of the fix, not the atomicity half.
+    let created = rows.filter((r) => r.expenseId !== null).length;
 
     for (const row of rows) {
+      if (row.expenseId !== null) continue;
       if (skip.has(row.rowNumber)) {
         await db.update(importRows).set({ status: 'skipped' }).where(eq(importRows.id, row.id));
         continue;

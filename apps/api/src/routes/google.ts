@@ -7,10 +7,11 @@ import { oauthAccounts, users } from '@desk/db';
 import type { SessionStore } from '../adapters/session-store.js';
 import type { AppVariables, Clock } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
+import { clientIp } from '../lib/client-ip.js';
 import { SESSION_COOKIE } from '../middleware/session.js';
 import { seedDefaultCategories } from '../services/categories.js';
 
-const CSRF_COOKIE = 'desk_csrf';
+const CSRF_COOKIE = '__Host-desk_csrf';
 const OAUTH_STATE_COOKIE = 'desk_oauth_state';
 const OAUTH_STATE_MAX_AGE_S = 600;
 
@@ -59,7 +60,12 @@ async function loginAs(
   userId: string,
 ): Promise<void> {
   const token = crypto.randomUUID();
-  await sessions.create({ userId, tokenHash: await hashToken(token) });
+  await sessions.create({
+    userId,
+    tokenHash: await hashToken(token),
+    userAgent: c.req.header('user-agent') ?? null,
+    ip: clientIp(c),
+  });
   setCookie(c, SESSION_COOKIE, token, {
     httpOnly: true,
     secure: true,

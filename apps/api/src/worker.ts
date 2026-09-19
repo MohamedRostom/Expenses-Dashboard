@@ -6,6 +6,8 @@ import { parseWorkersBindings, type Bindings, type WorkersBindings } from './env
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import { KvSessionStore, type KVNamespace } from './adapters/session-store-kv.js';
 import { JobRunner } from './jobs/runner.js';
+import { registerAllJobs } from './jobs/register.js';
+import { createRatesService } from './services/rates.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 
 // Stage 2 entry point (Cloudflare Workers). Same app object as node.ts, different adapter.
@@ -49,6 +51,8 @@ function queryDbFor(connectionString: string): QueryDb {
   };
 }
 
+// C1: registerJob just replaces a Map entry, so calling registerAllJobs on every cold start
+// (fetch) and every cron tick (scheduled) below is idempotent — no separate registration guard.
 let app: ReturnType<typeof createApp> | undefined;
 
 export default {
@@ -57,7 +61,15 @@ export default {
     if (!app) {
       const bindings = parseWorkersBindings(env);
       const jobRunner = new JobRunner(queryDbFor(bindings.HYPERDRIVE.connectionString));
-      app = createApp(buildDeps(bindings, jobRunner));
+      const { db } = createDb(bindings.HYPERDRIVE.connectionString);
+      const deps = buildDeps(bindings, jobRunner);
+      registerAllJobs({
+        db,
+        getRate: createRatesService(db, deps.rates).getRate,
+        ratesProvider: deps.rates,
+        limiter: deps.limiter,
+      });
+      app = createApp(deps);
     }
     return app.fetch(request);
   },
@@ -67,6 +79,14 @@ export default {
   async scheduled(_event: unknown, env: unknown): Promise<void> {
     const bindings = parseWorkersBindings(env);
     const jobRunner = new JobRunner(queryDbFor(bindings.HYPERDRIVE.connectionString));
+    const { db } = createDb(bindings.HYPERDRIVE.connectionString);
+    const deps = buildDeps(bindings, jobRunner);
+    registerAllJobs({
+      db,
+      getRate: createRatesService(db, deps.rates).getRate,
+      ratesProvider: deps.rates,
+      limiter: deps.limiter,
+    });
     await jobRunner.runDueJobs();
   },
 };

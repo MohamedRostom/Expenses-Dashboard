@@ -1,3 +1,5 @@
+import { getCurrency, isCurrencyCode } from '../money/currencies.js';
+
 /** Field mapping between a local expense row and Notion page properties, per the known
  * layout in CLAUDE.md "External identifiers" (Expense title, Amount number, Currency select,
  * Date, Category select, Paid with select, Kind select, Notes, Added via select, Expense ID
@@ -38,12 +40,13 @@ export interface NotionPage {
 }
 
 /** Local -> Notion, for a page create/update body. `amountOriginal` is minor units; Notion's
- * Amount is a plain number property so we convert to major units (2dp is enough for v1
- * currencies — a currency with different minor-unit exponents is a known limitation). */
+ * Amount is a plain number property so we convert to major units using the currency's own
+ * exponent (JPY has 0, KWD has 3, most have 2). */
 export function toNotionProperties(expense: LocalExpenseLike): Record<string, unknown> {
+  const exponent = getCurrency(expense.currencyOriginal).exponent;
   return {
     Expense: { title: [{ text: { content: expense.description } }] },
-    Amount: { number: expense.amountOriginal / 100 },
+    Amount: { number: expense.amountOriginal / 10 ** exponent },
     Currency: { select: { name: expense.currencyOriginal } },
     Date: { date: { start: expense.expenseDate } },
     Category: expense.categoryName ? { select: { name: expense.categoryName } } : { select: null },
@@ -71,13 +74,21 @@ export interface MappedRemote {
   expenseId: string | null; // the 'Expense ID' text property, if the app wrote it
 }
 
+/** Notion title/rich_text properties are arrays of formatting runs (bold, a link, etc. each
+ * start a new segment) — reading only [0] silently truncated anything past the first run. */
+function joinPlainText(segments: Array<{ plain_text?: string }> | undefined): string | undefined {
+  if (!segments || segments.length === 0) return undefined;
+  const joined = segments.map((s) => s.plain_text ?? '').join('');
+  return joined || undefined;
+}
+
 /** Notion page -> local shape used for diffing. Returns `null` (with a reason) when a
  * required property is missing or unparseable, so the caller can skip it rather than crash. */
 export function fromNotionProperties(
   page: NotionPage,
 ): { ok: true; row: MappedRemote } | { ok: false; reason: string } {
   const p = page.properties;
-  const description = p.Expense?.title?.[0]?.plain_text;
+  const description = joinPlainText(p.Expense?.title);
   const amount = p.Amount?.number;
   const currency = p.Currency?.select?.name;
   const date = p.Date?.date?.start;
@@ -90,6 +101,7 @@ export function fromNotionProperties(
     return { ok: false, reason: 'missing or invalid Amount' };
   }
   if (!currency) return { ok: false, reason: 'missing Currency' };
+  if (!isCurrencyCode(currency)) return { ok: false, reason: `unknown Currency "${currency}"` };
   if (!date) return { ok: false, reason: 'missing Date' };
   if (!paidWith) return { ok: false, reason: 'missing Paid with' };
   if (!kind) return { ok: false, reason: 'missing Kind' };
@@ -102,15 +114,15 @@ export function fromNotionProperties(
       lastEditedTime: page.last_edited_time,
       archived: page.archived ?? false,
       description,
-      amountOriginal: Math.round(amount * 100),
+      amountOriginal: Math.round(amount * 10 ** getCurrency(currency).exponent),
       currencyOriginal: currency,
       expenseDate: date,
       categoryName: p.Category?.select?.name ?? null,
       paidWith,
       kind,
-      notes: p.Notes?.rich_text?.[0]?.plain_text ?? null,
+      notes: joinPlainText(p.Notes?.rich_text) ?? null,
       addedVia,
-      expenseId: p['Expense ID']?.rich_text?.[0]?.plain_text ?? null,
+      expenseId: joinPlainText(p['Expense ID']?.rich_text) ?? null,
     },
   };
 }

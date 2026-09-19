@@ -20,6 +20,12 @@ const envObjectSchema = z.object({
   SENTRY_DSN: z.string().optional(),
   // T112: owner inbox for the daily feedback digest; the job skips sending when unset.
   FEEDBACK_DIGEST_EMAIL: z.string().optional(),
+  // Mail: SMTP is the default (compose: smtp://mailpit:1025); setting RESEND_API_KEY switches
+  // to Resend instead. Previously read straight from process.env with a silent default,
+  // bypassing this schema entirely — a typo'd var name would fall through unnoticed.
+  SMTP_URL: z.string().optional(),
+  RESEND_API_KEY: z.string().optional(),
+  MAIL_FROM: z.string().optional(),
 });
 
 export const envSchema = envObjectSchema

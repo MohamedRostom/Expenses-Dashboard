@@ -11,10 +11,11 @@ import {
 } from '@desk/contracts';
 import type { AppDeps, AppVariables } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
+import { clientIp } from '../lib/client-ip.js';
 import { SESSION_COOKIE } from '../middleware/session.js';
 import * as auth from '../services/auth.js';
 
-const CSRF_COOKIE = 'desk_csrf';
+const CSRF_COOKIE = '__Host-desk_csrf';
 
 type UserRow = typeof users.$inferSelect;
 
@@ -45,10 +46,6 @@ async function guard(deps: AppDeps, key: string, limit: number, windowMs: number
 
 const MINUTE = 60 * 1000;
 const HOUR = 60 * MINUTE;
-
-function clientIp(c: { req: { header(name: string): string | undefined } }): string {
-  return c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
-}
 
 function setSessionCookies(c: Context<{ Variables: AppVariables }>, token: string): void {
   setCookie(c, SESSION_COOKIE, token, {
@@ -83,14 +80,15 @@ export function authRoutes(deps: AppDeps) {
   app.post('/register', async (c) => {
     const input = RegisterRequest.parse(await c.req.json());
     await guard(deps, `register:email:${input.email}`, 5, 15 * MINUTE);
-    await guard(deps, `register:ip:${clientIp(c)}`, 20, HOUR);
+    await guard(deps, `register:ip:${clientIp(c) ?? 'unknown'}`, 20, HOUR);
     await auth.register(authDeps, input);
     return c.body(null, 202);
   });
 
   app.post('/verify', async (c) => {
     const input = VerifyRequest.parse(await c.req.json());
-    const { user, sessionToken } = await auth.verify(authDeps, input);
+    const meta = { userAgent: c.req.header('user-agent') ?? null, ip: clientIp(c) };
+    const { user, sessionToken } = await auth.verify(authDeps, input, meta);
     setSessionCookies(c, sessionToken);
     return c.json({ user: toUserResponse(user) }, 200);
   });
@@ -98,8 +96,9 @@ export function authRoutes(deps: AppDeps) {
   app.post('/login', async (c) => {
     const input = LoginRequest.parse(await c.req.json());
     await guard(deps, `login:email:${input.email}`, 10, 15 * MINUTE);
-    await guard(deps, `login:ip:${clientIp(c)}`, 100, HOUR);
-    const { user, sessionToken } = await auth.login(authDeps, input);
+    await guard(deps, `login:ip:${clientIp(c) ?? 'unknown'}`, 100, HOUR);
+    const meta = { userAgent: c.req.header('user-agent') ?? null, ip: clientIp(c) };
+    const { user, sessionToken } = await auth.login(authDeps, input, meta);
     setSessionCookies(c, sessionToken);
     return c.json({ user: toUserResponse(user) }, 200);
   });
@@ -115,10 +114,18 @@ export function authRoutes(deps: AppDeps) {
     return c.body(null, 204);
   });
 
+  app.post('/verify/resend', async (c) => {
+    const input = ForgotPasswordRequest.parse(await c.req.json()); // same {email} shape
+    await guard(deps, `resend-verify:email:${input.email}`, 5, 15 * MINUTE);
+    await guard(deps, `resend-verify:ip:${clientIp(c) ?? 'unknown'}`, 20, HOUR);
+    await auth.resendVerification(authDeps, input);
+    return c.body(null, 202);
+  });
+
   app.post('/password/forgot', async (c) => {
     const input = ForgotPasswordRequest.parse(await c.req.json());
     await guard(deps, `forgot:email:${input.email}`, 5, 15 * MINUTE);
-    await guard(deps, `forgot:ip:${clientIp(c)}`, 20, HOUR);
+    await guard(deps, `forgot:ip:${clientIp(c) ?? 'unknown'}`, 20, HOUR);
     await auth.forgotPassword(authDeps, input);
     return c.body(null, 202);
   });

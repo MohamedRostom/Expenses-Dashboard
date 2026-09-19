@@ -1,4 +1,4 @@
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import {
   captureTokens,
   captureReceipts,
@@ -26,9 +26,16 @@ function toBase64Url(bytes: Uint8Array): string {
   return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-async function sha256(input: Uint8Array): Promise<Buffer> {
+function toHex(bytes: Uint8Array): string {
+  return [...bytes].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Uint8Array, not Buffer — this file is shared with worker.ts (Cloudflare Workers), which
+// doesn't provide Node's Buffer global. Uint8Array works identically for every caller here
+// (toBase64Url already typed its param as Uint8Array; Buffer was always just a subtype of it).
+async function sha256(input: Uint8Array): Promise<Uint8Array> {
   const digest = await crypto.subtle.digest('SHA-256', input);
-  return Buffer.from(digest);
+  return new Uint8Array(digest);
 }
 
 function generateToken(): string {
@@ -70,7 +77,7 @@ async function receiptKeyFor(
   if (body.id) return body.id;
   const material = `${amountStr}|${body.currency.toUpperCase()}|${body.description}|${date}|${currentMinute(now)}`;
   const digest = await sha256(new TextEncoder().encode(material));
-  return digest.toString('hex');
+  return toHex(digest);
 }
 
 export type CaptureService = ReturnType<typeof createCaptureService>;
@@ -174,6 +181,18 @@ export function createCaptureService(
       userId: string,
       mappings: { label: string; categoryId: string }[],
     ): Promise<void> {
+      if (mappings.length > 0) {
+        const owned = await db
+          .select({ id: categoriesTable.id })
+          .from(categoriesTable)
+          .where(eq(categoriesTable.userId, userId));
+        const ownedIds = new Set(owned.map((c) => c.id));
+        // Only-uuid-validated categoryId would let user A map a label to user B's category.
+        for (const m of mappings) {
+          if (!ownedIds.has(m.categoryId))
+            throw new ApiError('not_found', 'Category not found', 404);
+        }
+      }
       await db.delete(captureCategoryMap).where(eq(captureCategoryMap.userId, userId));
       if (mappings.length === 0) return;
       await db
@@ -194,10 +213,14 @@ export function createCaptureService(
         .where(eq(captureTokens.tokenHash, tokenHash))
         .limit(1);
 
-      if (!tokenRow || tokenRow.revokedAt) {
-        await audit(tokenRow?.userId ?? null, 'capture.refused', {
-          reason: tokenRow ? 'revoked' : 'unknown_token',
-        });
+      if (!tokenRow) {
+        // No audit row: this is a public, unauthenticated path — anyone can hammer it with
+        // garbage tokens, and a DB row per attempt is unbounded storage growth with no user to
+        // attribute it to anyway. A revoked (but real, known) token still gets one below.
+        throw new ApiError('not_found', 'Not found', 404);
+      }
+      if (tokenRow.revokedAt) {
+        await audit(tokenRow.userId, 'capture.refused', { reason: 'revoked' });
         throw new ApiError('not_found', 'Not found', 404);
       }
 
@@ -268,11 +291,38 @@ export function createCaptureService(
         categoryId = await findOrCreateOther(user.id);
       }
 
+      // Receipt inserted BEFORE the expense, with a pre-generated id: two concurrent identical
+      // deliveries both pass the existingReceipt SELECT above (that's the race), but only one of
+      // their INSERTs into (token_id, receipt_key) — the primary key — can win. The loser's
+      // insert throws, so it never creates a second, orphaned expense.
+      const expenseId = crypto.randomUUID();
+      const inserted = await db.execute<{ token_id: string }>(sql`
+        INSERT INTO capture_receipts (token_id, receipt_key, expense_id)
+        VALUES (${tokenRow.id}, ${receiptKey}, ${expenseId})
+        ON CONFLICT (token_id, receipt_key) DO NOTHING
+        RETURNING token_id
+      `);
+      if (inserted.length === 0) {
+        // Lost the race: the winner's receipt is now visible — return its expense id.
+        const [winner] = await db
+          .select()
+          .from(captureReceipts)
+          .where(
+            and(
+              eq(captureReceipts.tokenId, tokenRow.id),
+              eq(captureReceipts.receiptKey, receiptKey),
+            ),
+          )
+          .limit(1);
+        if (!winner) throw new Error('capture: receipt insert conflicted but no row found');
+        return { status: 200, expenseId: winner.expenseId, duplicate: true };
+      }
+
       const { expense } = await expensesService.create(
         user.id,
         user.defaultCurrency,
         {
-          id: crypto.randomUUID(),
+          id: expenseId,
           description: body.description,
           amount: { minor: money.minor, currency },
           date,
@@ -284,9 +334,6 @@ export function createCaptureService(
         'phone',
       );
 
-      await db
-        .insert(captureReceipts)
-        .values({ tokenId: tokenRow.id, receiptKey, expenseId: expense.id });
       await db
         .update(captureTokens)
         .set({ lastUsedAt: now })

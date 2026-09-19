@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import type { CategoryResponseT, ExpenseResponseT, RatePreviewResponseT } from '@desk/contracts';
 import { Button, Input, Select } from '@desk/ui';
+import { formatMajor, parseMajor } from '@desk/core';
 import CurrencyPicker from './CurrencyPicker.vue';
 import VersionHistory from './VersionHistory.vue';
 import { apiFetch } from '../api/client.js';
@@ -17,9 +18,21 @@ const expenses = useExpensesStore();
 const isEdit = computed(() => !!props.expense);
 
 const description = ref(props.expense?.description ?? '');
-const amountMajor = ref(props.expense ? String(props.expense.amountOriginal / 100) : '');
+const amountMajor = ref(
+  props.expense
+    ? formatMajor({ minor: props.expense.amountOriginal, currency: props.expense.currencyOriginal })
+    : '',
+);
 const currency = ref(props.expense?.currencyOriginal ?? session.user?.defaultCurrency ?? 'GBP');
-const date = ref(props.expense?.date ?? new Date().toISOString().slice(0, 10));
+/** Today's date in the LOCAL calendar, not UTC — toISOString().slice(0,10) shows tomorrow's
+ * date for anyone east of UTC in the evening, or yesterday's for anyone west of it. */
+function todayLocal(): string {
+  const now = new Date();
+  const mm = String(now.getMonth() + 1).padStart(2, '0');
+  const dd = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${mm}-${dd}`;
+}
+const date = ref(props.expense?.date ?? todayLocal());
 const paidWith = ref(props.expense?.paidWith ?? 'card');
 const kind = ref(props.expense?.kind ?? 'variable');
 const notes = ref(props.expense?.notes ?? '');
@@ -97,8 +110,14 @@ async function onSubmit() {
     submitError.value = 'Editing needs a connection — only new expenses can be added offline';
     return;
   }
-  const minor = Math.round(Number(amountMajor.value) * 100);
-  if (!description.value || !Number.isFinite(minor) || minor <= 0) {
+  let minor: number;
+  try {
+    minor = parseMajor(amountMajor.value, currency.value).minor;
+  } catch {
+    submitError.value = 'Enter a description and a positive amount';
+    return;
+  }
+  if (!description.value || minor <= 0) {
     submitError.value = 'Enter a description and a positive amount';
     return;
   }

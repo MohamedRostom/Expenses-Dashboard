@@ -11,6 +11,29 @@ export interface User {
   onboardingCompletedAt?: string | null;
 }
 
+const CACHE_KEY = 'desk_cached_user';
+
+/** C8: last-known /me response, so a cold start with no network can still render the app shell
+ * instead of the router guard's rethrow leaving <RouterView> blank. Never treated as
+ * authoritative — a stale cache just means the guard lets a screen render optimistically. */
+function readCachedUser(): User | null {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    return raw ? (JSON.parse(raw) as User) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeCachedUser(user: User | null): void {
+  try {
+    if (user) localStorage.setItem(CACHE_KEY, JSON.stringify(user));
+    else localStorage.removeItem(CACHE_KEY);
+  } catch {
+    // ignore — private browsing / storage blocked
+  }
+}
+
 export const useSessionStore = defineStore('session', {
   state: () => ({
     user: null as User | null,
@@ -19,9 +42,18 @@ export const useSessionStore = defineStore('session', {
     async load() {
       try {
         this.user = await apiFetch<User>('/me');
+        writeCachedUser(this.user);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
           this.user = null;
+          writeCachedUser(null);
+          return;
+        }
+        // Network error (offline cold start): fall back to the last-known user rather than
+        // rethrowing into the router guard, which would abort navigation and blank the app.
+        const cached = readCachedUser();
+        if (cached) {
+          this.user = cached;
           return;
         }
         throw err;
@@ -30,6 +62,7 @@ export const useSessionStore = defineStore('session', {
     async logout() {
       await apiFetch<void>('/auth/logout', { method: 'POST' });
       this.user = null;
+      writeCachedUser(null);
     },
   },
 });

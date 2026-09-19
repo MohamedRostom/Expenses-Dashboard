@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /** Single-category drill-down: spend over a range of months, via /summary/category/:id. */
-import { onMounted, ref } from 'vue';
+import { onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { CategoryDrilldownT } from '@desk/contracts';
 import { EmptyState, ErrorState, Skeleton } from '@desk/ui';
@@ -29,6 +29,10 @@ async function load() {
 }
 
 onMounted(load);
+// Vue Router reuses this component instance across /categories/:id -> /categories/:id2
+// navigations (same route record) — onMounted alone never re-fires, so without this watch the
+// drilldown for the previous category stayed on screen.
+watch(() => route.params.id, load);
 
 const currency = () => session.user?.defaultCurrency ?? 'GBP';
 </script>

@@ -1,25 +1,22 @@
 import { expect, test } from '@playwright/test';
 
-test('shows a loading state while /healthz is in flight', async ({ page }) => {
-  await page.route('**/healthz', async (route) => {
-    await new Promise((r) => setTimeout(r, 1500));
-    await route.continue();
+// Stale scaffold from before routing/auth existed — `/` requires auth now (router.ts) and
+// redirects an unauthenticated visitor to /login, so the old "Hello from Desk" placeholder
+// page and its /healthz-loading-state assertions test a page nothing serves any more.
+// @mobile: the pixel-7/iphone-14 Playwright projects filter on this tag and previously matched
+// zero specs, so they silently "passed" without running anything.
+test.describe('unauthenticated visit to / @mobile', () => {
+  test('redirects to /login, which renders the sign-in form', async ({ page }) => {
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login(\?.*)?$/);
+    await expect(page.getByRole('heading', { name: 'Sign in' })).toBeVisible();
+    await expect(page.getByLabel(/email/i)).toBeVisible();
+    await expect(page.getByLabel(/password/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Sign in' })).toBeVisible();
   });
-  await page.goto('/');
-  await expect(page.locator('[aria-busy="true"]')).toBeVisible();
-  await expect(page.getByTestId('health')).toBeVisible();
-});
 
-test('shows a specific error when /healthz fails', async ({ page }) => {
-  await page.route('**/healthz', (route) => route.fulfill({ status: 503, body: 'down' }));
-  await page.goto('/');
-  await expect(page.getByRole('alert')).toContainText(
-    'Could not reach the API: healthz returned 503',
-  );
-});
-
-test('the Hello page loads and shows the API version from /healthz', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Hello from Desk' })).toBeVisible();
-  await expect(page.getByTestId('health')).toContainText(/API \d+\.\d+\.\d+ at \S+/);
+  test('remembers the intended route through login', async ({ page }) => {
+    await page.goto('/settings');
+    await expect(page).toHaveURL(/\/login\?redirect=%2Fsettings/);
+  });
 });

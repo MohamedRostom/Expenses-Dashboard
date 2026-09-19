@@ -31,8 +31,9 @@ export function createNotionMockApp(fake: FakeNotion = new FakeNotion()) {
       const results = await fake.searchDatabases();
       return c.json({
         results: results.map((d) => ({
-          id: d.id,
-          title: [{ plain_text: d.title }],
+          id: d.dataSourceId,
+          name: d.title,
+          parent: { type: 'database_id', database_id: d.databaseId },
           properties: d.properties,
         })),
       });
@@ -52,13 +53,13 @@ export function createNotionMockApp(fake: FakeNotion = new FakeNotion()) {
     }
   });
 
-  app.get('/databases/:id', async (c) => {
-    // ensureLayout's GET — the fake tracks a flat property set, not per-database, so this
+  app.get('/data_sources/:id', async (c) => {
+    // ensureLayout's GET — the fake tracks a flat property set, not per-data-source, so this
     // returns the fake's current view regardless of :id (fine for a single-connection fake).
     return c.json({ properties: {} });
   });
 
-  app.patch('/databases/:id', async (c) => {
+  app.patch('/data_sources/:id', async (c) => {
     try {
       await fake.ensureLayout(c.req.param('id'));
       return c.json({ ok: true });
@@ -80,10 +81,10 @@ export function createNotionMockApp(fake: FakeNotion = new FakeNotion()) {
   app.post('/pages', async (c) => {
     try {
       const body = (await c.req.json()) as {
-        parent: { database_id: string };
+        parent: { data_source_id: string };
         properties: Record<string, unknown>;
       };
-      const page = await fake.createPage(body.parent.database_id, body.properties);
+      const page = await fake.createPage(body.parent.data_source_id, body.properties);
       return c.json(page, 201);
     } catch (err) {
       return handleError(err);

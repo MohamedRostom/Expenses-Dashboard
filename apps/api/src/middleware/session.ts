@@ -25,6 +25,12 @@ async function hashToken(token: string): Promise<string> {
  * them on context (c.get('user'), c.get('session')). Does NOT reject unauthenticated requests —
  * routes requiring auth check c.get('user') themselves and throw an `unauthenticated` ApiError.
  */
+// Static assets (the built SPA's JS/CSS/images/fonts, served by node.ts's serveStatic further
+// down the same middleware chain) never need a fresh session — skipping them here avoids a
+// SELECT+UPDATE on the sessions/users tables for every script and stylesheet a page load pulls
+// in, on top of the one that actually mattered for the HTML/API request.
+const STATIC_ASSET_RE = /\.(?:js|css|map|png|jpg|jpeg|svg|webp|ico|woff2?|ttf)$/;
+
 export function sessionMiddleware(
   db: Db,
   sessions: SessionStore,
@@ -33,7 +39,7 @@ export function sessionMiddleware(
     c.set('user', null);
     c.set('session', null);
 
-    const token = getCookie(c, SESSION_COOKIE);
+    const token = STATIC_ASSET_RE.test(c.req.path) ? undefined : getCookie(c, SESSION_COOKIE);
     if (token) {
       const tokenHash = await hashToken(token);
       const session = await sessions.touch(tokenHash);

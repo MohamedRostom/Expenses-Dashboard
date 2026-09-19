@@ -4,7 +4,7 @@ import { expenseVersions, notionConnections } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
-const CSRF_COOKIE = 'desk_csrf';
+const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_TOKEN = 'test-csrf-token';
 
 let h: Harness;
@@ -67,9 +67,18 @@ describe('Notion OAuth + connection', () => {
     const res = await user.get('/notion/databases');
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      databases: Array<{ id: string; title: string; compatible: boolean }>;
+      databases: Array<{
+        databaseId: string;
+        dataSourceId: string;
+        title: string;
+        compatible: boolean;
+      }>;
     };
     expect(body.databases.length).toBeGreaterThan(0);
+    // C10: databaseId and dataSourceId are distinct fields — 2025-09-03 databases are
+    // containers of data sources, and queries/writes go against the data source id.
+    expect(body.databases[0]!.databaseId).toBeTruthy();
+    expect(body.databases[0]!.dataSourceId).toBeTruthy();
     expect(body.databases[0]!.compatible).toBe(true);
   });
 

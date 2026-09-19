@@ -4,24 +4,26 @@
 import { onMounted, ref, watch } from 'vue';
 import type { ForecastSummaryT } from '@desk/contracts';
 import { Skeleton } from '@desk/ui';
-import { apiFetch, ApiError } from '../api/client.js';
+import { apiFetch } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
+import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
+import PanelState from './PanelState.vue';
 
 const props = defineProps<{ month: string }>();
 
 const forecast = ref<ForecastSummaryT | null>(null);
 const loading = ref(false);
-const error = ref<string | null>(null);
+const errorKind = ref<PanelErrorKind | null>(null);
 
 async function load() {
   loading.value = true;
-  error.value = null;
+  errorKind.value = null;
   try {
     forecast.value = await apiFetch<ForecastSummaryT>(
       `/summary/forecast?month=${encodeURIComponent(props.month)}`,
     );
   } catch (err) {
-    error.value = err instanceof ApiError ? err.code : String(err);
+    errorKind.value = toPanelErrorKind(err);
   } finally {
     loading.value = false;
   }
@@ -41,6 +43,7 @@ defineExpose({ load });
       <span class="desk-tile-value">{{ formatMoney(forecast.forecast, forecast.currency) }}</span>
       <p class="desk-forecast-basis">Based on: {{ forecast.basis.join(', ') }}.</p>
     </template>
+    <PanelState v-else-if="errorKind" kind="error" :code="errorKind" />
   </div>
 </template>
 

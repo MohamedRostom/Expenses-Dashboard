@@ -42,13 +42,15 @@ const routes: RouteRecordRaw[] = [
   { path: '/import', name: 'import', component: ImportView, meta: { requiresAuth: true } },
   { path: '/bin', name: 'bin', component: BinView, meta: { requiresAuth: true } },
   {
-    path: '/categories',
+    // C14: root-mounted API keeps `GET /categories`; the client route moves under /settings so a
+    // hard refresh here never collides with the API route ahead of the SPA fallback.
+    path: '/settings/categories',
     name: 'categories',
     component: CategoriesView,
     meta: { requiresAuth: true },
   },
   {
-    path: '/categories/:id',
+    path: '/settings/categories/:id',
     name: 'category',
     component: CategoryView,
     meta: { requiresAuth: true },
@@ -75,7 +77,7 @@ router.beforeEach(async (to) => {
     sessionLoaded = true;
     await session.load();
   }
-  if (!session.user) return { name: 'login' };
+  if (!session.user) return { name: 'login', query: { redirect: to.fullPath } };
   if (!session.user.onboardingCompletedAt && to.name !== 'onboarding') {
     return { name: 'onboarding' };
   }

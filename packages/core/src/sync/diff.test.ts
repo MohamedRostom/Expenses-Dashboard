@@ -154,14 +154,43 @@ describe('diff', () => {
   it('direction change semantics: a prior to_notion-only local row now also considered for from_notion once direction includes it', () => {
     // Simulates: connection was to_notion only (this local row was pushed and linked); user
     // switches to `both`. The very next diff call passes cursor: null to force the reconcile.
-    const local = [localRow({ notionPageId: 'page-1', updatedAt: '2026-09-01T00:00:00.000Z' })];
-    const remote = [remoteRow({ pageId: 'page-1', lastEditedTime: '2026-09-05T00:00:00.000Z' })];
+    // Content genuinely differs (description) so this exercises conflict *resolution*, not just
+    // the "changed since" bookkeeping — a full reconcile with identical content is covered
+    // separately below and must NOT report a conflict.
+    const local = [
+      localRow({
+        notionPageId: 'page-1',
+        updatedAt: '2026-09-01T00:00:00.000Z',
+        description: 'Coffee (local)',
+      }),
+    ];
+    const remote = [
+      remoteRow({
+        pageId: 'page-1',
+        lastEditedTime: '2026-09-05T00:00:00.000Z',
+        description: 'Coffee (remote)',
+      }),
+    ];
 
     const result = diff(local, remote, null, 'both');
 
     // Both sides differ (full reconcile treats both as "changed"): conflict, remote is later.
     expect(result.conflicts).toEqual([{ local: local[0], remote: remote[0], winner: 'remote' }]);
     expect(result.toLocal).toEqual([{ row: remote[0], op: 'update' }]);
+  });
+
+  it('full reconcile of a matched pair with identical content reports no conflict', () => {
+    // C2/Important-list fix: cursor === null used to mean "every matched row is a conflict",
+    // regardless of whether the two sides actually agree — writing two sync_conflict versions
+    // per expense on every single first sync.
+    const local = [localRow({ notionPageId: 'page-1', updatedAt: '2020-01-01T00:00:00.000Z' })];
+    const remote = [remoteRow({ pageId: 'page-1', lastEditedTime: '2021-01-01T00:00:00.000Z' })];
+
+    const result = diff(local, remote, null, 'both');
+
+    expect(result.conflicts).toEqual([]);
+    expect(result.toLocal).toEqual([]);
+    expect(result.toNotion).toEqual([]);
   });
 
   it('full reconcile on switch to both: pre-existing unlinked remote rows are imported even though direction was from_notion-exclusive before', () => {

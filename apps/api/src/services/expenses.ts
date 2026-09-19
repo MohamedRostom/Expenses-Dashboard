@@ -1,6 +1,6 @@
 import { and, desc, eq, gte, isNull, lt, lte } from 'drizzle-orm';
 import { expenses as expensesTable, categories as categoriesTable, type Db } from '@desk/db';
-import { convert, monthSummary } from '@desk/core';
+import { convert, monthSummary, uuidv7 } from '@desk/core';
 import type {
   CreateExpenseRequestT,
   PatchExpenseRequestT,
@@ -96,6 +96,23 @@ async function resolveConversion(
   };
 }
 
+/** Only-uuid-validated categoryId lets user A attach user B's category id to their own expense
+ * (the row still saves fine — categoryId has no FK to a specific user). Confirms the category
+ * belongs to `userId` before it's ever written; `null` (no category) always passes. */
+async function assertOwnedCategory(
+  db: Db,
+  userId: string,
+  categoryId: string | null,
+): Promise<void> {
+  if (categoryId === null) return;
+  const [row] = await db
+    .select({ id: categoriesTable.id })
+    .from(categoriesTable)
+    .where(and(eq(categoriesTable.id, categoryId), eq(categoriesTable.userId, userId)))
+    .limit(1);
+  if (!row) throw new ApiError('not_found', 'Category not found', 404);
+}
+
 export function createExpensesService(db: Db, rates: RatesService, clock: Clock) {
   async function findOwned(userId: string, id: string): Promise<ExpenseRow> {
     const [row] = await db.select().from(expensesTable).where(eq(expensesTable.id, id)).limit(1);
@@ -109,7 +126,9 @@ export function createExpensesService(db: Db, rates: RatesService, clock: Clock)
     input: CreateExpenseRequestT,
     addedVia: ExpenseResponseT['addedVia'] = 'dashboard',
   ): Promise<{ expense: ExpenseResponseT; created: boolean }> {
-    const id = input.id ?? crypto.randomUUID();
+    // Server-generated ids must also be v7 (time-ordered), not v4 — list()'s pagination cursor
+    // sorts by id descending as a proxy for creation order (research.md R13).
+    const id = input.id ?? uuidv7();
 
     // Idempotent create (research.md R13): if this id already exists, return it as-is rather
     // than re-inserting or re-fetching a rate.
@@ -122,6 +141,8 @@ export function createExpensesService(db: Db, rates: RatesService, clock: Clock)
       if (existing.userId !== userId) throw new ApiError('not_found', 'Expense not found', 404);
       return { expense: toResponse(existing), created: false };
     }
+
+    await assertOwnedCategory(db, userId, input.categoryId);
 
     const conv = await resolveConversion(
       rates,
@@ -241,6 +262,8 @@ export function createExpensesService(db: Db, rates: RatesService, clock: Clock)
     const nextAmount = input.amount?.minor ?? existing.amountOriginal;
     const nextCurrency = input.amount?.currency ?? existing.currencyOriginal;
     const currencyOrDateChanged = input.amount !== undefined || input.date !== undefined;
+
+    if (input.categoryId !== undefined) await assertOwnedCategory(db, userId, input.categoryId);
 
     const patchFields: Partial<ExpenseInsert> = { updatedAt: clock.now() };
     if (input.description !== undefined) patchFields.description = input.description;

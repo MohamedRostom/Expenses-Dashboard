@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import type { ExpenseVersionT } from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
+import { formatDateTime } from '../utils/format.js';
 
 const props = defineProps<{ expenseId: string }>();
 
@@ -32,7 +33,7 @@ onMounted(async () => {
     <ul v-else>
       <li v-for="v in versions" :key="v.id">
         <span class="desk-version-source">{{ v.source }}</span>
-        <time :datetime="v.editedAt">{{ v.editedAt }}</time>
+        <time :datetime="v.editedAt">{{ formatDateTime(v.editedAt) }}</time>
       </li>
     </ul>
   </details>

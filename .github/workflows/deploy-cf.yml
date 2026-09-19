@@ -75,13 +75,16 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
       - run: pnpm --filter @desk/e2e exec playwright install --with-deps chromium
-      - run: pnpm test:e2e -- --project=ci
+      # The `ci` project assumes the compose stack — mocked connectors, Mailpit reachable at
+      # MAILPIT_URL — none of which exist against a live Cloudflare Pages preview talking to the
+      # real Worker/Postgres/Notion/frankfurter. That mismatch made every run here fail on
+      # anything touching signup email or a mocked connector. `local`'s smoke spec is built for
+      # exactly this: a real, deployed environment (same pattern deploy-fly.yml's
+      # smoke-staging job already uses).
+      - run: pnpm --filter @desk/e2e exec playwright test smoke.spec.ts --project=local
         env:
-          CI: 'true'
-          # wrangler-action's deployment-url output is the Pages preview for this deploy; the
-          # API worker's own deployment-url is used by the app internally via its own config,
-          # not by these e2e specs, which talk to whichever origin serves the SPA.
-          E2E_BASE_URL: ${{ needs.deploy-pages.outputs.deployment-url }}
+          E2E_LOCAL_BASE_URL: ${{ needs.deploy-pages.outputs.deployment-url }}
+          E2E_SEEDED_PASSWORD: ${{ secrets.E2E_SEEDED_PASSWORD }}
       - if: failure()
         uses: actions/upload-artifact@v7
         with:

@@ -5,6 +5,7 @@ import type { Db } from '@desk/db';
 import type { AppVariables } from '../app.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
+import { clientIp } from '../lib/client-ip.js';
 
 // T112: 5 submissions/hour — enough for genuine bug reports, cheap to abuse-proof, documented
 // here rather than made configurable (nobody has asked for a different number).
@@ -20,9 +21,7 @@ export function createFeedbackRoutes(db: Db, limiter: RateLimiter) {
     const user = c.get('user');
     const input = FeedbackRequest.parse(await c.req.json());
 
-    const limitKey = user
-      ? `feedback:user:${user.id}`
-      : `feedback:ip:${c.req.header('x-forwarded-for') ?? 'unknown'}`;
+    const limitKey = user ? `feedback:user:${user.id}` : `feedback:ip:${clientIp(c) ?? 'unknown'}`;
     const allowed = await limiter.hit(limitKey, FEEDBACK_LIMIT, FEEDBACK_WINDOW_MS);
     if (!allowed) throw new ApiError('rate_limited', 'Too much feedback, try again later', 429);
 

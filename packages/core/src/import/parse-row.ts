@@ -73,8 +73,13 @@ function parseAmountMinor(
   currency: string,
 ): number | null {
   const info = getCurrency(currency);
+  // decimalSeparator=',' (e.g. "1.234,56") strips '.' thousands separators; decimalSeparator='.'
+  // (e.g. "1,234.56") needs the symmetric strip of ',' thousands separators — previously only
+  // the comma-decimal branch did this, so a plain "1,234.56" was rejected outright.
   const normalized =
-    separator === ',' ? raw.trim().replace(/\./g, '').replace(',', '.') : raw.trim();
+    separator === ','
+      ? raw.trim().replace(/\./g, '').replace(',', '.')
+      : raw.trim().replace(/,/g, '');
   const match = /^(-?)(\d+)(?:\.(\d+))?$/.exec(normalized);
   if (!match) return null;
   const [, sign, whole, fraction = ''] = match;

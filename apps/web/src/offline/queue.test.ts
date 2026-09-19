@@ -84,7 +84,7 @@ describe('offline queue', () => {
     expect(rows[0]?.status).toBe('pending');
   });
 
-  it('queue survives session expiry (a 401 does not clear it)', async () => {
+  it('queue survives session expiry (C8: a 401 stays pending, not rejected)', async () => {
     await enqueue(baseInput);
     vi.stubGlobal(
       'fetch',
@@ -97,7 +97,10 @@ describe('offline queue', () => {
     await flush();
     const rows = await list();
     expect(rows).toHaveLength(1);
-    expect(rows[0]?.status).toBe('rejected'); // 401 is a 4xx — surfaced, not retried forever
+    // C8: a 401 means the session expired, not that this row is invalid — treat it like a
+    // network error (stays pending) so the row isn't lost; re-authenticating and the next
+    // flush() delivers it. A 403 gets the same treatment; a validation 4xx still rejects below.
+    expect(rows[0]?.status).toBe('pending');
   });
 
   it('local totals include queued rows as estimated', async () => {

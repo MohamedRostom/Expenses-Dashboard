@@ -42,7 +42,9 @@ export class FakeNotion {
 
   async queryDataSource(_dataSourceId: string, cursor?: string): Promise<QueryDataSourceResult> {
     this.maybeFail();
-    const all = [...this.pages.values()];
+    // Real Notion's data source query excludes archived pages by default — returning them here
+    // would let contract tests pass against a fake that behaves differently from the real API.
+    const all = [...this.pages.values()].filter((p) => !p.archived);
     if (!cursor) {
       return { results: all, next_cursor: null, has_more: false };
     }
@@ -92,12 +94,18 @@ export class FakeNotion {
   }
 
   async searchDatabases(): Promise<
-    Array<{ id: string; title: string; properties: Record<string, unknown> }>
+    Array<{
+      databaseId: string;
+      dataSourceId: string;
+      title: string;
+      properties: Record<string, unknown>;
+    }>
   > {
     this.maybeFail();
     return [
       {
-        id: 'fake-db-1',
+        databaseId: 'fake-db-1',
+        dataSourceId: 'fake-db-1',
         title: '💷 Expenses',
         properties: Object.fromEntries([...this.databaseProperties].map((n) => [n, {}])),
       },

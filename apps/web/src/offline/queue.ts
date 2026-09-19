@@ -53,9 +53,27 @@ export function estimatedTotal(rows: QueuedExpense[], currency: string): number 
 }
 
 /** POSTs every pending row (idempotent by id — apps/api's create() does onConflictDoNothing).
- * 2xx removes the row; 4xx marks it 'rejected' with a reason and keeps it visible, no retry;
- * a network error (or any other throw) leaves it 'pending' for the next flush attempt. */
+ * 2xx removes the row; a validation-style 4xx (not 401/403) marks it 'rejected' with a reason
+ * and keeps it visible, no retry; a network error, 401/403 (C8: session expiry must not lose
+ * the row — the user re-authenticates and the same row flushes fine after), or a 5xx leaves it
+ * 'pending' for the next flush attempt. */
+// flush() is called from several places (app start, the 'online' event, Background Sync) that
+// can genuinely overlap — without a guard, two concurrent calls both read the same pending row
+// before either deletes it, firing a duplicate POST /expenses (harmless — create is idempotent
+// by client id — but still a wasted request every time it happens).
+let flushing = false;
+
 export async function flush(): Promise<void> {
+  if (flushing) return;
+  flushing = true;
+  try {
+    await flushOnce();
+  } finally {
+    flushing = false;
+  }
+}
+
+async function flushOnce(): Promise<void> {
   const rows = await list();
   for (const row of rows) {
     if (row.status !== 'pending') continue;
@@ -63,26 +81,38 @@ export async function flush(): Promise<void> {
       await apiFetch('/expenses', { method: 'POST', body: JSON.stringify(row.input) });
       await (await db()).delete(STORE, row.id);
     } catch (err) {
-      if (err instanceof ApiError && err.status >= 400 && err.status < 500) {
+      const isAuthError = err instanceof ApiError && (err.status === 401 || err.status === 403);
+      if (err instanceof ApiError && !isAuthError && err.status >= 400 && err.status < 500) {
         await (await db()).put(STORE, { ...row, status: 'rejected', reason: err.message });
       }
-      // network error / 5xx: leave as pending, retried on the next flush
+      // network error / auth error / 5xx: leave as pending, retried on the next flush
     }
   }
 }
 
-/** Wires flush() to fire on `online`, on app start, and via Background Sync where supported
- * (Safari and older browsers lack it — feature-detected, never throws). Call once from main.ts. */
+/** Discards a rejected row permanently — the user chose not to retry it. */
+export async function discard(id: string): Promise<void> {
+  await (await db()).delete(STORE, id);
+}
+
+/** Puts a rejected row back to 'pending' and immediately retries flushing the whole queue. */
+export async function retry(id: string): Promise<void> {
+  const row = await (await db()).get(STORE, id);
+  if (!row) return;
+  await (await db()).put(STORE, { ...row, status: 'pending', reason: undefined });
+  await flush();
+}
+
+/** Wires flush() to fire on `online` and on app start. Call once from main.ts.
+ *
+ * Background Sync (registering a 'flush-expenses' tag so the OS wakes the SW to flush even
+ * while the tab is closed) used to be attempted here, but vite.config.ts's PWA plugin uses
+ * Workbox's `generateSW` strategy, which builds the service worker from config and has no way
+ * to add a custom `sync` event listener — the SW never listened for that tag, so registering it
+ * was a no-op that looked like it did something. Real support needs `injectManifest` (a
+ * hand-written SW source importing this module's flush logic) — a bigger change than restoring
+ * dead code, so it's a real to-do rather than a false "it works" left in place. */
 export function initOfflineQueue(): void {
   void flush();
   window.addEventListener('online', () => void flush());
-  if ('serviceWorker' in navigator) {
-    void navigator.serviceWorker.ready
-      .then((reg) =>
-        (
-          reg as ServiceWorkerRegistration & { sync?: { register(tag: string): Promise<void> } }
-        ).sync?.register('flush-expenses'),
-      )
-      .catch(() => {});
-  }
 }

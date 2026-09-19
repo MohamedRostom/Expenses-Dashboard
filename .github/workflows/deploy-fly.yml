@@ -2,9 +2,10 @@ name: deploy-fly
 
 # v0.* tags -> deploy to desk-staging, smoke test, promote the same build to desk-production.
 # v1.* tags go to deploy-cf.yml instead (Cloudflare cut-over, T118) — this workflow ignores them.
-# Needs repo secrets FLY_API_TOKEN, STAGING_DATABASE_URL and (for the promote step)
-# PRODUCTION_DATABASE_URL. desk-production does not exist yet — Rostom runs
-# `fly apps create desk-production` once before the promote job can succeed.
+# Needs repo secrets FLY_API_TOKEN, STAGING_DATABASE_URL, STAGING_SESSION_SECRET,
+# STAGING_SECRET_BOX_KEY and (for the promote step) PRODUCTION_DATABASE_URL,
+# PRODUCTION_SESSION_SECRET, PRODUCTION_SECRET_BOX_KEY. desk-production does not exist yet —
+# Rostom runs `fly apps create desk-production` once before the promote job can succeed.
 on:
   push:
     tags:
@@ -37,9 +38,16 @@ jobs:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@1.6
-      - run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="$STAGING_DATABASE_URL"
+      - run: >-
+          flyctl secrets set --config infra/fly/fly.toml --stage
+          DATABASE_URL="$STAGING_DATABASE_URL"
+          SESSION_SECRET="$STAGING_SESSION_SECRET"
+          SECRET_BOX_KEY="$STAGING_SECRET_BOX_KEY"
+          APP_ORIGIN="https://desk-staging.fly.dev"
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_SESSION_SECRET: ${{ secrets.STAGING_SESSION_SECRET }}
+          STAGING_SECRET_BOX_KEY: ${{ secrets.STAGING_SECRET_BOX_KEY }}
       - run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
@@ -69,6 +77,7 @@ jobs:
   promote-production:
     needs: smoke-staging
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - id: gate
         run: |
@@ -80,9 +89,16 @@ jobs:
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
       - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@1.6
-      - run: flyctl secrets set --app desk-production --stage DATABASE_URL="$PRODUCTION_DATABASE_URL"
+      - run: >-
+          flyctl secrets set --app desk-production --stage
+          DATABASE_URL="$PRODUCTION_DATABASE_URL"
+          SESSION_SECRET="$PRODUCTION_SESSION_SECRET"
+          SECRET_BOX_KEY="$PRODUCTION_SECRET_BOX_KEY"
+          APP_ORIGIN="https://desk-production.fly.dev"
         env:
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
+          PRODUCTION_SESSION_SECRET: ${{ secrets.PRODUCTION_SESSION_SECRET }}
+          PRODUCTION_SECRET_BOX_KEY: ${{ secrets.PRODUCTION_SECRET_BOX_KEY }}
       - run: >-
           flyctl deploy . --app desk-production --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false

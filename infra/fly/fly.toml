@@ -22,13 +22,16 @@ primary_region = "lhr"
   size = "shared-cpu-1x"
   memory = "256mb"
 
-# Background jobs (currency change, rate warm/retry, housekeeping, Notion sync) run via
-# `pnpm --filter @desk/api jobs:tick`, not this http_service. Fly does not yet have a native
-# scheduled-machine primitive we use here; run it as a `flyctl machine run` on a cron trigger
-# from an external scheduler (e.g. GitHub Actions schedule calling `flyctl ssh console -C
-# "pnpm --filter @desk/api jobs:tick"`), or a dedicated always-off machine woken by `flyctl
-# machine start` on the same cadence. Revisit once Fly ships first-class cron.
+# Background jobs (currency change, rate warm/retry, housekeeping, Notion sync) primarily run
+# in-process: node.ts (this http_service) polls runDueJobs() on a 30s interval as long as at
+# least one machine is up (see apps/api/src/node.ts). C13: that stalls if the last machine
+# scales to zero (min_machines_running = 0 above) or restarts mid-cycle, so
+# .github/workflows/jobs-safety-net.yml runs `flyctl machine run <image> dist/tick.js` hourly as
+# a backstop — dist/tick.js (built by `pnpm --filter @desk/api build`) is a single Node script
+# with its own DB wiring, so it needs neither a shell nor pnpm inside the distroless runtime
+# image (ssh console -C isn't available there).
 #
-# T114: nightly backup (infra/fly/backup.sh, pg_dump to Cloudflare R2) runs the same way, on
-# its own nightly schedule: `flyctl ssh console -C "infra/fly/backup.sh"`. See
+# T114: nightly backup (infra/fly/backup.sh, pg_dump to Cloudflare R2) needs actual shell/pg_dump
+# tooling the distroless image doesn't have — it runs from a separate Postgres-tooling image via
+# the same `flyctl machine run` approach, not `ssh console` into this app's machine. See
 # docs/runbooks/restore.md for the restore procedure.

@@ -14,12 +14,14 @@ export interface YearBarData {
 const props = defineProps<{
   months: YearBarData[];
   currency: string;
+  /** C7: caller supplies currency-aware formatting (@desk/ui has no @desk/core dependency). */
+  formatMoney?: (minor: number) => string;
 }>();
 
 const emit = defineEmits<{ select: [month: string] }>();
 
 function formatMinor(amount: number): string {
-  return (amount / 100).toFixed(2);
+  return props.formatMoney ? props.formatMoney(amount) : (amount / 100).toFixed(2);
 }
 
 function monthLabel(month: string): string {
@@ -48,7 +50,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
   <div class="desk-year-bars">
     <div
       class="desk-year-bars-chart"
-      role="img"
+      role="group"
       :aria-label="`Monthly spend for the year, in ${currency}`"
     >
       <button

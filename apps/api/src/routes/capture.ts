@@ -10,7 +10,7 @@ import { requireAuth } from '../lib/require-auth.js';
 import type { CaptureService } from '../services/capture.js';
 
 /** GET /capture/tokens, POST /capture/tokens/:label/rotate, GET/PUT /capture/mapping. */
-export function createCaptureRoutes(captureService: CaptureService) {
+export function createCaptureRoutes(captureService: CaptureService, appOrigin: string) {
   const app = new Hono<{ Variables: AppVariables }>();
 
   app.get('/capture/tokens', async (c) => {
@@ -27,7 +27,9 @@ export function createCaptureRoutes(captureService: CaptureService) {
     const body: RotateCaptureTokenResponseT = {
       token,
       secret,
-      url: `${new URL(c.req.url).origin}/hooks/generic/${secret}`,
+      // appOrigin, not c.req.url's origin — behind a reverse proxy (Fly's edge, a preview app)
+      // that origin can be an internal hostname/port the phone automation could never reach.
+      url: `${appOrigin}/hooks/generic/${secret}`,
     };
     return c.json(body);
   });

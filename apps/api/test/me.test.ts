@@ -97,23 +97,41 @@ describe('me', () => {
     expect(body.error.code).toBe('not_found');
   });
 
-  it('GET /me/export streams the export document shape', async () => {
+  it("GET /me/export includes the user's own categories and expenses", async () => {
     const user = await h.asUser('me-export@example.com');
+    const { category } = await j(
+      await user.post('/categories', { name: 'Groceries', colour: '#1f6e5a' }),
+    );
+    const expenseRes = await user.post('/expenses', {
+      description: 'Milk',
+      date: '2026-01-05',
+      categoryId: category.id,
+      paidWith: 'card',
+      kind: 'variable',
+      amount: { minor: 250, currency: 'GBP' },
+    });
+    expect(expenseRes.status).toBe(201);
+
     const res = await user.get('/me/export');
     expect(res.status).toBe(200);
     expect(res.headers.get('content-type')).toContain('application/json');
     const body = await j(res);
     expect(body.version).toBe(1);
     expect(body.user.email).toBe('me-export@example.com');
-    expect(body.categories).toEqual([]);
-    expect(body.expenses).toEqual([]);
+    expect(body.categories).toHaveLength(1);
+    expect(body.categories[0].name).toBe('Groceries');
+    expect(body.expenses).toHaveLength(1);
+    expect(body.expenses[0].description).toBe('Milk');
     expect(body.importBatches).toEqual([]);
     expect(body.notion).toEqual({ connected: false, direction: null, databaseId: null });
   });
 
   it('POST /me/email then /me/email/confirm changes the email and notifies both addresses', async () => {
     const user = await h.asUser('me-email-old@example.com');
-    const send = await user.post('/me/email', { newEmail: 'me-email-new@example.com' });
+    const send = await user.post('/me/email', {
+      newEmail: 'me-email-new@example.com',
+      password: 'test-password',
+    });
     expect(send.status).toBe(202);
 
     const toNew = h.mailer.sent.find((m) => m.to === 'me-email-new@example.com');
@@ -129,6 +147,40 @@ describe('me', () => {
     expect(confirm.status).toBe(200);
     const body = await j(confirm);
     expect(body.user.email).toBe('me-email-new@example.com');
+  });
+
+  it('POST /me/email requires the correct password when one is set', async () => {
+    const user = await h.asUser('me-email-noauth@example.com');
+    const noPassword = await user.post('/me/email', { newEmail: 'me-email-noauth2@example.com' });
+    expect(noPassword.status).toBe(400);
+
+    const wrongPassword = await user.post('/me/email', {
+      newEmail: 'me-email-noauth2@example.com',
+      password: 'not-the-password',
+    });
+    expect(wrongPassword.status).toBe(400);
+  });
+
+  it('POST /me/email refuses an email already in use', async () => {
+    await h.asUser('me-email-taken@example.com');
+    const user = await h.asUser('me-email-wants-taken@example.com');
+    const res = await user.post('/me/email', {
+      newEmail: 'me-email-taken@example.com',
+      password: 'test-password',
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it('POST /me/email is rate limited', async () => {
+    const user = await h.asUser('me-email-ratelimit@example.com');
+    let last: Response | undefined;
+    for (let i = 0; i < 6; i++) {
+      last = await user.post('/me/email', {
+        newEmail: `me-email-ratelimit-target-${i}@example.com`,
+        password: 'test-password',
+      });
+    }
+    expect(last!.status).toBe(429);
   });
 
   it('DELETE /me/password refuses to remove the only sign-in method', async () => {

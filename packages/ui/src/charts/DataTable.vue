@@ -2,12 +2,15 @@
 /** Accessible table alternative to CategoryBars — CLAUDE.md: "table view always available". */
 import type { CategoryBarData } from './CategoryBars.vue';
 
-defineProps<{
+const props = defineProps<{
   categories: CategoryBarData[];
+  /** C7: caller supplies currency-aware formatting (@desk/ui has no @desk/core dependency).
+   * Falls back to a fixed 2dp/100 read for callers that haven't been updated yet. */
+  formatMoney?: (minor: number) => string;
 }>();
 
 function formatMinor(amount: number): string {
-  return (amount / 100).toFixed(2);
+  return props.formatMoney ? props.formatMoney(amount) : (amount / 100).toFixed(2);
 }
 
 function remaining(c: CategoryBarData): string {

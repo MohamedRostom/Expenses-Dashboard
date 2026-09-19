@@ -1,14 +1,49 @@
 <script setup lang="ts">
-// ponytail: no focus trap, keep simple — add if a11y audit flags it.
-defineProps<{ open: boolean; title?: string }>();
-defineEmits<{ close: [] }>();
+import { nextTick, ref, watch } from 'vue';
+
+const props = defineProps<{ open: boolean; title?: string }>();
+const emit = defineEmits<{ close: [] }>();
+
+const dialogEl = ref<HTMLElement | null>(null);
+let lastFocused: HTMLElement | null = null;
+
+/** Escape closes; focus moves into the dialog on open and back to whatever opened it on close —
+ * previously neither happened, so a keyboard/screen-reader user landed nowhere on open and lost
+ * their place on close. */
+function onKeydown(e: KeyboardEvent): void {
+  if (e.key === 'Escape') emit('close');
+}
+
+watch(
+  () => props.open,
+  async (isOpen) => {
+    if (isOpen) {
+      lastFocused = document.activeElement as HTMLElement | null;
+      await nextTick();
+      const target =
+        dialogEl.value?.querySelector<HTMLElement>('input, button, select, textarea, [tabindex]') ??
+        dialogEl.value;
+      target?.focus();
+    } else {
+      lastFocused?.focus();
+    }
+  },
+);
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="open" class="desk-dialog-backdrop" @click.self="$emit('close')">
-      <div class="desk-dialog" role="dialog" aria-modal="true">
-        <header v-if="title" class="desk-dialog-header">{{ title }}</header>
+    <div v-if="open" class="desk-dialog-backdrop" @click.self="$emit('close')" @keydown="onKeydown">
+      <div
+        ref="dialogEl"
+        class="desk-dialog"
+        role="dialog"
+        aria-modal="true"
+        :aria-label="title ? undefined : 'Dialog'"
+        :aria-labelledby="title ? 'desk-dialog-title' : undefined"
+        tabindex="-1"
+      >
+        <header v-if="title" id="desk-dialog-title" class="desk-dialog-header">{{ title }}</header>
         <div class="desk-dialog-body">
           <slot />
         </div>

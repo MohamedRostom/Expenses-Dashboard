@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   customType,
   date,
   index,
@@ -17,8 +18,11 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 
-/** Raw bytes column (token hashes, encrypted secrets) — drizzle-orm has no built-in `bytea`. */
-const bytea = customType<{ data: Buffer }>({
+/** Raw bytes column (token hashes, encrypted secrets) — drizzle-orm has no built-in `bytea`.
+ * Typed as Uint8Array, not Buffer: apps/api's services are shared with worker.ts (Cloudflare
+ * Workers, no Node Buffer global) — Buffer is a subtype of Uint8Array, so a caller that does
+ * have Buffer (Node) can still pass one. */
+const bytea = customType<{ data: Uint8Array }>({
   dataType() {
     return 'bytea';
   },
@@ -127,7 +131,11 @@ export const jobs = pgTable(
     error: text('error'),
     attempts: integer('attempts').notNull().default(0),
   },
-  (t) => [index('jobs_status_run_after_idx').on(t.status, t.runAfter)],
+  (t) => [
+    index('jobs_status_run_after_idx').on(t.status, t.runAfter),
+    // cancelForUser() (jobs/runner.ts) and DELETE /me both query/update by user_id — unindexed.
+    index('jobs_user_id_idx').on(t.userId),
+  ],
 );
 
 export const flags = pgTable('flags', {
@@ -288,6 +296,15 @@ export const expenses = pgTable(
     uniqueIndex('expenses_user_id_notion_page_id_unique')
       .on(t.userId, t.notionPageId)
       .where(sql`notion_page_id IS NOT NULL`),
+    // Zero is never valid (a negative amount is — see contracts/capture.ts's refund case), and
+    // these two are app-level enums (packages/contracts/src/expenses.ts) with nothing at the DB
+    // level stopping a bad direct insert (e.g. a manual fixup query) from writing garbage.
+    check('expenses_amount_original_nonzero', sql`${t.amountOriginal} <> 0`),
+    check(
+      'expenses_paid_with_check',
+      sql`${t.paidWith} IN ('card','cash','bank_transfer','other')`,
+    ),
+    check('expenses_kind_check', sql`${t.kind} IN ('fixed','variable','one_off')`),
   ],
 );
 

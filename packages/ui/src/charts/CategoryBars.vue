@@ -15,6 +15,8 @@ export interface CategoryBarData {
 const props = defineProps<{
   categories: CategoryBarData[];
   currency: string;
+  /** C7: caller supplies currency-aware formatting (@desk/ui has no @desk/core dependency). */
+  formatMoney?: (minor: number) => string;
 }>();
 
 const groupMax = () =>
@@ -36,6 +38,7 @@ function isOverBudget(c: CategoryBarData): boolean {
 }
 
 function formatMinor(amount: number): string {
+  if (props.formatMoney) return props.formatMoney(amount);
   const exponent = 2;
   return (amount / 10 ** exponent).toFixed(exponent);
 }

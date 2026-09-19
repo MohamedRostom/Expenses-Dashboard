@@ -15,8 +15,12 @@ async function load() {
   loading.value = true;
   error.value = null;
   try {
+    // Deliberately NOT month-scoped — the bin holds everything ever soft-deleted, not just
+    // whatever month MonthView last happened to have loaded. from/to span the whole plausible
+    // range instead of a `month` param (the API defaults to the current month when neither is
+    // given).
     const res = await apiFetch<{ expenses: ExpenseResponseT[] }>(
-      `/expenses?month=${encodeURIComponent(store.currentMonth)}&includeDeleted=true`,
+      `/expenses?from=1970-01-01&to=2999-12-31&includeDeleted=true`,
     );
     deleted.value = res.expenses.filter((e) => e.deletedAt != null);
   } catch (err) {
@@ -46,7 +50,7 @@ onMounted(load);
           <th scope="col">Date</th>
           <th scope="col">Description</th>
           <th scope="col">Amount</th>
-          <th scope="col"></th>
+          <th scope="col"><span class="desk-sr-only">Actions</span></th>
         </tr>
       </thead>
       <tbody>
@@ -62,6 +66,17 @@ onMounted(load);
 </template>
 
 <style scoped>
+.desk-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
 .desk-bin-view {
   max-width: 50rem;
   margin: 0 auto;

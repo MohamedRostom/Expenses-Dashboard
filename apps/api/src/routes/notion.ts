@@ -39,7 +39,9 @@ function toConnectionResponse(row: {
  * POST /notion/databases, POST /notion/sync, GET /expenses/:id/versions. */
 export function createNotionRoutes(deps: NotionRoutesDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
-  const redirectUri = `${deps.appOrigin}/auth/notion/callback`;
+  // Must match the handler's actual mounted path below (app.get('/notion/callback', ...)) — this
+  // used to say /auth/notion/callback, a path nothing serves, so Notion's OAuth redirect 404'd.
+  const redirectUri = `${deps.appOrigin}/notion/callback`;
 
   app.get('/notion/start', (c) => {
     requireAuth(c);

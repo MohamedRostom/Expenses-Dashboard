@@ -60,6 +60,21 @@ export interface DiffResult {
   skipped: Skipped[];
 }
 
+/** True when a matched local/remote pair have the same expense content — ignores id/pageId/
+ * timestamps, which by definition differ (or are irrelevant) between the two sides. */
+function contentEqual(l: LocalRow, r: RemoteRow): boolean {
+  return (
+    l.description === r.description &&
+    l.amountOriginal === r.amountOriginal &&
+    l.currencyOriginal === r.currencyOriginal &&
+    l.expenseDate === r.expenseDate &&
+    l.categoryName === r.categoryName &&
+    l.paidWith === r.paidWith &&
+    l.kind === r.kind &&
+    l.notes === r.notes
+  );
+}
+
 function includes(direction: Direction, side: 'to_notion' | 'from_notion'): boolean {
   return direction === 'both' || direction === side;
 }
@@ -91,6 +106,13 @@ export function diff(
   for (const r of remote) {
     if ('invalid' in r && r.invalid) {
       skipped.push({ remote: r.raw, reason: r.reason });
+    } else if ((r as RemoteRow).archived) {
+      // Real Notion's data source query excludes archived pages by default, so a linked local
+      // row whose remote page got archived shows up here as simply *absent* — the existing
+      // "linked pageId no longer present" branch below already handles that as a delete. A
+      // caller (or a fake/mock) that includes archived rows anyway must not have diff() match
+      // them as if they still existed.
+      continue;
     } else {
       validRemote.push(r as RemoteRow);
     }
@@ -142,6 +164,12 @@ export function diff(
       if (includes(direction, 'to_notion')) toNotion.push({ row: l, op: 'archive' });
       continue;
     }
+
+    // A full reconcile (cursor === null) has no "since" timestamp, so changedSince() is true
+    // for every row by definition — without this check, every matched pair became a conflict
+    // on the very first sync, even when Notion and Desk already agree, writing two
+    // sync_conflict versions per expense for nothing.
+    if (cursor === null && contentEqual(l, r)) continue;
 
     const localChanged = changedSince(l.updatedAt);
     const remoteChanged = changedSince(r.lastEditedTime);

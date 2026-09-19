@@ -13,7 +13,7 @@ export const UserResponse = z.object({
 export type UserResponseT = z.infer<typeof UserResponse>;
 
 export const RegisterRequest = z.object({
-  email: z.string().email(),
+  email: z.string().email().toLowerCase().trim(),
   password: z.string().min(12).max(128),
   defaultCurrency: z.string().length(3),
   timeZone: z.string(),
@@ -25,12 +25,15 @@ export type VerifyRequestT = z.infer<typeof VerifyRequest>;
 export const VerifyResponse = z.object({ user: UserResponse });
 export type VerifyResponseT = z.infer<typeof VerifyResponse>;
 
-export const LoginRequest = z.object({ email: z.string().email(), password: z.string() });
+export const LoginRequest = z.object({
+  email: z.string().email().toLowerCase().trim(),
+  password: z.string(),
+});
 export type LoginRequestT = z.infer<typeof LoginRequest>;
 export const LoginResponse = z.object({ user: UserResponse });
 export type LoginResponseT = z.infer<typeof LoginResponse>;
 
-export const ForgotPasswordRequest = z.object({ email: z.string().email() });
+export const ForgotPasswordRequest = z.object({ email: z.string().email().toLowerCase().trim() });
 export type ForgotPasswordRequestT = z.infer<typeof ForgotPasswordRequest>;
 
 export const ResetPasswordRequest = z.object({

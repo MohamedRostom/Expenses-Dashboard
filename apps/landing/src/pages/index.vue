@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Button } from '@desk/ui';
 import { content } from '../content';
 </script>
 
@@ -8,7 +7,7 @@ import { content } from '../content';
     <section class="hero">
       <h1>{{ content.productName }}</h1>
       <p class="tagline">{{ content.tagline }}</p>
-      <a :href="content.signUpUrl" class="cta-link"><Button>Sign up free</Button></a>
+      <a :href="content.signUpUrl" class="cta-link">Sign up free</a>
     </section>
 
     <section class="steps" aria-label="How it works">
@@ -50,7 +49,19 @@ import { content } from '../content';
   opacity: 0.85;
 }
 .cta-link {
+  /* Was <a><Button>...</Button></a> — a <button> nested inside an <a> is invalid HTML (two
+   * interactive elements, one inside the other) and confusing for assistive tech. Styled to
+   * match @desk/ui's Button "primary" variant directly on the anchor instead. */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
   text-decoration: none;
+  background: var(--color-accent);
+  color: var(--color-bg);
 }
 .steps ol {
   list-style: none;

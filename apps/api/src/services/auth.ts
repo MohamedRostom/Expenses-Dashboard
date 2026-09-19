@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import type { Db, users } from '@desk/db';
-import { emailTokens, auditLog } from '@desk/db';
+import { emailTokens, auditLog, users as usersTable } from '@desk/db';
 import type { PasswordHasher } from '../adapters/password.js';
 import type { SessionStore, Session } from '../adapters/session-store.js';
 import type { Mailer } from '../adapters/mailer.js';
@@ -61,15 +61,14 @@ export async function register(
 
   const [existing] = await deps.db
     .select()
-    .from((await import('@desk/db')).users)
-    .where(eq((await import('@desk/db')).users.email, input.email))
+    .from(usersTable)
+    .where(eq(usersTable.email, input.email))
     .limit(1);
   if (existing) {
     // Always 202 — do not reveal that the email already has an account.
     return;
   }
 
-  const { users: usersTable } = await import('@desk/db');
   const passwordHash = await deps.hasher.hash(input.password);
   const [user] = await deps.db
     .insert(usersTable)
@@ -140,15 +139,15 @@ async function createSessionFor(
 export async function verify(
   deps: AuthDeps,
   input: { token: string },
+  meta?: { userAgent?: string | null; ip?: string | null },
 ): Promise<{ user: UserRow; sessionToken: string }> {
   const { userId } = await consumeEmailToken(deps, input.token, 'verify');
-  const { users: usersTable } = await import('@desk/db');
   const now = deps.clock.now();
   await deps.db.update(usersTable).set({ emailVerifiedAt: now }).where(eq(usersTable.id, userId));
   const [user] = await deps.db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
   if (!user) throw new Error('verify: user not found after update');
 
-  const { token: sessionToken } = await createSessionFor(deps, userId);
+  const { token: sessionToken } = await createSessionFor(deps, userId, meta);
   await writeAudit(deps, { userId, actor: userId, action: 'verify', subject: userId });
   return { user, sessionToken };
 }
@@ -156,8 +155,8 @@ export async function verify(
 export async function login(
   deps: AuthDeps,
   input: { email: string; password: string },
+  meta?: { userAgent?: string | null; ip?: string | null },
 ): Promise<{ user: UserRow; sessionToken: string }> {
-  const { users: usersTable } = await import('@desk/db');
   const [user] = await deps.db
     .select()
     .from(usersTable)
@@ -174,6 +173,13 @@ export async function login(
     throw new ApiError('unauthenticated', 'Invalid email or password', 401);
   }
 
+  // FR-001: an unverified account still exists (housekeeping purges it at day 7 if it stays
+  // unverified) but must not be usable to sign in — checked after password verify so a bad
+  // password on an unverified account still gets the generic 401, not this more specific error.
+  if (!user.emailVerifiedAt) {
+    throw new ApiError('email_unverified', 'Confirm your email before signing in', 403);
+  }
+
   if (deps.hasher.needsRehash(user.passwordHash)) {
     const rehashed = await deps.hasher.hash(input.password);
     await deps.db
@@ -182,7 +188,7 @@ export async function login(
       .where(eq(usersTable.id, user.id));
   }
 
-  const { token: sessionToken } = await createSessionFor(deps, user.id);
+  const { token: sessionToken } = await createSessionFor(deps, user.id, meta);
   await writeAudit(deps, { userId: user.id, actor: user.id, action: 'login', subject: user.id });
   return { user, sessionToken };
 }
@@ -201,8 +207,22 @@ export async function logout(
   });
 }
 
+/** Was previously unreachable: VerifyView's "Get a new link" sent the user to /register, but
+ * register() is a silent no-op for an already-existing email (even an unverified one, per its
+ * own no-enumeration rule) — an expired verify link had no way to actually get a new one. Same
+ * enumeration-safe shape as forgotPassword: always resolves, only sends when there's an
+ * unverified account to send it to. */
+export async function resendVerification(deps: AuthDeps, input: { email: string }): Promise<void> {
+  const [user] = await deps.db
+    .select()
+    .from(usersTable)
+    .where(eq(usersTable.email, input.email))
+    .limit(1);
+  if (!user || user.emailVerifiedAt) return;
+  await sendVerifyMail(deps, user);
+}
+
 export async function forgotPassword(deps: AuthDeps, input: { email: string }): Promise<void> {
-  const { users: usersTable } = await import('@desk/db');
   const [user] = await deps.db
     .select()
     .from(usersTable)
@@ -242,7 +262,6 @@ export async function resetPassword(
   }
 
   const { userId } = await consumeEmailToken(deps, input.token, 'reset');
-  const { users: usersTable } = await import('@desk/db');
   const passwordHash = await deps.hasher.hash(input.password);
   await deps.db.update(usersTable).set({ passwordHash }).where(eq(usersTable.id, userId));
   // Fresh reset: revoke every session, including whichever one the requester currently holds.

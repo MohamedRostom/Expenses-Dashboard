@@ -31,13 +31,23 @@ import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
 import { createCaptureService } from './services/capture.js';
 import { createNotionService, type NotionConfig } from './services/notion.js';
+import { registerJob } from './jobs/index.js';
+import { notionSyncJob } from './jobs/notion-sync.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
 export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
-/** JobRunner (research.md R7) lands in a later task — placeholder for now. */
 export type RatesDep = RatesProvider;
-export type JobsDep = unknown;
+/** C1: the subset of JobRunner routes need — enqueue only, no direct DB/runner access. */
+export type JobsDep =
+  | {
+      enqueue(
+        name: string,
+        payload: unknown,
+        opts?: { userId?: string; runAfter?: Date },
+      ): Promise<string>;
+    }
+  | undefined;
 export type Clock = { now(): Date };
 
 export type AppDeps = {
@@ -97,6 +107,8 @@ export function createApp(deps: AppDeps) {
       mailer: deps.mailer,
       sessionStore: deps.sessions,
       clock: deps.clock,
+      appOrigin: deps.appOrigin,
+      limiter: deps.limiter,
     }),
   );
   // Built up front (not inside the `if (deps.notion)` block below) so its debounced
@@ -108,8 +120,19 @@ export function createApp(deps: AppDeps) {
         deps.notion,
         createExpensesService(deps.db, createRatesService(deps.db, deps.rates), deps.clock),
         deps.clock,
+        deps.jobs?.enqueue.bind(deps.jobs),
       )
     : undefined;
+
+  // C1: registers the recurring `notion.sync` handler on the shared job registry — the actual
+  // enqueue (first run) happens in NotionService.setConnection above; this just makes sure
+  // there's a handler waiting when JobRunner.runDueJobs picks it up.
+  if (notionService && deps.jobs) {
+    registerJob(
+      'notion.sync',
+      notionSyncJob({ notion: notionService, enqueue: deps.jobs.enqueue.bind(deps.jobs) }),
+    );
+  }
 
   app.route('/', createMiscRoutes(deps.db));
   app.route('/', createSummaryRoutes(deps.db, deps.clock));
@@ -143,7 +166,7 @@ export function createApp(deps: AppDeps) {
     deps.clock,
   );
   app.route('/', createHooksRoutes(captureService));
-  app.route('/', createCaptureRoutes(captureService));
+  app.route('/', createCaptureRoutes(captureService, deps.appOrigin));
 
   if (notionService && deps.notion) {
     app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
@@ -153,14 +176,20 @@ export function createApp(deps: AppDeps) {
 
   app.get('/healthz', async (c) => {
     // T109: trivial query with a short timeout — never lets a slow/broken DB fail the whole
-    // check; 'degraded' communicates it instead, still 200.
+    // check; 'degraded' communicates it instead, still 200. The timer is cleared once either
+    // side settles — previously it kept running in the background even after the query won the
+    // race, a dangling handle for the rest of its 1.5s every time the DB answered promptly.
+    let timeoutHandle: ReturnType<typeof setTimeout>;
     const dbStatus = await Promise.race([
       Promise.resolve()
         .then(() => deps.db.execute(sql`SELECT 1`))
         .then(() => 'ok' as const)
         .catch(() => 'degraded' as const),
-      new Promise<'degraded'>((resolve) => setTimeout(() => resolve('degraded'), 1500)),
+      new Promise<'degraded'>((resolve) => {
+        timeoutHandle = setTimeout(() => resolve('degraded'), 1500);
+      }),
     ]);
+    clearTimeout(timeoutHandle!);
     const body: HealthResponseT = {
       status: 'ok',
       version: deps.build.version,

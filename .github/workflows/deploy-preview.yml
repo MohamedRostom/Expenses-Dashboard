@@ -1,7 +1,8 @@
 name: deploy-preview
 
 # One Fly app per PR (desk-pr-<number>), destroyed when the PR closes.
-# Needs repo secrets FLY_API_TOKEN and PREVIEW_DATABASE_URL.
+# Needs repo secrets FLY_API_TOKEN, PREVIEW_DATABASE_URL, PREVIEW_SESSION_SECRET and
+# PREVIEW_SECRET_BOX_KEY.
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -38,7 +39,12 @@ jobs:
             echo "$out" | grep -qi 'already' || { echo "$out"; exit 1; }
           fi
       - if: steps.gate.outputs.skip != 'true'
-        run: flyctl secrets set --app "$APP" --stage DATABASE_URL="${{ secrets.PREVIEW_DATABASE_URL }}"
+        run: >-
+          flyctl secrets set --app "$APP" --stage
+          DATABASE_URL="${{ secrets.PREVIEW_DATABASE_URL }}"
+          SESSION_SECRET="${{ secrets.PREVIEW_SESSION_SECRET }}"
+          SECRET_BOX_KEY="${{ secrets.PREVIEW_SECRET_BOX_KEY }}"
+          APP_ORIGIN="https://$APP.fly.dev"
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile

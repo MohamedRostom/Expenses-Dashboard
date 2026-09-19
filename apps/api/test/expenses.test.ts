@@ -42,6 +42,40 @@ describe('expenses', () => {
     await h.close();
   });
 
+  it('rejects a categoryId that belongs to a different user', async () => {
+    const userA = await h.asUser('expenses-cat-owner-a@example.com');
+    const userB = await h.asUser('expenses-cat-owner-b@example.com');
+    const { category } = await j(
+      await userB.post('/categories', { name: 'B-only', colour: '#1f6e5a' }),
+    );
+
+    const res = await userA.post('/expenses', {
+      description: 'Sneaky',
+      amount: { minor: 100, currency: 'GBP' },
+      date: '2026-09-10',
+      categoryId: category.id,
+      paidWith: 'card',
+      kind: 'variable',
+    });
+    expect(res.status).toBe(404);
+
+    // Same for PATCH, against an expense userA does own.
+    const created = await j(
+      await userA.post('/expenses', {
+        description: 'Own expense',
+        amount: { minor: 100, currency: 'GBP' },
+        date: '2026-09-10',
+        categoryId: null,
+        paidWith: 'card',
+        kind: 'variable',
+      }),
+    );
+    const patchRes = await userA.patch(`/expenses/${created.expense.id}`, {
+      categoryId: category.id,
+    });
+    expect(patchRes.status).toBe(404);
+  });
+
   it('POST /expenses with a client UUID v7 is idempotent', async () => {
     const user = await h.asUser('expenses-idempotent@example.com');
     const id = '018f5a1e-0000-7000-8000-000000000001';

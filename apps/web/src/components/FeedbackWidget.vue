@@ -2,7 +2,7 @@
 // T112: small footer feedback form. Page auto-fills from the route; disabled offline (same
 // navigator.onLine check toPanelErrorKind/ExpenseForm.vue already use — no new detection
 // pattern); shows the rate-limit message inline on a 429.
-import { computed, reactive, ref } from 'vue';
+import { computed, onUnmounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { apiFetch, ApiError } from '../api/client.js';
 
@@ -19,9 +19,19 @@ const status = reactive<{ kind: 'idle' | 'sending' | 'sent' | 'rate_limited' | '
 });
 
 const isOnline = ref(typeof navigator === 'undefined' ? true : navigator.onLine);
+function goOnline() {
+  isOnline.value = true;
+}
+function goOffline() {
+  isOnline.value = false;
+}
 if (typeof window !== 'undefined') {
-  window.addEventListener('online', () => (isOnline.value = true));
-  window.addEventListener('offline', () => (isOnline.value = false));
+  window.addEventListener('online', goOnline);
+  window.addEventListener('offline', goOffline);
+  onUnmounted(() => {
+    window.removeEventListener('online', goOnline);
+    window.removeEventListener('offline', goOffline);
+  });
 }
 
 const remaining = computed(() => MAX_LENGTH - message.value.length);

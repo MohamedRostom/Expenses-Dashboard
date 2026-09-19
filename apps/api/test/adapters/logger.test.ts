@@ -13,7 +13,7 @@ describe('requestLogger middleware', () => {
     const app = new Hono<{ Variables: RequestLoggerVariables }>();
     app.use('*', requestLogger(logger));
     app.get('/expenses/:id', (c) => {
-      c.set('userId', 'user-123');
+      c.set('user', { id: 'user-123' });
       return c.json({ ok: true });
     });
 

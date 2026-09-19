@@ -68,3 +68,18 @@ CSRF cookie not `__Host-`; the request logger reads a `userId` nothing sets; `to
   - Yes
 - Split this branch into per-phase PRs now, or land one "baseline" PR and start the convention from Phase 5? Either way CI has never run against this code and must before any merge.
   - only one baseline PR
+
+## Fix status (2026-09-19, later same day)
+
+All 14 Criticals (C1–C14) and every Important-list item are fixed and committed on this branch,
+each with its own commit, passing typecheck and the relevant test suite. One item is
+deliberately left open rather than half-fixed:
+
+- **Shared `PREVIEW_DATABASE_URL` across all PR previews, migrations run on boot.** Real per-PR
+  isolation needs either Neon branching (blocked on ADR-0002's "Neon from day one" decision,
+  still pending) or manual schema-per-PR provisioning Rostom hasn't set up. A code-only partial
+  fix (e.g. a search_path hack) would be fragile without that infra decision, so this stays a
+  to-do rather than a rushed mitigation.
+
+The Minor list (CSS tokens, ARIA polish, dead-code cleanup, CI action pinning, and similar) was
+explicitly deferred by Rostom's own call given session cost — not attempted.

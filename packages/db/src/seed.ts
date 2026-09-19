@@ -1,5 +1,23 @@
+import { argon2id } from 'hash-wasm';
 import { createDb } from './index.js';
 import { flags, users } from './schema.js';
+
+// Mirrors apps/api/src/adapters/password.ts's PARAMS exactly — this is the one other place that
+// needs to produce a hash login() will accept, and duplicating the params here (rather than
+// importing from apps/api) keeps packages/db's dependency direction one-way.
+async function hashPassword(password: string): Promise<string> {
+  const salt = new Uint8Array(16);
+  crypto.getRandomValues(salt);
+  return argon2id({
+    password,
+    salt,
+    parallelism: 1,
+    iterations: 2,
+    memorySize: 19 * 1024,
+    hashLength: 32,
+    outputType: 'encoded',
+  });
+}
 
 const DEFAULT_CATEGORIES = [
   'Rent',
@@ -39,6 +57,13 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
         .onConflictDoNothing();
     }
 
+    // Was onConflictDoNothing() with no passwordHash at all — smoke.spec.ts (@local) logs in as
+    // this user with a password, which login() always 401'd since there was no credential row
+    // to check against. onConflictDoUpdate so re-running seed also fixes an already-seeded
+    // environment, not just a fresh one.
+    const passwordHash = await hashPassword(
+      process.env['E2E_SEEDED_PASSWORD'] ?? 'correct horse battery staple',
+    );
     await db
       .insert(users)
       .values({
@@ -46,8 +71,12 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
         email: E2E_USER_EMAIL,
         emailVerifiedAt: new Date(),
         defaultCurrency: 'GBP',
+        passwordHash,
       })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: users.email,
+        set: { passwordHash, emailVerifiedAt: new Date() },
+      });
 
     if (opts.load) {
       // ponytail: --load is meant to insert a synthetic user with 20,000 expenses across five

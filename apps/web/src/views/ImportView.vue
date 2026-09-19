@@ -7,6 +7,7 @@ import type {
 } from '@desk/contracts';
 import { Button, Input, Select, Skeleton, useToast } from '@desk/ui';
 import { ApiError, readCookie } from '../api/client.js';
+import { formatMoney } from '../utils/format.js';
 
 const toast = useToast();
 
@@ -103,7 +104,7 @@ async function uploadAndPreview() {
     form.append('mapping', JSON.stringify(buildMappingPayload()));
 
     if (saveAsProfile.value && profileName.value) {
-      const csrf = readCookie('desk_csrf');
+      const csrf = readCookie('__Host-desk_csrf');
       await fetch(`/imports/profiles/${encodeURIComponent(profileName.value)}`, {
         method: 'PUT',
         credentials: 'include',
@@ -112,7 +113,7 @@ async function uploadAndPreview() {
       });
     }
 
-    const csrf = readCookie('desk_csrf');
+    const csrf = readCookie('__Host-desk_csrf');
     const res = await fetch('/imports', {
       method: 'POST',
       credentials: 'include',
@@ -294,7 +295,13 @@ onMounted(loadProfiles);
                 />
                 <template v-else>{{ row.parsed?.date }}</template>
               </td>
-              <td>{{ row.parsed?.amountMinor }} {{ row.parsed?.currency }}</td>
+              <td>
+                {{
+                  row.parsed?.amountMinor != null && row.parsed?.currency
+                    ? formatMoney(row.parsed.amountMinor, row.parsed.currency)
+                    : '—'
+                }}
+              </td>
               <td>{{ row.parsed?.description }}</td>
               <td>
                 <input
@@ -348,13 +355,16 @@ onMounted(loadProfiles);
 .desk-import-preview td {
   text-align: left;
   padding: 0.25rem 0.5rem;
-  border-bottom: 1px solid var(--desk-border, #ddd);
+  /* --desk-border/--desk-accent were never-defined tokens — the fallback always won, so this
+   * silently ignored dark mode. color-mix matches the border style every other table in the app
+   * uses (e.g. MonthView's entries table). */
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
 }
 .desk-import-status-badge[data-status='ok'] {
-  color: var(--desk-accent, #1f6e5a);
+  color: var(--color-accent);
 }
 .desk-import-status-badge[data-status='error'] {
-  color: #a83a2e;
+  color: var(--color-critical);
 }
 .desk-import-status-badge[data-status='duplicate'] {
   color: #a8641a;

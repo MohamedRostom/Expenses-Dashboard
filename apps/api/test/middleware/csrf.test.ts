@@ -20,25 +20,27 @@ describe('csrf middleware', () => {
   it('issues the csrf cookie on a GET that has none, so a fresh browser can make its first POST', async () => {
     const res = await buildApp().request('/x');
     const setCookie = res.headers.get('set-cookie') ?? '';
-    expect(setCookie).toMatch(/^desk_csrf=[^;]+; Max-Age=\d+; Path=\/; Secure; SameSite=Lax$/);
+    expect(setCookie).toMatch(
+      /^__Host-desk_csrf=[^;]+; Max-Age=\d+; Path=\/; Secure; SameSite=Lax$/,
+    );
     // The value the browser stores is the one the client will echo back in the header.
-    const token = setCookie.match(/^desk_csrf=([^;]+)/)?.[1] ?? '';
+    const token = setCookie.match(/^__Host-desk_csrf=([^;]+)/)?.[1] ?? '';
     const post = await buildApp().request('/x', {
       method: 'POST',
-      headers: { cookie: `desk_csrf=${token}`, 'x-csrf-token': token },
+      headers: { cookie: `__Host-desk_csrf=${token}`, 'x-csrf-token': token },
     });
     expect(post.status).toBe(200);
   });
 
   it('does not rotate an existing csrf cookie on GET', async () => {
-    const res = await buildApp().request('/x', { headers: { cookie: 'desk_csrf=abc123' } });
+    const res = await buildApp().request('/x', { headers: { cookie: '__Host-desk_csrf=abc123' } });
     expect(res.headers.get('set-cookie')).toBeNull();
   });
 
   it('allows a non-GET request when the cookie and header match', async () => {
     const res = await buildApp().request('/x', {
       method: 'POST',
-      headers: { cookie: 'desk_csrf=abc123', 'x-csrf-token': 'abc123' },
+      headers: { cookie: '__Host-desk_csrf=abc123', 'x-csrf-token': 'abc123' },
     });
     expect(res.status).toBe(200);
   });
@@ -55,7 +57,7 @@ describe('csrf middleware', () => {
   it('rejects a non-GET request when cookie and header disagree', async () => {
     const res = await buildApp().request('/x', {
       method: 'POST',
-      headers: { cookie: 'desk_csrf=abc123', 'x-csrf-token': 'different' },
+      headers: { cookie: '__Host-desk_csrf=abc123', 'x-csrf-token': 'different' },
     });
     expect(res.status).toBe(403);
   });

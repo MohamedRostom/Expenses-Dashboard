@@ -11,7 +11,13 @@ withDefaults(
 </script>
 
 <template>
-  <button :type="type" class="desk-btn" :class="variant" :disabled="disabled || loading">
+  <button
+    :type="type"
+    class="desk-btn"
+    :class="variant"
+    :disabled="disabled || loading"
+    :aria-busy="loading"
+  >
     <span v-if="loading" class="desk-btn-spinner" aria-hidden="true" />
     <slot />
   </button>
@@ -57,6 +63,11 @@ withDefaults(
 @keyframes desk-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desk-btn-spinner {
+    animation-duration: 1.5s;
   }
 }
 </style>

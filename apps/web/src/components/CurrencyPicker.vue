@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { apiFetch } from '../api/client.js';
 import { filterCurrencies, type Currency } from './currencyFilter.js';
 
@@ -12,6 +12,10 @@ const emit = defineEmits<{ 'update:modelValue': [value: string] }>();
 const currencies = ref<Currency[]>([]);
 const query = ref(props.modelValue);
 const open = ref(false);
+const activeIndex = ref(-1);
+const listboxId = `currency-picker-list-${Math.random().toString(36).slice(2)}`;
+
+const matches = computed(() => filterCurrencies(currencies.value, query.value));
 
 onMounted(async () => {
   try {
@@ -26,6 +30,39 @@ function select(code: string) {
   query.value = code;
   emit('update:modelValue', code);
   open.value = false;
+  activeIndex.value = -1;
+}
+
+/** Typing a valid code and tabbing away (no mouse click) previously left modelValue at its old
+ * value — the input looked updated but nothing was actually saved. */
+function onBlur() {
+  const typed = query.value.trim().toUpperCase();
+  if (typed && currencies.value.some((c) => c.code === typed)) {
+    query.value = typed;
+    emit('update:modelValue', typed);
+  }
+  open.value = false;
+  activeIndex.value = -1;
+}
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    open.value = true;
+    activeIndex.value = Math.min(activeIndex.value + 1, matches.value.length - 1);
+  } else if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    activeIndex.value = Math.max(activeIndex.value - 1, 0);
+  } else if (e.key === 'Enter') {
+    const active = matches.value[activeIndex.value];
+    if (open.value && active) {
+      e.preventDefault();
+      select(active.code);
+    }
+  } else if (e.key === 'Escape') {
+    open.value = false;
+    activeIndex.value = -1;
+  }
 }
 </script>
 
@@ -36,19 +73,30 @@ function select(code: string) {
       class="desk-input"
       type="text"
       autocomplete="off"
+      role="combobox"
+      aria-autocomplete="list"
+      :aria-expanded="open && matches.length > 0"
+      :aria-controls="listboxId"
+      :aria-activedescendant="activeIndex >= 0 ? `${listboxId}-${activeIndex}` : undefined"
       :value="query"
       @input="
         query = ($event.target as HTMLInputElement).value;
         open = true;
+        activeIndex = -1;
       "
       @focus="open = true"
-      @blur="open = false"
+      @blur="onBlur"
+      @keydown="onKeydown"
     />
-    <ul v-if="open && query" class="currency-picker-list">
+    <ul v-if="open && query" :id="listboxId" class="currency-picker-list" role="listbox">
       <li
-        v-for="c in filterCurrencies(currencies, query)"
+        v-for="(c, i) in matches"
+        :id="`${listboxId}-${i}`"
         :key="c.code"
         class="currency-picker-item"
+        role="option"
+        :aria-selected="i === activeIndex"
+        :class="{ 'currency-picker-item-active': i === activeIndex }"
         @mousedown.prevent="select(c.code)"
       >
         {{ c.code }} — {{ c.name }}
@@ -99,7 +147,8 @@ function select(code: string) {
   cursor: pointer;
   font-size: 0.9rem;
 }
-.currency-picker-item:hover {
+.currency-picker-item:hover,
+.currency-picker-item-active {
   background: var(--color-accent);
   color: var(--color-bg);
 }

@@ -4,15 +4,15 @@ import { apiFetch, ApiError, readCookie } from './client.js';
 describe('readCookie', () => {
   it('returns null when the cookie is absent', () => {
     Object.defineProperty(document, 'cookie', { value: 'other=1', configurable: true });
-    expect(readCookie('desk_csrf')).toBeNull();
+    expect(readCookie('__Host-desk_csrf')).toBeNull();
   });
 
   it('reads a matching cookie value', () => {
     Object.defineProperty(document, 'cookie', {
-      value: 'a=1; desk_csrf=tok123; b=2',
+      value: 'a=1; __Host-desk_csrf=tok123; b=2',
       configurable: true,
     });
-    expect(readCookie('desk_csrf')).toBe('tok123');
+    expect(readCookie('__Host-desk_csrf')).toBe('tok123');
   });
 });
 
@@ -23,7 +23,10 @@ describe('apiFetch', () => {
   });
 
   it('sends the CSRF header on non-GET requests', async () => {
-    Object.defineProperty(document, 'cookie', { value: 'desk_csrf=abc', configurable: true });
+    Object.defineProperty(document, 'cookie', {
+      value: '__Host-desk_csrf=abc',
+      configurable: true,
+    });
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 
@@ -34,7 +37,10 @@ describe('apiFetch', () => {
   });
 
   it('does not send the CSRF header on GET requests', async () => {
-    Object.defineProperty(document, 'cookie', { value: 'desk_csrf=abc', configurable: true });
+    Object.defineProperty(document, 'cookie', {
+      value: '__Host-desk_csrf=abc',
+      configurable: true,
+    });
     const fetchMock = vi.fn().mockResolvedValue(new Response('{}', { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 

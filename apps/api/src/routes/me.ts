@@ -7,6 +7,10 @@ import {
   oauthAccounts,
   jobs as jobsTable,
   auditLog,
+  categories as categoriesTable,
+  expenses as expensesTable,
+  importBatches as importBatchesTable,
+  notionConnections,
   type Db,
 } from '@desk/db';
 import {
@@ -26,15 +30,19 @@ import type { SessionUser } from '../middleware/session.js';
 import type { PasswordHasher } from '../adapters/password.js';
 import type { Mailer } from '../adapters/mailer.js';
 import type { SessionStore } from '../adapters/session-store.js';
+import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
+import { emailChangeMail } from '../mail/email-change.js';
 
 export type MeRoutesDeps = {
   db: Db;
   hasher: PasswordHasher;
   mailer: Mailer;
+  limiter: RateLimiter;
   sessionStore: SessionStore;
   clock: { now(): Date };
+  appOrigin: string;
 };
 
 function toUserResponse(u: SessionUser): MeResponseT['user'] {
@@ -58,7 +66,7 @@ const EMAIL_CHANGE_PREFIX = 'email_change:';
 
 /** GET/PATCH /me, /me/sessions, /me/export, DELETE /me, /me/email(/confirm), password/oauth removal. */
 export function createMeRoutes(deps: MeRoutesDeps) {
-  const { db, hasher, mailer, sessionStore, clock } = deps;
+  const { db, hasher, mailer, sessionStore, clock, appOrigin, limiter } = deps;
   const app = new Hono<{ Variables: AppVariables }>();
 
   app.get('/me', (c) => {
@@ -168,18 +176,25 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     return c.body(null, 204);
   });
 
-  app.get('/me/export', (c) => {
+  app.get('/me/export', async (c) => {
     const user = requireAuth(c);
 
-    // ponytail: categories/expenses/importBatches/notion tables don't exist yet (Phase 2/3) —
-    // shape and streaming mechanism only; wire real queries in when those land.
+    const [categories, expenses, importBatches, [notion]] = await Promise.all([
+      db.select().from(categoriesTable).where(eq(categoriesTable.userId, user.id)),
+      db.select().from(expensesTable).where(eq(expensesTable.userId, user.id)),
+      db.select().from(importBatchesTable).where(eq(importBatchesTable.userId, user.id)),
+      db.select().from(notionConnections).where(eq(notionConnections.userId, user.id)).limit(1),
+    ]);
+
     const doc: ExportDocumentT = {
       exportedAt: clock.now().toISOString(),
       user: toUserResponse(user),
-      categories: [],
-      expenses: [],
-      importBatches: [],
-      notion: { connected: false, direction: null, databaseId: null },
+      categories,
+      expenses,
+      importBatches,
+      notion: notion
+        ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
+        : { connected: false, direction: null, databaseId: null },
       version: 1,
     };
 
@@ -203,8 +218,9 @@ export function createMeRoutes(deps: MeRoutesDeps) {
       }
     }
 
-    // audit_log.user_id cascades on delete (see report) — pseudonymise with a one-way hash
-    // before the user row goes, so the FK never fires against a row we still want to keep.
+    // audit_log.user_id is ON DELETE SET NULL (data-model.md: audit rows must survive account
+    // deletion) — pseudonymise with a one-way hash into `details` before the user row goes,
+    // since the FK itself only nulls the column and knows nothing about pseudonymisation.
     const pseudonym = await sha256Hex(user.id);
 
     await db.transaction(async (tx) => {
@@ -239,10 +255,24 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     const user = requireAuth(c);
     const body = ChangeEmailRequest.parse(await c.req.json());
 
-    if (user.passwordHash && body.password) {
-      const ok = await hasher.verify(body.password, user.passwordHash);
-      if (!ok) throw new ApiError('validation_failed', 'Incorrect password', 400);
+    const allowed = await limiter.hit(`email-change:${user.id}`, 5, 60 * 60 * 1000);
+    if (!allowed) throw new ApiError('rate_limited', 'Too many attempts', 429);
+
+    // Re-auth: a password-holding account MUST supply the correct password — it was previously
+    // only checked when the caller bothered to send one, which is no check at all against
+    // someone who found an already-signed-in session (e.g. a stolen cookie).
+    if (user.passwordHash) {
+      if (!body.password || !(await hasher.verify(body.password, user.passwordHash))) {
+        throw new ApiError('validation_failed', 'Incorrect password', 400);
+      }
     }
+
+    const [existing] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.email, body.newEmail))
+      .limit(1);
+    if (existing) throw new ApiError('conflict', 'Email already in use', 409);
 
     const token = crypto.randomUUID();
     const tokenHash = await sha256Hex(token);
@@ -253,14 +283,9 @@ export function createMeRoutes(deps: MeRoutesDeps) {
       expiresAt: new Date(clock.now().getTime() + 24 * 60 * 60 * 1000),
     });
 
-    // ponytail: no shared mail-template module exists yet — inline copy here; fold into a
-    // proper template if apps/api/src/mail/email-change.ts lands from a parallel task.
-    const confirmUrl = `https://app.example/me/email/confirm?token=${token}`;
-    await mailer.send({
-      to: body.newEmail,
-      subject: 'Confirm your new email address',
-      html: `<p>Confirm your new email for Desk: <a href="${confirmUrl}">${confirmUrl}</a></p>`,
-    });
+    const confirmUrl = `${appOrigin}/me/email/confirm?token=${token}`;
+    const template = emailChangeMail(confirmUrl);
+    await mailer.send({ to: body.newEmail, subject: template.subject, html: template.html });
     await mailer.send({
       to: user.email,
       subject: 'Your email is changing',
