@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Button, Select } from '@desk/ui';
 import { apiFetch } from '../api/client.js';
-import { useSessionStore } from '../stores/session.js';
+import { useSessionStore, type User } from '../stores/session.js';
 
 const session = useSessionStore();
 const router = useRouter();
@@ -20,13 +20,15 @@ const currencyOptions = [
   { value: 'USD', label: 'USD' },
 ];
 
-async function complete() {
-  await apiFetch('/me', {
+// The router guard bounces every authed route back here until session.user.onboardingCompletedAt
+// is set, so the store must take the PATCHed user before navigating anywhere.
+async function complete(to: string = 'home') {
+  const res = await apiFetch<{ user: User }>('/me', {
     method: 'PATCH',
     body: JSON.stringify({ onboardingCompletedAt: new Date().toISOString() }),
   });
-  if (session.user) session.user.defaultCurrency = currency.value;
-  void router.push({ name: 'home' });
+  session.user = res.user;
+  void router.push({ name: to });
 }
 
 async function next() {
@@ -46,6 +48,11 @@ async function next() {
 function skip() {
   void complete();
 }
+
+/** Leaving the wizard via a step button counts as finishing it — otherwise the guard bounces back. */
+function leaveTo(name: string) {
+  void complete(name);
+}
 </script>
 
 <template>
@@ -60,13 +67,13 @@ function skip() {
     <section v-else-if="step === 2">
       <h1>Add your first expense</h1>
       <p>Head to the add-expense form to log your first entry, or skip for now.</p>
-      <Button @click="router.push({ name: 'add' })">Add an expense</Button>
+      <Button @click="leaveTo('add')">Add an expense</Button>
     </section>
 
     <section v-else>
       <h1>Connect Notion (optional)</h1>
       <p>Sync your expenses to a Notion database. You can do this anytime from settings.</p>
-      <Button @click="router.push({ name: 'settings-connectors' })">Connect Notion</Button>
+      <Button @click="leaveTo('settings-connectors')">Connect Notion</Button>
     </section>
 
     <div class="desk-onboarding-actions">
