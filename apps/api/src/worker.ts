@@ -2,7 +2,7 @@ import postgres from 'postgres';
 import { createDb } from '@desk/db';
 import pkg from '../package.json' with { type: 'json' };
 import { createApp, type AppDeps } from './app.js';
-import { parseWorkersBindings, type WorkersBindings } from './env.js';
+import { parseWorkersBindings, type Bindings, type WorkersBindings } from './env.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import { KvSessionStore, type KVNamespace } from './adapters/session-store-kv.js';
 import { JobRunner } from './jobs/runner.js';
@@ -17,7 +17,7 @@ function notWired(name: string): never {
   throw new Error(`worker.ts: ${name} not wired yet`);
 }
 
-function buildDeps(env: WorkersBindings & { GIT_SHA: string }, jobRunner: JobRunner): AppDeps {
+function buildDeps(env: WorkersBindings & Bindings, jobRunner: JobRunner): AppDeps {
   const lazy = new Proxy({}, { get: (_t, prop) => notWired(String(prop)) });
   const { db } = createDb(env.HYPERDRIVE.connectionString);
   return {
@@ -32,6 +32,7 @@ function buildDeps(env: WorkersBindings & { GIT_SHA: string }, jobRunner: JobRun
     jobs: jobRunner,
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: env.GIT_SHA },
+    appOrigin: env.APP_ORIGIN,
     // Not wired until a later task adds Cloudflare secrets — /auth/google/* and /notion/* 404
     // on Workers for now.
     google: undefined,

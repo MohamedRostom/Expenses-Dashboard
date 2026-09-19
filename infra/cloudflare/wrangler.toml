@@ -10,6 +10,8 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 GIT_SHA = "unknown"
+# Public origin of the web app, used for links in mail; override per environment.
+APP_ORIGIN = "https://app.desk.invalid"
 
 # T117: Postgres over Hyperdrive. `id` is a placeholder — Rostom creates the real resource with
 # `wrangler hyperdrive create desk-db --connection-string="<neon-url>"` and swaps the id in

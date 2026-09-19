@@ -34,7 +34,7 @@ export const envSchema = envObjectSchema
 export type Env = z.infer<typeof envSchema>;
 
 /** The subset of the schema the Workers entry point receives as bindings. */
-export const bindingsSchema = envObjectSchema.pick({ GIT_SHA: true });
+export const bindingsSchema = envObjectSchema.pick({ GIT_SHA: true, APP_ORIGIN: true });
 export type Bindings = z.infer<typeof bindingsSchema>;
 
 function fail(issues: z.core.$ZodIssue[]): never {

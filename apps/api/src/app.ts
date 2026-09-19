@@ -52,6 +52,8 @@ export type AppDeps = {
   jobs: JobsDep;
   clock: Clock;
   build: BuildInfo;
+  /** Public origin of the web app (APP_ORIGIN) — used for links in mail. */
+  appOrigin: string;
   /** T113: defaults to the plain JSON-stdout logger; node.ts/worker.ts pass
    * createNodeLogger/createWorkerLogger(env.SENTRY_DSN) once Sentry is wired in. */
   logger?: Logger;

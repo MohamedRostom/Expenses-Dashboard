@@ -48,4 +48,42 @@ describe('RegisterView', () => {
 
     app.unmount();
   });
+
+  it('shows the API reason on the password field when register returns 400', async () => {
+    const body = {
+      error: {
+        code: 'validation_failed',
+        message: 'This password has appeared in a data breach',
+        details: { password: 'breached' },
+      },
+    };
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockImplementation((url: string) =>
+          Promise.resolve(
+            url === '/currencies'
+              ? new Response(JSON.stringify({ currencies: [] }), { status: 200 })
+              : new Response(JSON.stringify(body), { status: 400 }),
+          ),
+        ),
+    );
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const app = createApp(RegisterView);
+    app.use(pinia);
+    app.mount(el);
+    await nextTick();
+
+    el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+    await vi.waitFor(() =>
+      expect(el.textContent).toContain('This password has appeared in a data breach'),
+    );
+    expect(el.querySelector('input[type="password"]')!.classList.contains('invalid')).toBe(true);
+
+    app.unmount();
+  });
 });

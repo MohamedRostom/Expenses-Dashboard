@@ -20,13 +20,12 @@ export type AuthDeps = {
   mailer: Mailer;
   breachChecker: BreachChecker;
   clock: Clock;
+  /** Base origin for links in mail (APP_ORIGIN). */
+  appOrigin: string;
 };
 
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 20 * 60 * 1000;
-
-/** Base origin for links in mail — a real APP_ORIGIN wiring is a small follow-up (ponytail). */
-const LINK_ORIGIN = 'https://app.desk.invalid';
 
 async function hashToken(token: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
@@ -98,7 +97,7 @@ async function sendVerifyMail(deps: AuthDeps, user: UserRow): Promise<void> {
     tokenHash,
     expiresAt: new Date(now.getTime() + VERIFY_TOKEN_TTL_MS),
   });
-  const link = `${LINK_ORIGIN}/verify?token=${encodeURIComponent(token)}`;
+  const link = `${deps.appOrigin}/verify?token=${encodeURIComponent(token)}`;
   const mail = verifyMail(link);
   await deps.mailer.send({ to: user.email, subject: mail.subject, html: mail.html });
 }
@@ -220,7 +219,7 @@ export async function forgotPassword(deps: AuthDeps, input: { email: string }): 
     tokenHash,
     expiresAt: new Date(now.getTime() + RESET_TOKEN_TTL_MS),
   });
-  const link = `${LINK_ORIGIN}/reset?token=${encodeURIComponent(token)}`;
+  const link = `${deps.appOrigin}/reset?token=${encodeURIComponent(token)}`;
   const mail = resetMail(link);
   await deps.mailer.send({ to: user.email, subject: mail.subject, html: mail.html });
   await writeAudit(deps, {

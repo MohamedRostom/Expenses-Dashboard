@@ -42,6 +42,8 @@ describe('auth', () => {
     const msg = h.mailer.sent.find((m) => m.to === email);
     if (!msg) throw new Error('verify mail not sent');
     const href = msg.html.match(/href="([^"]+)"/)![1] as string;
+    // Links must point at the deployed app (APP_ORIGIN), not a placeholder host.
+    expect(href.startsWith('https://app.test/verify?token=')).toBe(true);
     const token = new URL(href).searchParams.get('token')!;
     const res = await h.app.request('/auth/verify', {
       method: 'POST',

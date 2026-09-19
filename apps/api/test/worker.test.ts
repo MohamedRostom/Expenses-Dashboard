@@ -14,6 +14,7 @@ async function loadWorker() {
 const fakeWorkersBindings = {
   HYPERDRIVE: { connectionString: 'postgres://fake:fake@localhost:5432/fake' },
   SESSIONS_KV: { get: async () => null, put: async () => {}, delete: async () => {} },
+  APP_ORIGIN: 'https://app.test',
 };
 
 describe('worker entry point', () => {
@@ -48,6 +49,7 @@ describe('worker entry point', () => {
     await expect(
       worker.fetch(new Request('http://desk.test/healthz'), {
         SESSIONS_KV: fakeWorkersBindings.SESSIONS_KV,
+        APP_ORIGIN: fakeWorkersBindings.APP_ORIGIN,
       } as never),
     ).rejects.toThrow(/HYPERDRIVE/);
   });

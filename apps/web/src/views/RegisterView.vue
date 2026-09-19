@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { Button, ErrorState, Input } from '@desk/ui';
 import { ApiError, apiFetch } from '../api/client.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
@@ -29,6 +29,18 @@ const currency = ref(guessCurrency());
 const submitting = ref(false);
 const submitted = ref(false);
 const error = ref<ApiError | null>(null);
+
+/** Per-field reason from the API's validation details; a bare marker like "breached" falls back
+ * to the response message so the user sees why, not just that. */
+function fieldError(field: string) {
+  return computed(() => {
+    const detail = error.value?.details?.[field];
+    if (detail == null) return '';
+    return typeof detail === 'string' && detail.includes(' ') ? detail : error.value!.message;
+  });
+}
+const emailError = fieldError('email');
+const passwordError = fieldError('password');
 
 async function onSubmit() {
   error.value = null;
@@ -62,8 +74,20 @@ async function onSubmit() {
     </div>
 
     <form v-else @submit.prevent="onSubmit">
-      <Input v-model="email" type="email" label="Email" placeholder="you@example.com" />
-      <Input v-model="password" type="password" label="Password" placeholder="12-128 characters" />
+      <Input
+        v-model="email"
+        type="email"
+        label="Email"
+        placeholder="you@example.com"
+        :error="emailError"
+      />
+      <Input
+        v-model="password"
+        type="password"
+        label="Password"
+        placeholder="12-128 characters"
+        :error="passwordError"
+      />
       <CurrencyPicker v-model="currency" label="Default currency" />
       <ErrorState v-if="error" :code="error.code" />
       <Button type="submit" :loading="submitting" :disabled="submitting">Sign up</Button>

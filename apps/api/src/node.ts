@@ -58,6 +58,7 @@ const app = createApp({
   jobs: undefined,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
+  appOrigin: env.APP_ORIGIN,
   logger: createNodeLogger(env.SENTRY_DSN),
   google:
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET

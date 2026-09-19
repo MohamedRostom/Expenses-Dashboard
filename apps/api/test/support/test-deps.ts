@@ -78,6 +78,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     jobs: undefined,
     clock: { now: () => new Date('2026-09-18T00:00:00Z') },
     build: { version: '0.0.0-test', sha: 'testsha' },
+    appOrigin: 'https://app.test',
     ...overrides,
   };
 }

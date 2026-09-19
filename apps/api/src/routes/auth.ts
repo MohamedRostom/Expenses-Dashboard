@@ -77,6 +77,7 @@ export function authRoutes(deps: AppDeps) {
     mailer: deps.mailer,
     breachChecker: deps.breachChecker,
     clock: deps.clock,
+    appOrigin: deps.appOrigin,
   };
 
   app.post('/register', async (c) => {

@@ -56,8 +56,22 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    proxy: {
-      '/healthz': process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000',
-    },
+    // Every API prefix the app calls (client.ts uses relative paths); anything else is a client route.
+    proxy: Object.fromEntries(
+      [
+        '/auth',
+        '/capture',
+        '/categories',
+        '/currencies',
+        '/expenses',
+        '/feedback',
+        '/healthz',
+        '/imports',
+        '/jobs',
+        '/me',
+        '/notion',
+        '/summary',
+      ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
+    ),
   },
 });

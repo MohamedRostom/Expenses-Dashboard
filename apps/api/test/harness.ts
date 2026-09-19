@@ -125,6 +125,7 @@ export async function startHarness(
     jobs: undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
+    appOrigin: 'https://app.test',
     google: {
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
