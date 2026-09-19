@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Fixed
 
+- App header nav (Month · Year · Categories · Settings) on signed-in screens — settings and the other views were previously reachable only by typing the URL.
 - Onboarding: Skip, Finish, "Add an expense" and "Connect Notion" now leave the wizard — the session store takes the PATCHed user, so the router guard no longer bounces every route back to `/onboarding`.
 
 ### Added
