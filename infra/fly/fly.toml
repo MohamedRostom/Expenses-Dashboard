@@ -1,7 +1,8 @@
 # Stage 1 staging app. Deploy from the repository root:
 #   flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
-# Preview apps per PR reuse this file with --app desk-pr-<number>.
-app = "desk-staging"
+# Preview apps per PR reuse this file with --app ros-desk-pr-<number>.
+# App name prefixed "ros-" to avoid a global Fly.io name collision on "desk-staging" (2026-09-20).
+app = "ros-desk-staging"
 primary_region = "lhr"
 
 [http_service]

@@ -1,6 +1,8 @@
 name: deploy-staging
 
-# main -> desk-staging.fly.dev. Needs repo secrets FLY_API_TOKEN and STAGING_DATABASE_URL.
+# main -> ros-desk-staging.fly.dev. Needs repo secrets FLY_API_TOKEN and STAGING_DATABASE_URL.
+# Repo variable DEPLOYMENT_FLAG=false pauses this deploy (skipped, not failed); unset/true deploys
+# as normal. Also gates deploy-fly.yml's staging->smoke->promote pipeline.
 on:
   push:
     branches: [main]
@@ -17,6 +19,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: vars.DEPLOYMENT_FLAG != 'false'
     steps:
       - id: gate
         run: |
@@ -42,7 +45,7 @@ jobs:
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
       - if: steps.gate.outputs.skip != 'true'
-        run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+        run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-staging.fly.dev/healthz
 
   # Static landing site. Off by default — gated on the repository variable LANDING_ENABLED so it
   # cannot publish under the "Desk" working name before ADR-0002 (product name) is decided.
@@ -65,4 +68,4 @@ jobs:
           flyctl deploy . --config infra/fly/fly.landing.toml --dockerfile infra/fly/Dockerfile.landing
           --remote-only --ha=false
       - if: steps.gate.outputs.skip != 'true'
-        run: curl --fail --retry 5 --retry-delay 5 https://desk-landing.fly.dev/
+        run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-landing.fly.dev/

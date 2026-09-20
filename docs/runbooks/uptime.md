@@ -10,7 +10,7 @@ always-on process to run a check every minute.
    **Better Uptime** (free tier includes 1-minute checks on a limited number of monitors). Either
    works; pick whichever Rostom already has an account with.
 2. Add an HTTP(S) monitor:
-   - URL: `https://desk-production.fly.dev/healthz` (swap for the custom domain after the
+   - URL: `https://ros-desk-production.fly.dev/healthz` (swap for the custom domain after the
      Cloudflare cut-over, docs/runbooks/cutover.md).
    - Method: GET.
    - Expected: HTTP 200 and response body contains `"status":"ok"` (the monitor's keyword/JSON

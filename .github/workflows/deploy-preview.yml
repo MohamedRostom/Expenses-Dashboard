@@ -1,8 +1,10 @@
 name: deploy-preview
 
-# One Fly app per PR (desk-pr-<number>), destroyed when the PR closes.
+# One Fly app per PR (ros-desk-pr-<number>), destroyed when the PR closes.
 # Needs repo secrets FLY_API_TOKEN, PREVIEW_DATABASE_URL, PREVIEW_SESSION_SECRET and
 # PREVIEW_SECRET_BOX_KEY.
+# Repo variable PREVIEW_DEPLOYMENT_FLAG=false pauses new preview deploys (skipped, not failed);
+# the destroy job below stays unconditional so closed PRs never leave an orphaned app running.
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -16,11 +18,11 @@ permissions:
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  APP: desk-pr-${{ github.event.number }}
+  APP: ros-desk-pr-${{ github.event.number }}
 
 jobs:
   deploy:
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && vars.PREVIEW_DEPLOYMENT_FLAG != 'false'
     runs-on: ubuntu-latest
     steps:
       - id: gate

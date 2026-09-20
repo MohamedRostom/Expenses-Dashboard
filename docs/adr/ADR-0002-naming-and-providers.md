@@ -31,7 +31,7 @@ Decision: _pending_.
 - **Neon from the start**: no Phase 6 migration; branch-per-PR databases for previews; one more account.
 
 Recommendation: Neon from day one. It removes a migration step and gives preview apps isolated databases. Phase 0's preview workflow currently expects a single `PREVIEW_DATABASE_URL`; with Neon it can create a branch per PR.
-Decision: _pending_.
+Decision: **Neon from day one** (2026-09-20). One Neon project, one branch per environment (`preview`, `staging`, `production`); each branch's connection string is stored as that environment's `*_DATABASE_URL` GitHub secret.
 
 ## 4. Licence
 

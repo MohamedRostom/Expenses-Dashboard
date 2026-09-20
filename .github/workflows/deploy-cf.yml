@@ -8,6 +8,8 @@ name: deploy-cf
 # here for the first time (CLAUDE.md: "not needed until Phase 6"). Every job below is gated on
 # them being present and fails loudly, not silently, when they're missing — expected until
 # Rostom sets up a Cloudflare account (see CLAUDE.md "Rostom to-dos").
+# Repo variable CLOUDFLARE_DEPLOYMENT_FLAG=false pauses this pipeline (skipped, not failed) —
+# separate from the credential check above, which stays a hard failure since that's misconfig.
 on:
   push:
     tags:
@@ -26,6 +28,7 @@ env:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    if: vars.CLOUDFLARE_DEPLOYMENT_FLAG != 'false'
     outputs:
       ready: ${{ steps.gate.outputs.ready }}
     steps:

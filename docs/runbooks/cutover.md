@@ -23,7 +23,7 @@ in `apps/api/src`). Before a real cut-over, add one — the smallest version is 
 env var checked in a middleware ahead of the write routes, returning 503 with a `Retry-After`
 header. This is a small follow-up task, not something to improvise during the cutover itself;
 write and test it ahead of time, then flip the env var (`flyctl secrets set MAINTENANCE_MODE=true
---app desk-production`) to open the window and unset it to close.
+--app ros-desk-production`) to open the window and unset it to close.
 
 Announce the window to users (in-app banner + the feedback-digest email list) before flipping it.
 
@@ -62,9 +62,9 @@ diff before.txt after.txt   # must be empty
 
 ## 5. Rollback (one-hour path)
 
-Stage 1 (`desk-production` on Fly) is left running, not deleted, for this exact reason:
+Stage 1 (`ros-desk-production` on Fly) is left running, not deleted, for this exact reason:
 
-1. Flip DNS back to Fly's `desk-production.fly.dev` (or its own custom-domain record, whichever
+1. Flip DNS back to Fly's `ros-desk-production.fly.dev` (or its own custom-domain record, whichever
    was live before step 4).
 2. Re-open the read-only window on the *Cloudflare* side is not needed — Stage 1 already has the
    data as of the last write before the dump; any writes that landed on Stage 2 after the flip
@@ -82,7 +82,7 @@ Per the roadmap exit criteria: keep Stage 1 running (read-only, not serving live
 days after a successful cut-over, as the rollback target above. After 30 days with no incident:
 
 ```
-fly scale count 0 --app desk-production
+fly scale count 0 --app ros-desk-production
 ```
 
 Stage 1 stays scaled to zero (not deleted) so `fly scale count 1` is still a fast un-rollback if

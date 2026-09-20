@@ -1,11 +1,14 @@
 name: deploy-fly
 
-# v0.* tags -> deploy to desk-staging, smoke test, promote the same build to desk-production.
+# v0.* tags -> deploy to ros-desk-staging, smoke test, promote the same build to ros-desk-production.
+# App names prefixed "ros-" to avoid a global Fly.io name collision (2026-09-20).
 # v1.* tags go to deploy-cf.yml instead (Cloudflare cut-over, T118) — this workflow ignores them.
 # Needs repo secrets FLY_API_TOKEN, STAGING_DATABASE_URL, STAGING_SESSION_SECRET,
 # STAGING_SECRET_BOX_KEY and (for the promote step) PRODUCTION_DATABASE_URL,
-# PRODUCTION_SESSION_SECRET, PRODUCTION_SECRET_BOX_KEY. desk-production does not exist yet —
-# Rostom runs `fly apps create desk-production` once before the promote job can succeed.
+# PRODUCTION_SESSION_SECRET, PRODUCTION_SECRET_BOX_KEY. ros-desk-production already exists
+# (Rostom ran `fly apps create ros-desk-production --org personal`).
+# Repo variable DEPLOYMENT_FLAG=false pauses the whole pipeline (skipped, not failed) — shared
+# with deploy-staging.yml.
 on:
   push:
     tags:
@@ -23,7 +26,9 @@ env:
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-    if: "!startsWith(github.ref_name, 'v1.')"
+    # smoke-staging and promote-production below `needs:` this job, so DEPLOYMENT_FLAG=false
+    # here skips the entire pipeline, not just this job.
+    if: "!startsWith(github.ref_name, 'v1.') && vars.DEPLOYMENT_FLAG != 'false'"
     steps:
       - id: gate
         run: |
@@ -43,7 +48,7 @@ jobs:
           DATABASE_URL="$STAGING_DATABASE_URL"
           SESSION_SECRET="$STAGING_SESSION_SECRET"
           SECRET_BOX_KEY="$STAGING_SECRET_BOX_KEY"
-          APP_ORIGIN="https://desk-staging.fly.dev"
+          APP_ORIGIN="https://ros-desk-staging.fly.dev"
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           STAGING_SESSION_SECRET: ${{ secrets.STAGING_SESSION_SECRET }}
@@ -51,7 +56,7 @@ jobs:
       - run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
-      - run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+      - run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-staging.fly.dev/healthz
 
   smoke-staging:
     needs: deploy-staging
@@ -62,7 +67,7 @@ jobs:
       - run: pnpm --filter @desk/e2e exec playwright install --with-deps chromium
       - run: pnpm --filter @desk/e2e exec playwright test smoke.spec.ts --project=local
         env:
-          E2E_LOCAL_BASE_URL: https://desk-staging.fly.dev
+          E2E_LOCAL_BASE_URL: https://ros-desk-staging.fly.dev
           E2E_SEEDED_PASSWORD: ${{ secrets.E2E_SEEDED_PASSWORD }}
       - if: failure()
         uses: actions/upload-artifact@v7
@@ -71,9 +76,7 @@ jobs:
           path: tests/e2e/playwright-report
           retention-days: 7
 
-  # Promotes the exact image just proven on staging to desk-production. Rostom must run
-  # `fly apps create desk-production` at least once before this job can succeed — flyctl
-  # deploy fails cleanly against a nonexistent app rather than silently creating one.
+  # Promotes the exact image just proven on staging to ros-desk-production (already created).
   promote-production:
     needs: smoke-staging
     runs-on: ubuntu-latest
@@ -90,23 +93,23 @@ jobs:
       - uses: actions/checkout@v7
       - uses: superfly/flyctl-actions/setup-flyctl@1.6
       - run: >-
-          flyctl secrets set --app desk-production --stage
+          flyctl secrets set --app ros-desk-production --stage
           DATABASE_URL="$PRODUCTION_DATABASE_URL"
           SESSION_SECRET="$PRODUCTION_SESSION_SECRET"
           SECRET_BOX_KEY="$PRODUCTION_SECRET_BOX_KEY"
-          APP_ORIGIN="https://desk-production.fly.dev"
+          APP_ORIGIN="https://ros-desk-production.fly.dev"
         env:
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           PRODUCTION_SESSION_SECRET: ${{ secrets.PRODUCTION_SESSION_SECRET }}
           PRODUCTION_SECRET_BOX_KEY: ${{ secrets.PRODUCTION_SECRET_BOX_KEY }}
       - run: >-
-          flyctl deploy . --app desk-production --dockerfile infra/fly/Dockerfile
+          flyctl deploy . --app ros-desk-production --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
       - id: promote-check
-        run: curl --fail --retry 5 --retry-delay 5 https://desk-production.fly.dev/healthz
-      # Rollback: on any failure above, revert desk-production to its previous release. The
+        run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-production.fly.dev/healthz
+      # Rollback: on any failure above, revert ros-desk-production to its previous release. The
       # exact command (run manually or here) is:
-      #   flyctl releases rollback --app desk-production
+      #   flyctl releases rollback --app ros-desk-production
       # (no --version rolls back to the release immediately prior to the one just deployed).
       - if: failure()
-        run: flyctl releases rollback --app desk-production
+        run: flyctl releases rollback --app ros-desk-production

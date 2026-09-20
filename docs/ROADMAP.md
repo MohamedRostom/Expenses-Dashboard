@@ -32,7 +32,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/â
 
 **Tests introduced:** one unit test in `core`, one API test for `/healthz`, one Playwright test that loads the Hello page â€” all real, all in CI, so the pipeline is proven end to end.
 
-**Exit criteria:** a PR that changes the Hello text gets a green CI run, a Fly preview URL in a PR comment, and merges to `main`; `main` deploys to `desk-staging.fly.dev`; the self-hosted runner shows online in GitHub.
+**Exit criteria:** a PR that changes the Hello text gets a green CI run, a Fly preview URL in a PR comment, and merges to `main`; `main` deploys to `ros-desk-staging.fly.dev`; the self-hosted runner shows online in GitHub.
 
 ---
 

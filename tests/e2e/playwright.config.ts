@@ -23,7 +23,7 @@ export default defineConfig({
       grep: /@local/,
       use: {
         ...devices['Desktop Chrome'],
-        baseURL: process.env['E2E_LOCAL_BASE_URL'] ?? 'https://desk-staging.fly.dev',
+        baseURL: process.env['E2E_LOCAL_BASE_URL'] ?? 'https://ros-desk-staging.fly.dev',
       },
     },
     // T092: mobile device projects for the responsive/PWA/onboarding specs (@mobile-tagged).

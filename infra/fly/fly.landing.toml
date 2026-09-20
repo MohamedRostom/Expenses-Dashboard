@@ -1,7 +1,7 @@
 # Static landing app. Inert until the product name (ADR-0002) is decided and Rostom sets the
 # repository variable LANDING_ENABLED=true (see .github/workflows/deploy-staging.yml).
 #   flyctl deploy . --config infra/fly/fly.landing.toml --dockerfile infra/fly/Dockerfile.landing
-app = "desk-landing"
+app = "ros-desk-landing"
 primary_region = "lhr"
 
 [http_service]
