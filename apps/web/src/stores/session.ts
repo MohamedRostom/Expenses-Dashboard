@@ -41,7 +41,13 @@ export const useSessionStore = defineStore('session', {
   actions: {
     async load() {
       try {
-        this.user = await apiFetch<User>('/me');
+        // GET /me returns { user: {...} }, not the User object bare — LoginView/VerifyView/
+        // OnboardingView all unwrap `.user` themselves; this used to assign the whole envelope
+        // to `this.user`, so `session.user.onboardingCompletedAt` (and every other field) was
+        // always undefined after a hard reload, looping an incomplete-onboarding user back to
+        // /onboarding forever.
+        const res = await apiFetch<{ user: User }>('/me');
+        this.user = res.user;
         writeCachedUser(this.user);
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {

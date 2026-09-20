@@ -46,7 +46,12 @@ body {
 }
 .desk-nav {
   display: flex;
-  gap: 1rem;
+  /* T097 covered MonthView/ExpenseForm/etc at 360px but not this nav — 7 links + Sign out never
+   * fit a 390px viewport in one row (FR-019/Story 7: every screen usable at phone width).
+   * flex-wrap keeps every link reachable without introducing a scroll container or a JS-driven
+   * menu for what a CSS property already solves. */
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
   padding: 0.75rem 1rem;
   font-family: var(--font-sans);
   font-size: 0.9rem;

@@ -8,10 +8,7 @@ type MailpitMessagesResponse = { messages: MailpitMessage[] };
 
 /**
  * Fills and submits the register form for `email`, then polls Mailpit's REST API for the
- * verification email and visits its link. RegisterView.vue is still a placeholder (Phase 1
- * in progress) — this targets the form contract the register route will expose (email/password
- * fields, a submit button) and a verify link matching /auth/verify; update the selectors here
- * alongside the real form, not the call sites.
+ * verification email and visits its link (the SPA's /verify?token=... route).
  */
 export async function signUpAndVerify(
   page: Page,
@@ -37,7 +34,9 @@ async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<str
       if (match) {
         const detail = await fetch(`${MAILPIT_URL}/api/v1/message/${match.ID}`);
         const { HTML, Text } = (await detail.json()) as { HTML: string; Text: string };
-        const found = (HTML || Text).match(/https?:\/\/[^\s"'<>]*\/auth\/verify[^\s"'<>]*/);
+        // The mail links to the SPA's client-side /verify route (which itself calls
+        // POST /auth/verify), not to /auth/verify directly — this regex never matched it.
+        const found = (HTML || Text).match(/https?:\/\/[^\s"'<>]*\/verify\?[^\s"'<>]*/);
         if (found) return found[0];
       }
     }

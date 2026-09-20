@@ -60,6 +60,13 @@ describe('App nav', () => {
     app.unmount();
   });
 
+  it('wraps instead of overflowing at phone width (7 links + Sign out never fit one 390px row)', async () => {
+    const { el, app } = await mount('/', true);
+    const nav = el.querySelector('nav') as HTMLElement;
+    expect(getComputedStyle(nav).flexWrap).toBe('wrap');
+    app.unmount();
+  });
+
   it('is hidden on auth pages and during onboarding', async () => {
     for (const [path, signedIn] of [
       ['/login', false],

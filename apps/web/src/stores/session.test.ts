@@ -28,13 +28,28 @@ describe('session store (C8: offline cold start)', () => {
 
   it('caches the user to localStorage on a successful load', async () => {
     const { apiFetch } = await import('../api/client.js');
-    vi.mocked(apiFetch).mockResolvedValue(user);
+    vi.mocked(apiFetch).mockResolvedValue({ user });
 
     const session = useSessionStore();
     await session.load();
 
     expect(session.user).toEqual(user);
     expect(JSON.parse(localStorage.getItem(CACHE_KEY)!)).toEqual(user);
+  });
+
+  it('unwraps the { user } envelope GET /me returns, not the envelope itself', async () => {
+    const onboarded = { ...user, onboardingCompletedAt: '2026-09-19T00:00:00.000Z' };
+    const { apiFetch } = await import('../api/client.js');
+    vi.mocked(apiFetch).mockResolvedValue({ user: onboarded });
+
+    const session = useSessionStore();
+    await session.load();
+
+    // Regression for the double-wrap bug: session.user must be the flat User, so a field like
+    // onboardingCompletedAt is readable directly — not nested under session.user.user.
+    expect(session.user).toEqual(onboarded);
+    expect(session.user?.onboardingCompletedAt).toBe('2026-09-19T00:00:00.000Z');
+    expect((session.user as Record<string, unknown> | null)?.['user']).toBeUndefined();
   });
 
   it('falls back to the cached user on a network error instead of throwing', async () => {
