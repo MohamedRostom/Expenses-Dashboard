@@ -31,8 +31,14 @@ export async function signUpAndVerify(
   const verifyUrl = await pollForVerifyLink(email);
   await page.goto(verifyUrl);
 
-  if (skipOnboarding && new URL(page.url()).pathname === '/onboarding') {
-    await page.getByRole('button', { name: /skip/i }).click();
+  if (skipOnboarding) {
+    // /verify does its own client-side redirect to /onboarding after page.goto() above already
+    // resolved (goto only waits for /verify's own load) — an immediate page.url() check races
+    // that navigation, so wait for the Skip button instead of reading the URL synchronously.
+    // A user who's already onboarded never shows it, so the catch is the normal, common case.
+    const skipButton = page.getByRole('button', { name: /^skip$/i });
+    await skipButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+    if (await skipButton.isVisible()) await skipButton.click();
   }
 }
 

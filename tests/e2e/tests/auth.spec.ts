@@ -67,12 +67,13 @@ test('sign up, verify via Mailpit, sign in on two contexts, sign out one, reset 
     /https?:\/\/[^\s"'<>]*\/verify\?token=[^\s"'<>]*/,
   );
   await page.goto(pathOf(verifyUrl));
-  // A freshly verified user has no onboardingCompletedAt yet, so the router guard
-  // (apps/web/src/router.ts) sends them to /onboarding first — this test isn't about onboarding
-  // (see onboarding.spec.ts for that), so dismiss it before asserting the authenticated home page.
-  if (new URL(page.url()).pathname === '/onboarding') {
-    await page.getByRole('button', { name: /^skip$/i }).click();
-  }
+  // A freshly verified user has no onboardingCompletedAt yet, so /verify's own client-side
+  // redirect to /onboarding fires after page.goto() above already resolved — wait for the Skip
+  // button (a page.url() check right here would race that navigation) rather than reading the
+  // URL synchronously. This test isn't about onboarding (see onboarding.spec.ts for that).
+  const skipButton = page.getByRole('button', { name: /^skip$/i });
+  await skipButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
+  if (await skipButton.isVisible()) await skipButton.click();
   await expect(page).toHaveURL('/');
   await axeCheck(page);
 
