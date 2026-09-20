@@ -148,8 +148,10 @@ test('sign up, verify via Mailpit, sign in on two contexts, sign out one, reset 
   // endpoint directly (same caveat as logout above).
   // ponytail: SettingsView has no delete-account confirmation dialog yet; upgrade this to a UI
   // click-through when it lands.
+  // DELETE /me requires the current password to confirm (apps/api/src/routes/me.ts) — a real
+  // security check, so the empty body this test sent before always 400'd "Incorrect password".
   const deleteRes = await page.request.delete('/me', {
-    data: {},
+    data: { password: NEW_PASSWORD },
     headers: await csrfHeaders(page),
   });
   expect(deleteRes.status()).toBe(204);

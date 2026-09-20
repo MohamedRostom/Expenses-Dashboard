@@ -211,7 +211,13 @@ onMounted(loadProfiles);
 
     <section v-if="step === 1">
       <h2>1. Choose a CSV file</h2>
-      <input type="file" accept=".csv" data-testid="import-file-input" @change="onFileChange" />
+      <input
+        type="file"
+        accept=".csv"
+        aria-label="CSV file"
+        data-testid="import-file-input"
+        @change="onFileChange"
+      />
       <Button :disabled="!file" @click="step = 2">Next</Button>
     </section>
 
@@ -285,6 +291,7 @@ onMounted(loadProfiles);
               <td>
                 <input
                   v-if="row.status === 'error'"
+                  :aria-label="`Fix date for row ${row.rowNumber}`"
                   :value="fixes[row.rowNumber]?.date ?? row.parsed?.date ?? ''"
                   @input="
                     fixes[row.rowNumber] = {
@@ -306,6 +313,7 @@ onMounted(loadProfiles);
               <td>
                 <input
                   type="checkbox"
+                  :aria-label="`Skip row ${row.rowNumber}`"
                   :checked="skipRows.has(row.rowNumber)"
                   @change="toggleSkip(row.rowNumber)"
                 />
