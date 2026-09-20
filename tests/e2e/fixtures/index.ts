@@ -17,6 +17,11 @@ export async function signUpAndVerify(
   // a live call to api.pwnedpasswords.com in e2e-ci, and 'correct horse battery staple' (the
   // XKCD example) is a genuinely breached password, so every signup using it was rejected 400.
   password = 'xk-e2e-Tr0ub4-fixture-2026',
+  // A freshly verified user has no onboardingCompletedAt yet, so the router guard
+  // (apps/web/src/router.ts) bounces every route back to /onboarding until it's set — most
+  // callers expect to land on an authenticated '/', so skip it here by default. onboarding.spec.ts
+  // passes false since it deliberately asserts /onboarding and drives that UI itself.
+  skipOnboarding = true,
 ): Promise<void> {
   await page.goto('/register');
   await page.getByLabel(/email/i).fill(email);
@@ -25,6 +30,10 @@ export async function signUpAndVerify(
 
   const verifyUrl = await pollForVerifyLink(email);
   await page.goto(verifyUrl);
+
+  if (skipOnboarding && new URL(page.url()).pathname === '/onboarding') {
+    await page.getByRole('button', { name: /skip/i }).click();
+  }
 }
 
 async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<string> {

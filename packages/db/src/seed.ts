@@ -72,12 +72,16 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
         id: E2E_USER_ID,
         email: E2E_USER_EMAIL,
         emailVerifiedAt: new Date(),
+        // Without this, the router guard (apps/web/src/router.ts) sends smoke.spec.ts's login to
+        // /onboarding instead of '/', same class of bug as tests/e2e/fixtures/index.ts's
+        // signUpAndVerify — this user is a fixture, not a first-time signup.
+        onboardingCompletedAt: new Date(),
         defaultCurrency: 'GBP',
         passwordHash,
       })
       .onConflictDoUpdate({
         target: users.email,
-        set: { passwordHash, emailVerifiedAt: new Date() },
+        set: { passwordHash, emailVerifiedAt: new Date(), onboardingCompletedAt: new Date() },
       });
 
     if (opts.load) {

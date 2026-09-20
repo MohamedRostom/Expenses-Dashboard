@@ -12,7 +12,7 @@ test('first sign-in shows the onboarding guide: currency, first expense, optiona
   page,
 }) => {
   const email = uniqueEmail('onboard');
-  await signUpAndVerify(page, email, PASSWORD);
+  await signUpAndVerify(page, email, PASSWORD, false);
 
   // A brand-new user has no onboardingCompletedAt — the router guard sends them to /onboarding
   // instead of the month view.
@@ -37,7 +37,7 @@ test('skip at any step marks onboarding done and does not return on next visit',
   page,
 }) => {
   const email = uniqueEmail('onboard-skip');
-  await signUpAndVerify(page, email, PASSWORD);
+  await signUpAndVerify(page, email, PASSWORD, false);
   await expect(page).toHaveURL(/\/onboarding/);
 
   await page.getByRole('button', { name: /^skip$/i }).click();
