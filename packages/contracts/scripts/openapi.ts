@@ -177,7 +177,15 @@ const outFile = fileURLToPath(new URL('../openapi.json', import.meta.url));
 // Prettier-formatted (matches `pnpm format`/`format:check` across the repo, and CI's lint job
 // diffs this file against a fresh regeneration — plain JSON.stringify's one-array-item-per-line
 // output never matched the committed file, so that diff check always failed).
-const formatted = await prettier.format(JSON.stringify(doc, null, 2), { filepath: outFile });
+// resolveConfig is required here: prettier.format() does NOT read .prettierrc on its own — passing
+// only `filepath` infers the parser but silently falls back to Prettier's own defaults (printWidth
+// 80) instead of this repo's printWidth 100, which disagreed with the real `prettier --write` that
+// lint-staged runs on commit.
+const config = (await prettier.resolveConfig(outFile)) ?? {};
+const formatted = await prettier.format(JSON.stringify(doc, null, 2), {
+  ...config,
+  filepath: outFile,
+});
 writeFileSync(outFile, formatted);
 console.log(
   `wrote ${outFile} (${Object.keys(schemas).length} schemas, ${Object.keys(paths).length} paths)`,
