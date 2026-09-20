@@ -27,3 +27,38 @@ export function formatDateTime(isoStr: string, locale?: string): string {
     new Date(isoStr),
   );
 }
+
+const BROWSER_PATTERNS: [RegExp, string][] = [
+  [/Edg\//, 'Edge'],
+  [/OPR\//, 'Opera'],
+  [/Firefox\//, 'Firefox'],
+  // Chrome and Safari both include "Safari/" in their UA; Chrome (and Chromium-based browsers
+  // not already matched above) also includes "Chrome/", so it must be checked first.
+  [/Chrome\//, 'Chrome'],
+  [/Safari\//, 'Safari'],
+];
+
+const OS_PATTERNS: [RegExp, string][] = [
+  [/Windows/, 'Windows'],
+  // iPhone/iPad UAs include "like Mac OS X", so iOS must be checked before macOS.
+  [/iPhone|iPad|iPod/, 'iOS'],
+  [/Mac OS X|Macintosh/, 'macOS'],
+  // Android UAs also match /Linux/, so it must be checked first.
+  [/Android/, 'Android'],
+  [/Linux/, 'Linux'],
+];
+
+function firstMatch(ua: string, patterns: [RegExp, string][]): string | undefined {
+  return patterns.find(([re]) => re.test(ua))?.[1];
+}
+
+/** FR-004: sessions are "shown by browser, operating system". A hand-rolled match over the
+ * common desktop/mobile UA strings — ponytail: no ua-parser-js dependency for a display-only
+ * label; upgrade if a browser/OS this misses turns out to matter. */
+export function describeDevice(userAgent: string | null): string {
+  if (!userAgent) return 'Unknown device';
+  const browser = firstMatch(userAgent, BROWSER_PATTERNS);
+  const os = firstMatch(userAgent, OS_PATTERNS);
+  if (browser && os) return `${browser} on ${os}`;
+  return browser ?? os ?? 'Unknown device';
+}

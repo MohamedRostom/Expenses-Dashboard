@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { Button, Dialog, Input, Select, useToast } from '@desk/ui';
 import type { JobResponseT, PatchMeResponseT, SessionSummaryT } from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
-import { formatDateTime } from '../utils/format.js';
+import { describeDevice, formatDateTime } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
 import { applyTheme } from './theme.js';
@@ -277,7 +277,7 @@ async function confirmDelete() {
       <p v-else-if="sessionsError" role="alert" class="error-text">{{ sessionsError }}</p>
       <ul v-else>
         <li v-for="s in sessions" :key="s.id">
-          {{ s.userAgent ?? 'Unknown device' }} — last seen {{ formatDateTime(s.lastSeenAt) }}
+          {{ describeDevice(s.userAgent) }} — last seen {{ formatDateTime(s.lastSeenAt) }}
           <span v-if="s.current"> (this session)</span>
           <Button v-if="!s.current" variant="secondary" @click="revokeSession(s.id)">
             Revoke

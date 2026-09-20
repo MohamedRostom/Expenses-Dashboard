@@ -412,3 +412,14 @@ T044 apps/web/src/views/{Register,Login,Verify,Forgot,Reset}View.vue
 - [P] tasks touch different files with no dependency on incomplete tasks
 - Every phase PR follows the definition of done in the constitution: tests first, CHANGELOG line, coverage not lower, Lighthouse green where a page changed, preview visited
 - Commit after each task or logical group; never merge a story with its ownership matrix rows missing
+
+---
+
+## Phase 14: Convergence
+
+Found by `/speckit-converge` on 2026-09-20 assessing the codebase against spec.md, plan.md and the tasks above. See that run's findings table (F1–F4) for full evidence.
+
+- [x] T125 Wire the remaining `AppDeps` in `apps/api/src/worker.ts` (`hasher`, `limiter`, `mailer`, `secretBox`, `rates`), replacing the throwing lazy `Proxy` placeholders with the same Workers-compatible adapters already used on Node (hash-wasm `PasswordHasher`, `PgRateLimiter`/`ResendMailer` over the existing `queryDbFor` Hyperdrive bridge, WebCrypto `SecretBox`, `createRatesService`), so auth, expense conversion, capture rotation and mail work on the Cloudflare Worker runtime per plan: Stage 2 bindings (partial)
+- [x] T126 Parse the stored session `userAgent` into a human-readable browser and operating system pair (not the raw UA string) for the session list in `apps/web/src/views/SettingsView.vue`, per FR-004 (partial)
+- [x] T127 Extend `apps/api/src/jobs/housekeeping.ts` to purge `expense_versions` rows older than 12 months now that the table exists (added in Phase 3 by T077), removing the stale "doesn't exist yet" comment, per FR-015 (partial)
+- [x] T128 [P] Populate `apps/landing/src/content.ts`'s `screenshots` array with real app screenshots now that the Phase 4 UI exists to capture them from, per US9 / FR-021 (partial)

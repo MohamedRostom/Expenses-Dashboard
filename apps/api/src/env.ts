@@ -65,10 +65,22 @@ export function parseBindings(source: unknown): Bindings {
  * These are runtime objects (a Hyperdrive handle, a KVNamespace), not env strings, so they
  * are asserted present rather than zod-validated — zod has nothing useful to check on a class
  * instance the platform hands us.
+ *
+ * T125: SECRET_BOX_KEY/RESEND_API_KEY/MAIL_FROM are read the same way but stay optional and
+ * unvalidated here (unlike node.ts's envSchema, which requires SECRET_BOX_KEY) — Rostom hasn't
+ * created these as `wrangler secret put` values yet (CLAUDE.md to-dos), and /healthz must keep
+ * working without them. worker.ts wires the mailer/secretBox for real when present and falls
+ * back to a placeholder that only fails if something actually tries to use it otherwise.
  */
 export interface WorkersBindings {
   HYPERDRIVE: { connectionString: string };
   SESSIONS_KV: unknown;
+  // `| undefined` (not just `?`) because parseWorkersBindings always sets these keys, possibly
+  // to undefined — exactOptionalPropertyTypes treats a present-but-undefined value differently
+  // from an absent key.
+  SECRET_BOX_KEY?: string | undefined;
+  RESEND_API_KEY?: string | undefined;
+  MAIL_FROM?: string | undefined;
 }
 
 export function parseWorkersBindings(source: unknown): Bindings & WorkersBindings {
@@ -84,5 +96,12 @@ export function parseWorkersBindings(source: unknown): Bindings & WorkersBinding
       'Refusing to start, invalid environment:\n  SESSIONS_KV: missing binding (see infra/cloudflare/wrangler.toml [[kv_namespaces]])',
     );
   }
-  return { ...bindings, HYPERDRIVE: env.HYPERDRIVE, SESSIONS_KV: env.SESSIONS_KV };
+  return {
+    ...bindings,
+    HYPERDRIVE: env.HYPERDRIVE,
+    SESSIONS_KV: env.SESSIONS_KV,
+    SECRET_BOX_KEY: env.SECRET_BOX_KEY,
+    RESEND_API_KEY: env.RESEND_API_KEY,
+    MAIL_FROM: env.MAIL_FROM,
+  };
 }

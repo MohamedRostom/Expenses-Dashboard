@@ -32,6 +32,14 @@ id = "REPLACE_WITH_REAL_KV_NAMESPACE_ID"
 [triggers]
 crons = ["*/5 * * * *"]
 
+# T125: mailer and connector-token encryption need these as real secrets (never in [vars],
+# which is plaintext in this file) — Rostom runs, before a real deploy:
+#   wrangler secret put SECRET_BOX_KEY --config infra/cloudflare/wrangler.toml
+#   wrangler secret put RESEND_API_KEY --config infra/cloudflare/wrangler.toml
+# MAIL_FROM is optional (defaults to noreply@example.com); set it the same way if a real sender
+# address is wanted. Until these exist, worker.ts serves every route that doesn't send mail or
+# touch a connector token; those fail with a clear "not wired yet" error instead of crashing.
+
 # apps/web/dist (the Vue SPA) is NOT served from this wrangler.toml — Cloudflare Pages is a
 # separate project from a Workers deploy under the classic (non-Workers-Assets) model this repo
 # uses, and this API worker has no static-asset binding here. deploy-cf.yml (T118) uploads

@@ -20,6 +20,16 @@ import { content } from '../content';
       </ol>
     </section>
 
+    <section v-if="content.screenshots.length" class="screenshots" aria-label="Screenshots">
+      <img
+        v-for="shot in content.screenshots"
+        :key="shot.src"
+        :src="shot.src"
+        :alt="shot.alt"
+        loading="lazy"
+      />
+    </section>
+
     <footer class="footer">
       <router-link to="/privacy">Privacy</router-link>
       <router-link to="/terms">Terms</router-link>
@@ -89,6 +99,17 @@ import { content } from '../content';
 .steps p {
   margin: 0;
   opacity: 0.85;
+}
+.screenshots {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+.screenshots img {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
 }
 .footer {
   display: flex;

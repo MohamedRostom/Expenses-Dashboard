@@ -8,6 +8,10 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 - App header nav (Month · Year · Categories · Settings) on signed-in screens — settings and the other views were previously reachable only by typing the URL.
 - Onboarding: Skip, Finish, "Add an expense" and "Connect Notion" now leave the wizard — the session store takes the PATCHed user, so the router guard no longer bounces every route back to `/onboarding`.
+- Cloudflare Worker (`apps/api/src/worker.ts`): password hashing, rate limiting, mail and FX rates were lazy placeholders that threw on every use; now real, Workers-compatible adapters (mailer/connector-token encryption still need `RESEND_API_KEY`/`SECRET_BOX_KEY` as Cloudflare secrets before Stage 2 goes live).
+- Settings' session list now shows a parsed browser/operating system pair instead of the raw User-Agent string (FR-004).
+- Housekeeping job now purges `expense_versions` rows older than 12 months (FR-015) — the table existed since Phase 3 but the purge step was left unwired.
+- Landing page: the `screenshots` array was defined but never rendered; wired up and populated with real captures of the month view, category budgets and the mobile month view.
 
 ### Added
 

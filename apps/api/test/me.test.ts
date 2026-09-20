@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { users as usersTable, jobs as jobsTable, auditLog } from '@desk/db';
+import { users as usersTable, jobs as jobsTable, auditLog, expenseVersions } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 
 // T033: failing-first tests for GET/PATCH /me, sessions, export, DELETE /me, email change,
@@ -288,5 +288,55 @@ describe('me', () => {
     const [freshRow] = await h.db.select().from(usersTable).where(eq(usersTable.id, fresh.userId));
     expect(staleRow).toBeUndefined();
     expect(freshRow).toBeTruthy();
+  });
+
+  it('housekeeping purges expense_versions older than 12 months but keeps recent ones (T127, FR-015)', async () => {
+    const { housekeepingJob } = await import('../src/jobs/housekeeping.js');
+    const { PgRateLimiter } = await import('../src/adapters/rate-limiter.js');
+
+    const user = await h.asUser('me-housekeeping-versions@example.com');
+    const res = await user.post('/expenses', {
+      description: 'housekeeping fixture',
+      amount: { minor: 500, currency: 'GBP' },
+      date: '2026-09-01',
+      categoryId: null,
+      paidWith: 'card',
+      kind: 'variable',
+    });
+    const { expense } = await j(res);
+
+    const old = new Date(Date.now() - 366 * 24 * 60 * 60 * 1000);
+    const recent = new Date();
+    await h.db.insert(expenseVersions).values([
+      {
+        expenseId: expense.id,
+        userId: user.userId,
+        source: 'desk',
+        snapshot: {},
+        editedAt: old,
+        createdAt: old,
+      },
+      {
+        expenseId: expense.id,
+        userId: user.userId,
+        source: 'desk',
+        snapshot: {},
+        editedAt: recent,
+        createdAt: recent,
+      },
+    ]);
+
+    // ponytail: same no-op limiter stub as the test above — only the expense_versions step matters here.
+    const queryDb = { query: async <T>() => ({ rows: [] as T[] }) };
+    const limiter = new PgRateLimiter(queryDb);
+    const job = housekeepingJob(h.db, limiter);
+    await job({}, { updateProgress: async () => {} });
+
+    const rows = await h.db
+      .select()
+      .from(expenseVersions)
+      .where(eq(expenseVersions.expenseId, expense.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]?.editedAt.getTime()).toBeGreaterThan(old.getTime());
   });
 });
