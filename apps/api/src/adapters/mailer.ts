@@ -46,13 +46,29 @@ export class SmtpMailer implements Mailer {
     const transport = nodemailer.createTransport({
       host: this.transportOptions.host,
       port: this.transportOptions.port,
+      secure: false,
     });
-    await transport.sendMail({
-      from: this.transportOptions.from,
-      to: message.to,
-      subject: message.subject,
-      html: message.html,
-    });
+    try {
+      const info = await transport.sendMail({
+        from: this.transportOptions.from,
+        to: message.to,
+        subject: message.subject,
+        html: message.html,
+      });
+      // Diagnostic for the e2e-ci Mailpit path (2026-09-20): sendMail's own promise resolving
+      // does not prove Mailpit accepted the message — log the SMTP result explicitly so a silent
+      // delivery failure shows up in `docker compose logs` instead of only as a 15s Playwright
+      // timeout three layers away.
+      console.log('SmtpMailer: sent', {
+        to: message.to,
+        accepted: info.accepted,
+        rejected: info.rejected,
+        response: info.response,
+      });
+    } catch (err) {
+      console.error('SmtpMailer: send failed', { to: message.to, err });
+      throw err;
+    }
   }
 }
 
