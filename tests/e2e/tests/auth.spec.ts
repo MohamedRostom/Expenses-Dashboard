@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { axeCheck, signUpAndVerify } from '../fixtures/index.js';
 
 const MAILPIT_URL = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
@@ -41,6 +41,17 @@ async function readLinkFromMailpit(
 function pathOf(url: string): string {
   const u = new URL(url);
   return `${u.pathname}${u.search}`;
+}
+
+/**
+ * apps/web/src/api/client.ts's apiFetch reads the __Host-desk_csrf cookie and sends it as
+ * X-CSRF-Token on every mutating browser fetch — page.request (Playwright's own APIRequestContext)
+ * shares the browser context's cookie jar but has no such logic, so a raw page.request.post/delete
+ * needs this header attached manually or apps/api/src/middleware/csrf.ts 403s it.
+ */
+async function csrfHeaders(page: Page): Promise<Record<string, string>> {
+  const cookie = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf');
+  return cookie ? { 'X-CSRF-Token': cookie.value } : {};
 }
 
 function uniqueEmail(tag: string): string {
@@ -97,7 +108,7 @@ test('sign up, verify via Mailpit, sign in on two contexts, sign out one, reset 
   // so drive the real endpoint directly with context2's cookies — this is what a logout button
   // will call once SettingsView grows one; swap this for a UI click at that point.
   // ponytail: SettingsView has no session-list/logout UI yet; upgrade this to a UI click when it lands.
-  const logoutRes = await page2.request.post('/auth/logout');
+  const logoutRes = await page2.request.post('/auth/logout', { headers: await csrfHeaders(page2) });
   expect(logoutRes.status()).toBe(204);
   await page2.goto('/settings');
   await expect(page2).toHaveURL(/\/login/);
@@ -137,7 +148,10 @@ test('sign up, verify via Mailpit, sign in on two contexts, sign out one, reset 
   // endpoint directly (same caveat as logout above).
   // ponytail: SettingsView has no delete-account confirmation dialog yet; upgrade this to a UI
   // click-through when it lands.
-  const deleteRes = await page.request.delete('/me', { data: {} });
+  const deleteRes = await page.request.delete('/me', {
+    data: {},
+    headers: await csrfHeaders(page),
+  });
   expect(deleteRes.status()).toBe(204);
   await page.goto('/settings');
   await expect(page).toHaveURL(/\/login/);
