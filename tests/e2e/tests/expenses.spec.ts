@@ -1,7 +1,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { axeCheck, signUpAndVerify } from '../fixtures/index.js';
 
-const PASSWORD = 'correct horse battery staple';
+// Not a real phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment.
+const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 
 function uniqueEmail(tag: string): string {
   return `e2e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`;

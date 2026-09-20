@@ -13,7 +13,10 @@ type MailpitMessagesResponse = { messages: MailpitMessage[] };
 export async function signUpAndVerify(
   page: Page,
   email: string,
-  password = 'correct horse battery staple',
+  // Not a real quote/phrase — HibpBreachChecker (apps/api/src/adapters/breach-checker.ts) makes
+  // a live call to api.pwnedpasswords.com in e2e-ci, and 'correct horse battery staple' (the
+  // XKCD example) is a genuinely breached password, so every signup using it was rejected 400.
+  password = 'xk-e2e-Tr0ub4-fixture-2026',
 ): Promise<void> {
   await page.goto('/register');
   await page.getByLabel(/email/i).fill(email);

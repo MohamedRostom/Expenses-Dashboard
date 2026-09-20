@@ -13,7 +13,8 @@ import { signUpAndVerify } from '../fixtures/index.js';
  * 5-minute notion.sync cron (research.md R8) a realistic window to have run at least once
  * without the test itself forcing a sync — "sync now" is used to also prove the manual path.
  */
-const PASSWORD = 'correct horse battery staple';
+// Not a real phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment.
+const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 const FIVE_MINUTES_MS = 5 * 60 * 1000;
 
 function uniqueEmail(tag: string): string {

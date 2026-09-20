@@ -5,7 +5,8 @@ import { expect, test } from '@playwright/test';
 // Uses the seeded e2e user (packages/db/src/seed.ts) rather than signing up, so it needs no
 // Mailpit access on the deployed target.
 const SEEDED_EMAIL = 'e2e@desk.test';
-const SEEDED_PASSWORD = process.env['E2E_SEEDED_PASSWORD'] ?? 'correct horse battery staple';
+// Not a real phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment.
+const SEEDED_PASSWORD = process.env['E2E_SEEDED_PASSWORD'] ?? 'xk-e2e-Tr0ub4-fixture-2026';
 
 test('post-deploy smoke: healthz, seeded login, add and delete one expense @local', async ({
   page,

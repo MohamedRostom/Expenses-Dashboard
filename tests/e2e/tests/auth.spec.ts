@@ -2,8 +2,10 @@ import { expect, test } from '@playwright/test';
 import { axeCheck, signUpAndVerify } from '../fixtures/index.js';
 
 const MAILPIT_URL = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
-const PASSWORD = 'correct horse battery staple';
-const NEW_PASSWORD = 'correct horse battery staple 2';
+// Not real phrases — see tests/e2e/fixtures/index.ts's signUpAndVerify comment: the XKCD example
+// password is genuinely flagged by the real HIBP breach-check used in e2e-ci.
+const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
+const NEW_PASSWORD = 'xk-e2e-Tr0ub4-reset-2026';
 
 type MailpitMessage = { ID: string; To: { Address: string }[] };
 type MailpitMessagesResponse = { messages: MailpitMessage[] };

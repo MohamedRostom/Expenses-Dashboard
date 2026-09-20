@@ -2,7 +2,8 @@ import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
 import { axeCheck, signUpAndVerify } from '../fixtures/index.js';
 
-const PASSWORD = 'correct horse battery staple';
+// Not a real phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment.
+const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 const SAMPLE_CSV = fileURLToPath(new URL('../fixtures/sample-export.csv', import.meta.url));
 
 function uniqueEmail(tag: string): string {

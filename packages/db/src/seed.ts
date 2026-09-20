@@ -62,7 +62,9 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
     // to check against. onConflictDoUpdate so re-running seed also fixes an already-seeded
     // environment, not just a fresh one.
     const passwordHash = await hashPassword(
-      process.env['E2E_SEEDED_PASSWORD'] ?? 'correct horse battery staple',
+      // Not a real quote/phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment: the
+      // XKCD example password is genuinely flagged by the real HIBP breach-check.
+      process.env['E2E_SEEDED_PASSWORD'] ?? 'xk-e2e-Tr0ub4-fixture-2026',
     );
     await db
       .insert(users)
