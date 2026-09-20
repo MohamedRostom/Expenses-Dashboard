@@ -58,4 +58,19 @@ describe('apiFetch', () => {
       new ApiError('unauthenticated', 'not logged in', 401),
     );
   });
+
+  // Regression: c.body(null, 202) (register, forgot-password, email-change, feedback) has no
+  // body — apiFetch used to only special-case 204, so res.json() threw on 202's empty body and
+  // every one of those flows surfaced a false 'validation failed' despite succeeding.
+  it('resolves undefined for a 202 with an empty body', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 202 })));
+    await expect(
+      apiFetch('/auth/register', { method: 'POST', body: '{}' }),
+    ).resolves.toBeUndefined();
+  });
+
+  it('still resolves undefined for a 204', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    await expect(apiFetch('/me', { method: 'DELETE' })).resolves.toBeUndefined();
+  });
 });

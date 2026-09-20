@@ -63,6 +63,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
 
   const res = await fetch(path, { ...init, method, headers, credentials: 'include' });
   if (!res.ok) throw await toApiError(res);
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+  // Several routes (register, forgot-password, email-change, feedback — see c.body(null, 202) in
+  // apps/api/src/routes/{auth,me,feedback}.ts) reply 202 with no body, not 204. res.json() on an
+  // empty body throws a SyntaxError, which callers can't distinguish from a real validation
+  // error, so every one of those flows silently showed a generic "That didn't look right" banner
+  // despite succeeding server-side. Read as text first so any empty-bodied 2xx returns undefined.
+  const text = await res.text();
+  return (text ? JSON.parse(text) : undefined) as T;
 }
