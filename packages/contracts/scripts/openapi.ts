@@ -14,6 +14,7 @@
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
+import prettier from 'prettier';
 import * as contracts from '../src/index.js';
 
 const schemas: Record<string, object> = {};
@@ -173,7 +174,11 @@ const doc = {
 };
 
 const outFile = fileURLToPath(new URL('../openapi.json', import.meta.url));
-writeFileSync(outFile, JSON.stringify(doc, null, 2) + '\n');
+// Prettier-formatted (matches `pnpm format`/`format:check` across the repo, and CI's lint job
+// diffs this file against a fresh regeneration — plain JSON.stringify's one-array-item-per-line
+// output never matched the committed file, so that diff check always failed).
+const formatted = await prettier.format(JSON.stringify(doc, null, 2), { filepath: outFile });
+writeFileSync(outFile, formatted);
 console.log(
   `wrote ${outFile} (${Object.keys(schemas).length} schemas, ${Object.keys(paths).length} paths)`,
 );

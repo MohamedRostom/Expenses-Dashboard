@@ -1764,7 +1764,9 @@
           "not_found",
           "rate_limited",
           "conflict",
-          "rate_unavailable"
+          "rate_unavailable",
+          "internal",
+          "email_unverified"
         ]
       },
       "ErrorEnvelope": {
@@ -1782,7 +1784,9 @@
                   "not_found",
                   "rate_limited",
                   "conflict",
-                  "rate_unavailable"
+                  "rate_unavailable",
+                  "internal",
+                  "email_unverified"
                 ]
               },
               "message": {
@@ -2902,7 +2906,10 @@
             "items": {
               "type": "object",
               "properties": {
-                "id": {
+                "databaseId": {
+                  "type": "string"
+                },
+                "dataSourceId": {
                   "type": "string"
                 },
                 "title": {
@@ -2912,7 +2919,7 @@
                   "type": "boolean"
                 }
               },
-              "required": ["id", "title", "compatible"],
+              "required": ["databaseId", "dataSourceId", "title", "compatible"],
               "additionalProperties": false
             }
           }
@@ -3147,7 +3154,10 @@
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
         "properties": {
-          "id": {
+          "databaseId": {
+            "type": "string"
+          },
+          "dataSourceId": {
             "type": "string"
           },
           "title": {
@@ -3157,7 +3167,7 @@
             "type": "boolean"
           }
         },
-        "required": ["id", "title", "compatible"],
+        "required": ["databaseId", "dataSourceId", "title", "compatible"],
         "additionalProperties": false
       },
       "NotionDirection": {
