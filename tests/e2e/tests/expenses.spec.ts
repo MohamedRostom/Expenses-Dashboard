@@ -34,7 +34,10 @@ async function addExpense(
     // native <input type="date"> — set via fill (Playwright accepts yyyy-mm-dd for this input type).
     await page.locator('input[type="date"]').fill(opts.date);
   }
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
 }
 
 test('add expenses in three currencies, edit, delete, restore, shortcuts, locale formatting', async ({
@@ -54,7 +57,10 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   await page.getByLabel(/description/i).fill('Groceries GBP');
   await page.getByLabel(/^amount$/i).fill('10');
   // native default currency (session default) is left as-is for the first expense — GBP.
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText('Groceries GBP')).toBeVisible();
 
   await addExpense(page, { description: 'Dinner EUR', amount: '20', currency: 'EUR' });

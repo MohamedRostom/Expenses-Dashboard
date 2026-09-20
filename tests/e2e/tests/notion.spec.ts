@@ -62,7 +62,10 @@ test.describe('Notion two-way sync @local', () => {
           await page.getByLabel(/description/i).fill(`Notion sync trial ${trial}`);
           await page.getByLabel(/^amount$/i).fill('12.34');
           await page.locator('input[type="date"]').fill('2026-09-10');
-          await page.getByRole('button', { name: /^add expense$/i }).click();
+          await page
+            .getByRole('dialog')
+            .getByRole('button', { name: /^add expense$/i })
+            .click();
         }
 
         await page.goto('/settings/connectors');

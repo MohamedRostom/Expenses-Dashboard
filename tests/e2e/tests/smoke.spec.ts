@@ -29,7 +29,10 @@ test('post-deploy smoke: healthz, seeded login, add and delete one expense @loca
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill(description);
   await page.getByLabel(/^amount$/i).fill('1.23');
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText(description)).toBeVisible();
 
   await page

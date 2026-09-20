@@ -23,7 +23,10 @@ test('year view shows month bars and a working table fallback, light and dark', 
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill('Groceries run');
   await page.getByLabel(/^amount$/i).fill('42');
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText('Groceries run')).toBeVisible();
 
   await page.goto('/year');
@@ -57,7 +60,10 @@ test('clicking a month bar drills into that month', async ({ page }) => {
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill('Rent payment');
   await page.getByLabel(/^amount$/i).fill('900');
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText('Rent payment')).toBeVisible();
 
   await page.goto('/year');

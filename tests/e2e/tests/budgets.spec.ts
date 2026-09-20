@@ -35,7 +35,10 @@ test('over-budget category shows critical state and a negative remaining tile', 
   if (await categorySelect.count()) {
     await categorySelect.selectOption({ label: 'Groceries' });
   }
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText('Big shop')).toBeVisible();
 
   // The budget total is spread across all budgeted categories, so the "Remaining" tile goes
@@ -57,7 +60,10 @@ test('month-over-month trend sparkline is visible after activity', async ({ page
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill('Coffee');
   await page.getByLabel(/^amount$/i).fill('5');
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
   await expect(page.getByText('Coffee')).toBeVisible();
 
   // With only the current month having spend, the sparkline has <=1 point and stays hidden

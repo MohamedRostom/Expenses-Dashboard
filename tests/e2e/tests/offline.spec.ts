@@ -22,7 +22,10 @@ test('add an expense while offline, queued row shows pending, syncs once back on
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill('Offline coffee');
   await page.getByLabel(/^amount$/i).fill('4.50');
-  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
 
   // Optimistically shown with a pending marker, and the header pending count reflects it —
   // still offline, so it must not have reached the server.
