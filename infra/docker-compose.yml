@@ -27,7 +27,9 @@ services:
       SMTP_URL: smtp://mailpit:1025
       NOTION_API_BASE: http://mocks:4000/notion
       # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
-      RATES_PROVIDER: fake
+      # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
+      # rates against the live API instead of the fixed-date FakeRates fixtures.
+      RATES_PROVIDER: ${RATES_PROVIDER:-fake}
       # Dev-only fixed values — never reuse these outside compose/e2e-ci.
       SESSION_SECRET: dev-session-secret-not-for-production-use-000000
       SECRET_BOX_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=

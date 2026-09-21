@@ -7,7 +7,10 @@ type FrankfurterBody = {
   rates: Record<string, number>;
 };
 
-const BASE_URL = 'https://api.frankfurter.app';
+// frankfurter.app now 301-redirects every request to this host (moved after ADR-0005 was
+// written); hitting it directly skips a cross-domain redirect hop that some networks won't
+// follow, which is what was surfacing as `rate_unavailable` for every non-same-currency lookup.
+const BASE_URL = 'https://api.frankfurter.dev/v1';
 
 /**
  * Thin HTTP client over frankfurter.app. A single call already returns the fallback date

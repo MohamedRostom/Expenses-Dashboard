@@ -80,7 +80,7 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 - Auto-logging guide (MacroDroid + Cloudflare Worker webhook design, reused for F5): https://claude.ai/artifact/77wgXNJHeP8PSEVu89mv1x
 - Rostom's personal Notion "💷 Expenses" database (schema the Notion connector should be able to create): database `7a5935c4ee5b4286842dd64d7be3abef`, data source `5aca6a01-dc37-4183-a5b3-2fa6f8efae8b`. Properties the connector creates (FR-014 in the baseline spec): Expense (title), Amount (number), Currency (select), Date, Category (select), Paid with (select: Card, Cash, Bank transfer, Other), Kind (select: Fixed, Variable, One-off), Notes, Added via (select: Dashboard, Notion, Phone), Expense ID (text). Rostom's existing table also has Month (formula `formatDate(prop("Date"), "YYYY-MM")`) and Created, and lacks Currency and Expense ID; the connector offers to add them on connect.
 - Default category seed (from the personal budget): Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Groceries, Eating out, Transport, Cycling, Gym & health, Personal care, Clothing, Entertainment, Household, Driving lessons, Travel, Other. Fixed-kind defaults: Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Gym & health.
-- Notion API version to target: `2025-09-03` (data sources). Rates API: https://api.frankfurter.app (no key).
+- Notion API version to target: `2025-09-03` (data sources). Rates API: https://api.frankfurter.dev/v1 (no key; the old api.frankfurter.app host now 301-redirects here — client fixed 2026-09-21 after that redirect was found causing `rate_unavailable`).
 
 ## Current state (update this section as phases complete)
 
