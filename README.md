@@ -210,7 +210,7 @@ pnpm format                        # prettier --write
 pnpm test:unit                     # packages/core, Vitest, coverage floor 85 %
 pnpm test:api                      # apps/api, Vitest + Testcontainers Postgres (needs Docker)
 pnpm worker:build                  # wrangler deploy --dry-run: proves the Worker bundle
-pnpm test:e2e -- --project=ci      # Playwright against the compose stack on :5173
+pnpm test:e2e --project=ci         # Playwright against the compose stack on :5173
 pnpm test                          # core + api together
 ```
 

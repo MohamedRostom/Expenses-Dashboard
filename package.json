@@ -17,7 +17,7 @@
     "test": "pnpm -r --filter @desk/core --filter @desk/api test",
     "test:unit": "pnpm -r --filter @desk/core test",
     "test:api": "pnpm --filter @desk/api test",
-    "test:e2e": "pnpm --filter @desk/e2e test",
+    "test:e2e": "pnpm --filter @desk/e2e exec playwright test",
     "worker:build": "wrangler deploy --dry-run --config infra/cloudflare/wrangler.toml --outdir .wrangler/dry-run",
     "db:migrate": "pnpm --filter @desk/db migrate",
     "db:generate": "pnpm --filter @desk/db generate",

@@ -73,8 +73,14 @@ async function loadTrend() {
   const year = store.currentMonth.slice(0, 4);
   try {
     const res = await apiFetch<YearSummaryT>(`/summary/year?year=${year}`);
+    // /summary/year always returns a full 12-month skeleton, zero-spend months included — without
+    // filtering those out first, a user with activity in only one month still got >1 "point" once
+    // enough calendar months had passed (e.g. 9 by September), showing a trend of mostly flat
+    // zeros. The v-if="trendPoints.length > 1" below only makes sense against months with real
+    // activity, matching budgets.spec.ts's documented intent (stays hidden until there's a second
+    // month of real spend to compare against).
     trendPoints.value = res.months
-      .filter((m) => m.month <= store.currentMonth)
+      .filter((m) => m.month <= store.currentMonth && m.spent > 0)
       .slice(-6)
       .map((m) => ({ month: m.month, spent: m.spent }));
   } catch {

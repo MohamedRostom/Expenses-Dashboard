@@ -105,7 +105,7 @@ jobs:
       - run: docker compose -f infra/docker-compose.yml up --build --wait
         env:
           GIT_SHA: ${{ github.sha }}
-      - run: pnpm test:e2e -- --project=ci
+      - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'
       - run: pnpm --filter @desk/e2e lighthouse
