@@ -75,6 +75,37 @@ services:
       timeout: 3s
       retries: 20
 
+  # Production build + vite preview, dedicated to the Lighthouse performance budget check
+  # (tests/e2e/lighthouserc.json) — a score measured against the `web` service's dev server
+  # above (unminified, unbundled, HMR overhead) is structurally meaningless, never mind >=0.9.
+  # Separate from `web` (which Playwright tests run against) so this never risks that suite.
+  web-preview:
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      target: deps
+    # No `--` before --host: pnpm forwards extra args as-is, so vite would receive a literal `--`,
+    # stop parsing options there, and bind localhost only (healthcheck + host port both fail).
+    command: sh -c "pnpm --filter @desk/web build && pnpm --filter @desk/web preview --host 0.0.0.0"
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - '4173:4173'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
   landing:
     build:
       context: ..

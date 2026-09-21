@@ -2,6 +2,29 @@ import vue from '@vitejs/plugin-vue';
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// Every API prefix the app calls (client.ts uses relative paths); anything else is a client
+// route. Shared between server.proxy (vite dev — the compose `web` service Playwright tests run
+// against) and preview.proxy (vite preview — the compose `web-preview` service the Lighthouse
+// budget check runs against, since a Lighthouse score against an unminified, unbundled dev
+// server is structurally meaningless, never mind ~0.9). vite preview does NOT inherit
+// server.proxy; without this second copy, / (login) would 500 fetching /currencies etc.
+const apiProxy = Object.fromEntries(
+  [
+    '/auth',
+    '/capture',
+    '/categories',
+    '/currencies',
+    '/expenses',
+    '/feedback',
+    '/healthz',
+    '/imports',
+    '/jobs',
+    '/me',
+    '/notion',
+    '/summary',
+  ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
+);
+
 export default defineConfig({
   plugins: [
     vue(),
@@ -77,22 +100,11 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
-    // Every API prefix the app calls (client.ts uses relative paths); anything else is a client route.
-    proxy: Object.fromEntries(
-      [
-        '/auth',
-        '/capture',
-        '/categories',
-        '/currencies',
-        '/expenses',
-        '/feedback',
-        '/healthz',
-        '/imports',
-        '/jobs',
-        '/me',
-        '/notion',
-        '/summary',
-      ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
-    ),
+    proxy: apiProxy,
+  },
+  preview: {
+    port: 4173,
+    strictPort: true,
+    proxy: apiProxy,
   },
 });

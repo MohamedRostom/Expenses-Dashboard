@@ -1,7 +1,7 @@
 {
   "ci": {
     "collect": {
-      "url": ["http://localhost:5174/", "http://localhost:5173/"],
+      "url": ["http://localhost:5174/", "http://localhost:4173/"],
       "numberOfRuns": 1
     },
     "assert": {
