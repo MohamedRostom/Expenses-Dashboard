@@ -6,7 +6,10 @@
   --color-bg: #f2f4f7;
   --color-fg: #121820;
   --color-accent: #1f6e5a;
-  --color-warn: #a8641a;
+  /* #a8641a against --color-bg (#f2f4f7) is ~4.23:1 — axe's color-contrast rule (WCAG AA needs
+     4.5:1 for normal text) failed on MonthView.vue's "N pending rate lookups" text, which uses
+     this token directly, not just a light background tint of it. Darkened to restore AA. */
+  --color-warn: #8f5810;
   --color-critical: #a83a2e;
 }
 @media (prefers-color-scheme: dark) {
@@ -14,10 +17,14 @@
     --color-bg: #121820;
     --color-fg: #f2f4f7;
     --color-accent: #5fbf9f;
+    /* The light-mode value darkened above would fail even worse here (~3.8:1 already, before
+       darkening) against this dark background — needs a lighter, not darker, variant. */
+    --color-warn: #d99a4e;
   }
 }
 :root[data-theme='dark'] {
   --color-bg: #121820;
   --color-fg: #f2f4f7;
   --color-accent: #5fbf9f;
+  --color-warn: #d99a4e;
 }

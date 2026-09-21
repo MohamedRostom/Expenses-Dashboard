@@ -12,6 +12,11 @@ export default defineConfig({
     // swap for real brand assets before shipping.
     VitePWA({
       registerType: 'autoUpdate',
+      // vite-plugin-pwa injects the manifest <link> and precache/workbox assets on `vite build`
+      // only, by design — `devOptions.enabled` opts `vite dev` in too. e2e-ci runs the compose
+      // stack's `vite dev` server (infra/docker-compose.yml), not a production build, so without
+      // this pwa.spec.ts's link[rel="manifest"] checks always timed out finding nothing.
+      devOptions: { enabled: true },
       workbox: {
         navigateFallback: '/index.html',
         // C9: same API prefixes as the dev proxy list below — the SW must never serve the SPA

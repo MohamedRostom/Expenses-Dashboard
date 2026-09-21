@@ -32,7 +32,9 @@ test('import: map columns, preview, commit, re-import reports duplicates, undo',
   const table = page.getByTestId('import-preview-table');
   await expect(table).toBeVisible();
   await expect(table.locator('tbody tr')).toHaveCount(5);
-  await expect(table.locator('[data-status="ok"]')).toHaveCount(5);
+  // ImportView.vue puts data-status on both the <tr> and its nested status badge <span> — scope
+  // to rows only, or this matches 2 elements per row (10, not 5).
+  await expect(table.locator('tbody tr[data-status="ok"]')).toHaveCount(5);
   await axeCheck(page);
 
   await page.getByRole('button', { name: /^commit import$/i }).click();
@@ -53,7 +55,7 @@ test('import: map columns, preview, commit, re-import reports duplicates, undo',
   await page.getByRole('button', { name: /^next$/i }).click();
   await page.getByRole('button', { name: /^preview$/i }).click();
   await expect(
-    page.getByTestId('import-preview-table').locator('[data-status="duplicate"]'),
+    page.getByTestId('import-preview-table').locator('tbody tr[data-status="duplicate"]'),
   ).toHaveCount(5);
 
   // Undo the first import: its expenses are binned.

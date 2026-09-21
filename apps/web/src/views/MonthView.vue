@@ -194,56 +194,66 @@ async function onUndoDelete(id: string) {
     </header>
 
     <Skeleton v-if="store.loading" height="12rem" />
-    <ErrorState v-else-if="store.error" :code="store.error ?? undefined" />
-    <template v-else-if="store.summary">
-      <p
-        v-if="store.summary.pendingRates > 0"
-        class="desk-month-view-pending"
-        data-testid="pending-rates"
-      >
-        {{ store.summary.pendingRates }} pending rate lookup{{
-          store.summary.pendingRates === 1 ? '' : 's'
-        }}
-      </p>
+    <!-- A pending/rejected queue is IndexedDB-backed, independent of the failed network summary
+         fetch (store.error) — e.g. offline.spec.ts adds an expense while offline, where
+         store.loadMonth() necessarily fails. Falling through to the full-page ErrorState would
+         hide the queue the offline feature exists to show, so only show it when there's truly
+         nothing else to render. -->
+    <ErrorState
+      v-else-if="store.error && pendingQueued.length === 0 && rejectedQueued.length === 0"
+      :code="store.error ?? undefined"
+    />
+    <template v-else-if="store.summary || pendingQueued.length > 0 || rejectedQueued.length > 0">
+      <template v-if="store.summary">
+        <p
+          v-if="store.summary.pendingRates > 0"
+          class="desk-month-view-pending"
+          data-testid="pending-rates"
+        >
+          {{ store.summary.pendingRates }} pending rate lookup{{
+            store.summary.pendingRates === 1 ? '' : 's'
+          }}
+        </p>
 
-      <section class="desk-month-view-tiles">
-        <div class="desk-tile">
-          <span class="desk-tile-label">Spent</span>
-          <span class="desk-tile-value">{{
-            formatMoney(store.summary.spent, store.summary.currency)
-          }}</span>
-        </div>
-        <div class="desk-tile">
-          <span class="desk-tile-label">Budget</span>
-          <span class="desk-tile-value">{{
-            formatMoney(store.summary.budgeted, store.summary.currency)
-          }}</span>
-        </div>
-        <div class="desk-tile">
-          <span class="desk-tile-label">Remaining</span>
-          <span class="desk-tile-value">{{
-            formatMoney(store.summary.remaining, store.summary.currency)
-          }}</span>
-        </div>
-      </section>
+        <section class="desk-month-view-tiles">
+          <div class="desk-tile">
+            <span class="desk-tile-label">Spent</span>
+            <span class="desk-tile-value">{{
+              formatMoney(store.summary.spent, store.summary.currency)
+            }}</span>
+          </div>
+          <div class="desk-tile">
+            <span class="desk-tile-label">Budget</span>
+            <span class="desk-tile-value">{{
+              formatMoney(store.summary.budgeted, store.summary.currency)
+            }}</span>
+          </div>
+          <div class="desk-tile">
+            <span class="desk-tile-label">Remaining</span>
+            <span class="desk-tile-value">{{
+              formatMoney(store.summary.remaining, store.summary.currency)
+            }}</span>
+          </div>
+        </section>
 
-      <ForecastTile :month="store.currentMonth" />
-      <p
-        v-if="estimatedPending > 0"
-        class="desk-month-view-pending"
-        data-testid="estimated-pending"
-      >
-        + {{ formatMoney(estimatedPending, store.summary.currency) }} estimated, not yet synced
-      </p>
+        <ForecastTile :month="store.currentMonth" />
+        <p
+          v-if="estimatedPending > 0"
+          class="desk-month-view-pending"
+          data-testid="estimated-pending"
+        >
+          + {{ formatMoney(estimatedPending, store.summary.currency) }} estimated, not yet synced
+        </p>
 
-      <section
-        v-if="trendPoints.length > 1"
-        class="desk-month-view-trend"
-        data-testid="trend-sparkline"
-      >
-        <span class="desk-tile-label">Trend</span>
-        <TrendSparkline :points="trendPoints" />
-      </section>
+        <section
+          v-if="trendPoints.length > 1"
+          class="desk-month-view-trend"
+          data-testid="trend-sparkline"
+        >
+          <span class="desk-tile-label">Trend</span>
+          <TrendSparkline :points="trendPoints" />
+        </section>
+      </template>
 
       <EmptyState
         v-if="
@@ -253,7 +263,7 @@ async function onUndoDelete(id: string) {
         description="Add one to get started."
       />
       <template v-else>
-        <section class="desk-month-view-breakdown">
+        <section v-if="store.summary" class="desk-month-view-breakdown">
           <CategoryBars
             :categories="categoryBars"
             :currency="store.summary.currency"

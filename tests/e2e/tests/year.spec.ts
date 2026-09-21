@@ -77,6 +77,19 @@ test('category drill-down view lists spend by month, light and dark', async ({ p
   await signUpAndVerify(page, email, PASSWORD);
   await expect(page).toHaveURL('/');
 
+  // CategoryView.vue shows an EmptyState instead of the table when every month has zero spend
+  // (correct behaviour) — this test asserts the table renders, so it needs a Groceries expense
+  // first; a brand-new user has none.
+  await page.getByRole('button', { name: /add expense/i }).click();
+  await page.getByLabel(/description/i).fill('Weekly shop');
+  await page.getByLabel(/^amount$/i).fill('25');
+  await page.getByLabel(/category/i).selectOption({ label: 'Groceries' });
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: /^add expense$/i })
+    .click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
+
   await page.goto('/settings/categories');
   await expect(page.getByText('Groceries')).toBeVisible();
 

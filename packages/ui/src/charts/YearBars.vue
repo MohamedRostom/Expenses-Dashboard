@@ -107,7 +107,13 @@ defineExpose({ barPct, isOverBudget, monthLabel });
 .desk-year-bars-chart {
   display: grid;
   grid-template-columns: repeat(12, 1fr);
-  align-items: end;
+  /* Grid items must stretch (the default — align-items:end was here before) so each column's
+     height:100% below resolves to the full 10rem row; the bar itself still visually grows from
+     the bottom via the SVG rect's own y="100 - barPct" math, not via this alignment. Without
+     stretch, height:100% is indeterminate, the SVG's flex:1 has nothing to fill, and it falls
+     back to its viewBox's 1:10 aspect ratio at the column's width — several times taller than
+     10rem, overlapping the table below (confirmed via a manual screenshot: bars ran ~700-900px
+     tall instead of 160px, with the "table view" rows rendered inside that oversized area). */
   gap: 0.4rem;
   height: 10rem;
 }
@@ -116,7 +122,12 @@ defineExpose({ barPct, isOverBudget, monthLabel });
   flex-direction: column;
   align-items: center;
   gap: 0.25rem;
-  height: 100%;
+  /* height:100% here previously didn't resolve to a definite pixel value against the grid's
+     stretched row track (measured via getComputedStyle: computed to 758px, driven by the child
+     SVG's own aspect-ratio-derived size, not the intended 10rem) — an explicit height matching
+     .desk-year-bars-chart's, rather than a percentage through the grid-stretch chain, is
+     unambiguous. */
+  height: 10rem;
   background: none;
   border: none;
   cursor: pointer;
@@ -126,6 +137,13 @@ defineExpose({ barPct, isOverBudget, monthLabel });
 .desk-year-bars-svg {
   width: 100%;
   flex: 1;
+  /* Flex items default to min-height:auto, which for a replaced element with an intrinsic aspect
+     ratio (this SVG's viewBox is 10:100, i.e. 1:10) resolves via that ratio at the item's width —
+     ~74px wide * 10 = ~740px — overriding flex:1's shrink and overflowing the 10rem column
+     (measured via a manual script: .desk-year-bars-col rendered 758px tall against a 160px grid
+     track). min-height:0 removes that floor so flex:1 actually shrinks to fit.
+  */
+  min-height: 0;
 }
 .desk-year-bars-track {
   fill: var(--color-fg);

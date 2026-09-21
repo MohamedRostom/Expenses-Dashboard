@@ -13,6 +13,10 @@ test('post-deploy smoke: healthz, seeded login, add and delete one expense @loca
   baseURL,
   request,
 }) => {
+  // MonthView.vue's onDelete uses a native window.confirm() — Playwright auto-dismisses (cancels)
+  // native dialogs unless a handler accepts them, so without this Delete silently does nothing.
+  page.on('dialog', (d) => d.accept());
+
   const healthRes = await request.get(`${baseURL}/healthz`);
   expect(healthRes.ok()).toBe(true);
   const health = await healthRes.json();

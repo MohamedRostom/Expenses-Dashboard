@@ -34,15 +34,22 @@ async function addExpense(
     // native <input type="date"> — set via fill (Playwright accepts yyyy-mm-dd for this input type).
     await page.locator('input[type="date"]').fill(opts.date);
   }
-  await page
-    .getByRole('dialog')
-    .getByRole('button', { name: /^add expense$/i })
-    .click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: /^add expense$/i }).click();
+  // Without this, the next addExpense() call's open-button click
+  // (getByRole('button', { name: /add expense/i })) can race this dialog's own closing
+  // transition — while it's still visible (mid-submit), that non-anchored locator matches both
+  // the toolbar button and the dialog's own submit button, a strict-mode violation.
+  await dialog.waitFor({ state: 'hidden' });
 }
 
 test('add expenses in three currencies, edit, delete, restore, shortcuts, locale formatting', async ({
   page,
 }) => {
+  // MonthView.vue's onDelete uses a native window.confirm() — Playwright auto-dismisses (cancels)
+  // native dialogs unless a handler accepts them, so without this Delete silently did nothing.
+  page.on('dialog', (d) => d.accept());
+
   const email = uniqueEmail('expenses');
   await signUpAndVerify(page, email, PASSWORD);
   await expect(page).toHaveURL('/');
@@ -56,11 +63,15 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   await expect(page.getByRole('heading', { name: /add expense/i })).toBeVisible();
   await page.getByLabel(/description/i).fill('Groceries GBP');
   await page.getByLabel(/^amount$/i).fill('10');
-  // native default currency (session default) is left as-is for the first expense — GBP.
+  // RegisterView.vue's guessCurrency() picks by browser locale (defaults to GBP only for an
+  // unrecognised region) — relying on that "native default" broke as soon as the browser's
+  // locale was en-US (this account registered with USD, not GBP), so pick explicitly.
+  await pickCurrency(page, 'GBP');
   await page
     .getByRole('dialog')
     .getByRole('button', { name: /^add expense$/i })
     .click();
+  await page.getByRole('dialog').waitFor({ state: 'hidden' });
   await expect(page.getByText('Groceries GBP')).toBeVisible();
 
   await addExpense(page, { description: 'Dinner EUR', amount: '20', currency: 'EUR' });
@@ -69,11 +80,15 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   await addExpense(page, { description: 'Hotel USD', amount: '30', currency: 'USD' });
   await expect(page.getByText('Hotel USD')).toBeVisible();
 
-  // Each row's amount is ISO-code-suffixed per format.ts's guarantee.
+  // Each row's amount is ISO-code-suffixed per format.ts's guarantee. Scoped to the Amount cell
+  // (td:nth(3) — Date/Description/Category/Amount/Actions), not the whole row: toContainText's
+  // $-anchored regex against the full row text ran straight into the Edit/Delete button labels
+  // with no separator ("...GBPEditDelete"), which never matches /GBP\s*$/.
   const row = (desc: string) => page.locator('tr', { hasText: desc });
-  await expect(row('Groceries GBP')).toContainText(amountEndsWithCode('GBP'));
-  await expect(row('Dinner EUR')).toContainText(amountEndsWithCode('EUR'));
-  await expect(row('Hotel USD')).toContainText(amountEndsWithCode('USD'));
+  const amountCell = (desc: string) => row(desc).locator('td').nth(3);
+  await expect(amountCell('Groceries GBP')).toContainText(amountEndsWithCode('GBP'));
+  await expect(amountCell('Dinner EUR')).toContainText(amountEndsWithCode('EUR'));
+  await expect(amountCell('Hotel USD')).toContainText(amountEndsWithCode('USD'));
 
   // Month tiles reflect the total (summed in the user's default currency by the API;
   // just assert the "Spent" tile shows a nonzero, ISO-coded amount — the exact converted
@@ -115,7 +130,10 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   await row('Hotel USD updated')
     .getByRole('button', { name: /delete/i })
     .click();
-  await expect(page.getByText('Hotel USD updated')).toHaveCount(0);
+  // Scoped to the entries table, not the whole page: the delete undo banner ("Deleted 'Hotel USD
+  // updated'.") also contains this text, so an unscoped getByText matched it too even though the
+  // row itself was correctly gone.
+  await expect(page.locator('.desk-entries-table').getByText('Hotel USD updated')).toHaveCount(0);
 
   await page.goto('/bin');
   await expect(page.getByText('Hotel USD updated')).toBeVisible();

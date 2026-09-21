@@ -17,6 +17,9 @@ test.describe('unauthenticated visit to / @mobile', () => {
 
   test('remembers the intended route through login', async ({ page }) => {
     await page.goto('/settings');
-    await expect(page).toHaveURL(/\/login\?redirect=%2Fsettings/);
+    // '/' isn't a reserved character in a URI query component (RFC 3986) — Vue Router leaves it
+    // unencoded (?redirect=/settings), not percent-encoded (?redirect=%2Fsettings); both are
+    // valid, but only one is what's actually produced.
+    await expect(page).toHaveURL(/\/login\?redirect=\/settings/);
   });
 });

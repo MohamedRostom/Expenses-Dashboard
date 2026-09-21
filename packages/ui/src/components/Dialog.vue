@@ -43,7 +43,7 @@ watch(
         :aria-labelledby="title ? 'desk-dialog-title' : undefined"
         tabindex="-1"
       >
-        <header v-if="title" id="desk-dialog-title" class="desk-dialog-header">{{ title }}</header>
+        <h2 v-if="title" id="desk-dialog-title" class="desk-dialog-header">{{ title }}</h2>
         <div class="desk-dialog-body">
           <slot />
         </div>

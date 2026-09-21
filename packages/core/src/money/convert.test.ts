@@ -54,8 +54,14 @@ describe('convert', () => {
             }
             throw err;
           }
-          const sumOfConverted = convertedRows.reduce((sum, m) => add(sum, m));
-          const diff = Math.abs(convertedSum.minor - sumOfConverted.minor);
+          // Sum raw minor units here, not via add(): convert() deliberately allows a legitimate
+          // zero-value result (a tiny amount rounding to zero — see convert.ts), so two or more
+          // rows can each convert to zero without throwing. add() still enforces Money's "never
+          // zero" rule on the *sum*, which doesn't apply here — the property under test is about
+          // numeric closeness of minor-unit totals, not about the sum being a valid standalone
+          // Money value.
+          const sumOfConvertedMinor = convertedRows.reduce((sum, m) => sum + m.minor, 0);
+          const diff = Math.abs(convertedSum.minor - sumOfConvertedMinor);
           expect(diff).toBeLessThanOrEqual(moneys.length);
         },
       ),
