@@ -13,11 +13,11 @@
     "@desk/contracts": "workspace:*",
     "@desk/ui": "workspace:*",
     "pinia": "^4.0.3",
-    "vue": "^3.5.42",
+    "vue": "^3.5.43",
     "vue-router": "^5.3.1"
   },
   "devDependencies": {
-    "@types/node": "^22.20.2",
+    "@types/node": "^22.20.4",
     "@vitejs/plugin-vue": "^6.0.9",
     "vite": "^8.3.0",
     "vue-tsc": "^3.3.11"
