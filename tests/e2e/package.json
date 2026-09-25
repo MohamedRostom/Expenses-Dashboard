@@ -12,6 +12,6 @@
     "@axe-core/playwright": "^4.10.2",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^22.20.2"
+    "@types/node": "^22.20.4"
   }
 }

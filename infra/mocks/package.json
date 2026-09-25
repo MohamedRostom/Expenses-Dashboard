@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@hono/node-server": "^2.1.1",
-    "@types/node": "^22.20.2",
-    "tsx": "^4.23.13"
+    "@types/node": "^22.20.4",
+    "tsx": "^4.23.15"
   }
 }
