@@ -1,6 +1,8 @@
 name: deploy-staging
 
-# main -> desk-staging.fly.dev. Needs repo secrets FLY_API_TOKEN and STAGING_DATABASE_URL.
+# main -> ros-desk-staging.fly.dev. Needs repo secrets FLY_API_TOKEN and STAGING_DATABASE_URL.
+# Repo variable DEPLOYMENT_FLAG=false pauses this deploy (skipped, not failed); unset/true deploys
+# as normal. Also gates deploy-fly.yml's staging->smoke->promote pipeline.
 on:
   push:
     branches: [main]
@@ -17,6 +19,7 @@ env:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: vars.DEPLOYMENT_FLAG != 'false'
     steps:
       - id: gate
         run: |
@@ -38,8 +41,42 @@ jobs:
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
       - if: steps.gate.outputs.skip != 'true'
+        name: Mail secrets (Resend), only when STAGING_RESEND_API_KEY is set
+        # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
+        # which only delivers to the Resend account's own address (testing).
+        run: |
+          if [ -n "$RESEND_API_KEY" ]; then
+            flyctl secrets set --config infra/fly/fly.toml --stage RESEND_API_KEY="$RESEND_API_KEY" MAIL_FROM="${MAIL_FROM:-onboarding@resend.dev}"
+          fi
+        env:
+          RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
+          MAIL_FROM: ${{ secrets.STAGING_MAIL_FROM }}
+      - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
       - if: steps.gate.outputs.skip != 'true'
-        run: curl --fail --retry 5 --retry-delay 5 https://desk-staging.fly.dev/healthz
+        run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-staging.fly.dev/healthz
+
+  # Static landing site. Off by default — gated on the repository variable LANDING_ENABLED so it
+  # cannot publish under the "Desk" working name before ADR-0002 (product name) is decided.
+  deploy-landing:
+    if: vars.LANDING_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - id: gate
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::warning::FLY_API_TOKEN is not set; skipping the landing deploy"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.skip != 'true'
+        uses: actions/checkout@v7
+      - if: steps.gate.outputs.skip != 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - if: steps.gate.outputs.skip != 'true'
+        run: >-
+          flyctl deploy . --config infra/fly/fly.landing.toml --dockerfile infra/fly/Dockerfile.landing
+          --remote-only --ha=false
+      - if: steps.gate.outputs.skip != 'true'
+        run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-landing.fly.dev/

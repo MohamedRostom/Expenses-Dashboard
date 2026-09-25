@@ -24,6 +24,16 @@ services:
         GIT_SHA: ${GIT_SHA:-compose}
     environment:
       DATABASE_URL: postgres://desk:desk@postgres:5432/desk
+      SMTP_URL: smtp://mailpit:1025
+      NOTION_API_BASE: http://mocks:4000/notion
+      # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
+      # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
+      # rates against the live API instead of the fixed-date FakeRates fixtures.
+      RATES_PROVIDER: ${RATES_PROVIDER:-fake}
+      # Dev-only fixed values — never reuse these outside compose/e2e-ci.
+      SESSION_SECRET: dev-session-secret-not-for-production-use-000000
+      SECRET_BOX_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
+      APP_ORIGIN: http://localhost:5173
     ports:
       - '3000:3000'
     depends_on:
@@ -67,7 +77,73 @@ services:
       timeout: 3s
       retries: 20
 
-  # Mock connectors (frankfurter, Notion) arrive with their phases. Empty for now.
+  # Production build + vite preview, dedicated to the Lighthouse performance budget check
+  # (tests/e2e/lighthouserc.json) — a score measured against the `web` service's dev server
+  # above (unminified, unbundled, HMR overhead) is structurally meaningless, never mind >=0.9.
+  # Separate from `web` (which Playwright tests run against) so this never risks that suite.
+  web-preview:
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      target: deps
+    # No `--` before --host: pnpm forwards extra args as-is, so vite would receive a literal `--`,
+    # stop parsing options there, and bind localhost only (healthcheck + host port both fail).
+    command: sh -c "pnpm --filter @desk/web build && pnpm --filter @desk/web preview --host 0.0.0.0"
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    ports:
+      - '4173:4173'
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:4173/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  landing:
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      target: deps
+    # No `--` before --host: pnpm forwards extra args as-is, so vite would receive a literal `--`,
+    # stop parsing options there, and bind localhost only (healthcheck + host port both fail).
+    command: sh -c "pnpm --filter @desk/landing build && pnpm --filter @desk/landing preview --host 0.0.0.0"
+    ports:
+      - '5174:5174'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://localhost:5174/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Mock connectors (frankfurter, Notion) arrive with their phases; frozen clock lives here from Phase 1.
   mocks:
-    image: alpine:3
-    command: ['sleep', 'infinity']
+    build:
+      context: ..
+      dockerfile: infra/fly/Dockerfile
+      target: deps
+    command: pnpm --filter @desk/mocks start
+    environment:
+      PORT: 4000
+    ports:
+      - '4000:4000'
+
+  mailpit:
+    image: axllent/mailpit
+    ports:
+      - '1025:1025'
+      - '8025:8025'

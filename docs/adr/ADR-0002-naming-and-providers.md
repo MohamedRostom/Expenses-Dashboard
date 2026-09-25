@@ -23,7 +23,7 @@ Needed for email verification in Phase 1. Both candidates have a free tier large
 - **Postmark**: longer track record for deliverability, slightly more setup.
 
 Recommendation: Resend, behind a `Mailer` interface so it can be swapped.
-Decision: _pending_.
+Decision: Resend (2026-09-25, Rostom). Wired per environment through the `PREVIEW_`/`STAGING_`/`PRODUCTION_RESEND_API_KEY` and `_MAIL_FROM` repo secrets; each deploy workflow sets them on the Fly app only when present, otherwise the SMTP fallback stays. Sending domain still to be verified in Resend before real users get mail.
 
 ## 3. Stage 1 database: Fly Postgres or Neon from day one
 
@@ -31,7 +31,7 @@ Decision: _pending_.
 - **Neon from the start**: no Phase 6 migration; branch-per-PR databases for previews; one more account.
 
 Recommendation: Neon from day one. It removes a migration step and gives preview apps isolated databases. Phase 0's preview workflow currently expects a single `PREVIEW_DATABASE_URL`; with Neon it can create a branch per PR.
-Decision: _pending_.
+Decision: **Neon from day one** (2026-09-20). One Neon project, one branch per environment (`preview`, `staging`, `production`); each branch's connection string is stored as that environment's `*_DATABASE_URL` GitHub secret.
 
 ## 4. Licence
 

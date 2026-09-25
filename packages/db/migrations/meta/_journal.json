@@ -8,6 +8,62 @@
       "when": 1789589371600,
       "tag": "0000_brave_colleen_wing",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789734241486,
+      "tag": "0001_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789736887786,
+      "tag": "0002_audit-log-fk-fix",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789740055185,
+      "tag": "0003_expenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789755419163,
+      "tag": "0004_imports",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789756192908,
+      "tag": "0005_capture",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789756336698,
+      "tag": "0006_notion",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789760571199,
+      "tag": "0007_feedback",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789853263690,
+      "tag": "0008_careless_thunderbolts",
+      "breakpoints": true
     }
   ]
 }

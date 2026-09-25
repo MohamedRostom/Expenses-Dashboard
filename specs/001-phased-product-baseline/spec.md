@@ -382,7 +382,11 @@ expense, category, budget and connection is intact.
 Accounts and isolation (Phase 1)
 
 - **FR-001**: Users MUST be able to register with email and password, or with a Google account
-  granting only identity and email, and MUST verify their email before signing in. Passwords
+  granting only identity and email. An unverified email/password account MAY sign in for its
+  first 7 days (Settings shows it as unverified and offers a resend); after that sign-in is
+  locked until the address is verified, and an account that never signed in is purged. A failed
+  verification send MUST NOT fail sign-up (revised 2026-09-25, previously "MUST verify before
+  signing in"). Passwords
   MUST be 12 to 128 characters and MUST be refused when they appear in a known-breached list.
   Unverified accounts MUST be deleted after 7 days; registering the same email again re-sends
   the verification. A Google sign-in whose email matches a password account MUST be linked

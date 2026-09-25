@@ -8,6 +8,14 @@
     "./tokens.css": "./src/tokens.css"
   },
   "scripts": {
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "vue": "^3.5.42"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.1",
+    "vue-tsc": "^3.3.11"
   }
 }

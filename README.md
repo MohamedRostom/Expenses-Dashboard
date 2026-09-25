@@ -85,7 +85,7 @@ Everything is TypeScript on Node 22 with pnpm workspaces. These are settled; reo
 - **Auth:** email + password (Argon2id) and Google OIDC with `openid email profile` only. Connector scopes (Notion, and in v2 mail/calendar) are granted per connection, never on the sign-in grant.
 - **Source of truth:** the app's own database. Notion is an optional per-user two-way sync through Notion's public OAuth (API version `2025-09-03`, data sources).
 - **Money:** integer minor units, never floats. Each expense stores `amount_original`, `currency_original`, `rate_to_default`, `rate_date`, `rate_source`, `amount_default`, `rate_overridden`. Rates come from frankfurter.app (ECB), cached daily in `fx_rates`; weekends and holidays fall back to the last published rate and record which date was used. Changing the default currency re-derives every row in a background job.
-- **Hosting:** Stage 1 Fly.io (staging at `desk-staging.fly.dev`, a preview app per PR). Stage 2 Cloudflare.
+- **Hosting:** Stage 1 Fly.io (staging at `ros-desk-staging.fly.dev`, a preview app per PR). Stage 2 Cloudflare.
 - **Not in v1:** bank integrations of any kind (ADR-0003) — only the generic webhook and column-mapped import.
 - **Rejected:** Python/FastAPI (no native Cloudflare path), Nuxt (couples API to UI), GitHub Pages (no server for secrets).
 
@@ -210,7 +210,7 @@ pnpm format                        # prettier --write
 pnpm test:unit                     # packages/core, Vitest, coverage floor 85 %
 pnpm test:api                      # apps/api, Vitest + Testcontainers Postgres (needs Docker)
 pnpm worker:build                  # wrangler deploy --dry-run: proves the Worker bundle
-pnpm test:e2e -- --project=ci      # Playwright against the compose stack on :5173
+pnpm test:e2e --project=ci         # Playwright against the compose stack on :5173
 pnpm test                          # core + api together
 ```
 
@@ -229,7 +229,7 @@ Every PR needs the checks above green, an e2e-ci scenario, coverage not lower an
 
 ## CI and deploys
 
-`ci.yml` runs on every PR: `detect-changes` → `lint` → `typecheck` → `unit` → `api` → `worker-build` (→ e2e-ci). Branch protection on `main` requires the CI jobs and blocks direct pushes. `deploy-preview.yml` deploys a Fly app per PR and destroys it on close; `deploy-staging.yml` deploys `main` to `desk-staging.fly.dev`. `codeql.yml` and Dependabot run on a schedule.
+`ci.yml` runs on every PR: `detect-changes` → `lint` → `typecheck` → `unit` → `api` → `worker-build` (→ e2e-ci). Branch protection on `main` requires the CI jobs and blocks direct pushes. `deploy-preview.yml` deploys a Fly app per PR and destroys it on close; `deploy-staging.yml` deploys `main` to `ros-desk-staging.fly.dev`. `codeql.yml` and Dependabot run on a schedule.
 
 `e2e-local.yml` covers anything that needs real accounts, real devices or OAuth round-trips. It runs on a self-hosted runner labelled `desk-local`, on `workflow_dispatch` and nightly, only on `main`, with secrets in the approval-gated `local-secrets` environment. It never blocks a PR.
 

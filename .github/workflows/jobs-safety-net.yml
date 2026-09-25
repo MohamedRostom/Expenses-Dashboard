@@ -1,0 +1,38 @@
+name: jobs-safety-net
+
+# C13: node.ts's in-process job runner (30s interval, see apps/api/src/node.ts) is the primary
+# path; this is the backstop for when that stalls — a machine scaled to zero
+# (min_machines_running = 0 in fly.toml), a restart racing a job, or a crashed process.
+# `flyctl machine run` starts a one-off machine from the already-deployed image and runs
+# dist/tick.js directly (no shell/pnpm needed — the runtime image is distroless), which registers
+# the job handlers, does one runDueJobs() pass, and exits; the machine is then destroyed.
+# Needs repo secret FLY_API_TOKEN — DATABASE_URL/SESSION_SECRET/SECRET_BOX_KEY/APP_ORIGIN are
+# already set on the ros-desk-staging app itself (deploy-fly.yml's flyctl secrets set), and a
+# machine started against an existing app inherits its app secrets as environment variables.
+on:
+  schedule:
+    - cron: '0 * * * *' # hourly
+  workflow_dispatch:
+
+concurrency:
+  group: jobs-safety-net
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    env:
+      FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    steps:
+      - id: gate
+        run: |
+          if [ -z "$FLY_API_TOKEN" ]; then
+            echo "::warning::FLY_API_TOKEN is not set; skipping the jobs safety-net tick"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.gate.outputs.skip != 'true'
+        uses: superfly/flyctl-actions/setup-flyctl@1.6
+      - if: steps.gate.outputs.skip != 'true'
+        run: >-
+          flyctl machine run registry.fly.io/ros-desk-staging:latest
+          --app ros-desk-staging --region lhr --rm
+          dist/tick.js

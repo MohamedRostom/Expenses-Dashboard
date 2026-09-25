@@ -1,0 +1,5 @@
+{
+  "_comment": "Hand-authored: frankfurter 404s when the quote currency isn't in its ECB table (e.g. a currency it doesn't publish).",
+  "request": { "date": "2026-09-18", "from": "GBP", "to": "XYZ" },
+  "response": { "status": 404, "body": { "error": "quote currency XYZ is not supported" } }
+}

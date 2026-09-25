@@ -1,7 +1,10 @@
 name: deploy-preview
 
-# One Fly app per PR (desk-pr-<number>), destroyed when the PR closes.
-# Needs repo secrets FLY_API_TOKEN and PREVIEW_DATABASE_URL.
+# One Fly app per PR (ros-desk-pr-<number>), destroyed when the PR closes.
+# Needs repo secrets FLY_API_TOKEN, PREVIEW_DATABASE_URL, PREVIEW_SESSION_SECRET and
+# PREVIEW_SECRET_BOX_KEY.
+# Repo variable PREVIEW_DEPLOYMENT_FLAG=false pauses new preview deploys (skipped, not failed);
+# the destroy job below stays unconditional so closed PRs never leave an orphaned app running.
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
@@ -15,11 +18,11 @@ permissions:
 
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-  APP: desk-pr-${{ github.event.number }}
+  APP: ros-desk-pr-${{ github.event.number }}
 
 jobs:
   deploy:
-    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event.action != 'closed' && github.event.pull_request.head.repo.full_name == github.repository && vars.PREVIEW_DEPLOYMENT_FLAG != 'false'
     runs-on: ubuntu-latest
     steps:
       - id: gate
@@ -38,7 +41,23 @@ jobs:
             echo "$out" | grep -qi 'already' || { echo "$out"; exit 1; }
           fi
       - if: steps.gate.outputs.skip != 'true'
-        run: flyctl secrets set --app "$APP" --stage DATABASE_URL="${{ secrets.PREVIEW_DATABASE_URL }}"
+        run: >-
+          flyctl secrets set --app "$APP" --stage
+          DATABASE_URL="${{ secrets.PREVIEW_DATABASE_URL }}"
+          SESSION_SECRET="${{ secrets.PREVIEW_SESSION_SECRET }}"
+          SECRET_BOX_KEY="${{ secrets.PREVIEW_SECRET_BOX_KEY }}"
+          APP_ORIGIN="https://$APP.fly.dev"
+      - if: steps.gate.outputs.skip != 'true'
+        name: Mail secrets (Resend), only when PREVIEW_RESEND_API_KEY is set
+        # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
+        # which only delivers to the Resend account's own address (testing).
+        run: |
+          if [ -n "$RESEND_API_KEY" ]; then
+            flyctl secrets set --app "$APP" --stage RESEND_API_KEY="$RESEND_API_KEY" MAIL_FROM="${MAIL_FROM:-onboarding@resend.dev}"
+          fi
+        env:
+          RESEND_API_KEY: ${{ secrets.PREVIEW_RESEND_API_KEY }}
+          MAIL_FROM: ${{ secrets.PREVIEW_MAIL_FROM }}
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile

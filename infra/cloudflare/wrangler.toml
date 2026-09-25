@@ -1,6 +1,8 @@
-# Stage 2 Worker. Phase 0 only proves the bundle builds:
-#   pnpm worker:build   (wrangler deploy --dry-run)
-# Hyperdrive, KV and cron triggers are added in Phase 6.
+# Stage 2 Worker.
+#   pnpm worker:build   (wrangler deploy --dry-run — proves the bundle builds, no auth needed)
+#   wrangler deploy --config infra/cloudflare/wrangler.toml   (real deploy — needs
+#   CLOUDFLARE_API_TOKEN/CLOUDFLARE_ACCOUNT_ID and the real resource ids below; see
+#   .github/workflows/deploy-cf.yml, T118)
 name = "desk-api"
 main = "../../apps/api/src/worker.ts"
 compatibility_date = "2025-09-01"
@@ -8,3 +10,40 @@ compatibility_flags = ["nodejs_compat"]
 
 [vars]
 GIT_SHA = "unknown"
+# Public origin of the web app, used for links in mail; override per environment.
+APP_ORIGIN = "https://app.desk.invalid"
+
+# T117: Postgres over Hyperdrive. `id` is a placeholder — Rostom creates the real resource with
+# `wrangler hyperdrive create desk-db --connection-string="<neon-url>"` and swaps the id in
+# before a real (non-dry-run) deploy can succeed.
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id = "REPLACE_WITH_REAL_HYPERDRIVE_ID"
+
+# T117: session storage, replaces PgSessionStore (apps/api/src/adapters/session-store-kv.ts).
+# `id` is a placeholder — Rostom creates the real namespace with
+# `wrangler kv namespace create SESSIONS_KV` and swaps the id in before a real deploy.
+[[kv_namespaces]]
+binding = "SESSIONS_KV"
+id = "REPLACE_WITH_REAL_KV_NAMESPACE_ID"
+
+# T117: cron trigger for JobRunner.runDueJobs (worker.ts `scheduled`), same 5-minute cadence as
+# the Fly `jobs:tick` scheduled machine (infra/fly/fly.toml).
+[triggers]
+crons = ["*/5 * * * *"]
+
+# T125: mailer and connector-token encryption need these as real secrets (never in [vars],
+# which is plaintext in this file) — Rostom runs, before a real deploy:
+#   wrangler secret put SECRET_BOX_KEY --config infra/cloudflare/wrangler.toml
+#   wrangler secret put RESEND_API_KEY --config infra/cloudflare/wrangler.toml
+# MAIL_FROM is optional (defaults to noreply@example.com); set it the same way if a real sender
+# address is wanted. Until these exist, worker.ts serves every route that doesn't send mail or
+# touch a connector token; those fail with a clear "not wired yet" error instead of crashing.
+
+# apps/web/dist (the Vue SPA) is NOT served from this wrangler.toml — Cloudflare Pages is a
+# separate project from a Workers deploy under the classic (non-Workers-Assets) model this repo
+# uses, and this API worker has no static-asset binding here. deploy-cf.yml (T118) uploads
+# apps/web/dist to Pages with its own `wrangler pages deploy` call instead of adding
+# [assets]/[site] config to this file — keeps the API worker and the SPA independently
+# deployable, matching how they're already split on Fly (node.ts serves both together there
+# only because Stage 1 is a single container; Stage 2 does not need that constraint).

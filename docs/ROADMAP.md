@@ -32,7 +32,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 **Tests introduced:** one unit test in `core`, one API test for `/healthz`, one Playwright test that loads the Hello page — all real, all in CI, so the pipeline is proven end to end.
 
-**Exit criteria:** a PR that changes the Hello text gets a green CI run, a Fly preview URL in a PR comment, and merges to `main`; `main` deploys to `desk-staging.fly.dev`; the self-hosted runner shows online in GitHub.
+**Exit criteria:** a PR that changes the Hello text gets a green CI run, a Fly preview URL in a PR comment, and merges to `main`; `main` deploys to `ros-desk-staging.fly.dev`; the self-hosted runner shows online in GitHub.
 
 ---
 
@@ -99,6 +99,8 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 **Tests introduced:** Playwright device projects (Pixel, iPhone viewports) in e2e-ci; PWA installability check; offline test (go offline → add → go online → row exists); visual snapshots per component in both themes; Lighthouse PWA category added to the budget.
 
 **Exit criteria:** installable on Rostom's phone with a two-tap add; Lighthouse all four categories ≥ 90 on landing and app; three people outside the project can sign up from the landing page without help.
+
+**`needs-rostom`:** SC-006 (three observed outside sign-ups from the landing page) and SC-009 (a returning user logs an expense on a mid-range phone in 15 seconds over a real network) require real people and cannot be run by an agent. Not yet run — no date, no pass/fail recorded. Run these before the Phase 4 PR is merged and record the date and result in that PR description per `specs/001-phased-product-baseline/tasks.md` T123.
 
 ---
 

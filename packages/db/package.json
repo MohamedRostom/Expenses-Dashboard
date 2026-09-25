@@ -5,15 +5,20 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./migrate": "./src/migrate.ts"
+    "./migrate": "./src/migrate.ts",
+    "./seed": "./src/seed.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "generate": "drizzle-kit generate",
-    "migrate": "tsx src/migrate-cli.ts"
+    "migrate": "tsx src/migrate-cli.ts",
+    "db:seed": "tsx src/seed.ts",
+    "flags": "tsx src/flags-cli.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.2",
+    "@desk/core": "workspace:*",
+    "hash-wasm": "^4.12.0",
     "postgres": "^3.4.9"
   },
   "devDependencies": {

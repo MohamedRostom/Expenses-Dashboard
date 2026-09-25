@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "lighthouse": "lhci autorun --config=./lighthouserc.json"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.2"
   }
