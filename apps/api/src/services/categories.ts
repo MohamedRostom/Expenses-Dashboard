@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { DEFAULT_CATEGORIES } from '@desk/core';
+import { DEFAULT_CATEGORIES, seedColour } from '@desk/core';
 import { categories as categoriesTable, expenses as expensesTable, type Db } from '@desk/db';
 import type {
   CategoryResponseT,
@@ -11,20 +11,6 @@ import { ApiError } from '../lib/api-error.js';
 type CategoryRow = typeof categoriesTable.$inferSelect;
 
 const OTHER_NAME = 'Other';
-/** ponytail: fixed palette cycled by sort order — no colour picker needed for the seed. */
-const SEED_COLOURS = [
-  '#a83a2e',
-  '#a8641a',
-  '#8a7a1f',
-  '#5c8a1f',
-  '#1f6e5a',
-  '#1f6e8a',
-  '#1f4a8a',
-  '#4a1f8a',
-  '#7a1f8a',
-  '#8a1f5c',
-];
-
 function toResponse(row: CategoryRow): CategoryResponseT {
   return {
     id: row.id,
@@ -53,7 +39,7 @@ export async function seedDefaultCategories(db: Db, userId: string): Promise<voi
     DEFAULT_CATEGORIES.map((c, i) => ({
       userId,
       name: c.name,
-      colour: SEED_COLOURS[i % SEED_COLOURS.length] as string,
+      colour: seedColour(i),
       defaultKind: c.defaultKind,
       sortOrder: i,
     })),

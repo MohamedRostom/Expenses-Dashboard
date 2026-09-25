@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Fixed
 
+- `pnpm --filter @desk/db db:seed` silently did nothing on Windows (hand-built `file://` path never matched `import.meta.url`), and the seeded `e2e@desk.test` user had no categories; seed now uses `pathToFileURL` and inserts the default categories idempotently (palette shared via `@desk/core`'s `seedColour`).
 - App header nav (Month · Year · Categories · Settings) on signed-in screens — settings and the other views were previously reachable only by typing the URL.
 - Onboarding: Skip, Finish, "Add an expense" and "Connect Notion" now leave the wizard — the session store takes the PATCHed user, so the router guard no longer bounces every route back to `/onboarding`.
 - Cloudflare Worker (`apps/api/src/worker.ts`): password hashing, rate limiting, mail and FX rates were lazy placeholders that threw on every use; now real, Workers-compatible adapters (mailer/connector-token encryption still need `RESEND_API_KEY`/`SECRET_BOX_KEY` as Cloudflare secrets before Stage 2 goes live).

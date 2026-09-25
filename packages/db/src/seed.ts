@@ -1,6 +1,8 @@
+import { pathToFileURL } from 'node:url';
 import { argon2id } from 'hash-wasm';
+import { DEFAULT_CATEGORIES, seedColour } from '@desk/core';
 import { createDb } from './index.js';
-import { flags, users } from './schema.js';
+import { categories, flags, users } from './schema.js';
 
 // Mirrors apps/api/src/adapters/password.ts's PARAMS exactly — this is the one other place that
 // needs to produce a hash login() will accept, and duplicating the params here (rather than
@@ -18,27 +20,6 @@ async function hashPassword(password: string): Promise<string> {
     outputType: 'encoded',
   });
 }
-
-const DEFAULT_CATEGORIES = [
-  'Rent',
-  'Council tax',
-  'Utilities',
-  'Internet',
-  'Phone',
-  'Subscriptions',
-  'Groceries',
-  'Eating out',
-  'Transport',
-  'Cycling',
-  'Gym & health',
-  'Personal care',
-  'Clothing',
-  'Entertainment',
-  'Household',
-  'Driving lessons',
-  'Travel',
-  'Other',
-];
 
 /** Flags shipped so far. Every new user-facing flag merged before announcement gets a row here. */
 const DEFAULT_FLAGS: { key: string; description: string }[] = [];
@@ -66,7 +47,7 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
       // XKCD example password is genuinely flagged by the real HIBP breach-check.
       process.env['E2E_SEEDED_PASSWORD'] ?? 'xk-e2e-Tr0ub4-fixture-2026',
     );
-    await db
+    const [user] = await db
       .insert(users)
       .values({
         id: E2E_USER_ID,
@@ -82,14 +63,30 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
       .onConflictDoUpdate({
         target: users.email,
         set: { passwordHash, emailVerifiedAt: new Date(), onboardingCompletedAt: new Date() },
-      });
+      })
+      .returning({ id: users.id });
+
+    // Same defaults sign-up gives (apps/api seedDefaultCategories) — without them the fixture
+    // user's add-expense form has no categories. Keyed on (user_id, name), so re-runs are no-ops.
+    await db
+      .insert(categories)
+      .values(
+        DEFAULT_CATEGORIES.map((c, i) => ({
+          userId: user!.id,
+          name: c.name,
+          colour: seedColour(i),
+          defaultKind: c.defaultKind,
+          sortOrder: i,
+        })),
+      )
+      .onConflictDoNothing();
 
     if (opts.load) {
       // ponytail: --load is meant to insert a synthetic user with 20,000 expenses across five
       // years for SC-010 (load/perf testing). The `expenses` table doesn't exist until Phase 2
       // of the roadmap, so this branch is a documented no-op stub for now. Once packages/db's
       // schema exports `expenses`, replace this comment with batched inserts (chunks of ~1000)
-      // referencing DEFAULT_CATEGORIES for category_id and spreading expense_date across five
+      // referencing the seeded categories for category_id and spreading expense_date across five
       // years, then remove this stub.
       console.log('seed --load: expenses table not yet in schema (Phase 2); skipping.');
     }
@@ -98,12 +95,10 @@ export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
   }
 }
 
-// Referenced so DEFAULT_CATEGORIES stays wired for the future --load branch and any early caller
-// seeding categories ahead of Phase 2 (categories has no schema yet either).
-export { DEFAULT_CATEGORIES };
-
+// pathToFileURL, not a hand-built `file://` string: on Windows that gave `file://C:/…` against
+// import.meta.url's `file:///C:/…`, so the CLI silently did nothing.
 const isMain =
-  process.argv[1] && import.meta.url === `file://${process.argv[1].replace(/\\/g, '/')}`;
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   const url = process.env['DATABASE_URL'];
   if (!url) {
