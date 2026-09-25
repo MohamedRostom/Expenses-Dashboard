@@ -187,11 +187,15 @@ test('unverified sign-up can sign in; Settings flags it and resend + verify clea
   await page.getByLabel(/password/i).fill(PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
   await expect(page).toHaveURL(/\/onboarding/);
+  // The router guard (apps/web/src/router.ts) sends every route to /onboarding until it's
+  // completed or skipped — without this, /settings below silently lands back on /onboarding.
+  await page.getByRole('button', { name: /^skip$/i }).click();
+  await expect(page).not.toHaveURL(/\/onboarding/);
 
   await page.goto('/settings');
   await expect(page.getByText(/unverified/i)).toBeVisible();
   await page.getByRole('button', { name: /resend verification/i }).click();
-  await expect(page.getByRole('status')).toContainText(/sent/i);
+  await expect(page.getByText(/verification email sent/i)).toBeVisible();
 
   const verifyUrl = await readLinkFromMailpit(
     email,
