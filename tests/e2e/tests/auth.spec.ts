@@ -202,6 +202,9 @@ test('unverified sign-up can sign in; Settings flags it and resend + verify clea
     /https?:\/\/[^\s"'<>]*\/verify\?token=[^\s"'<>]*/,
   );
   await page.goto(pathOf(verifyUrl));
+  // VerifyView POSTs /auth/verify from onMounted and only then redirects; navigating away before
+  // that redirect cancels the request, leaving the account unverified.
+  await expect(page).not.toHaveURL(/\/verify/);
   await page.goto('/settings');
   await expect(page.getByText(/unverified/i)).toHaveCount(0);
 });
