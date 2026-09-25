@@ -53,6 +53,7 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     theme: u.theme,
     timeZone: u.timeZone,
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
+    emailVerified: u.emailVerifiedAt !== null,
     createdAt: u.createdAt.toISOString(),
   };
 }

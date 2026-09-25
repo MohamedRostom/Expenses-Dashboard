@@ -9,6 +9,8 @@ export interface User {
   theme: 'light' | 'dark' | 'system';
   timeZone: string;
   onboardingCompletedAt?: string | null;
+  /** From UserResponse; false until the address is confirmed (FR-001). */
+  emailVerified?: boolean;
 }
 
 const CACHE_KEY = 'desk_cached_user';

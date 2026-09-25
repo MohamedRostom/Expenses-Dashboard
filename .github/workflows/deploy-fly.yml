@@ -53,6 +53,16 @@ jobs:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
           STAGING_SESSION_SECRET: ${{ secrets.STAGING_SESSION_SECRET }}
           STAGING_SECRET_BOX_KEY: ${{ secrets.STAGING_SECRET_BOX_KEY }}
+      - name: Mail secrets (Resend), only when STAGING_RESEND_API_KEY is set
+        # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
+        # which only delivers to the Resend account's own address (testing).
+        run: |
+          if [ -n "$RESEND_API_KEY" ]; then
+            flyctl secrets set --config infra/fly/fly.toml --stage RESEND_API_KEY="$RESEND_API_KEY" MAIL_FROM="${MAIL_FROM:-onboarding@resend.dev}"
+          fi
+        env:
+          RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
+          MAIL_FROM: ${{ secrets.STAGING_MAIL_FROM }}
       - run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
@@ -102,6 +112,16 @@ jobs:
           PRODUCTION_DATABASE_URL: ${{ secrets.PRODUCTION_DATABASE_URL }}
           PRODUCTION_SESSION_SECRET: ${{ secrets.PRODUCTION_SESSION_SECRET }}
           PRODUCTION_SECRET_BOX_KEY: ${{ secrets.PRODUCTION_SECRET_BOX_KEY }}
+      - name: Mail secrets (Resend), only when PRODUCTION_RESEND_API_KEY is set
+        # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
+        # which only delivers to the Resend account's own address (testing).
+        run: |
+          if [ -n "$RESEND_API_KEY" ]; then
+            flyctl secrets set --app ros-desk-production --stage RESEND_API_KEY="$RESEND_API_KEY" MAIL_FROM="${MAIL_FROM:-onboarding@resend.dev}"
+          fi
+        env:
+          RESEND_API_KEY: ${{ secrets.PRODUCTION_RESEND_API_KEY }}
+          MAIL_FROM: ${{ secrets.PRODUCTION_MAIL_FROM }}
       - run: >-
           flyctl deploy . --app ros-desk-production --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false

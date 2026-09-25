@@ -6,6 +6,8 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Fixed
 
+- Sign-up no longer fails when the verification email can't be sent (the account was saved but the request 500'd, and retries silently did nothing). Unverified accounts can now sign in for 7 days; Settings shows an "Unverified" badge with "Resend verification email"; after 7 days sign-in is locked until verified, and housekeeping only purges unverified accounts that never signed in (FR-001 revised).
+- Deploy workflows set `RESEND_API_KEY`/`MAIL_FROM` on preview, staging and production Fly apps when the matching `*_RESEND_API_KEY`/`*_MAIL_FROM` repo secrets exist (ADR-0002 item 2: Resend).
 - `pnpm --filter @desk/db db:seed` silently did nothing on Windows (hand-built `file://` path never matched `import.meta.url`), and the seeded `e2e@desk.test` user had no categories; seed now uses `pathToFileURL` and inserts the default categories idempotently (palette shared via `@desk/core`'s `seedColour`).
 - App header nav (Month · Year · Categories · Settings) on signed-in screens — settings and the other views were previously reachable only by typing the URL.
 - Onboarding: Skip, Finish, "Add an expense" and "Connect Notion" now leave the wizard — the session store takes the PATCHed user, so the router guard no longer bounces every route back to `/onboarding`.

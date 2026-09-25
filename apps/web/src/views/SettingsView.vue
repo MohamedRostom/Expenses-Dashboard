@@ -18,6 +18,8 @@ const emailChangePassword = ref('');
 const emailNotice = ref('');
 const emailSubmitting = ref(false);
 const emailError = ref('');
+const verifyNotice = ref('');
+const verifySending = ref(false);
 
 const currency = ref(session.user?.defaultCurrency ?? '');
 const currencySubmitting = ref(false);
@@ -64,6 +66,24 @@ onMounted(loadSessions);
 onBeforeUnmount(() => {
   if (jobTimer) clearTimeout(jobTimer);
 });
+
+// FR-001: unverified accounts can use the app for 7 days; this is their way to get a fresh link
+// (e.g. when the sign-up mail never arrived). The endpoint is enumeration-safe and always 202s.
+async function resendVerification() {
+  if (!session.user) return;
+  verifySending.value = true;
+  try {
+    await apiFetch<void>('/auth/verify/resend', {
+      method: 'POST',
+      body: JSON.stringify({ email: session.user.email }),
+    });
+    verifyNotice.value = 'Verification email sent — check your inbox.';
+  } catch (err) {
+    verifyNotice.value = err instanceof ApiError ? err.message : 'Could not send it, try again.';
+  } finally {
+    verifySending.value = false;
+  }
+}
 
 async function changeEmail() {
   emailError.value = '';
@@ -224,7 +244,22 @@ async function confirmDelete() {
 
     <section>
       <h2>Profile</h2>
-      <p>Email: {{ session.user?.email }}</p>
+      <p>
+        Email: {{ session.user?.email }}
+        <span v-if="session.user?.emailVerified === false" class="badge-warn">Unverified</span>
+      </p>
+      <div v-if="session.user?.emailVerified === false" class="verify-row">
+        <p>Confirm your address within 7 days of signing up, or sign-in is paused until you do.</p>
+        <Button
+          type="button"
+          :loading="verifySending"
+          :disabled="verifySending"
+          @click="resendVerification"
+        >
+          Resend verification email
+        </Button>
+        <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
+      </div>
       <form @submit.prevent="changeEmail">
         <Input v-model="newEmail" type="email" label="New email" placeholder="new@example.com" />
         <Input v-model="emailChangePassword" type="password" label="Current password (if set)" />
@@ -357,6 +392,20 @@ ul {
 .error-text {
   color: var(--color-critical);
   margin: 0;
+}
+.badge-warn {
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-warn);
+  border-radius: 999px;
+  color: var(--color-warn);
+  font-size: 0.8rem;
+}
+.verify-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
 }
 .dialog-actions {
   display: flex;

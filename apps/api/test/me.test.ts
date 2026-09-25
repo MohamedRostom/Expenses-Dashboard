@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { users as usersTable, jobs as jobsTable, auditLog, expenseVersions } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 
@@ -261,16 +261,25 @@ describe('me', () => {
     expect(typeof body.flags).toBe('object');
   });
 
-  it('housekeeping purges an unverified user after 7 days but keeps a verified one', async () => {
+  it('housekeeping purges a never-signed-in unverified user after 7 days, keeps verified and signed-in ones', async () => {
     const { housekeepingJob } = await import('../src/jobs/housekeeping.js');
     const { PgRateLimiter } = await import('../src/adapters/rate-limiter.js');
 
     const stale = await h.asUser('me-housekeeping-stale@example.com');
     const fresh = await h.asUser('me-housekeeping-fresh@example.com');
+    // Unverified users can sign in now; one who did has data to lose, so is locked, not purged.
+    const active = await h.asUser('me-housekeeping-active@example.com');
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000);
     await h.db
       .update(usersTable)
-      .set({ createdAt: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000) })
-      .where(eq(usersTable.id, stale.userId));
+      .set({ createdAt: eightDaysAgo })
+      .where(inArray(usersTable.id, [stale.userId, active.userId]));
+    await h.db.insert(auditLog).values({
+      userId: active.userId,
+      actor: active.userId,
+      action: 'login',
+      subject: active.userId,
+    });
     await h.db
       .update(usersTable)
       .set({ emailVerifiedAt: new Date() })
@@ -288,6 +297,11 @@ describe('me', () => {
     const [freshRow] = await h.db.select().from(usersTable).where(eq(usersTable.id, fresh.userId));
     expect(staleRow).toBeUndefined();
     expect(freshRow).toBeTruthy();
+    const [activeRow] = await h.db
+      .select()
+      .from(usersTable)
+      .where(eq(usersTable.id, active.userId));
+    expect(activeRow).toBeTruthy();
   });
 
   it('housekeeping purges expense_versions older than 12 months but keeps recent ones (T127, FR-015)', async () => {

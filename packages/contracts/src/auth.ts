@@ -8,6 +8,8 @@ export const UserResponse = z.object({
   theme: z.string(),
   timeZone: z.string(),
   onboardingCompletedAt: z.string().nullable(),
+  /** False until the address is confirmed; Settings shows it and offers a resend (FR-001). */
+  emailVerified: z.boolean(),
   createdAt: z.string(),
 });
 export type UserResponseT = z.infer<typeof UserResponse>;

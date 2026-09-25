@@ -23,7 +23,7 @@ Needed for email verification in Phase 1. Both candidates have a free tier large
 - **Postmark**: longer track record for deliverability, slightly more setup.
 
 Recommendation: Resend, behind a `Mailer` interface so it can be swapped.
-Decision: _pending_.
+Decision: Resend (2026-09-25, Rostom). Wired per environment through the `PREVIEW_`/`STAGING_`/`PRODUCTION_RESEND_API_KEY` and `_MAIL_FROM` repo secrets; each deploy workflow sets them on the Fly app only when present, otherwise the SMTP fallback stays. Sending domain still to be verified in Resend before real users get mail.
 
 ## 3. Stage 1 database: Fly Postgres or Neon from day one
 

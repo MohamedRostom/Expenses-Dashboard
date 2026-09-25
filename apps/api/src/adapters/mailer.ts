@@ -75,8 +75,14 @@ export class SmtpMailer implements Mailer {
 /** Records sent messages in memory instead of sending them — for tests. */
 export class CapturingMailer implements Mailer {
   readonly sent: MailMessage[] = [];
+  /** Set true to make the next send() throw, like a provider outage; resets after one use. */
+  failNextSend = false;
 
   async send(message: MailMessage): Promise<void> {
+    if (this.failNextSend) {
+      this.failNextSend = false;
+      throw new Error('CapturingMailer: simulated send failure');
+    }
     this.sent.push(message);
   }
 }

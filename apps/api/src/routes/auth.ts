@@ -27,6 +27,7 @@ function toUserResponse(user: UserRow): UserResponseT {
     theme: user.theme,
     timeZone: user.timeZone,
     onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
+    emailVerified: user.emailVerifiedAt !== null,
     createdAt: user.createdAt.toISOString(),
   };
 }

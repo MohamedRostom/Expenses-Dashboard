@@ -25,6 +25,8 @@ export type AuthDeps = {
 };
 
 const VERIFY_TOKEN_TTL_MS = 24 * 60 * 60 * 1000;
+/** How long an unverified account can sign in before it is locked until verified (FR-001). */
+export const UNVERIFIED_GRACE_MS = 7 * 24 * 60 * 60 * 1000;
 const RESET_TOKEN_TTL_MS = 20 * 60 * 1000;
 
 async function hashToken(token: string): Promise<string> {
@@ -82,7 +84,17 @@ export async function register(
   if (!user) throw new Error('register: insert returned no row');
 
   await seedDefaultCategories(deps.db, user.id);
-  await sendVerifyMail(deps, user);
+  // FR-001: the account is usable unverified for UNVERIFIED_GRACE_MS, so a mail outage must not
+  // fail sign-up — before, the user row was already committed, the request 500'd, and every retry
+  // hit the "already exists" 202 no-op. Settings offers "Resend" for exactly this case.
+  try {
+    await sendVerifyMail(deps, user);
+  } catch (err) {
+    console.error('register: verify mail failed; account kept unverified', {
+      userId: user.id,
+      err,
+    });
+  }
   await writeAudit(deps, { userId: user.id, actor: user.id, action: 'register', subject: user.id });
 }
 
@@ -173,10 +185,13 @@ export async function login(
     throw new ApiError('unauthenticated', 'Invalid email or password', 401);
   }
 
-  // FR-001: an unverified account still exists (housekeeping purges it at day 7 if it stays
-  // unverified) but must not be usable to sign in — checked after password verify so a bad
-  // password on an unverified account still gets the generic 401, not this more specific error.
-  if (!user.emailVerifiedAt) {
+  // FR-001: unverified accounts can sign in for their first 7 days (Settings shows them as
+  // unverified), then are locked until verified — never deleted once used (housekeeping.ts).
+  // Checked after password verify so a bad password still gets the generic 401.
+  if (
+    !user.emailVerifiedAt &&
+    deps.clock.now().getTime() - user.createdAt.getTime() > UNVERIFIED_GRACE_MS
+  ) {
     throw new ApiError('email_unverified', 'Confirm your email before signing in', 403);
   }
 

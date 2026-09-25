@@ -87,9 +87,9 @@ describe('auth', () => {
     expect(res2.status).toBe(202);
   });
 
-  it('login refuses an unverified account (FR-001)', async () => {
-    const email = `unverified-${crypto.randomUUID()}@example.com`;
-    await h.app.request('/auth/register', {
+  async function registerUnverified(prefix: string): Promise<string> {
+    const email = `${prefix}-${crypto.randomUUID()}@example.com`;
+    const res = await h.app.request('/auth/register', {
       method: 'POST',
       headers: withCsrf(),
       body: JSON.stringify({
@@ -99,15 +99,47 @@ describe('auth', () => {
         timeZone: 'UTC',
       }),
     });
+    expect(res.status).toBe(202);
+    return email;
+  }
 
-    const res = await h.app.request('/auth/login', {
+  async function login(email: string): Promise<Response> {
+    return h.app.request('/auth/login', {
       method: 'POST',
       headers: withCsrf(),
       body: JSON.stringify({ email, password: 'a-good-long-password' }),
     });
+  }
+
+  it('login lets an unverified account in during its first 7 days, flagged unverified (FR-001)', async () => {
+    const email = await registerUnverified('unverified');
+
+    const res = await login(email);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { user: { emailVerified: boolean } };
+    expect(body.user.emailVerified).toBe(false);
+  });
+
+  it('login locks an account still unverified after 7 days (FR-001)', async () => {
+    const email = await registerUnverified('unverified-stale');
+    await h.db
+      .update(usersTable)
+      .set({ createdAt: new Date(h.clock.now().getTime() - 8 * 24 * 60 * 60 * 1000) })
+      .where(eq(usersTable.email, email));
+
+    const res = await login(email);
     expect(res.status).toBe(403);
     const body = (await res.json()) as { error: { code: string } };
     expect(body.error.code).toBe('email_unverified');
+  });
+
+  it('register keeps the account and still 202s when the verify mail fails to send', async () => {
+    h.mailer.failNextSend = true;
+    const email = await registerUnverified('mail-down');
+
+    const [row] = await h.db.select().from(usersTable).where(eq(usersTable.email, email));
+    expect(row?.emailVerifiedAt).toBeNull();
+    expect((await login(email)).status).toBe(200);
   });
 
   it('POST /auth/verify/resend sends a new verify link for an unverified account', async () => {

@@ -172,3 +172,32 @@ test('signUpAndVerify fixture reaches an authenticated home page', async ({ page
   await expect(page).toHaveURL('/');
   await axeCheck(page);
 });
+
+test('unverified sign-up can sign in; Settings flags it and resend + verify clears the flag (FR-001)', async ({
+  page,
+}) => {
+  const email = `unverified-${Date.now()}@desk.test`;
+  await page.goto('/register');
+  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(/password/i).fill(PASSWORD);
+  await page.getByRole('button', { name: /sign up|register|create account/i }).click();
+
+  await page.goto('/login');
+  await page.getByLabel(/email/i).fill(email);
+  await page.getByLabel(/password/i).fill(PASSWORD);
+  await page.getByRole('button', { name: /sign in/i }).click();
+  await expect(page).toHaveURL(/\/onboarding/);
+
+  await page.goto('/settings');
+  await expect(page.getByText(/unverified/i)).toBeVisible();
+  await page.getByRole('button', { name: /resend verification/i }).click();
+  await expect(page.getByRole('status')).toContainText(/sent/i);
+
+  const verifyUrl = await readLinkFromMailpit(
+    email,
+    /https?:\/\/[^\s"'<>]*\/verify\?token=[^\s"'<>]*/,
+  );
+  await page.goto(pathOf(verifyUrl));
+  await page.goto('/settings');
+  await expect(page.getByText(/unverified/i)).toHaveCount(0);
+});
