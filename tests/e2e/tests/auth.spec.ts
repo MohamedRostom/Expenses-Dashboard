@@ -176,7 +176,8 @@ test('signUpAndVerify fixture reaches an authenticated home page', async ({ page
 test('unverified sign-up can sign in; Settings flags it and resend + verify clears the flag (FR-001)', async ({
   page,
 }) => {
-  const email = `unverified-${Date.now()}@desk.test`;
+  // Not 'unverified-…': Settings prints the address, which would match the badge locator below.
+  const email = `fr001-${Date.now()}@desk.test`;
   await page.goto('/register');
   await page.getByLabel(/email/i).fill(email);
   await page.getByLabel(/password/i).fill(PASSWORD);
@@ -193,7 +194,7 @@ test('unverified sign-up can sign in; Settings flags it and resend + verify clea
   await expect(page).not.toHaveURL(/\/onboarding/);
 
   await page.goto('/settings');
-  await expect(page.getByText(/unverified/i)).toBeVisible();
+  await expect(page.getByText('Unverified', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: /resend verification/i }).click();
   await expect(page.getByText(/verification email sent/i)).toBeVisible();
 
@@ -206,5 +207,5 @@ test('unverified sign-up can sign in; Settings flags it and resend + verify clea
   // that redirect cancels the request, leaving the account unverified.
   await expect(page).not.toHaveURL(/\/verify/);
   await page.goto('/settings');
-  await expect(page.getByText(/unverified/i)).toHaveCount(0);
+  await expect(page.getByText('Unverified', { exact: true })).toHaveCount(0);
 });
