@@ -11,8 +11,8 @@
     "generate:openapi": "tsx scripts/openapi.ts"
   },
   "devDependencies": {
-    "tsx": "^4.23.13",
-    "prettier": "^3.9.6"
+    "tsx": "^4.23.15",
+    "prettier": "^3.9.8"
   },
   "dependencies": {
     "zod": "^4.6.5"
