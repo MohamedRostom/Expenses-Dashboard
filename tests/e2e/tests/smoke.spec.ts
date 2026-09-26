@@ -35,6 +35,9 @@ test('post-deploy smoke: sign up, expense CRUD, currency change, delete account 
   baseURL,
   request,
 }) => {
+  // Playwright's default is 30s per test; on staging (~1.3s per request, and the currency
+  // re-derive job waits up to 30s for Fly's runner) the round trip needs a few minutes.
+  test.setTimeout(180_000);
   // MonthView's delete uses window.confirm(); Playwright cancels native dialogs by default.
   page.on('dialog', (d) => d.accept());
   let accountDeleted = false;
@@ -118,10 +121,17 @@ test('post-deploy smoke: sign up, expense CRUD, currency change, delete account 
   } finally {
     // A failed run must not leave its account behind on staging (it signed in, so housekeeping
     // would only lock it, never purge it).
+    // Best effort, and never throws: after a timeout the browser context is already closed,
+    // and an error here would replace the real failure in the report.
     if (!accountDeleted) {
-      await page.request
-        .delete('/me', { data: { password: PASSWORD }, headers: await csrfHeaders(page) })
-        .catch(() => {});
+      try {
+        await page.request.delete('/me', {
+          data: { password: PASSWORD },
+          headers: await csrfHeaders(page),
+        });
+      } catch {
+        // context gone — the unverified account is locked after 7 days by login()
+      }
     }
   }
 });
