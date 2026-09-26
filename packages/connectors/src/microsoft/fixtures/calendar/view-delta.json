@@ -1,0 +1,25 @@
+{
+  "value": [
+    {
+      "id": "evt-delta-new",
+      "subject": "New Event in Delta",
+      "start": {
+        "dateTime": "2026-10-11T14:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-11T15:00:00.0000000",
+        "timeZone": "UTC"
+      },
+      "isAllDay": false,
+      "webLink": "https://outlook.live.com/owa/?ItemID=evt-delta-new&exvsurl=1"
+    },
+    {
+      "id": "evt-to-remove",
+      "@removed": {
+        "reason": "deleted"
+      }
+    }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/calendars/primary-cal%40example.test/calendarView/delta?startDateTime=2026-10-01T00%3A00%3A00&endDateTime=2026-10-31T23%3A59%3A59&$deltatoken=sync-2"
+}

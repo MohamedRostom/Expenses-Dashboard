@@ -1,0 +1,139 @@
+{
+  "kind": "calendar#events",
+  "etag": "test-etag",
+  "summary": "Primary Calendar",
+  "updated": "2026-10-01T10:00:00Z",
+  "timeZone": "UTC",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "etag": "evt-1-etag",
+      "id": "evt-rec_20261001T090000Z",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Recurring Meeting",
+      "start": {
+        "dateTime": "2026-10-01T09:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-01T10:00:00Z",
+        "timeZone": "UTC"
+      },
+      "attendees": [
+        {
+          "email": "user@example.test",
+          "responseStatus": "needsAction",
+          "self": true
+        }
+      ],
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-rec_20261001T090000Z"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-2-etag",
+      "id": "evt-rec_20261008T090000Z",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Recurring Meeting",
+      "start": {
+        "dateTime": "2026-10-08T09:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-08T10:00:00Z",
+        "timeZone": "UTC"
+      },
+      "attendees": [
+        {
+          "email": "user@example.test",
+          "responseStatus": "tentative",
+          "self": true
+        }
+      ],
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-rec_20261008T090000Z"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-3-etag",
+      "id": "evt-rec_20261015T090000Z",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Recurring Meeting",
+      "start": {
+        "dateTime": "2026-10-15T09:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-15T10:00:00Z",
+        "timeZone": "UTC"
+      },
+      "attendees": [
+        {
+          "email": "user@example.test",
+          "responseStatus": "declined",
+          "self": true
+        }
+      ],
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-rec_20261015T090000Z"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-4-etag",
+      "id": "evt-allday-2day",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Two Day Event",
+      "start": {
+        "date": "2026-10-05"
+      },
+      "end": {
+        "date": "2026-10-07"
+      },
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-allday-2day"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-5-etag",
+      "id": "evt-accepted",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Accepted Meeting",
+      "start": {
+        "dateTime": "2026-10-03T14:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-03T15:00:00Z",
+        "timeZone": "UTC"
+      },
+      "attendees": [
+        {
+          "email": "user@example.test",
+          "responseStatus": "accepted",
+          "self": true
+        }
+      ],
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-accepted"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-6-etag",
+      "id": "evt-no-attendees",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-09-20T10:00:00.000Z",
+      "summary": "Solo Event",
+      "location": "Conference Room A",
+      "start": {
+        "dateTime": "2026-10-10T11:00:00Z",
+        "timeZone": "America/New_York"
+      },
+      "end": {
+        "dateTime": "2026-10-10T12:00:00Z",
+        "timeZone": "America/New_York"
+      },
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-no-attendees"
+    }
+  ],
+  "nextSyncToken": "sync-1"
+}

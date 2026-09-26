@@ -1,0 +1,22 @@
+{
+  "kind": "calendar#calendarList",
+  "etag": "test-etag",
+  "items": [
+    {
+      "kind": "calendar#calendarListEntry",
+      "etag": "entry-etag-1",
+      "id": "primary-cal@example.test",
+      "summary": "Primary Calendar",
+      "description": "Main calendar",
+      "primary": true,
+      "backgroundColor": "#1f6e5a"
+    },
+    {
+      "kind": "calendar#calendarListEntry",
+      "etag": "entry-etag-2",
+      "id": "cal-work",
+      "summary": "Work Calendar",
+      "backgroundColor": "#5fbf9f"
+    }
+  ]
+}

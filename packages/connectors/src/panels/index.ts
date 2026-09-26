@@ -43,6 +43,8 @@ export interface CalendarSource {
     cursor?: string,
   ): Promise<{
     events: EventOccurrence[];
+    /** Occurrences the provider reports deleted since `cursor` (incremental fetches only). */
+    deletedIds?: string[];
     cursor?: string;
     full: boolean;
     rotatedCredential?: unknown;

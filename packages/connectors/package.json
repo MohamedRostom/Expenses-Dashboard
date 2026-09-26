@@ -9,7 +9,11 @@
     "./notion": "./src/notion/index.ts",
     "./panels": "./src/panels/index.ts",
     "./google/oauth": "./src/google/oauth.ts",
-    "./microsoft/oauth": "./src/microsoft/oauth.ts"
+    "./google/calendar": "./src/google/calendar.ts",
+    "./google/fake": "./src/google/fake.ts",
+    "./microsoft/oauth": "./src/microsoft/oauth.ts",
+    "./microsoft/calendar": "./src/microsoft/calendar.ts",
+    "./microsoft/fake": "./src/microsoft/fake.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

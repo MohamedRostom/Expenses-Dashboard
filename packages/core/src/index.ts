@@ -52,3 +52,4 @@ export {
   ERROR_AFTER_FAILURES,
   type Tier,
 } from './panels/refresh-policy.js';
+export { expandToDays, type Occurrence, type DayBucket } from './panels/window.js';
