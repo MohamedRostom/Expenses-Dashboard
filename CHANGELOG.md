@@ -4,6 +4,10 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+
+- Mail and calendar panels, foundation (spec 002, Phases 1–2, all behind `panels.*` flags that are off in production): connected-accounts schema with the five `panels.*` flag rows seeded by migration, Google and Microsoft OAuth connect flow (read-only scopes, address taken from the provider's id_token, ten-account limit), a refresh job and per-minute scheduler with backoff, `GET /today` and rate-limited refresh routes, and dark Today and Connections pages with loading and empty states.
+
 ### Fixed
 
 - `deploy-fly`'s promote-production job deploys with `infra/fly/fly.toml` (it failed on the machineless production app) and rolls back by redeploying the previous image (`flyctl releases rollback` doesn't exist); `jobs-safety-net` runs the current release image instead of a nonexistent `:latest`.
