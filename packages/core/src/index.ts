@@ -44,3 +44,11 @@ export {
   type Skipped,
   type DiffResult,
 } from './sync/diff.js';
+export {
+  tierFor,
+  nextDueAt,
+  statusAfterFailures,
+  shouldRefreshOnOpen,
+  ERROR_AFTER_FAILURES,
+  type Tier,
+} from './panels/refresh-policy.js';
