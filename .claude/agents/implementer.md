@@ -1,7 +1,7 @@
 ---
 name: implementer
 description: Executes one coordinator brief on the Desk repo — writes the failing test first, then the minimal code to pass it, runs the named checks, and reports. Use only with a brief from the coordinator agent; not for design decisions.
-model: haiku
+model: sonnet
 tools: Read, Edit, Write, Grep, Glob, Bash
 ---
 
