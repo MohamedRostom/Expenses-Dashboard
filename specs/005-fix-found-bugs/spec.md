@@ -58,7 +58,7 @@ A signed-in user opens Settings → Connectors on a server where Notion sync has
 **Acceptance Scenarios**:
 
 1. **Given** a server with Notion sync not set up, **When** a signed-in user opens Connectors, **Then** they see "Notion sync isn't available on this server yet" (or equivalent copy), the Connect action is disabled, and no error toast appears.
-2. **Given** a server with Notion sync not set up, **When** any Notion-related request is made, **Then** the server answers with a structured "unavailable" response, never a web page.
+2. **Given** a server with Notion sync not set up, **When** any Notion data request is made, **Then** the server answers with a structured "unavailable" response, never a web page; **and when** the user visits a connect-flow step directly, **Then** they land on Connectors in the unavailable state.
 3. **Given** a server with Notion sync set up and a user who has never connected, **When** they open Connectors, **Then** they see the not-connected state with Connect enabled.
 
 ---
@@ -124,7 +124,7 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 
 ### Functional Requirements
 
-- **FR-001.1**: When Notion sync is not set up on a server, every Notion-related request MUST receive a structured "unavailable" response and MUST NOT receive a web page.
+- **FR-001.1**: When Notion sync is not set up on a server, every Notion data request MUST receive a structured "unavailable" response, and the two page-visit steps of the connect flow MUST send the user back to Connectors in the unavailable state; no Notion request may receive a web page in place of data.
 - **FR-001.2**: The Connectors page MUST show a distinct "not available on this server" state, with Connect disabled, when the server reports Notion as unavailable; it MUST NOT show the generic error toast in that case.
 - **FR-001.3**: Any response the web app cannot read as data MUST surface as a specific, readable error rather than an unexplained failure, so no other feature can repeat this bug's symptom.
 - **FR-001.4**: Staging and production MUST each have Notion sync set up whenever their credentials exist, applied by the normal deploy, and MUST start without Notion (in the unavailable state) when they don't.

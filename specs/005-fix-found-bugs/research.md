@@ -76,7 +76,7 @@ Account deletion (`DELETE /me`) calls the same revoke step before its cascading 
 
 ## R10 — Logging
 
-**Decision**: one structured line per failed exchange, renewal, revoke or refused access: `{ event: 'notion.oauth' | 'notion.sync', outcome, userId, notionError }` where `notionError` is Notion's `error`/`code` string. Tokens, codes and the state value are never logged; a unit test asserts the logged payload contains no substring of the fake tokens.
+**Decision**: through the existing `Logger` (`apps/api/src/adapters/logger.ts`, injected as `deps.logger`; Node and Worker adapters add Sentry), one structured event per failed exchange, renewal, revoke or refused access: `{ event: 'notion.oauth' | 'notion.sync', outcome, userId, notionError }` where `notionError` is Notion's `error`/`code` string. Tokens, codes and the state value are never logged; a unit test asserts the logged payload contains no substring of the fake tokens.
 
 **Rationale**: FR-001.12; enough to diagnose a repeat of BUG-001 from Fly logs.
 

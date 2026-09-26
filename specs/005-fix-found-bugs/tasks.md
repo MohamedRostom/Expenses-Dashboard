@@ -63,7 +63,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - [ ] T015 [US1] In `apps/api/src/node.ts`, change the SPA fallback to serve `index.html` only when the method is GET/HEAD and the `Accept` header includes `text/html`; otherwise `return c.notFound()`; make T010 pass
 - [ ] T016 [P] [US1] In `apps/web/src/api/client.ts`, wrap the 2xx `JSON.parse` so a parse failure throws `new ApiError('internal', 'Unexpected response from the server', res.status)`; make T011 pass
 - [ ] T017 [US1] In `apps/web/src/views/ConnectorsView.vue`, branch the load error on `err.code`: `feature_unavailable` → unavailable state (copy from contracts §Web client, Connect disabled, no toast); `not_found` → not-connected; other codes → existing toast; add the loading skeleton; announce state changes in an `aria-live="polite"` region; make T012 pass
-- [ ] T018 [US1] Add an e2e-ci scenario `unavailable` to `tests/e2e/tests/notion.spec.ts` that runs against the compose stack started without `NOTION_CLIENT_ID`/`SECRET` (add a Playwright project or env toggle in `tests/e2e/playwright.config.ts` if the stack needs a second configuration), asserting the unavailable copy and no toast (SC-001.1)
+- [ ] T018 [US1] Add `infra/docker-compose.no-notion.yml`, a compose override that sets `NOTION_CLIENT_ID: ""` and `NOTION_CLIENT_SECRET: ""` on the api service (empty values leave `deps.notion` undefined in `node.ts`, and pass `env.ts`'s both-or-neither check); add a Playwright project `ci-no-notion` in `tests/e2e/playwright.config.ts` that greps `@no-notion`; add the `@no-notion` scenario `unavailable` to `tests/e2e/tests/notion.spec.ts` asserting the unavailable copy, Connect disabled, no toast (SC-001.1), and `axeCheck(page)` from `tests/e2e/fixtures` on that state; add a `ci.yml` step that starts the stack with the override and runs `--project=ci-no-notion`
 
 **Checkpoint**: US1 independent test passes; `worker-build` green; live `curl` of `/notion/connection` on a deploy returns JSON.
 
@@ -103,7 +103,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 - [ ] T027 [P] [US3] Extend `apps/api/test/notion.test.ts` with one case per row of contracts §`GET /notion/callback`: `error=access_denied` → `denied`; other `error` → `failed`; no cookie, wrong state, cookie for another user, signed out, and a replayed link → `expired`; exchange 4xx and Notion unreachable → `failed`; `FakeNotion.setSharedContent(false)` → `no_pages` with the connection stored; success → `connected`. Each asserts the redirect target, that the cookie is cleared, and whether a row exists; none returns a JSON body
 - [ ] T028 [P] [US3] Extend `apps/web/src/views/ConnectorsView.test.ts`: each `?notion=<outcome>` renders the copy in contracts §Web client (`denied` without error styling; `no_pages` with "Reconnect to choose pages"; `expired`/`failed` with Try again), and the query parameter is removed after reading
-- [ ] T029 [P] [US3] Add e2e-ci scenarios to `tests/e2e/tests/notion.spec.ts` for `denied`, `expired` and `no_pages` via the T008 mock modes (SC-001.3)
+- [ ] T029 [P] [US3] Add e2e-ci scenarios to `tests/e2e/tests/notion.spec.ts` for `denied`, `expired` and `no_pages` via the T008 mock modes (SC-001.3), each ending with `axeCheck(page)` on the outcome message
 
 ### Implementation for User Story 3
 
@@ -122,16 +122,16 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 ### Tests for User Story 4 ⚠️
 
-- [ ] T032 [P] [US4] Extend `apps/api/test/notion.test.ts` (sync): 401 then successful refresh → sync succeeds, both stored tokens replaced, status `connected`; 401 then `refresh_refused` → status `reconnect_needed`, a second `syncNow` makes zero Notion calls and `triggerSyncSoon` schedules nothing; legacy row with `refresh_token_enc` NULL + 401 → `reconnect_needed`; transient 429/5xx → status `error` and the next sync retries; reconnect from `reconnect_needed` → `connected`
+- [ ] T032 [P] [US4] Extend `apps/api/test/notion.test.ts` (sync): 401 then successful refresh → sync succeeds, both stored tokens replaced, status `connected`; 401 then `refresh_refused` → status `reconnect_needed`, a second `syncNow` makes zero Notion calls and `triggerSyncSoon` schedules nothing; legacy row with `refresh_token_enc` NULL + 401 → `reconnect_needed`; transient 429/5xx → status `error` and the next sync retries; reconnect from `reconnect_needed` → `connected`; and for SC-001.4's 10-minute bound, with a frozen clock assert that the `notion.sync` job reschedules itself no more than 5 minutes out and that the first run after Notion starts returning 401 (with renewal refused) sets `reconnect_needed` in that same run
 - [ ] T033 [P] [US4] Extend `apps/api/test/notion.test.ts` (disconnect/delete): `DELETE /notion/connection` calls `revokeToken` and clears both token columns even when revoke rejects or times out; `DELETE /me` calls `revokeToken` before the cascading wipe and still deletes the account when revoke fails
-- [ ] T034 [P] [US4] Write a failing logging test in `apps/api/test/notion-logging.test.ts`: spy on the logger, drive a failed exchange, failed renewal, refused access and failed revoke; assert one structured entry each with `event`, `outcome`, `userId`, `notionError`, and that no entry contains any substring (≥ 6 chars) of the fake access or refresh tokens, the OAuth code or the state (FR-001.12)
+- [ ] T034 [P] [US4] Write a failing logging test in `apps/api/test/notion-logging.test.ts`: pass a capturing fake `Logger` (the interface in `apps/api/src/adapters/logger.ts`) as `deps.logger` to `createApp`, drive a failed exchange, failed renewal, refused access and failed revoke; assert one structured entry each with `event`, `outcome`, `userId`, `notionError`, and that no entry contains any substring (≥ 6 chars) of the fake access or refresh tokens, the OAuth code or the state (FR-001.12)
 - [ ] T035 [P] [US4] Extend `apps/web/src/views/ConnectorsView.test.ts` and add `apps/web/src/views/MonthView.test.ts` cases: status `reconnect_needed` renders the Reconnect Notion state; the month view shows a small reconnect indicator linking to `/settings/connectors` and hides it for 404/503 responses
 
 ### Implementation for User Story 4
 
 - [ ] T036 [US4] In `apps/api/src/services/notion.ts`, add a `withFreshToken(userId, fn)` path used by `syncNow` and user-initiated Notion calls: on `NotionAuthError`, if `refreshTokenEnc` exists call `refreshToken`, store both new tokens with an update conditional on the old `refreshTokenEnc`, retry `fn` once; otherwise or on failure set `status = 'reconnect_needed'`; keep `status = 'error'` for non-auth failures; make `syncNow` and `triggerSyncSoon` skip `reconnect_needed`; stop `apps/api/src/jobs/notion-sync.ts` rescheduling for `reconnect_needed`/`disconnected`; make T032 pass
 - [ ] T037 [US4] In `apps/api/src/services/notion.ts` `disconnect()`, call `revokeToken` (5 s timeout, errors caught and logged) before clearing `accessTokenEnc` and `refreshTokenEnc`; call the same revoke helper from the `DELETE /me` handler in `apps/api/src/routes/me.ts` before the cascading wipe; make T033 pass
-- [ ] T038 [US4] Add structured logging per research R10 at each failure point in `apps/api/src/services/notion.ts` and `apps/api/src/routes/notion.ts` (event, outcome, userId, Notion's error code only); make T034 pass
+- [ ] T038 [US4] Add structured logging per research R10 at each failure point in `apps/api/src/services/notion.ts` and `apps/api/src/routes/notion.ts` (event, outcome, userId, Notion's error code only), through the existing `Logger` from `apps/api/src/adapters/logger.ts` (pass `deps.logger` into the Notion service deps; no new logging path — Sentry forwarding in `logger-node.ts`/`logger-worker.ts` then applies automatically); make T034 pass
 - [ ] T039 [US4] Implement the Reconnect Notion state in `apps/web/src/views/ConnectorsView.vue` and the indicator in `apps/web/src/views/MonthView.vue` (fetches `/notion/connection` once, ignores 404/503, keyboard-reachable link with an accessible name); make T035 pass
 
 **Checkpoint**: SC-001.4 asserted in the API suite; Story 4 independent test passes.
@@ -140,7 +140,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T040 [P] Run `pnpm worker:build` and the full API, web and e2e-ci suites; confirm coverage on `apps/api` is not lower than on `main`
+- [ ] T040 [P] Run `pnpm worker:build` and the full API, web and e2e-ci suites; confirm coverage on `apps/api` is not lower than on `main`; confirm the Lighthouse budgets (perf ≥ 90, a11y ≥ 95) still pass for `/settings/connectors` and `/` in the ci run (constitution definition of done)
 - [ ] T041 [P] Add a CHANGELOG line under `[Unreleased] → Fixed` for BUG-001 in `CHANGELOG.md`
 - [ ] T042 Walk every table in `specs/005-fix-found-bugs/quickstart.md` and record results in the PR description
 - [ ] T043 After the tag carrying this fix passes the staging smoke, set BUG-001's Bug Register row in `specs/005-fix-found-bugs/spec.md` to `Fixed in vX.Y.Z` and record SC-001.2 from the first real staging connect
