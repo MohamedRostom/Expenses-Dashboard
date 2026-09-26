@@ -16,3 +16,6 @@ lighthouse-reports/
 .DS_Store
 LOCAL_DEVELOPMENT.md
 tests/e2e/playwright.local.config.ts
+
+# logs
+*.log
