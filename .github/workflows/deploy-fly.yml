@@ -122,14 +122,22 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.PRODUCTION_RESEND_API_KEY }}
           MAIL_FROM: ${{ secrets.PRODUCTION_MAIL_FROM }}
+      # Remember the live image so a failed promote can redeploy it (flyctl has no `releases
+      # rollback`). Empty on the very first deploy: nothing to roll back to.
+      - id: previous
+        run: echo "image=$(flyctl releases --app ros-desk-production --image --json | jq -r '.[0].ImageRef // empty')" >> "$GITHUB_OUTPUT"
+      # --config is required: without it flyctl rebuilds the config from existing machines,
+      # which fails on an app that has none. --app overrides the staging name in the file.
       - run: >-
-          flyctl deploy . --app ros-desk-production --dockerfile infra/fly/Dockerfile
+          flyctl deploy . --config infra/fly/fly.toml --app ros-desk-production
+          --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
       - id: promote-check
         run: curl --fail --retry 5 --retry-delay 5 https://ros-desk-production.fly.dev/healthz
-      # Rollback: on any failure above, revert ros-desk-production to its previous release. The
-      # exact command (run manually or here) is:
-      #   flyctl releases rollback --app ros-desk-production
-      # (no --version rolls back to the release immediately prior to the one just deployed).
-      - if: failure()
-        run: flyctl releases rollback --app ros-desk-production
+      # Rollback: on any failure above, redeploy the previous image. Manually:
+      #   flyctl deploy --config infra/fly/fly.toml --app ros-desk-production --image <ImageRef>
+      # (ImageRef from `flyctl releases --app ros-desk-production --image`).
+      - if: failure() && steps.previous.outputs.image != ''
+        run: >-
+          flyctl deploy --config infra/fly/fly.toml --app ros-desk-production
+          --image "${{ steps.previous.outputs.image }}" --ha=false
