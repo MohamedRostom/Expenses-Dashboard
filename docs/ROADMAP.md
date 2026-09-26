@@ -123,6 +123,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 ## Phase 6 — Stage 2 cut-over (Cloudflare)
 **Goal:** move to paid, global infrastructure with zero data loss and no rewrite.
 **Duration:** ~1 week plus a week of parallel running.
+**Scheduled (2026-09-26):** executed last, as the final stage of `specs/005-fix-found-bugs` (T044), after specs 002–004 and the registered bug fixes. v2 features no longer wait for it.
 
 **Build**
 - `worker.ts` entry wired to Hyperdrive (Neon Postgres), sessions on Cloudflare KV via the existing `SessionStore` interface, jobs on Cron Triggers, static assets on Cloudflare Pages, custom domain with free TLS.
@@ -135,7 +136,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 ---
 
-## v2 (after Phase 6) — Calendar and beyond
+## v2 (built before the Phase 6 cut-over since 2026-09-26) — Calendar and beyond
 Not scheduled; captured so Phase 1's OAuth design leaves room for it.
 - Mail and calendar panels (ADR-0004, spec `specs/002-mail-calendar-panels/`): per-connection refresh-token storage, Google OAuth verification, the "next 7 days" calendar panel and a read-only inbox panel across Google, Microsoft and standards-based providers; Google mail last, after the restricted-scope CASA assessment.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.

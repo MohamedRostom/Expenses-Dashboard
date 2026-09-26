@@ -1,6 +1,6 @@
 # Implementation Plan: Mail and Calendar Panels
 
-**Branch**: `002-mail-calendar-panels` (spec); delivery on one `feature/002-<slice>` branch per slice below after the Phase 6 cut-over (the `phase-N/` convention covers ROADMAP phases 0–6; v2 features follow the `feature/002-mail-calendar-spec` precedent) | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
+**Branch**: `002-mail-calendar-panels` (spec); delivery on one `feature/002-<slice>` branch per slice below (no cut-over gate since 2026-09-26; the cut-over is spec 005's final stage) (the `phase-N/` convention covers ROADMAP phases 0–6; v2 features follow the `feature/002-mail-calendar-spec` precedent) | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
 
 **Input**: Feature specification from `/specs/002-mail-calendar-panels/spec.md`
 

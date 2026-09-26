@@ -145,6 +145,15 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - [ ] T042 Walk every table in `specs/005-fix-found-bugs/quickstart.md` and record results in the PR description
 - [ ] T043 After the tag carrying this fix passes the staging smoke, set BUG-001's Bug Register row in `specs/005-fix-found-bugs/spec.md` to `Fixed in vX.Y.Z` and record SC-001.2 from the first real staging connect
 
+
+---
+
+## Phase 8: Stage 2 cut-over (final stage)
+
+**Purpose**: move production to Cloudflare Workers + Pages (Stage 2) and tag `v1.0.0`. Moved here from spec 001 T119 on 2026-09-26 (Rostom) so it runs once, last, after every other spec and bug fix has shipped on Stage 1. The Stage 2 code (001 T117, T118, T125) is already built and kept green by the `worker-build` CI job.
+
+- [ ] T044 Execute `docs/runbooks/cutover.md` (owner-only): full e2e-ci against the Cloudflare preview, per-user totals before and after, DNS flip, smoke on the custom domain, tag `v1.0.0`; keep Stage 1 as the one-hour rollback path and 30-day fallback, then scale Fly to zero. Afterwards update `docs/ROADMAP.md` Phase 6 and the "Current state" section of `CLAUDE.md`
+
 ---
 
 ## Dependencies & Execution Order
@@ -158,6 +167,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - **US3 (Phase 5)**: after Phase 2 and T022 (cookie format).
 - **US4 (Phase 6)**: after Phase 2 and T023 (refresh token stored on connect).
 - **Polish (Phase 7)**: after the stories being shipped.
+- **Stage 2 cut-over (Phase 8)**: last of all, after specs 002–004 are finished and every open Bug Register entry is fixed or explicitly deferred by Rostom. Bugs found after the cut-over are registered as usual.
 
 ### User Story Dependencies
 

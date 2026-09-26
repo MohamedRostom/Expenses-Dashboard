@@ -427,7 +427,7 @@ Presentation and accessibility
   cost and lead time (typically weeks, paid, repeated annually); it needs the product name,
   privacy page and domain from ADR-0002 first. Google mail ships only after it passes; every
   other provider ships before.
-- This is a v2 feature scheduled after the Phase 6 cut-over in `docs/ROADMAP.md`; it builds on
+- This is a v2 feature built on Stage 1; the Phase 6 cut-over moved to the final stage of spec 005 on 2026-09-26 and no longer gates it; it builds on
   the account, session, connector, encryption and job foundations from Phases 1 to 3.
 - Google calendar access is a sensitive scope and needs Google's app verification, which in
   turn needs the product name, privacy page and domain from ADR-0002; those are prerequisites.
@@ -444,9 +444,8 @@ Presentation and accessibility
   Yahoo is offered as mail only.
 - **Foundations**: the time-zone setting, jobs runner, `SecretBox` and `flags` table are
   shipped (v0.1.3) and present in the repo (checked 2026-09-26). A change to any of them goes
-  through its own ADR, and this feature adapts. The only foundation not final is job scheduling
-  on Stage 2 (the cut-over). Under the owner's waiver for tasks Phases 1–2, the scheduler is
-  built against the `JobRunner` interface only, so it is runtime-neutral.
+  through its own ADR, and this feature adapts. Job scheduling on Stage 2 arrives with the cut-over
+  (spec 005's final stage), so the scheduler is built against the `JobRunner` interface only, so it is runtime-neutral.
 - Time zone comes from the user's existing setting (Phase 3); events are always displayed in it.
 - Cached mail is headers and preview only, capped at fifty messages per account; cached events
   are kept from yesterday to today plus seven (display is today to today plus six, FR-006);

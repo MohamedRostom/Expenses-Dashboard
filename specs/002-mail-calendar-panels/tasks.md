@@ -6,7 +6,7 @@
 
 **Tests**: included and mandatory. The constitution (Principle I) requires every behaviour change to start with a failing test, so each phase lists its tests before its implementation and `/speckit-implement` must run them red first.
 
-**Baseline dependency**: this is a v2 feature. Every task assumes the baseline foundations from `specs/001-phased-product-baseline/tasks.md` exist: `createApp(deps)` and `apps/api/test/harness.ts`, `apps/api/test/ownership.test.ts`, `SecretBox`, `RateLimiter`, `JobRunner` (`apps/api/src/jobs/runner.ts`), `flags` and `audit_log` tables, `users.time_zone`, `packages/ui` blocks (`PanelFrame` from spec 004; if 004 has not landed when Phase 2 starts, use the baseline `apps/web/src/components/PanelState.vue` and switch when 004's T011 folds it into `PanelFrame`), `tests/e2e/fixtures/index.ts`, `infra/mocks` (`@desk/mocks`) and `apps/landing/src/pages/privacy.vue`. Do not start Phase 1 until the Phase 6 cut-over in `docs/ROADMAP.md` is done. **Waiver (Rostom, 2026-09-26):** Phases 1–2 (Setup, Foundational) may be built before the cut-over, with every `panels.*` flag off and the scheduler written against the `JobRunner` interface only; Phase 3 (US1) onward still waits for the cut-over.
+**Baseline dependency**: this is a v2 feature. Every task assumes the baseline foundations from `specs/001-phased-product-baseline/tasks.md` exist: `createApp(deps)` and `apps/api/test/harness.ts`, `apps/api/test/ownership.test.ts`, `SecretBox`, `RateLimiter`, `JobRunner` (`apps/api/src/jobs/runner.ts`), `flags` and `audit_log` tables, `users.time_zone`, `packages/ui` blocks (`PanelFrame` from spec 004; if 004 has not landed when Phase 2 starts, use the baseline `apps/web/src/components/PanelState.vue` and switch when 004's T011 folds it into `PanelFrame`), `tests/e2e/fixtures/index.ts`, `infra/mocks` (`@desk/mocks`) and `apps/landing/src/pages/privacy.vue`. The Phase 6 cut-over no longer gates this feature: on 2026-09-26 Rostom moved it to the final stage of `specs/005-fix-found-bugs` (T044), so every phase is built and deployed on Stage 1 with its `panels.*` flag off until released, and the scheduler stays behind the `JobRunner` interface so it runs unchanged on either stage.
 
 **Organization**: phases follow spec priority (US1 calendar, US2 inbox, US3 manage accounts, US4 standards-based). Foundational carries the connection model and the Today shell because both P1 panels need them (plan.md Slice A). Google mail (plan Slice D) sits inside US2 behind the `panels.google_mail` flag.
 
@@ -199,7 +199,7 @@ Monorepo per plan.md: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages
 
 ### Phase Dependencies
 
-- **Setup (Phase 1)**: starts after the Phase 6 cut-over; T002–T005 in parallel after T001
+- **Setup (Phase 1)**: no cut-over gate (moved to spec 005's final stage, 2026-09-26); T002–T005 in parallel after T001
 - **Foundational (Phase 2)**: depends on Phase 1; blocks every story. T006–T010 (tests) in parallel first; T011 before T016–T020; T012–T015 in parallel with T011; T016 → T017 → T018 → T019/T020; T021–T023 after T012
 - **US1 (Phase 3)**: after Phase 2. Tests T024–T030 in parallel; T031–T033 and T036 in parallel; T034 after T031/T032/T018; T035 after T033/T034; T037 after T035
 - **US2 (Phase 4)**: after Phase 2; independent of US1 except sharing `TodayView.vue` (T022) and `panels-refresh.ts` (T018). Tests T038–T044 in parallel; T045, T046, T048, T049, T052 in parallel; T047 after T046; T050 after T045/T047/T048; T051 after T049/T050; T053 after T051

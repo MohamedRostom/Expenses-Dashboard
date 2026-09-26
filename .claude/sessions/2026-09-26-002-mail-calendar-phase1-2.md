@@ -22,7 +22,7 @@
 | T016, T017, T021 | [X] | 56dfb68, a407c0d |
 | T018–T020, T022–T023 | [X] | fe2943d, 5517e10, 7d4ba93 |
 
-Phase 3 (US1) onward waits for the Stage 2 cut-over (spec 001 T119, owner-only).
+Phase 3 (US1) onward is unblocked: on 2026-09-26 Rostom moved the Stage 2 cut-over (001 T119) to the final stage of spec 005 (T044).
 
 ## Decisions made (all binding unless Rostom reopens them)
 
@@ -73,4 +73,4 @@ Phase 3 (US1) onward waits for the Stage 2 cut-over (spec 001 T119, owner-only).
 ## Exact next step
 
 1. Done 2026-09-26 (b5a6f92..9613803): e2e-ci flag step, flags CLI Windows fix, proxy gaps, Today error state, /panels/today move. Local checkpoint green: lint (0 errors), typecheck, unit, API (237), worker:build, compose e2e "Connections and Today" 3/3 (via system Chrome; the Playwright CDN times out on this machine).
-4. Stop. Phase 3 needs the Stage 2 cut-over, and pushing or opening a PR needs Rostom's explicit instruction.
+4. Next: `/speckit-companion-resume` starts Phase 3 at T024 (no cut-over gate any more). Pushing or opening a PR needs Rostom's explicit instruction.
