@@ -19,10 +19,9 @@ test.describe('Connections and Today pages @ci', () => {
     // Verify we're on the connections page
     await expect(page).toHaveURL('/settings/connections');
 
-    // Verify the page displays providers (filtered by flags; all on in e2e-ci per T004)
-    // Providers section should be present
-    const providersHeading = page.locator('heading, [role="heading"]');
-    expect(await providersHeading.count()).toBeGreaterThan(0);
+    // Providers are filtered by flags; all on in e2e-ci per T004
+    await expect(page.getByRole('heading', { level: 2, name: 'Add a Provider' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Google' })).toBeVisible();
 
     // Verify axe accessibility
     await axeCheck(page);
