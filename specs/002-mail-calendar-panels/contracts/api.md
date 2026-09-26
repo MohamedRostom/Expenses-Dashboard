@@ -9,7 +9,7 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 | Method | Path | Body / Query | Response | Notes |
 |--------|------|--------------|----------|-------|
 | GET | `/today` | | `{ days: [{ date, events: [{ id, accountId, title, startsAt, endsAt, allDay, location, tentative, link }] }], messages: [{ id, accountId, fromName, fromAddress, subject, preview, receivedAt, unread, link }], accounts: [{ id, provider, label, colour, capabilities, status, lastRefreshAt, lastError, stale, purged, unreadCount, reconnectUrl? }], generatedAt }` | Seven days from today in the user's time zone; messages newest first, at most fifty per account; empty arrays when nothing is connected |
-| POST | `/today/refresh` | | 202 `{ queued: [accountId] }` | Marks every unpaused account whose last refresh is older than two minutes as due now; rate limited to one call per user per minute (429 otherwise) |
+| POST | `/today/refresh` | | 202 `{ queued: [accountId] }` | Marks every unpaused account whose last refresh is older than two minutes as due now; rate limited to one call per user per minute (429 `rate_limited` with `{ retryAfterSeconds }` otherwise, so the client can say when the button works again, FR-008); an account whose refresh is already queued or running is not queued twice |
 
 ## Connections
 
