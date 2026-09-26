@@ -9,6 +9,12 @@ import error410Fixture from './fixtures/calendar/error-410.json';
 import error401Fixture from './fixtures/calendar/error-401.json';
 import error429Fixture from './fixtures/calendar/error-429.json';
 
+/** True for the Google OAuth token endpoint the fake fetch must intercept before hitting the real API mock. */
+function isTokenUrl(url: string): boolean {
+  const { hostname, pathname } = new URL(url);
+  return hostname === 'oauth2.googleapis.com' && pathname === '/token';
+}
+
 describe('Google Calendar Source', () => {
   describe('contract test: real client vs fake', () => {
     it('follows nextPageToken and takes the cursor from the last page', async () => {
@@ -50,7 +56,7 @@ describe('Google Calendar Source', () => {
 
     it('lists calendars', async () => {
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return new Response(JSON.stringify({ access_token: 'at' }), { status: 200 });
         }
         if (url.includes('/calendarList')) {
@@ -100,7 +106,7 @@ describe('Google Calendar Source', () => {
       });
 
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch(url);
@@ -232,7 +238,7 @@ describe('Google Calendar Source', () => {
       });
 
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch(url);
@@ -281,7 +287,7 @@ describe('Google Calendar Source', () => {
       });
 
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch(url);
@@ -320,7 +326,7 @@ describe('Google Calendar Source', () => {
       );
 
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch();
@@ -356,7 +362,7 @@ describe('Google Calendar Source', () => {
       );
 
       const fetchImpl = vi.fn(async (url: string) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch();
@@ -394,7 +400,7 @@ describe('Google Calendar Source', () => {
       });
 
       const fetchImpl = vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.includes('oauth2.googleapis.com') || url.includes('/token')) {
+        if (isTokenUrl(url)) {
           return tokenFetch();
         }
         return eventsFetch(url, init);
