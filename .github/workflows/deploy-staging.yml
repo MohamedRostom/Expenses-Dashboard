@@ -37,9 +37,18 @@ jobs:
       - if: steps.gate.outputs.skip != 'true'
         uses: superfly/flyctl-actions/setup-flyctl@1.6
       - if: steps.gate.outputs.skip != 'true'
-        run: flyctl secrets set --config infra/fly/fly.toml --stage DATABASE_URL="$STAGING_DATABASE_URL"
+        # Same set as deploy-fly.yml's staging step — env.ts refuses to start without all four
+        # (2026-09-26: this step only set DATABASE_URL, so the first deploy from main crash-looped).
+        run: >-
+          flyctl secrets set --config infra/fly/fly.toml --stage
+          DATABASE_URL="$STAGING_DATABASE_URL"
+          SESSION_SECRET="$STAGING_SESSION_SECRET"
+          SECRET_BOX_KEY="$STAGING_SECRET_BOX_KEY"
+          APP_ORIGIN="https://ros-desk-staging.fly.dev"
         env:
           STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          STAGING_SESSION_SECRET: ${{ secrets.STAGING_SESSION_SECRET }}
+          STAGING_SECRET_BOX_KEY: ${{ secrets.STAGING_SECRET_BOX_KEY }}
       - if: steps.gate.outputs.skip != 'true'
         name: Mail secrets (Resend), only when STAGING_RESEND_API_KEY is set
         # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
