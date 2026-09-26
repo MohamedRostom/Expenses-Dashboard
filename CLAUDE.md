@@ -18,6 +18,7 @@ Working name: "Desk" — a real product name is an open decision (ADR-0002). Do 
 - `docs/adr/ADR-0003-no-bank-integration-in-v1.md` — no Monzo or other bank integration in v1; generic webhook and column-mapped import only.
 - `docs/adr/ADR-0004-mail-and-calendar-panels.md` — v2 mail and calendar panels across Google, Microsoft and standards-based providers; Google mail included, gated on the CASA assessment; read-only, no link to expenses. Spec: `specs/002-mail-calendar-panels/`.
 - `docs/adr/ADR-0005-weather-source.md` — Open-Meteo (keyless, non-commercial tier, CC-BY attribution) as the only source for the weather, sunrise and place-search widgets (no reverse geocoder; device location resolves approximately and is confirmed by the user); revisit before any monetisation. Spec: `specs/003-dashboard-widgets/`.
+- `specs/005-fix-found-bugs/spec.md` — living bug register (decided 2026-09-26). After every phase finishes and deploys, add each bug found on a deployed environment as a new BUG-NNN entry (register row, diagnosis, stories, FR-NNN.x / SC-NNN.x); never renumber, mark fixed ones "Fixed in vX". Worked only after specs 001–004 are finished, unless Rostom promotes a bug as urgent. Bugs fixed on the spot during a deploy don't need an entry.
 - `docs/adr/ADR-0002-naming-and-providers.md` — the five open decisions (product name, email provider, Neon-from-day-one, licence, analytics). Until it is accepted, treat them as undecided and ask.
 
 ## Decisions already made (do not reopen without an ADR)
