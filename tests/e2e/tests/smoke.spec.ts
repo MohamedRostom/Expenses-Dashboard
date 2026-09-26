@@ -27,7 +27,7 @@ test('post-deploy smoke: healthz, seeded login, add and delete one expense @loca
   await page.getByLabel(/email/i).fill(SEEDED_EMAIL);
   await page.getByLabel(/password/i).fill(SEEDED_PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
-  await expect(page).toHaveURL('/');
+  await expect(page).toHaveURL('/', { timeout: 15_000 });
 
   const description = `Smoke test ${Date.now()}`;
   await page.getByRole('button', { name: /add expense/i }).click();
@@ -37,11 +37,12 @@ test('post-deploy smoke: healthz, seeded login, add and delete one expense @loca
     .getByRole('dialog')
     .getByRole('button', { name: /^add expense$/i })
     .click();
-  await expect(page.getByText(description)).toBeVisible();
+  // Remote target: every request crosses to the database region and the first may wake a
+  // suspended Neon compute, so allow more than the 5s default.
+  const row = page.getByRole('row', { name: new RegExp(description) });
+  await expect(row).toBeVisible({ timeout: 15_000 });
 
-  await page
-    .getByRole('row', { name: new RegExp(description) })
-    .getByRole('button', { name: /delete/i })
-    .click();
-  await expect(page.getByText(description)).toHaveCount(0);
+  await row.getByRole('button', { name: /delete/i }).click();
+  // The row, not the text: MonthView's undo banner repeats the description for 6s after a delete.
+  await expect(row).toHaveCount(0, { timeout: 15_000 });
 });
