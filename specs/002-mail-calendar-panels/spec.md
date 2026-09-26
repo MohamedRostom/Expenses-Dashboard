@@ -132,8 +132,8 @@ it and confirm no cached messages or events remain and the panels update.
    attempted where the provider supports it, and otherwise the user was shown how to remove
    Desk's access at the provider.
 4. **Given** the user deletes their Desk account, **When** deletion completes, **Then** every
-   connected account's credentials and cached data are gone and access is revoked at each
-   provider.
+   connected account's credentials and cached data are gone, access is revoked at each provider
+   that supports it (FR-003), and the user is shown removal instructions for the others.
 
 ---
 
@@ -275,6 +275,15 @@ Privacy
   how long, and how to revoke access, and the same text MUST appear on the connect screen before
   consent.
 
+Standards-based connections
+
+- **FR-017**: A standards-based connection MUST connect only to public internet hosts: Desk
+  resolves the host and refuses loopback, private, link-local, unique-local and
+  platform-internal addresses (including Fly's 6PN range) before opening a connection. IMAP MUST
+  use TLS on port 993, or port 143 with STARTTLS; CalDAV MUST use `https`. Connection and
+  verification attempts MUST be rate-limited per user and per IP. A refused host is reported as
+  such, distinct from a failed login.
+
 ### Key Entities *(include if feature involves data)*
 
 - **Connected account**: owner user, provider, address, capabilities (mail, calendar), granted
@@ -298,8 +307,9 @@ Privacy
   opening Today after a change shows it within ten seconds.
 - **SC-003**: The isolation test across every panel and every connection route with two users
   finds zero leaks.
-- **SC-004**: Disconnecting an account removes every cached item for it within one minute and
-  provider access is revoked in the same operation.
+- **SC-004**: Disconnecting an account removes every cached item for it within one minute; in the
+  same operation Desk revokes access at providers that support revocation (Google) and, for the
+  others, shows the user how to remove Desk's access at the provider (FR-003).
 - **SC-005**: With the maximum of ten connected accounts, each at the per-account cap of fifty
   messages plus seven days of events, the Today page renders in under one second on a mid-range
   phone over a mobile connection, and the month view's own timing is unchanged.

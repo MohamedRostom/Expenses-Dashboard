@@ -39,8 +39,10 @@ starting with `user_id` on every table. No table here references the expense tab
   `ends_at timestamptz`, `all_day boolean`, `time_zone text NULL`, `location text NULL`,
   `tentative boolean DEFAULT false`, `link text NULL`, `seen_at timestamptz`.
 - UNIQUE `(account_id, provider_event_id)`; index `(user_id, starts_at)`.
-- Rows outside yesterday to today plus seven days are deleted on each refresh; rows not seen in a
-  full-window fetch are deleted.
+- Rows that do not overlap yesterday to today plus seven days (`ends_at < yesterday OR starts_at >
+  today + 7`) are deleted on each refresh, and reads use the same overlap test, so an event that
+  began before the window but is still running stays (FR-006); rows not seen in a full-window
+  fetch are deleted.
 
 ## cached_messages
 
@@ -56,10 +58,14 @@ starting with `user_id` on every table. No table here references the expense tab
 
 ## Baseline tables touched
 
-- `users`: no new columns; `time_zone` (Phase 3) drives display; activity tier reads
-  `max(sessions.last_seen_at)` per user.
-- `flags`: rows `panels.google_calendar`, `panels.google_mail`, `panels.microsoft`,
-  `panels.standards`, all default off in production, on in local and e2e-ci.
+- `users`: `time_zone` (Phase 3) drives display. New column `last_active_at timestamptz NULL`
+  (same `panels` migration), written by `apps/api/src/middleware/session.ts` at most once per
+  five minutes per user. The activity tier (FR-008) and the 30-day idle purge (FR-012) read it
+  rather than `sessions.last_seen_at`, because on Stage 2 sessions live in KV and have no SQL row.
+- `flags`: rows `panels.today` (the Today page, the Connections settings section and their API
+  routes; off means no navigation entry and 404 from `/today` and `/connections*`),
+  `panels.google_calendar`, `panels.google_mail`, `panels.microsoft`, `panels.standards`, all
+  default off in production, on in local and e2e-ci.
 - `audit_log`: entries for connect, reconnect, pause, disconnect, revoke failures, purge.
 - `jobs`: names `panels.scheduler`, `panels.refresh`, `panels.purge`.
 
@@ -73,7 +79,7 @@ when needed. Shapes are in `contracts/api.md`.
 ## Cascade and isolation guarantees
 
 - Deleting a connected account cascades calendars, events and messages; the service revokes at
-  the provider first and records a failure in `last_error` rather than skipping the delete.
+  the provider first and records a failure in `audit_log` rather than skipping the delete.
 - Deleting a user first runs revoke for every account (best effort, audited), then the existing
   user cascade removes all four tables.
 - Every query filters by `user_id`; the ownership matrix test covers every route in

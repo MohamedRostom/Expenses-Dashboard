@@ -50,8 +50,11 @@ provider programmes change.
   `ical.js` to parse the returned VEVENTs; `getctag`/`sync-token` as the cursor. IMAP client
   written in-repo as a minimal read-only subset over a `Socket` interface (`connect(host, port,
   tls)`, `write`, `readLine`, `close`): `LOGIN`, `SELECT INBOX`, `SEARCH UNSEEN` (count),
-  `UID SEARCH` for the newest fifty, `UID FETCH ... (FLAGS INTERNALDATE BODY.PEEK[HEADER.FIELDS
-  (FROM SUBJECT DATE)] BODY.PEEK[TEXT]<0.200>)` for the preview, `UIDNEXT`/`UIDVALIDITY` as the
+  `UID SEARCH` for the newest fifty, `UID FETCH ... (FLAGS INTERNALDATE BODYSTRUCTURE
+  BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`, then `BODY.PEEK[<n>]<0.200>` for the first
+  `text/plain` part (else `text/html`, tags stripped), decoded from quoted-printable or base64
+  and its charset, for the preview; `From` and `Subject` decoded per RFC 2047. (`BODY.PEEK[TEXT]`
+  alone returns MIME boundaries or base64 for most real mail.) `UIDNEXT`/`UIDVALIDITY` as the
   cursor. `Socket` has a Node implementation on `node:tls` and a Workers implementation on
   `cloudflare:sockets` `connect()`. Credentials are the user's app password, sealed with
   `SecretBox`. Connection is verified (login plus `SELECT INBOX`, or `PROPFIND`) before the row
@@ -70,10 +73,15 @@ provider programmes change.
 - **Decision**: one `panels.refresh` job per connected account, enqueued by a
   `panels.scheduler` tick every minute that selects accounts whose `next_refresh_at` has
   passed. `next_refresh_at` is computed by `packages/core/panels/refresh-policy.ts`: five
-  minutes after the last refresh if the owner has a session seen in the last 24 hours, one hour
-  otherwise; doubled per consecutive failure up to one hour; paused after twenty failures.
+  minutes after the last refresh if the owner's `users.last_active_at` is within the last 24
+  hours, one hour otherwise; doubled per consecutive failure up to one hour; status `error`
+  after twenty failures, which the scheduler then skips. Activity is read from
+  `users.last_active_at` (written by the session middleware at most every five minutes), not
+  from `sessions`, because Stage 2 keeps sessions in KV.
   `POST /today/refresh` sets `next_refresh_at = now` for every unpaused account of the user
-  whose last refresh is older than two minutes and returns immediately; the Today page polls
+  whose last refresh is older than two minutes and returns immediately;
+  `POST /connections/:id/refresh` enqueues that account's refresh directly, so a manual refresh
+  can clear `error` (FR-004); the Today page polls
   `GET /today` every ten seconds for thirty seconds after triggering, then every sixty seconds
   while visible. Each refresh uses the provider cursor (Google `syncToken`/`historyId`, Graph
   `deltaLink`, IMAP `UIDVALIDITY`+`UIDNEXT`, CalDAV `sync-token`/`ctag`) and falls back to a
@@ -91,14 +99,15 @@ provider programmes change.
 - **Decision**: four tables (data-model.md). `cached_messages` keeps sender name and address,
   subject, a preview truncated to 200 characters, received time, unread flag, provider id and
   open link; after each refresh rows beyond the newest fifty per account are deleted.
-  `cached_events` keeps only occurrences between yesterday and seven days ahead. A daily
-  `panels.purge` job deletes all cached rows of users with no session seen in 30 days and marks
+  `cached_events` keeps only occurrences that overlap yesterday to seven days ahead. A daily
+  `panels.purge` job deletes all cached rows of users whose `last_active_at` is older than 30
+  days and marks
   their accounts `cache_purged_at` so the next visit triggers a full refresh with a loading
   state. Disconnect deletes the account row (cascading its cache) after revoking at the
   provider; `DELETE /me` gains a step that revokes every connection before the user cascade.
 - **Rationale**: matches FR-012 and the retention clarification exactly; the purge is a
   single delete per user, not per row; revoking before deleting means a failed revoke is
-  visible (the account shows an error) rather than silently leaving a live grant behind.
+  recorded in the audit log (FR-003) rather than silently leaving a live grant behind.
 - **Alternatives considered**: keeping bodies for search (out of scope, and it changes the
   privacy statement); per-row TTLs (more churn for no benefit).
 
