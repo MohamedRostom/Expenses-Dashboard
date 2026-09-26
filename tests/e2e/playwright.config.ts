@@ -4,6 +4,9 @@ import { defineConfig, devices } from '@playwright/test';
 // `local` runs on the self-hosted desk-local runner against real accounts, never blocking a PR.
 export default defineConfig({
   testDir: './tests',
+  // T082: waits for Mailpit/the API when E2E_WAIT_FOR_STACK is set (ci.yml only) — see
+  // global-setup.ts for why (docker compose --wait has no healthcheck to block on for mailpit).
+  globalSetup: './global-setup.ts',
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,

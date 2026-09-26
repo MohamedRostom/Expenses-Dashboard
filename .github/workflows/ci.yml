@@ -112,6 +112,9 @@ jobs:
       - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'
+          # T082: global-setup.ts waits for Mailpit + the API before any test runs; docker
+          # compose --wait doesn't cover this since mailpit has no healthcheck.
+          E2E_WAIT_FOR_STACK: 'true'
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
