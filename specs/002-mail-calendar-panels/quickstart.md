@@ -13,18 +13,17 @@ pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:api && pnpm worker:bu
 pnpm test:e2e -- --project=ci
 ```
 
-## Slice A: connections and the Today shell (US3)
+## Slice A: connections and the Today shell (tasks Phase 2)
 
-1. API suite `apps/api/test/connections.test.ts`: OAuth start refused at ten accounts, callback
-   creates or merges a row and seals the credential, standards create verifies before saving and
-   returns `verification_failed` with the step, PATCH label, colour, pause and calendars,
-   reconnect keeps the cache, DELETE revokes then cascades, `DELETE /me` revokes every account;
+1. API suite `apps/api/test/connections.test.ts`: OAuth start refused at ten accounts unless it
+   adds a capability to an existing account, callback derives capabilities from the granted
+   scopes and creates or merges a row with a sealed credential, `panels.today` off answers 404;
    ownership matrix extended with every route in `contracts/api.md`.
 2. Unit tests `packages/core/src/panels/refresh-policy.test.ts`: active tier five minutes, idle
    tier one hour, backoff doubling, pause at twenty failures, on-open trigger only when older
    than two minutes.
 3. Playwright `tests/e2e/tests/connections.spec.ts`: Settings shows providers per flag, the
-   empty Today page explains connecting, the eleventh connect is disabled with the limit shown.
+   empty Today page explains connecting, no Today entry while `panels.today` is off.
 4. Expected outcome: Today page and Connections settings exist with all states; no provider
    data yet.
 
@@ -41,11 +40,16 @@ pnpm test:e2e -- --project=ci
 4. Playwright `tests/e2e/tests/today.spec.ts` (ci): with the fake Google and Graph servers, an
    event added via the fake appears after `POST /today/refresh` with the right account chip;
    deleting it removes it; a recurring event shows once per day.
-5. e2e-local `today-calendar.spec.ts` tagged `@local`: real Google and Microsoft test
+5. e2e-local `today-calendar.local.spec.ts` tagged `@local`: real Google and Microsoft test
    accounts, three trials per provider per night, five-minute propagation (SC-002).
 6. Expected outcome: US1 independent test passes against both providers.
 
-## Slice C: inbox for Microsoft and standards-based providers (US2, US4)
+## Slice C: inbox, account management and standards-based providers (US2, US3, US4)
+
+0. Account management (US3), API suite `apps/api/test/connections.test.ts`: PATCH label,
+   colour, pause (overlay on status) and calendars; reconnect returns `{ url }` and keeps the
+   cache; DELETE revokes then cascades; `DELETE /me` revokes every account; `GET /me/export`
+   lists connections; Playwright: the eleventh connect is disabled with the limit shown.
 
 1. Contract tests for Graph inbox delta and for IMAP (client against the scripted fake server:
    login, unread total, newest fifty, preview truncation, `UIDVALIDITY` change forces full

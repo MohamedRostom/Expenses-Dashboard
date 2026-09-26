@@ -21,6 +21,10 @@ Common
   verify(cred): void            // throws VerificationError { step } on failure
   revoke(cred): void            // best effort; throws only on network failure
   errors: AuthError (reconnect needed), RateLimited { retryAfterMs }, ProviderError
+  rotatedCredential?: every fetch result may carry a new credential when the provider rotated
+      the refresh token during the call (Microsoft does on every exchange); the refresh job
+      re-seals and stores it before writing the cache
+  cursors: calendar cursors are per calendar (stored on account_calendars.cursor)
 ```
 
 `EventOccurrence`: `{ providerEventId, calendarId, title, startsAt, endsAt, allDay, timeZone?,
@@ -31,9 +35,9 @@ fromAddress, subject, preview (at most 200 chars), receivedAt, unread, link? }`.
 
 | Provider | Calendar | Mail | Cursor | Verify | Revoke |
 |----------|----------|------|--------|--------|--------|
-| Google | `events.list` on each enabled calendar, `singleEvents=true`, `timeMin/timeMax`; `attendees[self].responseStatus` maps to tentative or declined | `messages.list` (`labelIds=INBOX`, `q=-category:promotions -category:social`) then `messages.get?format=metadata` (From, Subject, Date, snippet) | `syncToken` per calendar; `historyId` for mail; `410` invalidates and forces a full fetch | token refresh plus `calendarList.list` or `getProfile` | `https://oauth2.googleapis.com/revoke` |
-| Microsoft | `/me/calendarView` per enabled calendar with `Prefer: outlook.timezone="UTC"`; `responseStatus.response` maps to tentative or declined | `/me/mailFolders/inbox/messages/delta` with `$select` and `$top=50` | `@odata.deltaLink`; `410` or `syncStateNotFound` forces a full fetch | token refresh plus `/me` | none exposed; the row is deleted and the user is told how to remove the app from their account |
-| Standards (CalDAV) | `PROPFIND` discovery; `REPORT calendar-query` with `expand`; `ical.js` parsing; local expansion when the server ignores `expand`; `PARTSTAT` maps to tentative or declined | not applicable | `sync-token` or `getctag`; change forces a full window fetch | `PROPFIND` on the calendar home | none; credential deleted |
+| Google | `events.list` on each enabled calendar, `singleEvents=true`, `timeMin/timeMax`; `attendees[self].responseStatus` `tentative` or `needsAction` → tentative, `declined` → declined, no self attendee → accepted | `messages.list` (`labelIds=INBOX`, `q=-category:promotions -category:social`) then `messages.get?format=metadata` (From, Subject, Date, snippet) | `syncToken` per calendar; `historyId` for mail; `410` invalidates and forces a full fetch | token refresh plus `calendarList.list` or `getProfile` | `https://oauth2.googleapis.com/revoke` |
+| Microsoft | `/me/calendarView` per enabled calendar with `Prefer: outlook.timezone="UTC"`; `responseStatus.response` `tentativelyAccepted` or `notResponded` → tentative, `declined` → declined, `organizer`, `accepted` or `none` → accepted | `/me/mailFolders/inbox/messages/delta` with `$select` and `$top=50` | `@odata.deltaLink`; `410` or `syncStateNotFound` forces a full fetch | token refresh plus `/me` | none exposed; the row is deleted and the user is told how to remove the app from their account |
+| Standards (CalDAV) | `PROPFIND` discovery; `REPORT calendar-query` with `expand`; `ical.js` parsing; local expansion when the server ignores `expand`; the user's `PARTSTAT` `TENTATIVE` or `NEEDS-ACTION` → tentative, `DECLINED` → declined | not applicable | `sync-token` or `getctag`; change forces a full window fetch | `PROPFIND` on the calendar home | none; credential deleted |
 | Standards (IMAP) | not applicable | `LOGIN`, `SELECT INBOX`, `SEARCH UNSEEN` for `unreadTotal`, `UID SEARCH ALL` newest fifty, `UID FETCH` flags, internal date, `BODYSTRUCTURE` and header fields From, Subject, Date (decoded per RFC 2047), then `BODY.PEEK[<n>]<0.200>` for the first `text/plain` part (else `text/html` with tags stripped), decoded from quoted-printable or base64 and its charset, for the preview; one connection per refresh, closed with `LOGOUT` | `UIDVALIDITY:UIDNEXT`; a changed `UIDVALIDITY` forces a full fetch | `LOGIN` plus `SELECT INBOX` | none; credential deleted |
 
 ## Fixture and fake rules

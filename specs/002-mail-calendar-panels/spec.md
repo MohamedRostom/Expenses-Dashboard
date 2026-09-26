@@ -1,11 +1,11 @@
 # Feature Specification: Mail and Calendar Panels
 
-**Feature Branch**: `002-mail-calendar-panels` (spec directory; delivery branch to be named when
-the feature is scheduled)
+**Feature Branch**: `002-mail-calendar-panels` (spec directory); planning fixes on
+`feature/002-mail-calendar-panels`, delivery on one `feature/002-<slice>` branch per plan slice
 
 **Created**: 2026-09-17
 
-**Status**: Draft
+**Status**: Planned (ADR-0004 accepted 2026-09-17; plan and tasks generated)
 
 **Input**: User description: "create a new spec baseline for the new feature in the dashboard to
 represent the person mails, calender after integrating with multiple platforms like google,
@@ -17,8 +17,8 @@ days" calendar panel and an inbox panel, both across every connected account. Th
 month view is unchanged. This brings the two panels of the
 owner's personal dashboard (see CLAUDE.md, "Personal dashboard artifact") to every Desk user.
 
-This spec reopens two recorded decisions and cannot proceed to planning until an ADR
-(`docs/adr/ADR-0004`) accepts the change: ADR-0001 dropped mail from the public product because
+This spec reopens two recorded decisions, which ADR-0004 (`docs/adr/ADR-0004`, accepted
+2026-09-17) records: ADR-0001 dropped mail from the public product because
 Google's mail access is a restricted scope requiring an external security assessment, and placed
 Calendar in v2. See Assumptions.
 
@@ -86,8 +86,9 @@ message in the provider, where any action on it happens. New mail appears within
 and privacy burden (Google mail waits for the external security assessment), so it ships
 provider by provider rather than all at once.
 
-**Independent Test**: connect a Microsoft mailbox and a Yahoo mailbox in a test account, send
-each one a message, and confirm both appear in the panel within five minutes newest first;
+**Independent Test**: connect a Microsoft mailbox and a second mailbox (Google with its flag on;
+a standards-based mailbox such as Yahoo is proved the same way once User Story 4 ships) in a
+test account, send each one a message, and confirm both appear in the panel within five minutes newest first;
 read one in the provider and confirm the panel's unread count drops on the next refresh.
 
 **Acceptance Scenarios**:
@@ -173,7 +174,8 @@ standard protocols and confirm the panels behave exactly as with the dedicated p
   both capabilities, not two.
 - Two accounts share a display name: labels are editable and default to the address.
 - An eleventh account: the connect button is disabled with the limit shown; disconnecting one
-  re-enables it.
+  re-enables it. Adding the missing capability (mail or calendar) to an account already
+  connected is not an eleventh account and stays available at the limit.
 - A user returns after more than 30 days: panels show a loading state while everything is
   refetched, not stale items.
 - All-day and multi-day events, events spanning midnight, and events in another time zone:
@@ -209,7 +211,8 @@ Connections
   MUST NOT prevent the disconnect or deletion from completing.
 - **FR-004**: Each connected account MUST have a user-editable label and colour, a status
   (connected, reconnect needed, paused, error), a last-refresh time and the last error, all
-  visible in Settings. "Paused" is set and cleared only by the user. "Reconnect needed" is set
+  visible in Settings. "Paused" is set and cleared only by the user; it overlays the other
+  statuses rather than replacing them, so resuming returns the account to the status it had. "Reconnect needed" is set
   when the provider rejects the credential and cleared by a successful reconnect. "Error" is
   set after twenty consecutive failed refreshes, stops scheduled refreshes, and is cleared by a
   successful reconnect or a successful user-triggered refresh. A user MAY connect at most ten
@@ -231,21 +234,23 @@ Calendar panel
   zone are covered; declined invitations are not shown.
 - **FR-007**: Users MUST be able to choose which calendars on an account feed the panel; the
   account's primary calendar is included by default.
-- **FR-008**: For a user active in the last 24 hours, changes made in the provider MUST be
-  reflected in the panel within five minutes; for other users, within one hour. Opening the
+- **FR-008**: For a user active in the last 24 hours, changes made in the provider (events and
+  mail alike) MUST be reflected in the panels within five minutes; for other users, within one hour. Opening the
   Today page MUST trigger an immediate refresh when the cached data is older than two minutes,
   with the panels showing the cached data meanwhile.
 
 Inbox panel
 
 - **FR-009**: The inbox panel MUST show, for every connected, unpaused mail account, the unread
-  count and the most recent messages of the inbox folder only (excluding spam, archived and
-  provider-sorted promotional or social mail; fixed cap per account, default fifty), newest first
+  count and the most recent messages of the inbox folder only (excluding spam, archived and,
+  where the provider exposes such sorting, provider-sorted promotional or social mail: Gmail
+  categories are excluded, Microsoft's Focused and Other both count as inbox, IMAP has no such
+  sorting; fixed cap of fifty per account), newest first
   across accounts, each with sender, subject, one-line preview, received time and account label, and a
   link that opens the message in the provider. The panel MUST be read-only: it requests only
   read access from each provider and offers no action on a message other than opening it.
-- **FR-010**: New mail MUST appear in the panel within the refresh window of FR-008 (five
-  minutes for active users, one hour otherwise, immediately on opening Today).
+- **FR-010**: _(Merged into FR-008, which now covers mail and events alike; the number is kept
+  so references stay stable.)_
 - **FR-011**: Users MUST be able to filter the panel to one account.
 - **FR-012**: Desk MUST cache only message headers and a preview, never full bodies or
   attachments, MUST discard cached messages once they fall outside the per-account cap, and
@@ -254,8 +259,8 @@ Inbox panel
 
 Relationship to expenses
 
-- **FR-013**: This feature MUST NOT store message bodies or attachments and MUST NOT read them
-  except that, where a provider offers no preview of its own (standards-based IMAP), Desk MAY
+- **FR-013**: Beyond the headers and preview FR-012 allows, this feature MUST NOT read message
+  bodies or attachments, except that, where a provider offers no preview of its own (standards-based IMAP), Desk MAY
   read at most the first 200 bytes of the text part to build the one-line preview and discards
   the rest; this is stated on the privacy page. It MUST NOT create, suggest or link expenses
   from mail or calendar data, and MUST keep its data separate from the expense tables; the
@@ -303,7 +308,8 @@ Standards-based connections
 - **SC-001**: A user connects a mainstream calendar or mail account in under two minutes from
   clicking "connect" to seeing their first items in the panel.
 - **SC-002**: For an active user, an event or message created in the provider appears in the
-  panel within five minutes in 95 % of trials over three consecutive nightly runs per provider;
+  panel within five minutes in every trial, with three trials per provider per night over three
+  consecutive nights;
   opening Today after a change shows it within ten seconds.
 - **SC-003**: The isolation test across every panel and every connection route with two users
   finds zero leaks.
@@ -312,7 +318,8 @@ Standards-based connections
   others, shows the user how to remove Desk's access at the provider (FR-003).
 - **SC-005**: With the maximum of ten connected accounts, each at the per-account cap of fifty
   messages plus seven days of events, the Today page renders in under one second on a mid-range
-  phone over a mobile connection, and the month view's own timing is unchanged.
+  phone over a mobile connection, and the month view makes no mail or calendar request and keeps
+  its existing Lighthouse performance score within two points.
 - **SC-006**: Every panel state (loading, empty, stale, reconnect, error) passes the
   accessibility audit with no serious or critical violations at 360 px and desktop width.
 - **SC-007**: Three people outside the project connect an account from at least two different

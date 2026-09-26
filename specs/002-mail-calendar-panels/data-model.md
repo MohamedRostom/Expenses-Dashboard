@@ -10,17 +10,22 @@ starting with `user_id` on every table. No table here references the expense tab
 - `id`, `user_id`, `provider text` (`google` | `microsoft` | `standards`), `address citext`,
   `label text` (defaults to the address), `colour text`, `capabilities text[]` (`mail`,
   `calendar`, one or both), `granted_scopes text[]`, `credential_enc bytea` (AES-256-GCM via
-  `SecretBox`: refresh token, or app password plus host and port for standards),
-  `status text` (`connected` | `reconnect_needed` | `paused` | `error`), `paused_at timestamptz
-  NULL`, `last_refresh_at timestamptz NULL`, `last_error text NULL`, `consecutive_failures int
-  DEFAULT 0`, `next_refresh_at timestamptz NOT NULL`, `mail_cursor text NULL`,
-  `calendar_cursor text NULL`, `unread_total int NULL`, `cache_purged_at timestamptz NULL`,
-  timestamps.
+  `SecretBox`: refresh token, or app password plus host and port for standards; re-sealed
+  whenever the provider rotates the refresh token, as Microsoft does on every exchange),
+  `status text` (`connected` | `reconnect_needed` | `error`), `paused_at timestamptz NULL`
+  (non-null means paused; the API reports `status: 'paused'` while it is set and the stored
+  status is kept for resume, FR-004), `last_refresh_at timestamptz NULL`, `last_error text NULL`
+  (an error code from `packages/contracts/src/errors.ts`: `provider_unreachable`,
+  `access_revoked`, `rate_limited`, `login_failed`, `host_not_allowed`; never provider text),
+  `consecutive_failures int DEFAULT 0`, `next_refresh_at timestamptz NOT NULL`,
+  `mail_cursor text NULL`, `unread_total int NULL`, `cache_purged_at timestamptz NULL`,
+  timestamps. Calendar cursors live per calendar on `account_calendars.cursor`.
 - UNIQUE `(user_id, provider, address)`: connecting the same address twice merges capabilities
   into one row.
 - Rule: at most ten rows per user, enforced in the service and by a check in the API test.
 - Transitions: `connected` → `reconnect_needed` (401 or `invalid_grant`) → `connected` (user
-  reconnects, credential replaced); `connected` ↔ `paused` (user); `connected` → `error` (twenty
+  reconnects, credential replaced); pause and resume set and clear `paused_at` from any status
+  without changing it; `connected` → `error` (twenty
   consecutive failures) → `connected` (user reconnects or the next manual refresh succeeds);
   any → deleted (disconnect, after revoke at provider; account deletion cascade).
 
@@ -28,7 +33,8 @@ starting with `user_id` on every table. No table here references the expense tab
 
 - `id`, `user_id`, `account_id REFERENCES connected_accounts ON DELETE CASCADE`,
   `provider_calendar_id text`, `name text`, `is_primary boolean`, `enabled boolean DEFAULT
-  false`, `colour text NULL` (provider colour, informational), timestamps.
+  false`, `colour text NULL` (provider colour, informational), `cursor text NULL` (Google
+  `syncToken`, Graph `deltaLink` or CalDAV `sync-token`/`ctag` for this calendar), timestamps.
 - UNIQUE `(account_id, provider_calendar_id)`. The primary calendar is `enabled` on connect.
 
 ## cached_events
@@ -38,7 +44,9 @@ starting with `user_id` on every table. No table here references the expense tab
   (occurrence id, so recurring instances are distinct), `title text`, `starts_at timestamptz`,
   `ends_at timestamptz`, `all_day boolean`, `time_zone text NULL`, `location text NULL`,
   `tentative boolean DEFAULT false`, `link text NULL`, `seen_at timestamptz`.
-- UNIQUE `(account_id, provider_event_id)`; index `(user_id, starts_at)`.
+- UNIQUE `(calendar_id, provider_event_id)`, because providers scope event ids to a calendar
+  and the same invitation can appear on two calendars of one account; index `(user_id,
+  starts_at)`.
 - Rows that do not overlap yesterday to today plus seven days (`ends_at < yesterday OR starts_at >
   today + 7`) are deleted on each refresh, and reads use the same overlap test, so an event that
   began before the window but is still running stays (FR-006); rows not seen in a full-window

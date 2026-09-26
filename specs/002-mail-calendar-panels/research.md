@@ -34,7 +34,9 @@ provider programmes change.
   &$top=50`, keeping the `@odata.deltaLink` as the cursor; the "Focused/Other" split is ignored
   (both are the inbox). Calendar via `/me/calendarView?startDateTime&endDateTime` with
   `Prefer: outlook.timezone="UTC"`, which expands recurrences; calendar list via
-  `/me/calendars`.
+  `/me/calendars`. Microsoft returns a new refresh token on every exchange; the refresh job
+  re-seals it each time (providers.md `rotatedCredential`), otherwise the grant lapses once the
+  original token ages out.
 - **Rationale**: delta queries give incremental inbox refresh for free; `calendarView` expands
   series; `$select` keeps bodies out of the response. Publisher verification is required for
   multi-tenant consent prompts to look trustworthy and is a documentation step, not a code one.
@@ -157,11 +159,12 @@ provider programmes change.
 ## R9. Today page behaviour
 
 - **Decision**: `GET /today` returns both panels in one payload (events grouped by day, messages
-  newest first with per-account unread counts, per-account status, `refreshedAt` per account,
+  newest first with per-account unread counts, per-account status, `lastRefreshAt` per account,
   a `stale` flag when older than the tier's interval). The page renders cached data immediately,
   calls `POST /today/refresh` on open when any account's data is older than two minutes, and
   polls as in R4. Each panel has loading, empty, stale, reconnect-needed and error states from
-  the baseline `PanelState` component; account chips carry label and colour; filtering by
+  `PanelFrame` in `packages/ui` (spec 004), or the baseline
+  `apps/web/src/components/PanelState.vue` if spec 004 has not landed when Slice A starts; account chips carry label and colour; filtering by
   account is client-side. The month view does not import the today store.
 - **Rationale**: one request keeps SC-005 achievable; cached-first rendering makes the on-open
   refresh invisible unless something changed.
@@ -177,7 +180,8 @@ provider programmes change.
   server implementing the same transcript; API suite covers every connection route with the
   ownership matrix and the revoke-before-delete rule; `infra/mocks` gains fake Google, Graph,
   CalDAV and IMAP servers used by compose and e2e-ci; e2e-local nightly runs against real test
-  accounts (one Google, one Microsoft, one Fastmail or iCloud) with three trials per provider
+  accounts (one Google, one Microsoft, one Fastmail or iCloud, one Yahoo for its preset) with
+  three trials per provider
   for SC-002; axe and Lighthouse on the Today page and Connections settings.
 - **Rationale**: the constitution's pyramid; real accounts cannot run in CI, so the recorded
   fixtures are the contract and the nightly run proves them against reality.
@@ -193,4 +197,6 @@ provider programmes change.
 | Google OAuth consent screen verified for `calendar.readonly` | Pending | Slice B production flag |
 | Microsoft app registration and publisher verification | Pending | Slice B and C production flags |
 | CASA assessment for `gmail.readonly` | Pending, budgeted in ADR-0004 | Slice D production flag |
-| Test accounts for e2e-local (Google, Microsoft, Fastmail or iCloud) | Pending | Slice B nightly |
+| Self-hosted runner `desk-local` | Done (registered and online, 2026-09-26) | Slice B nightly |
+| Required reviewers on the `local-secrets` environment | Pending (environment exists, no reviewers) | Slice B nightly |
+| Test accounts for e2e-local (Google, Microsoft, Fastmail or iCloud, Yahoo) | Pending | Slice B nightly |

@@ -8,7 +8,7 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 
 | Method | Path | Body / Query | Response | Notes |
 |--------|------|--------------|----------|-------|
-| GET | `/today` | | `{ days: [{ date, events: [{ id, accountId, title, startsAt, endsAt, allDay, location, tentative, link }] }], messages: [{ id, accountId, fromName, fromAddress, subject, preview, receivedAt, unread, link }], accounts: [{ id, provider, label, colour, capabilities, status, lastRefreshAt, stale, unreadCount, reconnectUrl? }], generatedAt }` | Seven days from today in the user's time zone; messages newest first, at most fifty per account; empty arrays when nothing is connected |
+| GET | `/today` | | `{ days: [{ date, events: [{ id, accountId, title, startsAt, endsAt, allDay, location, tentative, link }] }], messages: [{ id, accountId, fromName, fromAddress, subject, preview, receivedAt, unread, link }], accounts: [{ id, provider, label, colour, capabilities, status, lastRefreshAt, lastError, stale, purged, unreadCount, reconnectUrl? }], generatedAt }` | Seven days from today in the user's time zone; messages newest first, at most fifty per account; empty arrays when nothing is connected |
 | POST | `/today/refresh` | | 202 `{ queued: [accountId] }` | Marks every unpaused account whose last refresh is older than two minutes as due now; rate limited to one call per user per minute (429 otherwise) |
 
 ## Connections
@@ -16,13 +16,13 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 | Method | Path | Body / Query | Response | Notes |
 |--------|------|--------------|----------|-------|
 | GET | `/connections` | | `{ accounts: [{ id, provider, address, label, colour, capabilities, grantedScopes, status, pausedAt, lastRefreshAt, lastError, calendars: [{ id, name, isPrimary, enabled }] }], limit: 10 }` | |
-| GET | `/connections/providers` | | `{ providers: [{ id: 'google' or 'microsoft' or 'standards', capabilities: [...], enabled: boolean, presets?: [{ name, imapHost, imapPort, caldavUrl }] }] }` | Reflects the per-provider feature flags; `google` lists `mail` only when `panels.google_mail` is on |
-| GET | `/connections/:provider/start` | `?capabilities=mail,calendar` | 302 to the provider consent screen | PKCE and state cookie as for sign-in; scopes per research R6; refused (409 `limit_reached`) at ten accounts |
-| GET | `/connections/:provider/callback` | `?code&state` | 302 to `/settings/connections?connected=<id>` | Creates or merges the account row, seals the refresh token, enqueues an immediate refresh |
+| GET | `/connections/providers` | | `{ providers: [{ id: 'google' or 'microsoft' or 'standards', capabilities: [...], presets?: [{ name, imapHost, imapPort, caldavUrl }] }] }` | A provider whose flags are all off is absent; `capabilities` lists only the flagged-on ones (`google` lists `mail` only when `panels.google_mail` is on) |
+| GET | `/connections/:provider/start` | `?capabilities=mail,calendar&account=<id>?` | 302 to the provider consent screen | PKCE and state cookie as for sign-in; scopes per research R6; refused (409 `limit_reached`) at ten accounts unless `account` names one of the user's accounts, which adds a capability to it |
+| GET | `/connections/:provider/callback` | `?code&state` | 302 to `/settings/connections?connected=<id>`, or `?error=<code>` | Derives capabilities from the scopes actually granted (Google's granular consent may drop some); none granted → `error=scope_denied`, no row. Creates or merges the account row on `(provider, address)`; a new row at ten accounts → `error=limit_reached`; with `account` in the state the address must match → otherwise `error=account_mismatch`. Seals the refresh token and enqueues an immediate refresh |
 | POST | `/connections/standards` | `{ address, password, imapHost?, imapPort?, caldavUrl?, capabilities }` | 201 `{ account }` | Resolves the host first and answers 422 `host_not_allowed` for loopback, private, link-local, unique-local or platform-internal addresses, IMAP ports other than 993/143, or non-`https` CalDAV, without opening a connection (FR-017); then verifies login and inbox (IMAP) and discovery (CalDAV) before saving; 422 `verification_failed` with `{ step }` on failure; 429 after five attempts per user or per IP in ten minutes; 409 `limit_reached` at ten accounts unless the address merges into an existing row; password sealed, never returned |
 | PATCH | `/connections/:id` | `{ label?, colour?, paused?, calendars?: [{ id, enabled }] }` | 200 `{ account }` | Pausing sets `paused_at` and stops scheduling; enabling a calendar triggers a refresh |
 | GET | `/connections/:id/calendars` | | `{ calendars: [{ id, name, isPrimary, enabled }] }` | Re-lists from the provider and upserts `account_calendars` |
-| POST | `/connections/:id/reconnect` | | 302 to the provider consent screen, or 200 `{ needsPassword: true }` for standards | Keeps the row and cache; replaces the credential on callback |
+| POST | `/connections/:id/reconnect` | | 200 `{ url }` for OAuth providers (the client navigates to it; a `fetch` cannot follow a cross-origin 302), or 200 `{ needsPassword: true }` for standards | Keeps the row and cache; replaces the credential on callback |
 | POST | `/connections/:id/refresh` | | 202 `{}` | Enqueues `panels.refresh` for that account immediately, bypassing the scheduler, including an account in `error` (with reconnect, the only way to clear it, FR-004); same rate limit as `/today/refresh` |
 | DELETE | `/connections/:id` | | 204 | Revokes at the provider, then deletes the row and its cache; a revoke failure is audited and the delete still proceeds |
 
@@ -38,6 +38,10 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 ## Cross-cutting
 
 - Page flag: every route above answers 404 while `panels.today` is off for the user.
+- Status: `status` is `paused` while `pausedAt` is set, otherwise the stored `connected`,
+  `reconnect_needed` or `error`. `lastError` is an error code (`provider_unreachable`,
+  `access_revoked`, `rate_limited`, `login_failed`, `host_not_allowed`), never provider text; the
+  web app maps each code to its own copy (FR-014).
 - Ownership: every `:id` route is looked up with `user_id = current`.
 - Idempotency: `POST /connections/standards` with an existing `(provider, address)` merges
   capabilities and replaces the credential rather than creating a second row.
