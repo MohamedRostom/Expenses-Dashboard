@@ -22,7 +22,13 @@ async function hashPassword(password: string): Promise<string> {
 }
 
 /** Flags shipped so far. Every new user-facing flag merged before announcement gets a row here. */
-const DEFAULT_FLAGS: { key: string; description: string }[] = [];
+const DEFAULT_FLAGS: { key: string; description: string }[] = [
+  { key: 'panels.today', description: 'Today page, Connections settings and their routes' },
+  { key: 'panels.google_calendar', description: 'Google Calendar panel' },
+  { key: 'panels.google_mail', description: 'Google Mail panel (gated on CASA assessment)' },
+  { key: 'panels.microsoft', description: 'Microsoft Outlook Calendar and Mail panels' },
+  { key: 'panels.standards', description: 'IMAP and CalDAV standards-based panels' },
+];
 
 const E2E_USER_ID = '00000000-0000-0000-0000-000000000001';
 const E2E_USER_EMAIL = 'e2e@desk.test';

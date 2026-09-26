@@ -26,6 +26,10 @@ services:
       DATABASE_URL: postgres://desk:desk@postgres:5432/desk
       SMTP_URL: smtp://mailpit:1025
       NOTION_API_BASE: http://mocks:4000/notion
+      GOOGLE_API_BASE: http://mocks:4000/google
+      GRAPH_API_BASE: http://mocks:4000/graph
+      CALDAV_TEST_URL: http://mocks:4000/caldav
+      IMAP_TEST_HOST: mocks
       # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
       # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
       # rates against the live API instead of the fixed-date FakeRates fixtures.
