@@ -74,12 +74,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/setup
-      # smoke.spec.ts signs in as the seeded e2e@desk.test user; seed is idempotent (upsert) and
-      # re-hashes E2E_SEEDED_PASSWORD each run, so the user and password always match the test.
-      - run: pnpm --filter @desk/db db:seed
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          E2E_SEEDED_PASSWORD: ${{ secrets.E2E_SEEDED_PASSWORD }}
       - run: pnpm --filter @desk/e2e exec playwright install --with-deps chromium
       - run: pnpm --filter @desk/e2e exec playwright test smoke.spec.ts --project=local
         env:
