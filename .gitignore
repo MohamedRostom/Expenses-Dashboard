@@ -19,3 +19,6 @@ tests/e2e/playwright.local.config.ts
 
 # logs
 *.log
+
+# real e2e-local test accounts (see tests/e2e/test-accounts.example.yaml)
+tests/e2e/test-accounts.local.yaml
