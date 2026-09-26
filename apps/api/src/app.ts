@@ -81,7 +81,7 @@ export function createApp(deps: AppDeps) {
 
   app.use('*', secureHeadersMiddleware);
   app.use('*', requestLogger(deps.logger ?? defaultLogger));
-  app.use('*', sessionMiddleware(deps.db, deps.sessions));
+  app.use('*', sessionMiddleware(deps.db, deps.sessions, deps.clock));
   app.use('*', csrf);
 
   app.onError(errorHandler);

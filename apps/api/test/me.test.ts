@@ -1,6 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq, inArray } from 'drizzle-orm';
-import { users as usersTable, jobs as jobsTable, auditLog, expenseVersions } from '@desk/db';
+import {
+  users as usersTable,
+  jobs as jobsTable,
+  auditLog,
+  expenseVersions,
+  connectedAccounts,
+  accountCalendars,
+  cachedEvents,
+  cachedMessages,
+} from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 
 // T033: failing-first tests for GET/PATCH /me, sessions, export, DELETE /me, email change,
@@ -200,6 +209,53 @@ describe('me', () => {
       subject: user.userId,
     });
 
+    // Insert cascaded tables for panels
+    const [account] = await h.db
+      .insert(connectedAccounts)
+      .values({
+        userId: user.userId,
+        provider: 'google',
+        address: 'test@gmail.com',
+        label: 'Gmail',
+        status: 'connected',
+        credentialEnc: new Uint8Array(32),
+        nextRefreshAt: new Date(),
+      })
+      .returning();
+
+    const [calendar] = await h.db
+      .insert(accountCalendars)
+      .values({
+        userId: user.userId,
+        accountId: account!.id,
+        providerCalendarId: 'primary',
+        name: 'Personal',
+        isPrimary: true,
+      })
+      .returning();
+
+    await h.db.insert(cachedEvents).values({
+      userId: user.userId,
+      accountId: account!.id,
+      calendarId: calendar!.id,
+      providerEventId: 'event-1',
+      title: 'Meeting',
+      startsAt: new Date(),
+      endsAt: new Date(),
+      allDay: false,
+    });
+
+    await h.db.insert(cachedMessages).values({
+      userId: user.userId,
+      accountId: account!.id,
+      providerMessageId: 'msg-1',
+      fromAddress: 'sender@gmail.com',
+      subject: 'Test',
+      preview: 'Test message',
+      receivedAt: new Date(),
+      unread: true,
+    });
+
     const res = await user.delete('/me', { password: 'test-password' });
     expect(res.status).toBe(204);
 
@@ -210,6 +266,31 @@ describe('me', () => {
     expect(audit).toBeTruthy();
     expect(audit!.userId).toBeNull();
     expect((audit!.details as { deletedUserHash?: string } | null)?.deletedUserHash).toBeTruthy();
+
+    // Assert cascade deletion of panels tables
+    const accounts = await h.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.userId, user.userId));
+    expect(accounts).toHaveLength(0);
+
+    const calendars = await h.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.userId, user.userId));
+    expect(calendars).toHaveLength(0);
+
+    const events = await h.db
+      .select()
+      .from(cachedEvents)
+      .where(eq(cachedEvents.userId, user.userId));
+    expect(events).toHaveLength(0);
+
+    const messages = await h.db
+      .select()
+      .from(cachedMessages)
+      .where(eq(cachedMessages.userId, user.userId));
+    expect(messages).toHaveLength(0);
   });
 
   it('DELETE /me cancels queued jobs first', async () => {
