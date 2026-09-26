@@ -56,6 +56,8 @@ export function buildDeps(
     // on Workers for now.
     google: undefined,
     notion: undefined,
+    googlePanels: undefined,
+    microsoft: undefined,
   };
 }
 

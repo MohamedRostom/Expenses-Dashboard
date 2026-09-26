@@ -112,6 +112,20 @@ const app = createApp({
           apiBase: env.NOTION_API_BASE,
         }
       : undefined,
+  googlePanels:
+    env.GOOGLE_PANELS_CLIENT_ID && env.GOOGLE_PANELS_CLIENT_SECRET
+      ? {
+          clientId: env.GOOGLE_PANELS_CLIENT_ID,
+          clientSecret: env.GOOGLE_PANELS_CLIENT_SECRET,
+        }
+      : undefined,
+  microsoft:
+    env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
+      ? {
+          clientId: env.MICROSOFT_CLIENT_ID,
+          clientSecret: env.MICROSOFT_CLIENT_SECRET,
+        }
+      : undefined,
 });
 
 app.use('/*', serveStatic({ root: './public' }));

@@ -1,6 +1,23 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { sql } from 'drizzle-orm';
 import { setGlobalFlag } from '@desk/db';
+import { SESSION_COOKIE } from '../src/middleware/session.js';
 import { startHarness, type Harness } from './harness.js';
+
+const b64url = (s: string) => Buffer.from(s).toString('base64url');
+/** Unsigned id_token carrying only the email claim — the route decodes it without verifying. */
+const fakeIdToken = (email: string) =>
+  `${b64url('{"alg":"none"}')}.${b64url(JSON.stringify({ email }))}.x`;
+
+/** Picks the panels OAuth state cookie out of a Set-Cookie header (csrf may be there too). */
+function statePair(setCookie: string): string {
+  const pair = setCookie
+    .split(/,\s*(?=[^;,]+=)/)
+    .map((c) => c.split(';')[0]!.trim())
+    .find((c) => c.startsWith('desk_connections_oauth_state='));
+  if (!pair) throw new Error(`no panels state cookie in: ${setCookie}`);
+  return pair;
+}
 
 const GOOGLE_TOKEN_ENDPOINT = 'https://oauth2.googleapis.com/token';
 const MICROSOFT_TOKEN_ENDPOINT = 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
@@ -11,6 +28,30 @@ describe('Connections API — Slice A', () => {
   beforeAll(async () => {
     harness = await startHarness();
   }, 120_000);
+
+  /** Inserts `n` google accounts for the user directly; returns their ids. */
+  async function seedAccounts(userId: string, n: number, prefix = 'seeded'): Promise<string[]> {
+    const ids: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const rows = (await harness.db.execute(sql`
+        INSERT INTO connected_accounts
+          (user_id, provider, address, label, colour, capabilities, granted_scopes,
+           credential_enc, status, next_refresh_at)
+        VALUES (${userId}, 'google', ${`${prefix}-${i}@example.com`}, ${`${prefix}-${i}`}, 'teal',
+          ARRAY['calendar'], ARRAY['https://www.googleapis.com/auth/calendar.readonly'],
+          decode('00', 'hex'), 'connected', now())
+        RETURNING id`)) as unknown as { id: string }[];
+      ids.push(rows[0]!.id);
+    }
+    return ids;
+  }
+
+  async function accountCount(userId: string): Promise<number> {
+    const rows = (await harness.db.execute(
+      sql`SELECT count(*)::int AS n FROM connected_accounts WHERE user_id = ${userId}`,
+    )) as unknown as { n: number }[];
+    return rows[0]!.n;
+  }
 
   afterAll(async () => {
     await harness.close();
@@ -150,20 +191,24 @@ describe('Connections API — Slice A', () => {
 
     it('refuses with 409 limit_reached at ten accounts', async () => {
       const user = await harness.asUser('oauth-limit@test.com');
-
-      // Create 10 mock accounts (this would be done by callbacks in real flow)
-      // For now, we're testing that the check exists, so this test is written
-      // assuming implementation will add rows
+      await seedAccounts(user.userId, 10);
       const res = await user.get('/connections/google/start?capabilities=calendar');
-      expect(res.status).toBe(302); // Should succeed at first
+      expect(res.status).toBe(409);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe('limit_reached');
     });
 
-    it('allows adding capability to an existing account via account= parameter', async () => {
+    it('at ten accounts, account=<own id> is allowed and account=<not own> is refused', async () => {
       const user = await harness.asUser('oauth-add-capability@test.com');
-      // This would work after a previous account is created
-      const res = await user.get('/connections/google/start?capabilities=mail&account=some-id');
-      // Should redirect to consent screen
-      expect(res.status).toBe(302);
+      const [own] = await seedAccounts(user.userId, 10);
+      const ok = await user.get(`/connections/google/start?capabilities=mail&account=${own}`);
+      expect(ok.status).toBe(302);
+      const other = await harness.asUser('oauth-add-capability-other@test.com');
+      const [foreign] = await seedAccounts(other.userId, 1, 'foreign');
+      const refused = await user.get(
+        `/connections/google/start?capabilities=mail&account=${foreign}`,
+      );
+      expect(refused.status).toBe(409);
     });
   });
 
@@ -181,9 +226,10 @@ describe('Connections API — Slice A', () => {
       provider: 'google' | 'microsoft',
       capabilities: string,
       tokenResponse: Record<string, unknown>,
+      extraQuery = '',
     ): Promise<Response> {
       const startRes = await user.get(
-        `/connections/${provider}/start?capabilities=${capabilities}`,
+        `/connections/${provider}/start?capabilities=${capabilities}${extraQuery}`,
       );
       expect(startRes.status).toBe(302);
       const setCookie = startRes.headers.get('set-cookie');
@@ -209,13 +255,18 @@ describe('Connections API — Slice A', () => {
         }) as unknown as typeof fetch,
       );
 
-      return user.get(`/connections/${provider}/callback?code=fake-code&state=${state}`);
+      return harness.app.request(
+        `/connections/${provider}/callback?code=fake-code&state=${state}`,
+        { headers: { cookie: `${SESSION_COOKIE}=${user.sessionToken}; ${statePair(setCookie)}` } },
+      );
     }
 
     it('derives capabilities from the scopes actually granted', async () => {
       const user = await harness.asUser('oauth-callback-scopes@test.com');
       const res = await runCallback(user, 'google', 'calendar,mail', {
         access_token: 'fake-access',
+        refresh_token: 'fake-refresh',
+        id_token: fakeIdToken('scopes@example.com'),
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
         // Only calendar granted, not mail
       });
@@ -231,6 +282,8 @@ describe('Connections API — Slice A', () => {
       const user = await harness.asUser('oauth-callback-no-scope@test.com');
       const res = await runCallback(user, 'google', 'calendar', {
         access_token: 'fake-access',
+        refresh_token: 'fake-refresh',
+        id_token: fakeIdToken('noscope@example.com'),
         scope: '', // No scopes granted
       });
 
@@ -241,26 +294,68 @@ describe('Connections API — Slice A', () => {
 
     it('new address at ten accounts redirects with error=limit_reached', async () => {
       const user = await harness.asUser('oauth-callback-limit@test.com');
-      // This assumes we can somehow mock ten existing accounts
-      const res = await runCallback(user, 'google', 'calendar', {
-        access_token: 'fake-access',
-        scope: 'https://www.googleapis.com/auth/calendar.readonly',
-      });
-
-      // When at limit, should redirect with error=limit_reached
+      await seedAccounts(user.userId, 9);
+      // Nine rows, so start is allowed; a tenth lands before the callback, which must then refuse
+      // the new address rather than create an eleventh row.
+      const startRes = await user.get('/connections/google/start?capabilities=calendar');
+      expect(startRes.status).toBe(302);
+      await seedAccounts(user.userId, 1, 'late');
+      const setCookie = startRes.headers.get('set-cookie')!;
+      const state = new URL(startRes.headers.get('location')!).searchParams.get('state')!;
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                access_token: 'fake-access',
+                refresh_token: 'fake-refresh',
+                id_token: fakeIdToken('eleventh@example.com'),
+                scope: 'https://www.googleapis.com/auth/calendar.readonly',
+              }),
+              { status: 200, headers: { 'content-type': 'application/json' } },
+            ),
+        ) as unknown as typeof fetch,
+      );
+      const res = await harness.app.request(
+        `/connections/google/callback?code=fake-code&state=${state}`,
+        { headers: { cookie: `${SESSION_COOKIE}=${user.sessionToken}; ${statePair(setCookie)}` } },
+      );
       expect(res.status).toBe(302);
-      const location = res.headers.get('location');
-      expect(location).toContain('error=limit_reached');
+      expect(res.headers.get('location')).toContain('error=limit_reached');
+      expect(await accountCount(user.userId)).toBe(10);
     });
 
     it('account state whose address differs redirects with error=account_mismatch', async () => {
       const user = await harness.asUser('oauth-callback-mismatch@test.com');
-      const startRes = await user.get(
-        '/connections/google/start?capabilities=calendar&account=some-id',
+      const [own] = await seedAccounts(user.userId, 1, 'owned');
+      const res = await runCallback(
+        user,
+        'google',
+        'mail',
+        {
+          access_token: 'fake-access',
+          refresh_token: 'fake-refresh',
+          id_token: fakeIdToken('someone-else@example.com'),
+          scope: 'https://www.googleapis.com/auth/gmail.readonly',
+        },
+        `&account=${own}`,
       );
-      expect(startRes.status).toBe(302);
-      // This test structure is laid out for the full flow, but the account mismatch
-      // check happens during callback when the token's email doesn't match account's address
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toContain('error=account_mismatch');
+      expect(await accountCount(user.userId)).toBe(1);
+    });
+
+    it('a token response without an id_token redirects with error=scope_denied', async () => {
+      const user = await harness.asUser('oauth-callback-noid@test.com');
+      const res = await runCallback(user, 'google', 'calendar', {
+        access_token: 'fake-access',
+        refresh_token: 'fake-refresh',
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+      });
+      expect(res.status).toBe(302);
+      expect(res.headers.get('location')).toContain('error=scope_denied');
+      expect(await accountCount(user.userId)).toBe(0);
     });
 
     it('success redirects to /settings/connections?connected=<id>', async () => {
@@ -268,7 +363,8 @@ describe('Connections API — Slice A', () => {
       const res = await runCallback(user, 'google', 'calendar', {
         access_token: 'fake-access',
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        email: 'test@example.com', // Simulated from token
+        id_token: fakeIdToken('test@example.com'),
+        refresh_token: 'fake-refresh',
       });
 
       expect(res.status).toBe(302);
@@ -282,7 +378,8 @@ describe('Connections API — Slice A', () => {
       const res = await runCallback(user, 'google', 'calendar', {
         access_token: 'fake-access-token-12345',
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        email: 'sealed@example.com',
+        id_token: fakeIdToken('sealed@example.com'),
+        refresh_token: 'fake-refresh',
       });
 
       expect(res.status).toBe(302);
@@ -296,7 +393,8 @@ describe('Connections API — Slice A', () => {
       const res1 = await runCallback(user, 'google', 'calendar', {
         access_token: 'access-1',
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        email: 'merge@example.com',
+        id_token: fakeIdToken('merge@example.com'),
+        refresh_token: 'fake-refresh',
       });
       expect(res1.status).toBe(302);
 
@@ -304,7 +402,8 @@ describe('Connections API — Slice A', () => {
       const res2 = await runCallback(user, 'google', 'mail', {
         access_token: 'access-2',
         scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        email: 'merge@example.com',
+        id_token: fakeIdToken('merge@example.com'),
+        refresh_token: 'fake-refresh',
       });
       expect(res2.status).toBe(302);
 
@@ -316,7 +415,8 @@ describe('Connections API — Slice A', () => {
       const res = await runCallback(user, 'google', 'calendar', {
         access_token: 'fake-access',
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
-        email: 'job@example.com',
+        id_token: fakeIdToken('job@example.com'),
+        refresh_token: 'fake-refresh',
       });
 
       expect(res.status).toBe(302);

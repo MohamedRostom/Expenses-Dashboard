@@ -27,10 +27,13 @@ import { createHooksRoutes } from './routes/hooks.js';
 import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
 import { createFeedbackRoutes } from './routes/feedback.js';
+import { createConnectionsRoutes } from './routes/connections.js';
 import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
 import { createCaptureService } from './services/capture.js';
 import { createNotionService, type NotionConfig } from './services/notion.js';
+import { ConnectionsService } from './services/connections.js';
+import { requireFlag } from './middleware/require-flag.js';
 import { registerJob } from './jobs/index.js';
 import { notionSyncJob } from './jobs/notion-sync.js';
 import type { RatesProvider } from '@desk/connectors/rates';
@@ -71,6 +74,10 @@ export type AppDeps = {
   google: GoogleConfig | undefined;
   /** Undefined until NOTION_CLIENT_ID/SECRET are configured (env.ts) — /notion/* 404s. */
   notion: NotionConfig | undefined;
+  /** Google OAuth for panels. */
+  googlePanels: { clientId: string; clientSecret: string } | undefined;
+  /** Microsoft OAuth for panels. */
+  microsoft: { clientId: string; clientSecret: string } | undefined;
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -171,6 +178,44 @@ export function createApp(deps: AppDeps) {
   if (notionService && deps.notion) {
     app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
   }
+
+  // Connections routes for panels — OAuth start/callback and account management
+  const connectionsService = new ConnectionsService({
+    db: deps.db,
+    secretBox: deps.secretBox,
+    clock: deps.clock,
+  });
+
+  // Mount connections routes under /connections with the panels.today flag check
+  const connectionsRouter = new Hono<{ Variables: AppVariables }>();
+  connectionsRouter.use('/*', requireFlag(deps.db, 'panels.today'));
+  connectionsRouter.route(
+    '/',
+    createConnectionsRoutes({
+      db: deps.db,
+      secretBox: deps.secretBox,
+      clock: deps.clock,
+      appOrigin: deps.appOrigin,
+      google: deps.googlePanels,
+      microsoft: deps.microsoft,
+      connections: connectionsService,
+      jobs: deps.jobs,
+    }),
+  );
+  app.route('/connections', connectionsRouter);
+
+  // Today routes also need the flag (will be implemented in next slice)
+  const todayRouter = new Hono<{ Variables: AppVariables }>();
+  todayRouter.use('/*', requireFlag(deps.db, 'panels.today'));
+  todayRouter.get('/', (c) => {
+    return c.json({
+      days: [],
+      messages: [],
+      accounts: [],
+      generatedAt: new Date().toISOString(),
+    });
+  });
+  app.route('/today', todayRouter);
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
 

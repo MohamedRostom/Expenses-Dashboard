@@ -83,6 +83,27 @@ export async function exchangeCode(
   }
 
   const scopes = typeof data.scope === 'string' ? data.scope.split(' ') : [];
+
+  // Extract email from id_token (OIDC Core 3.1.3.7: no signature check needed, came over TLS)
+  let email: string | undefined;
+  if (typeof data.id_token === 'string') {
+    try {
+      const [, payload] = data.id_token.split('.');
+      if (payload) {
+        const decoded = JSON.parse(
+          new TextDecoder().decode(
+            Uint8Array.from(atob(payload.replace(/-/g, '+').replace(/_/g, '/')), (c) =>
+              c.charCodeAt(0),
+            ),
+          ),
+        ) as { email?: string };
+        email = decoded.email;
+      }
+    } catch {
+      // Ignore id_token parse errors; email stays undefined
+    }
+  }
+
   const result: {
     refreshToken: string;
     accessToken: string;
@@ -93,8 +114,8 @@ export async function exchangeCode(
     accessToken: data.access_token as string,
     grantedScopes: scopes,
   };
-  if (data.email) {
-    result.email = data.email as string;
+  if (email) {
+    result.email = email;
   }
   return result;
 }

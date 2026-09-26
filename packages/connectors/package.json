@@ -7,7 +7,9 @@
     ".": "./src/index.ts",
     "./rates": "./src/rates/index.ts",
     "./notion": "./src/notion/index.ts",
-    "./panels": "./src/panels/index.ts"
+    "./panels": "./src/panels/index.ts",
+    "./google/oauth": "./src/google/oauth.ts",
+    "./microsoft/oauth": "./src/microsoft/oauth.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

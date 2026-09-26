@@ -138,6 +138,14 @@ export async function startHarness(
       apiBase: 'https://notion.mock',
       fetchImpl: notionFetch,
     },
+    googlePanels: {
+      clientId: 'test-google-panels-client-id',
+      clientSecret: 'test-google-panels-client-secret',
+    },
+    microsoft: {
+      clientId: 'test-microsoft-client-id',
+      clientSecret: 'test-microsoft-client-secret',
+    },
   } satisfies AppDeps);
 
   async function asUser(email: string) {
