@@ -1,5 +1,6 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { AuthError } from '@desk/connectors/panels';
 import { connectedAccounts, setGlobalFlag } from '@desk/db';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
@@ -530,7 +531,12 @@ describe('GET /connections/:id/calendars (T035)', () => {
     harness = await startHarness(undefined, {
       calendarSources: {
         google: {
-          async listCalendars() {
+          // T084: a credential sealed with refreshToken 'revoked' simulates the provider
+          // revoking access, without spinning up a second Postgres harness for one test.
+          async listCalendars(cred) {
+            if ((cred as { refreshToken?: string }).refreshToken === 'revoked') {
+              throw new AuthError('access revoked');
+            }
             return [
               { id: 'cal-primary', name: 'Primary', isPrimary: true },
               { id: 'cal-other', name: 'Other', isPrimary: false },
@@ -552,9 +558,9 @@ describe('GET /connections/:id/calendars (T035)', () => {
     await harness.close();
   });
 
-  async function insertAccount(userId: string) {
+  async function insertAccount(userId: string, refreshToken = 'rt') {
     const box = createSecretBox(TEST_SECRET_BOX_KEY);
-    const credentialEnc = await sealCredential(box, { refreshToken: 'rt' });
+    const credentialEnc = await sealCredential(box, { refreshToken });
     const [account] = await harness.db
       .insert(connectedAccounts)
       .values({
@@ -603,5 +609,23 @@ describe('GET /connections/:id/calendars (T035)', () => {
       { provider_calendar_id: 'cal-other', enabled: false },
       { provider_calendar_id: 'cal-primary', enabled: false },
     ]);
+  });
+
+  // T084: pins the AuthError → reconnect_needed/access_revoked path this route already has
+  // (apps/api/src/routes/connections.ts), so a future change can't silently drop it.
+  it('answers 409 conflict and marks the account reconnect_needed/access_revoked when the provider throws AuthError', async () => {
+    const user = await harness.asUser('calendars-revoked@test.com');
+    const accountId = await insertAccount(user.userId, 'revoked');
+
+    const res = await user.get(`/connections/${accountId}/calendars`);
+    expect(res.status).toBe(409);
+    const body = (await res.json()) as { error: { code: string } };
+    expect(body.error.code).toBe('conflict');
+
+    const [row] = await harness.db
+      .select({ status: connectedAccounts.status, lastError: connectedAccounts.lastError })
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, accountId));
+    expect(row).toEqual({ status: 'reconnect_needed', lastError: 'access_revoked' });
   });
 });

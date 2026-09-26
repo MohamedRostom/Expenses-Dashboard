@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
 import type { ProviderT, AccountT } from '@desk/contracts';
-import { getConnections, getProviders } from '../api/connections.js';
+import { getConnections, getProviders, postReconnect } from '../api/connections.js';
 
 const providers = ref<ProviderT[]>([]);
 const accounts = ref<AccountT[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const connected = ref<string | null>(null);
+const passwordNeededFor = ref<string | null>(null);
 
 const isLimitReached = computed(() => accounts.value.length >= 10);
 
@@ -15,7 +16,31 @@ onMounted(async () => {
   await loadData();
   const params = new URLSearchParams(window.location.search);
   connected.value = params.get('connected');
+
+  // T084: a link cannot POST, so the Today payload's reconnectUrl points here with
+  // ?reconnect=<id>, and this page starts the reconnect flow on the user's behalf.
+  const reconnectId = params.get('reconnect');
+  if (reconnectId && accounts.value.some((a) => a.id === reconnectId)) {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('reconnect');
+    window.history.replaceState({}, '', url.toString());
+    await startReconnect(reconnectId);
+  }
 });
+
+// The same action the "Reconnect" button on an account card triggers.
+async function startReconnect(accountId: string) {
+  try {
+    const res = await postReconnect(accountId);
+    if ('url' in res) {
+      window.location.href = res.url;
+    } else {
+      passwordNeededFor.value = accountId;
+    }
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to reconnect';
+  }
+}
 
 async function loadData() {
   loading.value = true;
@@ -140,6 +165,18 @@ function navigateToOAuth(providerId: string, capability?: string) {
             </div>
             <div v-if="account.lastError"><strong>Error:</strong> {{ account.lastError }}</div>
           </div>
+
+          <button
+            v-if="account.status === 'reconnect_needed' || account.status === 'error'"
+            type="button"
+            class="reconnect-btn"
+            @click="startReconnect(account.id)"
+          >
+            Reconnect
+          </button>
+          <p v-if="passwordNeededFor === account.id" class="password-note">
+            Enter a new app password to finish reconnecting.
+          </p>
         </div>
       </div>
     </section>
@@ -317,5 +354,27 @@ h2 {
 .account-details div {
   display: flex;
   gap: 0.5rem;
+}
+
+.reconnect-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background: transparent;
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  border-radius: 0.4rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
+}
+
+.reconnect-btn:hover {
+  background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.05));
+}
+
+.password-note {
+  margin: 0.75rem 0 0 0;
+  font-size: 0.85rem;
+  color: var(--color-warn);
 }
 </style>
