@@ -28,6 +28,18 @@ The Connectors page shows the generic toast "Failed to load Notion connection." 
 
 Two things are therefore wrong at once: the feature is not configured anywhere (an owner task), and an unconfigured feature fails in a way that looks like a crash instead of saying it is unavailable (a product defect). The connect journey also has gaps that were never exercised because the flow has never run for real: a user who cancels on Notion's consent screen, whose connect attempt expires, who shares no pages, or who later revokes access from inside Notion gets either raw error output or no guidance.
 
+## Clarifications
+
+### Session 2026-09-26
+
+Answers chosen by the agent at Rostom's request ("answer with reasonable answer based on your experience"), checked against Notion's current OAuth documentation.
+
+- Q: Do Notion's access tokens expire, and should the dashboard renew them? → A: Yes — Notion's token response now includes a refresh token; store it encrypted and renew access automatically, treating a connection as "Reconnect needed" only when renewal itself is refused.
+- Q: Should Disconnect also revoke the dashboard's access on Notion's side, not just forget it locally? → A: Yes — revoke at Notion (best effort), then forget locally regardless of whether Notion answered.
+- Q: How long should a connect attempt stay valid, and can its return link be used more than once? → A: 10 minutes, single use.
+- Q: How is a user told their Notion access was lost? → A: In-app only — a "Reconnect needed" status on Connectors and a small indicator on the dashboard; no email.
+- Q: What should be recorded when connecting or syncing fails, for diagnosing bugs like this one? → A: A log entry per failed exchange, renewal or refused access, with user id, outcome code and Notion's error code — never a token or its fragment.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Honest state when Notion is unavailable (BUG-001, Priority: P1)
@@ -89,8 +101,9 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 
 **Acceptance Scenarios**:
 
-1. **Given** a connected user whose access Notion now refuses, **When** the next sync runs, **Then** the connection is marked "Reconnect needed" and sync stops retrying.
-2. **Given** a connection marked "Reconnect needed", **When** the user reconnects successfully, **Then** the mark clears and sync resumes.
+1. **Given** a connected user whose access has merely expired, **When** the next sync runs, **Then** access is renewed silently and sync continues with no change visible to the user.
+2. **Given** a connected user whose access Notion now refuses and cannot be renewed, **When** the next sync runs, **Then** the connection is marked "Reconnect needed", sync stops retrying, and the dashboard shows a small reconnect indicator.
+3. **Given** a connection marked "Reconnect needed", **When** the user reconnects successfully, **Then** the mark and the indicator clear and sync resumes.
 
 ---
 
@@ -111,18 +124,19 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 - **FR-001.3**: Any response the web app cannot read as data MUST surface as a specific, readable error rather than an unexplained failure, so no other feature can repeat this bug's symptom.
 - **FR-001.4**: Staging and production MUST each have Notion sync set up whenever their credentials exist, applied by the normal deploy, and MUST start without Notion (in the unavailable state) when they don't.
 - **FR-001.5**: Users MUST be able to connect a Notion workspace through Notion's own consent screen, without the dashboard ever receiving their Notion password, and see the connected workspace's name on return.
-- **FR-001.6**: The connect flow MUST reject a return that doesn't match an attempt started by the same signed-in user within its allowed window, and MUST store nothing in that case.
+- **FR-001.6**: A connect attempt MUST be valid for 10 minutes and usable once; the connect flow MUST reject a return that doesn't match an unused attempt started by the same signed-in user within that window, and MUST store nothing in that case.
 - **FR-001.7**: Cancelled, expired and failed connect attempts MUST each return the user to Connectors with their own message and a way to try again.
 - **FR-001.8**: A connection with no shared pages MUST be explained to the user with an offer to reconnect and choose pages.
-- **FR-001.9**: When Notion refuses a connected user's access, the system MUST mark the connection as needing reconnection, stop retrying sync for it, and show this on Connectors.
-- **FR-001.10**: Users MUST be able to disconnect, after which the dashboard holds no usable Notion access for them.
+- **FR-001.9**: The system MUST keep Notion access renewed automatically; only when renewal is refused MUST it mark the connection "Reconnect needed", stop retrying sync for it, and tell the user in-app only (Connectors status and a dashboard indicator — no email).
+- **FR-001.10**: Users MUST be able to disconnect; disconnecting MUST ask Notion to revoke the dashboard's access (best effort) and MUST then remove the stored access locally whether or not Notion answered, after which the dashboard holds no usable Notion access for them.
 - **FR-001.11**: Each scenario above MUST be covered by an automated test, and the unavailable-server case MUST have a test that fails against today's behaviour before the fix is written.
+- **FR-001.12**: Every failed code exchange, failed renewal and refused access MUST be logged with the user's id, an outcome code and Notion's error code; logs MUST NOT contain any access or renewal credential, whole or partial.
 
 ### Key Entities
 
 - **Bug entry**: one row in the Bug Register — ID, title, when and where found, severity, status (Open, In progress, Fixed in <version>) — plus its diagnosis, stories, requirements and criteria in this spec.
-- **Notion connection**: a user's link to one Notion workspace — workspace name, chosen expenses database, sync direction, status (connected, reconnect needed, disconnected), last sync time and last error. At most one per user.
-- **Connect attempt**: a short-lived, single-use record tying an outgoing trip to Notion to the signed-in user who started it.
+- **Notion connection**: a user's link to one Notion workspace — workspace name, chosen expenses database, sync direction, status (connected, reconnect needed, disconnected), last sync time and last error, plus its access and renewal credentials, both stored encrypted. At most one per user.
+- **Connect attempt**: a single-use record, valid for 10 minutes, tying an outgoing trip to Notion to the signed-in user who started it.
 
 ## Success Criteria *(mandatory)*
 
@@ -139,6 +153,6 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 - Rostom creates the Notion public integration (an owner task, since it involves an external account): its name follows the working name "Desk" until ADR-0002 settles the product name, and it needs a logo, a privacy policy and a terms page, which the landing site can host.
 - The integration registers exactly two return addresses, staging and production. Preview environments rely on the mocked Notion, as the e2e-ci suite already does.
 - Submitting the integration for Notion's public review is out of scope; it only affects a listing in Notion's integration gallery, not whether users can connect.
-- If Notion issues tokens that expire, the fix renews them before treating the connection as revoked; if tokens don't expire (their historical behaviour), Story 4 covers revocation alone. Which applies is confirmed during planning against Notion's current documentation.
+- Notion's OAuth flow (checked 2026-09-26) returns a refresh token alongside the access token, offers a token-revocation endpoint, and reports a cancelled consent as `error=access_denied` on the return. Connections made before this fix stored no refresh token; they keep working until access is refused, then follow Story 4's reconnect path.
 - The Notion sync behaviour itself (two-way sync, database schema, conflict handling from spec 001) is unchanged; only connecting, disconnecting, availability and failure reporting are in scope for BUG-001.
 - Work on this spec starts after specs 001–004 are finished, per Rostom's instruction of 2026-09-26.
