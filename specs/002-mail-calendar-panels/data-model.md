@@ -7,7 +7,7 @@ starting with `user_id` on every table. No table here references the expense tab
 
 ## connected_accounts
 
-- `id`, `user_id`, `provider text` (`google` | `microsoft` | `standards`), `address citext`,
+- `id`, `user_id`, `provider text` (`google` | `microsoft` | `standards`), `address text` (stored lowercased; the repo has no `citext`),
   `label text` (defaults to the address), `colour text`, `capabilities text[]` (`mail`,
   `calendar`, one or both), `granted_scopes text[]`, `credential_enc bytea` (AES-256-GCM via
   `SecretBox`: refresh token, or app password plus host and port for standards; re-sealed
@@ -55,7 +55,7 @@ starting with `user_id` on every table. No table here references the expense tab
 ## cached_messages
 
 - `id`, `user_id`, `account_id REFERENCES connected_accounts ON DELETE CASCADE`,
-  `provider_message_id text`, `from_name text NULL`, `from_address citext`, `subject text`
+  `provider_message_id text`, `from_name text NULL`, `from_address text` (lowercased), `subject text`
   (empty allowed; UI shows "(no subject)"), `preview text` (at most 200 characters),
   `received_at timestamptz`, `unread boolean`, `link text NULL`, `seen_at timestamptz`.
 - UNIQUE `(account_id, provider_message_id)`; index `(user_id, received_at DESC)`.
