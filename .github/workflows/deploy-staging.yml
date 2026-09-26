@@ -6,6 +6,11 @@ name: deploy-staging
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'specs/**'
+      - '.specify/**'
+      - '*.md'
 
 concurrency:
   group: deploy-staging

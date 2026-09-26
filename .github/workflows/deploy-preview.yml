@@ -8,6 +8,11 @@ name: deploy-preview
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+    paths-ignore:
+      - 'docs/**'
+      - 'specs/**'
+      - '.specify/**'
+      - '*.md'
 
 concurrency:
   group: preview-${{ github.event.number }}
