@@ -104,7 +104,7 @@ describe('Panels Scheduler API (T008)', () => {
     });
   });
 
-  describe('POST /today/refresh', () => {
+  describe('POST /panels/today/refresh', () => {
     it('marks every unpaused account older than 2 minutes as due and returns 202 { queued: [ids] }', async () => {
       const user = await harness.asUser('refresh@example.com');
       const now = harness.clock.now();
@@ -119,7 +119,7 @@ describe('Panels Scheduler API (T008)', () => {
         (${accountId}, ${user.userId}, 'google', 'old@example.com', 'Old', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()}, ${oldTime.toISOString()})
       `);
 
-      const res = await user.post('/today/refresh');
+      const res = await user.post('/panels/today/refresh');
       expect(res.status).toBe(202);
       const body = await j(res);
       expect(body).toHaveProperty('queued');
@@ -134,14 +134,14 @@ describe('Panels Scheduler API (T008)', () => {
         new Date(Math.ceil(harness.clock.now().getTime() / 60_000) * 60_000 + 1_000),
       );
 
-      const res1 = await user.post('/today/refresh');
+      const res1 = await user.post('/panels/today/refresh');
       expect(res1.status).toBe(202);
 
       // Advance clock 30 seconds
       harness.clock.set(new Date(harness.clock.now().getTime() + 30_000));
 
       // Second call within the minute should be rate-limited
-      const res2 = await user.post('/today/refresh');
+      const res2 = await user.post('/panels/today/refresh');
       expect(res2.status).toBe(429);
       const body = await j(res2);
       expect(body.error.code).toBe('rate_limited');
@@ -151,13 +151,13 @@ describe('Panels Scheduler API (T008)', () => {
     it('allows a second call after a minute has passed', async () => {
       const user = await harness.asUser('ratelimit2@example.com');
 
-      const res1 = await user.post('/today/refresh');
+      const res1 = await user.post('/panels/today/refresh');
       expect(res1.status).toBe(202);
 
       // Advance clock 61 seconds (past the 1-minute rate limit)
       harness.clock.set(new Date(harness.clock.now().getTime() + 61_000));
 
-      const res2 = await user.post('/today/refresh');
+      const res2 = await user.post('/panels/today/refresh');
       expect(res2.status).toBe(202);
     });
   });
@@ -188,7 +188,7 @@ describe('Panels Scheduler API (T008)', () => {
       expect(jobsAfter.filter((j) => j.name === 'panels.refresh')).toHaveLength(1);
     });
 
-    it('shares the same rate limit as POST /today/refresh keyed on user', async () => {
+    it('shares the same rate limit as POST /panels/today/refresh keyed on user', async () => {
       const user = await harness.asUser('shared-limit@example.com');
       // Fixed one-minute windows: start just after a boundary so +30 s stays in the same window.
       harness.clock.set(
@@ -205,8 +205,8 @@ describe('Panels Scheduler API (T008)', () => {
         (${accountId}, ${user.userId}, 'google', 'shared@example.com', 'Shared', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()})
       `);
 
-      // Call POST /today/refresh
-      const res1 = await user.post('/today/refresh');
+      // Call POST /panels/today/refresh
+      const res1 = await user.post('/panels/today/refresh');
       expect(res1.status).toBe(202);
 
       // Advance clock 30 seconds (within the 1-minute limit)

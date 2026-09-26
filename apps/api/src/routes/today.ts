@@ -18,7 +18,7 @@ type TodayRouteDeps = {
 export function createTodayRoutes(deps: TodayRouteDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
 
-  // GET /today
+  // GET /panels/today
   app.get('/', async (c) => {
     const user = requireAuth(c);
     const now = deps.clock.now();
@@ -27,7 +27,7 @@ export function createTodayRoutes(deps: TodayRouteDeps) {
     return c.json(payload);
   });
 
-  // POST /today/refresh
+  // POST /panels/today/refresh
   app.post('/refresh', async (c) => {
     const user = requireAuth(c);
 

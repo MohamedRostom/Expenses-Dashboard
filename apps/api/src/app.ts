@@ -253,7 +253,7 @@ export function createApp(deps: AppDeps) {
       clock: deps.clock,
     }),
   );
-  app.route('/today', todayRouter);
+  app.route('/panels/today', todayRouter);
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
 

@@ -71,7 +71,7 @@ starting with `user_id` on every table. No table here references the expense tab
   five minutes per user. The activity tier (FR-008) and the 30-day idle purge (FR-012) read it
   rather than `sessions.last_seen_at`, because on Stage 2 sessions live in KV and have no SQL row.
 - `flags`: rows `panels.today` (the Today page, the Connections settings section and their API
-  routes; off means no navigation entry and 404 from `/today` and `/connections*`),
+  routes; off means no navigation entry and 404 from `/panels/today` and `/connections*`),
   `panels.google_calendar`, `panels.google_mail`, `panels.microsoft`, `panels.standards`, all
   default off in production, on in local and e2e-ci.
 - `audit_log`: entries for connect, reconnect, pause, disconnect, revoke failures, purge.
@@ -79,7 +79,7 @@ starting with `user_id` on every table. No table here references the expense tab
 
 ## Derived payload (not a table)
 
-`GET /today` builds, per user: days (today to today plus six) each with its events in start
+`GET /panels/today` builds, per user: days (today to today plus six) each with its events in start
 order, all-day first; messages newest first across accounts with per-account unread counts;
 per-account status, `lastRefreshAt`, `stale` (older than the tier interval) and `reconnectUrl`
 when needed. Shapes are in `contracts/api.md`.
@@ -91,4 +91,4 @@ when needed. Shapes are in `contracts/api.md`.
 - Deleting a user first runs revoke for every account (best effort, audited), then the existing
   user cascade removes all four tables.
 - Every query filters by `user_id`; the ownership matrix test covers every route in
-  `contracts/api.md` with two users, including `POST /today/refresh` and every `:id` route.
+  `contracts/api.md` with two users, including `POST /panels/today/refresh` and every `:id` route.

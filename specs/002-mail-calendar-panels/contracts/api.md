@@ -6,10 +6,12 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 
 ## Today page
 
+The page lives at `/today`, so its data sits under `/panels/today` (decided 2026-09-26). Web and API share one origin, and an API route at `/today` made a reload or deep link return JSON instead of the page.
+
 | Method | Path | Body / Query | Response | Notes |
 |--------|------|--------------|----------|-------|
-| GET | `/today` | | `{ days: [{ date, events: [{ id, accountId, title, startsAt, endsAt, allDay, location, tentative, link }] }], messages: [{ id, accountId, fromName, fromAddress, subject, preview, receivedAt, unread, link }], accounts: [{ id, provider, label, colour, capabilities, status, lastRefreshAt, lastError, stale, purged, unreadCount, reconnectUrl? }], generatedAt }` | Seven days from today in the user's time zone; messages newest first, at most fifty per account; empty arrays when nothing is connected |
-| POST | `/today/refresh` | | 202 `{ queued: [accountId] }` | Marks every unpaused account whose last refresh is older than two minutes as due now; rate limited to one call per user per minute (429 `rate_limited` with `{ retryAfterSeconds }` otherwise, so the client can say when the button works again, FR-008); an account whose refresh is already queued or running is not queued twice |
+| GET | `/panels/today` | | `{ days: [{ date, events: [{ id, accountId, title, startsAt, endsAt, allDay, location, tentative, link }] }], messages: [{ id, accountId, fromName, fromAddress, subject, preview, receivedAt, unread, link }], accounts: [{ id, provider, label, colour, capabilities, status, lastRefreshAt, lastError, stale, purged, unreadCount, reconnectUrl? }], generatedAt }` | Seven days from today in the user's time zone; messages newest first, at most fifty per account; empty arrays when nothing is connected |
+| POST | `/panels/today/refresh` | | 202 `{ queued: [accountId] }` | Marks every unpaused account whose last refresh is older than two minutes as due now; rate limited to one call per user per minute (429 `rate_limited` with `{ retryAfterSeconds }` otherwise, so the client can say when the button works again, FR-008); an account whose refresh is already queued or running is not queued twice |
 
 ## Connections
 
@@ -23,7 +25,7 @@ live in `packages/contracts/src/today.ts` and `packages/contracts/src/connection
 | PATCH | `/connections/:id` | `{ label?, colour?, paused?, calendars?: [{ id, enabled }] }` | 200 `{ account }` | Pausing sets `paused_at` and stops scheduling; enabling a calendar triggers a refresh |
 | GET | `/connections/:id/calendars` | | `{ calendars: [{ id, name, isPrimary, enabled }] }` | Re-lists from the provider and upserts `account_calendars` |
 | POST | `/connections/:id/reconnect` | | 200 `{ url }` for OAuth providers (the client navigates to it; a `fetch` cannot follow a cross-origin 302), or 200 `{ needsPassword: true }` for standards | Keeps the row and cache; replaces the credential on callback |
-| POST | `/connections/:id/refresh` | | 202 `{}` | Enqueues `panels.refresh` for that account immediately, bypassing the scheduler, including an account in `error` (with reconnect, the only way to clear it, FR-004); same rate limit as `/today/refresh` |
+| POST | `/connections/:id/refresh` | | 202 `{}` | Enqueues `panels.refresh` for that account immediately, bypassing the scheduler, including an account in `error` (with reconnect, the only way to clear it, FR-004); same rate limit as `/panels/today/refresh` |
 | DELETE | `/connections/:id` | | 204 | Revokes at the provider, then deletes the row and its cache; a revoke failure is audited and the delete still proceeds |
 
 ## Baseline routes extended

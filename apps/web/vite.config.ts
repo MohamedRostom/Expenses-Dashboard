@@ -23,6 +23,7 @@ const apiProxy = Object.fromEntries(
     '/jobs',
     '/me',
     '/notion',
+    '/panels',
     '/summary',
   ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
 );
@@ -60,6 +61,7 @@ export default defineConfig({
           /^\/jobs/,
           /^\/me/,
           /^\/notion/,
+          /^\/panels/,
           /^\/summary/,
         ],
         runtimeCaching: [

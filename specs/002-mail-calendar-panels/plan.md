@@ -93,10 +93,10 @@ apps/web/src/
 ├── views/TodayView.vue                 # calendar panel + inbox panel, per-panel states
 ├── views/ConnectionsView.vue           # settings section: list, connect, standards form, edit
 ├── components/today/CalendarPanel.vue, InboxPanel.vue, AccountChip.vue   # states via packages/ui PanelFrame (spec 004), else baseline components/PanelState.vue
-└── stores/today.ts                     # fetches /today, polls while visible, triggers refresh
+└── stores/today.ts                     # fetches /panels/today, polls while visible, triggers refresh
 
 apps/api/src/
-├── routes/today.ts                     # GET /today, POST /today/refresh
+├── routes/today.ts                     # GET /panels/today, POST /panels/today/refresh
 ├── routes/connections.ts               # OAuth start/callback per provider, standards create,
 │                                       #   PATCH/DELETE, calendars list, reconnect
 ├── services/connections.ts             # create/link/pause/disconnect, revoke at provider

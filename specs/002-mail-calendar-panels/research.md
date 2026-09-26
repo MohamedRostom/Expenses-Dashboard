@@ -80,11 +80,11 @@ provider programmes change.
   after twenty failures, which the scheduler then skips. Activity is read from
   `users.last_active_at` (written by the session middleware at most every five minutes), not
   from `sessions`, because Stage 2 keeps sessions in KV.
-  `POST /today/refresh` sets `next_refresh_at = now` for every unpaused account of the user
+  `POST /panels/today/refresh` sets `next_refresh_at = now` for every unpaused account of the user
   whose last refresh is older than two minutes and returns immediately;
   `POST /connections/:id/refresh` enqueues that account's refresh directly, so a manual refresh
   can clear `error` (FR-004); the Today page polls
-  `GET /today` every ten seconds for thirty seconds after triggering, then every sixty seconds
+  `GET /panels/today` every ten seconds for thirty seconds after triggering, then every sixty seconds
   while visible. Each refresh uses the provider cursor (Google `syncToken`/`historyId`, Graph
   `deltaLink`, IMAP `UIDVALIDITY`+`UIDNEXT`, CalDAV `sync-token`/`ctag`) and falls back to a
   full window fetch when the provider reports the cursor invalid. Cached rows not seen in a
@@ -158,10 +158,10 @@ provider programmes change.
 
 ## R9. Today page behaviour
 
-- **Decision**: `GET /today` returns both panels in one payload (events grouped by day, messages
+- **Decision**: `GET /panels/today` returns both panels in one payload (events grouped by day, messages
   newest first with per-account unread counts, per-account status, `lastRefreshAt` per account,
   a `stale` flag when older than the tier's interval). The page renders cached data immediately,
-  calls `POST /today/refresh` on open when any account's data is older than two minutes, and
+  calls `POST /panels/today/refresh` on open when any account's data is older than two minutes, and
   polls as in R4. Each panel has loading, empty, stale, reconnect-needed and error states from
   `PanelFrame` in `packages/ui` (spec 004), or the baseline
   `apps/web/src/components/PanelState.vue` if spec 004 has not landed when Slice A starts; account chips carry label and colour; filtering by

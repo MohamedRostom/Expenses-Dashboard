@@ -38,7 +38,7 @@ pnpm test:e2e -- --project=ci
 3. API test `apps/api/test/panels-refresh.test.ts`: refresh writes cached events, deletes
    unseen rows on a full fetch, honours cursors, sets `reconnect_needed` on a 401.
 4. Playwright `tests/e2e/tests/today.spec.ts` (ci): with the fake Google and Graph servers, an
-   event added via the fake appears after `POST /today/refresh` with the right account chip;
+   event added via the fake appears after `POST /panels/today/refresh` with the right account chip;
    deleting it removes it; a recurring event shows once per day.
 5. e2e-local `today-calendar.local.spec.ts` tagged `@local`: real Google and Microsoft test
    accounts, three trials per provider per night, five-minute propagation (SC-002).

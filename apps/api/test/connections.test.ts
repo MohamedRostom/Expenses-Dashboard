@@ -76,12 +76,12 @@ describe('Connections API — Slice A', () => {
     });
   });
 
-  describe('GET /today, GET /connections, GET /connections/providers, GET /connections/:provider/start — page flag', () => {
+  describe('GET /panels/today, GET /connections, GET /connections/providers, GET /connections/:provider/start — page flag', () => {
     it('all answer 404 when panels.today is off', async () => {
       const user = await harness.asUser('page-flag-off@test.com');
       await setGlobalFlag(harness.db, 'panels.today', false);
 
-      const todayRes = await user.get('/today');
+      const todayRes = await user.get('/panels/today');
       expect(todayRes.status).toBe(404);
 
       const connectionsRes = await user.get('/connections');
@@ -467,14 +467,14 @@ describe('Connections API — Slice A', () => {
     });
   });
 
-  describe('GET /today', () => {
+  describe('GET /panels/today', () => {
     beforeAll(async () => {
       await setGlobalFlag(harness.db, 'panels.today', true);
     });
 
     it('returns empty arrays with no accounts', async () => {
       const user = await harness.asUser('today-empty@test.com');
-      const res = await user.get('/today');
+      const res = await user.get('/panels/today');
 
       expect(res.status).toBe(200);
       const body = (await res.json()) as {
@@ -487,6 +487,13 @@ describe('Connections API — Slice A', () => {
       expect(body.messages).toEqual([]);
       expect(body.accounts).toEqual([]);
       expect(body.generatedAt).toBeTruthy();
+    });
+
+    // /today is the web page; node.ts serves the SPA for any path the API doesn't claim, so the
+    // API answering /today turned a deep link or reload into raw JSON.
+    it('leaves /today to the web page', async () => {
+      const user = await harness.asUser('today-page-path@test.com');
+      expect((await user.get('/today')).status).toBe(404);
     });
   });
 });

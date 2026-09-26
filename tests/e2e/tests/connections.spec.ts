@@ -37,8 +37,16 @@ test.describe('Connections and Today pages @ci', () => {
     // Verify we're on the today page
     await expect(page).toHaveURL('/today');
 
-    // Verify both panels show empty states with explanation text
-    await expect(page.locator('body')).toContainText(/no events|no messages|connect/i);
+    // Both panels' no-accounts copy, which only renders once GET /panels/today has loaded
+    // (not the error state a failed fetch would show)
+    const calendarEmpty = page.getByText('No calendar accounts connected.', { exact: false });
+    const inboxEmpty = page.getByText('No mail accounts connected.', { exact: false });
+    await expect(calendarEmpty).toBeVisible();
+    await expect(inboxEmpty).toBeVisible();
+
+    // A hard reload of /today must serve the page, not the API's JSON
+    await page.reload();
+    await expect(calendarEmpty).toBeVisible();
 
     // Verify axe accessibility
     await axeCheck(page);

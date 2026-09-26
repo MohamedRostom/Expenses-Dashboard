@@ -243,10 +243,10 @@ describe('ownership matrix', () => {
   });
 
   describe('panels (spec 002)', () => {
-    it("GET /today, GET /connections and POST /today/refresh never expose user B's accounts", async () => {
+    it("GET /panels/today, GET /connections and POST /panels/today/refresh never expose user B's accounts", async () => {
       const bAccount = await createConnectedAccount(userB);
 
-      const today = await userA.get('/today');
+      const today = await userA.get('/panels/today');
       expect(today.status).toBe(200);
       const todayJson = (await today.json()) as { accounts: { id: string }[] };
       expect(todayJson.accounts.map((a) => a.id)).not.toContain(bAccount);
@@ -256,7 +256,7 @@ describe('ownership matrix', () => {
       const listJson = (await list.json()) as { accounts: { id: string }[] };
       expect(listJson.accounts.map((a) => a.id)).not.toContain(bAccount);
 
-      const refresh = await userA.post('/today/refresh');
+      const refresh = await userA.post('/panels/today/refresh');
       expect(refresh.status).toBe(202);
       expect(((await refresh.json()) as { queued: string[] }).queued).not.toContain(bAccount);
     });
