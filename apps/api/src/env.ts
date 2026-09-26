@@ -13,6 +13,12 @@ const envObjectSchema = z.object({
   APP_ORIGIN: z.string().min(1),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_PANELS_CLIENT_ID: z.string().optional(),
+  GOOGLE_PANELS_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_API_BASE: z.string().default('https://www.googleapis.com'),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  GRAPH_API_BASE: z.string().default('https://graph.microsoft.com'),
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),
@@ -26,12 +32,27 @@ const envObjectSchema = z.object({
   SMTP_URL: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  // Mail and calendar connectors: caldav and imap test endpoints (optional).
+  CALDAV_TEST_URL: z.string().optional(),
+  IMAP_TEST_HOST: z.string().optional(),
 });
 
 export const envSchema = envObjectSchema
   .refine((env) => Boolean(env.GOOGLE_CLIENT_ID) === Boolean(env.GOOGLE_CLIENT_SECRET), {
     message: 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together or not at all',
     path: ['GOOGLE_CLIENT_ID'],
+  })
+  .refine(
+    (env) => Boolean(env.GOOGLE_PANELS_CLIENT_ID) === Boolean(env.GOOGLE_PANELS_CLIENT_SECRET),
+    {
+      message:
+        'GOOGLE_PANELS_CLIENT_ID and GOOGLE_PANELS_CLIENT_SECRET must be set together or not at all',
+      path: ['GOOGLE_PANELS_CLIENT_ID'],
+    },
+  )
+  .refine((env) => Boolean(env.MICROSOFT_CLIENT_ID) === Boolean(env.MICROSOFT_CLIENT_SECRET), {
+    message: 'MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET must be set together or not at all',
+    path: ['MICROSOFT_CLIENT_ID'],
   })
   .refine((env) => Boolean(env.NOTION_CLIENT_ID) === Boolean(env.NOTION_CLIENT_SECRET), {
     message: 'NOTION_CLIENT_ID and NOTION_CLIENT_SECRET must be set together or not at all',

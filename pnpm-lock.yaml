@@ -369,7 +369,11 @@ importers:
         specifier: ^4.23.15
         version: 4.23.15
 
-  packages/connectors: {}
+  packages/connectors:
+    dependencies:
+      ical.js:
+        specifier: ^2.2.1
+        version: 2.2.1
 
   packages/contracts:
     dependencies:
@@ -3837,6 +3841,9 @@ packages:
     resolution: {integrity: sha512-5gs5ytaNjBrh5Ow3zrvdUUY+0VxIuWVL4i9irt6friV+BqdCfmV11CQTWMiBYWHbXhco+J1kHfTOUkePhCDvMA==}
     engines: {node: '>=18'}
     hasBin: true
+
+  ical.js@2.2.1:
+    resolution: {integrity: sha512-yK/UlPbEs316igb/tjRgbFA8ZV75rCsBJp/hWOatpyaPNlgw0dGDmU+FoicOcwX4xXkeXOkYiOmCqNPFpNPkQg==}
 
   iconv-lite@0.4.24:
     resolution: {integrity: sha512-v3MXnZAcvnywkTUEZomIActle7RXXeedOR31wwl7VlyoXO4Qi9arvSenNQWne1TcRwhCL1HwLI21bEqdpj8/rA==}
@@ -9280,6 +9287,8 @@ snapshots:
       - supports-color
 
   husky@9.1.7: {}
+
+  ical.js@2.2.1: {}
 
   iconv-lite@0.4.24:
     dependencies:
