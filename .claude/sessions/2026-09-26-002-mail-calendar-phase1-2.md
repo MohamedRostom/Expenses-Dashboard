@@ -42,6 +42,7 @@ Phase 3 (US1) onward waits for the Stage 2 cut-over (spec 001 T119, owner-only).
 - **Account limit:** at ten accounts, `/start` allows only `account=<owned id>` (adding a capability). The callback refuses a new eleventh row.
 - **Manual refresh:** `POST /connections/:id/refresh` enqueues directly (bypassing the scheduler's error skip), so a manual refresh can clear `error`. It was moved into Phase 2 because T008 tests it.
 - **Ownership rows:** rows for routes from later phases (T035, T060, T070) are `it.todo`, so the Phase 2 API suite can go green.
+- **Today API path (2026-09-26):** `/panels/today` and `/panels/today/refresh`; `/today` is the page only. Web and API share one origin and API routes win, so an API `/today` broke reloads. New API prefixes must also go in `apps/web/vite.config.ts` (proxy list and SW denylist).
 - **Web flags:** a minimal flags store is added in wave 5; there was no client-side flags mechanism before.
 - **Rules added today:**
   - Quota wind-down: at 90 % of the 5-hour quota, start no new agents, finish the running ones, and write a handoff here. It's in the project CLAUDE.md, `~/.claude/CLAUDE.md` and memory.
@@ -71,5 +72,5 @@ Phase 3 (US1) onward waits for the Stage 2 cut-over (spec 001 T119, owner-only).
 
 ## Exact next step
 
-1. Add the e2e-ci flag step, then run the Phase 2 e2e checkpoint: `pnpm lint && pnpm typecheck && pnpm test:unit && pnpm test:api && pnpm worker:build`, then compose up and `pnpm test:e2e -- --project=ci --grep "Connections and Today"`.
+1. Done 2026-09-26 (b5a6f92..9613803): e2e-ci flag step, flags CLI Windows fix, proxy gaps, Today error state, /panels/today move. Local checkpoint green: lint (0 errors), typecheck, unit, API (237), worker:build, compose e2e "Connections and Today" 3/3 (via system Chrome; the Playwright CDN times out on this machine).
 4. Stop. Phase 3 needs the Stage 2 cut-over, and pushing or opening a PR needs Rostom's explicit instruction.
