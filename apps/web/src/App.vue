@@ -4,10 +4,12 @@ import { useRoute } from 'vue-router';
 import { Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import { useSessionStore } from './stores/session.js';
+import { useFlagsStore } from './stores/flags.js';
 import { applyTheme } from './views/theme.js';
 
 const route = useRoute();
 const session = useSessionStore();
+const flags = useFlagsStore();
 // Important-list fix: the saved theme used to apply only once SettingsView happened to mount —
 // every other screen showed the default light/dark-by-OS look regardless of the user's choice.
 watch(
@@ -19,12 +21,16 @@ watch(
 const showNav = computed(
   () => !!session.user && !!route.meta.requiresAuth && route.name !== 'onboarding',
 );
+
+// Show Today link only when the flag is on
+const showTodayLink = computed(() => flags.isOn('panels.today'));
 </script>
 
 <template>
   <nav v-if="showNav" class="desk-nav" aria-label="Main">
     <RouterLink :to="{ name: 'home' }">Month</RouterLink>
     <RouterLink :to="{ name: 'year' }">Year</RouterLink>
+    <RouterLink v-if="showTodayLink" :to="{ name: 'today' }">Today</RouterLink>
     <RouterLink :to="{ name: 'categories' }">Categories</RouterLink>
     <RouterLink :to="{ name: 'import' }">Import</RouterLink>
     <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>

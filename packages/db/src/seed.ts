@@ -34,13 +34,21 @@ const E2E_USER_ID = '00000000-0000-0000-0000-000000000001';
 const E2E_USER_EMAIL = 'e2e@desk.test';
 
 /** Idempotent: safe to run on every deploy/CI run. Upserts, never duplicates. */
-export async function seed(databaseUrl: string, opts: { load?: boolean } = {}) {
+export async function seed(databaseUrl: string, opts: { load?: boolean; flagsOn?: boolean } = {}) {
   const { db, close } = createDb(databaseUrl);
   try {
+    // For e2e-ci and local testing, enable panels.* flags; otherwise leave them off
+    // (production gates feature visibility on per-user flag evaluation after beta).
+    const enablePanelsFlags = opts.flagsOn ?? process.env['ENABLE_PANELS_FLAGS'] === 'true';
+
     for (const f of DEFAULT_FLAGS) {
       await db
         .insert(flags)
-        .values({ key: f.key, description: f.description, defaultOn: false })
+        .values({
+          key: f.key,
+          description: f.description,
+          defaultOn: enablePanelsFlags,
+        })
         .onConflictDoNothing();
     }
 
