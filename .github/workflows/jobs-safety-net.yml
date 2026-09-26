@@ -31,8 +31,12 @@ jobs:
           fi
       - if: steps.gate.outputs.skip != 'true'
         uses: superfly/flyctl-actions/setup-flyctl@1.6
+      # Deploys push `deployment-<id>` tags, never `:latest`, so resolve the current release's image.
       - if: steps.gate.outputs.skip != 'true'
-        run: >-
-          flyctl machine run registry.fly.io/ros-desk-staging:latest
-          --app ros-desk-staging --region lhr --rm
-          dist/tick.js
+        run: |
+          image=$(flyctl releases --app ros-desk-staging --image --json | jq -r '.[0].ImageRef // empty')
+          if [ -z "$image" ]; then
+            echo "::error::ros-desk-staging has no release image to run"
+            exit 1
+          fi
+          flyctl machine run "$image" --app ros-desk-staging --region lhr --rm dist/tick.js

@@ -175,7 +175,7 @@ Test pyramid, all in TypeScript:
 4. **Worker build**: `wrangler deploy --dry-run` on every PR so a Node-only dependency fails fast.
 5. **E2E-CI** (Playwright, headless Chromium, compose stack with mock connectors): sign-up, add expense in two currencies, budgets, import, Notion sync against the fake, PWA install check, axe accessibility, Lighthouse budgets, visual snapshots. Deterministic: clock frozen, rates seeded.
 6. **E2E-local** (Playwright on the self-hosted runner): real Notion test workspace, real Monzo sandbox payloads, Firefox/WebKit/Android Chrome via Playwright devices, the OAuth round-trips that need a real browser session. Runs on `workflow_dispatch` and nightly, never blocks a PR; failures open an issue automatically.
-7. **Smoke after deploy**: hit `/healthz`, log in as a seeded test user, add and delete one expense; roll back the release if it fails (Fly: `fly releases rollback`; Cloudflare: `wrangler rollback`).
+7. **Smoke after deploy**: hit `/healthz`, log in as a seeded test user, add and delete one expense; roll back the release if it fails (Fly: redeploy the previous image with `fly deploy --image`; Cloudflare: `wrangler rollback`).
 
 Self-hosted runner setup (one-time, ~10 minutes): GitHub → Settings → Actions → Runners → New self-hosted runner, install on the machine as a service, label it `desk-local`. Jobs in `e2e-local.yml` use `runs-on: [self-hosted, desk-local]`. Secrets for real accounts are stored as GitHub Environment secrets on an environment that requires the owner's approval, so a malicious PR cannot exfiltrate them. The runner is restricted to the repository and runs only on `main` and manual dispatch.
 
