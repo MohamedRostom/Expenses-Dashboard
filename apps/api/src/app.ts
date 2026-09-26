@@ -28,13 +28,16 @@ import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
 import { createFeedbackRoutes } from './routes/feedback.js';
 import { createConnectionsRoutes } from './routes/connections.js';
+import { createTodayRoutes } from './routes/today.js';
 import { createRatesService } from './services/rates.js';
 import { createExpensesService } from './services/expenses.js';
 import { createCaptureService } from './services/capture.js';
 import { createNotionService, type NotionConfig } from './services/notion.js';
 import { ConnectionsService } from './services/connections.js';
+import { PanelsService } from './services/panels.js';
 import { requireFlag } from './middleware/require-flag.js';
-import { registerJob } from './jobs/index.js';
+import { registerJob, panelsRefreshJob, panelsSchedulerJob } from './jobs/index.js';
+import { ensurePanelsScheduler } from './jobs/panels-scheduler.js';
 import { notionSyncJob } from './jobs/notion-sync.js';
 import type { RatesProvider } from '@desk/connectors/rates';
 
@@ -186,6 +189,39 @@ export function createApp(deps: AppDeps) {
     clock: deps.clock,
   });
 
+  // Panels service for Today and account refreshes
+  const panelsService = new PanelsService({
+    db: deps.db,
+    clock: deps.clock,
+    enqueue: deps.jobs
+      ? deps.jobs.enqueue.bind(deps.jobs)
+      : async () => {
+          throw new Error('jobs runner not configured');
+        },
+  });
+
+  // Register panels jobs
+  if (deps.jobs) {
+    registerJob(
+      'panels.refresh',
+      panelsRefreshJob({ db: deps.db, secretBox: deps.secretBox, clock: deps.clock }),
+    );
+    registerJob(
+      'panels.scheduler',
+      panelsSchedulerJob({
+        db: deps.db,
+        clock: deps.clock,
+        enqueue: deps.jobs.enqueue.bind(deps.jobs),
+      }),
+    );
+
+    // Start the recurring scheduler once; it re-enqueues itself every minute after that.
+    // ponytail: fire-and-forget at app creation; if it is ever lost, the next app start re-seeds it.
+    void ensurePanelsScheduler(deps.db, deps.jobs.enqueue.bind(deps.jobs), deps.clock.now()).catch(
+      (err) => console.error('panels.scheduler: could not enqueue', err),
+    );
+  }
+
   // Mount connections routes under /connections with the panels.today flag check
   const connectionsRouter = new Hono<{ Variables: AppVariables }>();
   connectionsRouter.use('/*', requireFlag(deps.db, 'panels.today'));
@@ -199,22 +235,24 @@ export function createApp(deps: AppDeps) {
       google: deps.googlePanels,
       microsoft: deps.microsoft,
       connections: connectionsService,
+      panels: panelsService,
+      limiter: deps.limiter,
       jobs: deps.jobs,
     }),
   );
   app.route('/connections', connectionsRouter);
 
-  // Today routes also need the flag (will be implemented in next slice)
+  // Today routes with the panels.today flag
   const todayRouter = new Hono<{ Variables: AppVariables }>();
   todayRouter.use('/*', requireFlag(deps.db, 'panels.today'));
-  todayRouter.get('/', (c) => {
-    return c.json({
-      days: [],
-      messages: [],
-      accounts: [],
-      generatedAt: new Date().toISOString(),
-    });
-  });
+  todayRouter.route(
+    '/',
+    createTodayRoutes({
+      panels: panelsService,
+      limiter: deps.limiter,
+      clock: deps.clock,
+    }),
+  );
   app.route('/today', todayRouter);
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));

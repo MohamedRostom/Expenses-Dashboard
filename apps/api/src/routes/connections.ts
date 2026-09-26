@@ -8,8 +8,10 @@ import type { AppVariables } from '../app.js';
 import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
 import type { SecretBox } from '../adapters/secret-box.js';
+import type { RateLimiter } from '../adapters/rate-limiter.js';
 import type { Clock } from '../app.js';
 import type { ConnectionsService } from '../services/connections.js';
+import type { PanelsService } from '../services/panels.js';
 import { providerRegistry } from '../services/provider-registry.js';
 
 const OAUTH_STATE_COOKIE = 'desk_connections_oauth_state';
@@ -34,6 +36,8 @@ type ConnectionsRouteDeps = {
   google: { clientId: string; clientSecret: string } | undefined;
   microsoft: { clientId: string; clientSecret: string } | undefined;
   connections: ConnectionsService;
+  panels: PanelsService;
+  limiter: RateLimiter;
   jobs:
     | {
         enqueue(
@@ -399,6 +403,48 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
     };
 
     return c.json(body);
+  });
+
+  // POST /connections/:id/refresh — manually refresh an account
+  app.post('/:id/refresh', async (c) => {
+    const user = requireAuth(c);
+    const accountId = c.req.param('id');
+
+    // Ownership first: a foreign or unknown id is a plain 404 and doesn't use up the limit.
+    try {
+      await deps.panels.assertOwned(user.id, accountId);
+    } catch (error) {
+      if ((error as Error).message === 'not_found') {
+        throw new ApiError('not_found', 'Account not found', 404);
+      }
+      throw error;
+    }
+
+    // Rate limit shared with POST /today/refresh
+    const rateLimitKey = `panels.refresh:${user.id}`;
+    const allowed = await deps.limiter.hit(rateLimitKey, 1, 60 * 1000);
+
+    if (!allowed) {
+      const retryAfterSeconds = 60;
+      return c.json(
+        {
+          error: { code: 'rate_limited', message: 'Rate limited: one refresh per minute' },
+          retryAfterSeconds,
+        },
+        429,
+      );
+    }
+
+    // Check ownership and enqueue refresh
+    try {
+      await deps.panels.refreshNow(user.id, accountId);
+      return c.json({}, 202);
+    } catch (error) {
+      if ((error as Error).message === 'not_found') {
+        throw new ApiError('not_found', 'Account not found', 404);
+      }
+      throw error;
+    }
   });
 
   return app;

@@ -11,6 +11,7 @@ import { createApp, type AppDeps, type Clock } from '../src/app.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
 import { PgRateLimiter } from '../src/adapters/rate-limiter.js';
+import { JobRunner } from '../src/jobs/runner.js';
 import { CapturingMailer } from '../src/adapters/mailer.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
@@ -82,6 +83,8 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
  * to exercise edge cases (anomalous/stale rate dates) the fixtures don't cover. */
 export async function startHarness(
   ratesProvider: RatesProvider = new FakeRates(),
+  /** withJobs wires a real JobRunner so enqueued jobs land in the jobs table (off by default). */
+  opts: { withJobs?: boolean } = {},
 ): Promise<Harness> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     'postgres:16-alpine',
@@ -117,12 +120,12 @@ export async function startHarness(
     db,
     hasher: passwordHasher,
     sessions,
-    limiter: new PgRateLimiter(queryDb),
+    limiter: new PgRateLimiter(queryDb, clock),
     mailer,
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
     breachChecker: new FakeBreachChecker(),
     rates: ratesProvider,
-    jobs: undefined,
+    jobs: opts.withJobs ? new JobRunner(queryDb) : undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
     appOrigin: 'https://app.test',

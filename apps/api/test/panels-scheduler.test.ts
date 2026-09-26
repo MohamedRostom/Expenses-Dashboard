@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { sql, eq } from 'drizzle-orm';
 import { setGlobalFlag, jobs as jobsTable } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
+import { jobs as jobRegistry } from '../src/jobs/index.js';
 
 /** Raw SQL so the read doesn't depend on the Drizzle schema having the column yet (T011). */
 async function lastActiveAt(harness: Harness, userId: string): Promise<Date | null> {
@@ -17,11 +18,18 @@ async function j(res: Response): Promise<any> {
   return res.json();
 }
 
+/** Runs the registered panels.scheduler handler once, as the job tick would. */
+async function runScheduler(): Promise<void> {
+  const handler = jobRegistry.get('panels.scheduler');
+  if (!handler) throw new Error('panels.scheduler is not registered');
+  await handler({}, { updateProgress: async () => {} });
+}
+
 describe('Panels Scheduler API (T008)', () => {
   let harness: Harness;
 
   beforeAll(async () => {
-    harness = await startHarness();
+    harness = await startHarness(undefined, { withJobs: true });
     // Enable panels.today flag for all routes to work
     await setGlobalFlag(harness.db, 'panels.today', true);
   }, 120_000);
@@ -41,15 +49,16 @@ describe('Panels Scheduler API (T008)', () => {
       // connected_accounts table doesn't exist yet, so this fails at runtime (expected red)
       await harness.db.execute(sql`
         INSERT INTO connected_accounts
-        (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at)
+        (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at, paused_at)
         VALUES
-        (${uuid}, ${user.userId}, 'google', 'alice@example.com', 'Alice', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'connected', ${now}),
-        (${crypto.randomUUID()}, ${user.userId}, 'google', 'bob@example.com', 'Bob', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'connected', ${future}),
-        (${crypto.randomUUID()}, ${user.userId}, 'google', 'charlie@example.com', 'Charlie', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'paused', ${now}),
-        (${crypto.randomUUID()}, ${user.userId}, 'google', 'diana@example.com', 'Diana', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'error', ${now})
+        (${uuid}, ${user.userId}, 'google', 'alice@example.com', 'Alice', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()}, NULL),
+        (${crypto.randomUUID()}, ${user.userId}, 'google', 'bob@example.com', 'Bob', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${future.toISOString()}, NULL),
+        (${crypto.randomUUID()}, ${user.userId}, 'google', 'charlie@example.com', 'Charlie', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()}, ${now.toISOString()}),
+        (${crypto.randomUUID()}, ${user.userId}, 'google', 'diana@example.com', 'Diana', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'error', ${now.toISOString()}, NULL)
       `);
 
-      // When scheduler runs, query jobs table for panels.refresh rows for this user
+      await runScheduler();
+
       const jobsBefore = await harness.db
         .select()
         .from(jobsTable)
@@ -71,15 +80,17 @@ describe('Panels Scheduler API (T008)', () => {
         INSERT INTO connected_accounts
         (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at)
         VALUES
-        (${accountId}, ${user.userId}, 'google', 'test@example.com', 'Test', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'connected', ${now})
+        (${accountId}, ${user.userId}, 'google', 'test@example.com', 'Test', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()})
       `);
 
-      // Query jobs twice (simulating scheduler running twice)
+      await runScheduler();
       const jobsFirst = await harness.db
         .select()
         .from(jobsTable)
         .where(eq(jobsTable.userId, user.userId));
       const countFirst = jobsFirst.filter((j) => j.name === 'panels.refresh').length;
+
+      await runScheduler();
 
       const jobsSecond = await harness.db
         .select()
@@ -105,7 +116,7 @@ describe('Panels Scheduler API (T008)', () => {
         INSERT INTO connected_accounts
         (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at, last_refresh_at)
         VALUES
-        (${accountId}, ${user.userId}, 'google', 'old@example.com', 'Old', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'connected', ${now}, ${oldTime})
+        (${accountId}, ${user.userId}, 'google', 'old@example.com', 'Old', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()}, ${oldTime.toISOString()})
       `);
 
       const res = await user.post('/today/refresh');
@@ -118,6 +129,10 @@ describe('Panels Scheduler API (T008)', () => {
 
     it('returns 429 rate_limited with retryAfterSeconds on second call within a minute', async () => {
       const user = await harness.asUser('ratelimit@example.com');
+      // Fixed one-minute windows: start just after a boundary so +30 s stays in the same window.
+      harness.clock.set(
+        new Date(Math.ceil(harness.clock.now().getTime() / 60_000) * 60_000 + 1_000),
+      );
 
       const res1 = await user.post('/today/refresh');
       expect(res1.status).toBe(202);
@@ -158,7 +173,7 @@ describe('Panels Scheduler API (T008)', () => {
         INSERT INTO connected_accounts
         (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at)
         VALUES
-        (${accountId}, ${user.userId}, 'google', 'error@example.com', 'Error', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'error', ${now})
+        (${accountId}, ${user.userId}, 'google', 'error@example.com', 'Error', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'error', ${now.toISOString()})
       `);
 
       // Call POST /connections/:id/refresh on the error account
@@ -175,6 +190,10 @@ describe('Panels Scheduler API (T008)', () => {
 
     it('shares the same rate limit as POST /today/refresh keyed on user', async () => {
       const user = await harness.asUser('shared-limit@example.com');
+      // Fixed one-minute windows: start just after a boundary so +30 s stays in the same window.
+      harness.clock.set(
+        new Date(Math.ceil(harness.clock.now().getTime() / 60_000) * 60_000 + 1_000),
+      );
       const accountId = crypto.randomUUID();
       const now = harness.clock.now();
 
@@ -183,7 +202,7 @@ describe('Panels Scheduler API (T008)', () => {
         INSERT INTO connected_accounts
         (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at)
         VALUES
-        (${accountId}, ${user.userId}, 'google', 'shared@example.com', 'Shared', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], E'\\x' || '00'::bytea || '00', 'connected', ${now})
+        (${accountId}, ${user.userId}, 'google', 'shared@example.com', 'Shared', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()})
       `);
 
       // Call POST /today/refresh
