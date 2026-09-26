@@ -96,6 +96,17 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 
 ## How to work with Rostom
 
+**Quota wind-down (decided 2026-09-26).** When the 5-hour usage quota reaches 90 %:
+1. Start no new subagents.
+2. Let the ones already running finish, then commit their work locally if it passes review.
+3. Write a session handoff file at `.claude/sessions/YYYY-MM-DD-<topic>.md` for the next session to start from. It covers:
+   - branch, last commit and what is committed versus uncommitted
+   - tasks done and tasks still open, with their IDs
+   - every decision made and why
+   - known bugs and failing tests
+   - open questions for Rostom
+   - the exact next step
+
 **Model routing (decided 2026-09-26).** The main session runs on Opus 5.5 and owns all thinking, planning and decisions. Any agent it spawns runs on Sonnet 5 by default (`CLAUDE_CODE_SUBAGENT_MODEL` in `.claude/settings.local.json`). Implementation runs on Haiku through the `implementer` agent, working from briefs produced and reviewed by the Sonnet `coordinator` agent (`.claude/agents/`). Subagents cannot spawn subagents, so the main session dispatches both: coordinator brief → implementer runs, in parallel where the briefs don't overlap → coordinator review → main-session decision. Design questions always come back to the main session.
 
 He reviews as a test engineer: show the test that proves a change before the change itself. Ask before adding a dependency that isn't Workers-compatible. When a decision is genuinely his (naming, providers, spending money), stop and ask rather than guess; everything else, decide and document.
