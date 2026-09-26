@@ -1,3 +1,5 @@
+import { sql } from 'drizzle-orm';
+import { setGlobalFlag } from '@desk/db';
 import { startHarness, type ApiClient, type Harness } from './harness.js';
 
 /**
@@ -124,6 +126,13 @@ const routes: Row[] = [
       return await createCategory(userB);
     },
   },
+  {
+    method: 'POST',
+    path: '/connections/:id/refresh',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
 ];
 
 const CSV_MAPPING = {
@@ -170,6 +179,33 @@ async function createExpense(userB: ApiClient): Promise<string> {
   return expense.id;
 }
 
+/** Set in beforeAll; panels fixtures insert rows directly because connecting an account needs a
+ * provider round-trip the ownership test has no reason to exercise. */
+let db: Harness['db'];
+
+async function createConnectedAccount(userB: ApiClient): Promise<string> {
+  const { userId } = userB as ApiClient & { userId: string };
+  const rows = await db.execute(sql`
+    INSERT INTO connected_accounts
+      (user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc,
+       status, next_refresh_at)
+    VALUES
+      (${userId}, 'google', ${`owner-b-${crypto.randomUUID()}@example.com`}, 'B', 'teal',
+       ARRAY['calendar'], ARRAY['calendar.readonly'], decode('00', 'hex'), 'connected', now())
+    RETURNING id`);
+  return (rows as unknown as { id: string }[])[0]!.id;
+}
+
+/** Contract routes whose handlers arrive in later phases of spec 002; listed so the matrix stays
+ * complete and each one turns into a real row in the task that adds the route. */
+const pendingPanelsRoutes = [
+  ['PATCH /connections/:id', 'T060'],
+  ['GET /connections/:id/calendars', 'T035'],
+  ['POST /connections/:id/reconnect', 'T060'],
+  ['DELETE /connections/:id', 'T060'],
+  ['POST /connections/standards', 'T070'],
+] as const;
+
 describe('ownership matrix', () => {
   let harness: Harness;
   let userA: ApiClient & { userId: string };
@@ -177,6 +213,9 @@ describe('ownership matrix', () => {
 
   beforeAll(async () => {
     harness = await startHarness();
+    db = harness.db;
+    await setGlobalFlag(db, 'panels.today', true);
+    await setGlobalFlag(db, 'panels.google_calendar', true);
     userA = await harness.asUser('ownership-a@example.com');
     userB = await harness.asUser('ownership-b@example.com');
   }, 120_000);
@@ -186,6 +225,7 @@ describe('ownership matrix', () => {
   });
 
   it.each(routes)("$method $path as user A against user B's resource is isolated", async (row) => {
+    // T009: Standard :id routes — user A cannot access user B's resources
     const foreignId = await row.createForeignId(userB);
     const path = row.path.replace(':id', foreignId);
     const res =
@@ -200,5 +240,50 @@ describe('ownership matrix', () => {
     expect(res.status).toBe(404);
     const json = (await res.json()) as { error?: { code?: string } };
     expect(json.error?.code).toBe('not_found');
+  });
+
+  describe('panels (spec 002)', () => {
+    it("GET /today, GET /connections and POST /today/refresh never expose user B's accounts", async () => {
+      const bAccount = await createConnectedAccount(userB);
+
+      const today = await userA.get('/today');
+      expect(today.status).toBe(200);
+      const todayJson = (await today.json()) as { accounts: { id: string }[] };
+      expect(todayJson.accounts.map((a) => a.id)).not.toContain(bAccount);
+
+      const list = await userA.get('/connections');
+      expect(list.status).toBe(200);
+      const listJson = (await list.json()) as { accounts: { id: string }[] };
+      expect(listJson.accounts.map((a) => a.id)).not.toContain(bAccount);
+
+      const refresh = await userA.post('/today/refresh');
+      expect(refresh.status).toBe(202);
+      expect(((await refresh.json()) as { queued: string[] }).queued).not.toContain(bAccount);
+    });
+
+    it('GET /connections/providers is the same for both users (no per-user data)', async () => {
+      const a = await userA.get('/connections/providers');
+      const b = await userB.get('/connections/providers');
+      expect(a.status).toBe(200);
+      expect(await a.json()).toEqual(await b.json());
+    });
+
+    it("an OAuth state minted for user B is rejected in user A's session", async () => {
+      const start = await userB.get('/connections/google/start?capabilities=calendar');
+      expect(start.status).toBe(302);
+      const state = new URL(start.headers.get('location')!).searchParams.get('state');
+      expect(state).toBeTruthy();
+
+      const before = await db.execute(sql`SELECT count(*)::int AS n FROM connected_accounts`);
+      const cb = await userA.get(`/connections/google/callback?code=x&state=${state}`);
+      expect(cb.status).toBe(302);
+      expect(cb.headers.get('location')).toContain('error=');
+      const after = await db.execute(sql`SELECT count(*)::int AS n FROM connected_accounts`);
+      expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+    });
+
+    for (const [route, task] of pendingPanelsRoutes) {
+      it.todo(`${route} as user A against user B's account is isolated (row lands with ${task})`);
+    }
   });
 });
