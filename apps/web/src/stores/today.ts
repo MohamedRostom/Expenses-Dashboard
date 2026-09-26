@@ -2,12 +2,13 @@ import { defineStore } from 'pinia';
 import type { TodayResponseT } from '@desk/contracts';
 import { getToday, postTodayRefresh } from '../api/today.js';
 import { ApiError } from '../api/client.js';
+import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
 
 export const useTodayStore = defineStore('today', {
   state: () => ({
     payload: null as TodayResponseT | null,
     loading: false,
-    error: null as string | null,
+    error: null as PanelErrorKind | null,
     retryAfterSeconds: null as number | null,
     filterAccountId: null as string | null,
     _pollHandle: null as ReturnType<typeof setTimeout> | null,
@@ -33,7 +34,7 @@ export const useTodayStore = defineStore('today', {
       try {
         this.payload = await getToday();
       } catch (err) {
-        this.error = err instanceof ApiError ? err.code : String(err);
+        this.error = toPanelErrorKind(err);
         throw err;
       } finally {
         this.loading = false;

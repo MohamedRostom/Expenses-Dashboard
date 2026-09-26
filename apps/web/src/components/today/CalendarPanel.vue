@@ -62,6 +62,7 @@ function formatTime(dateStr: string): string {
     <h2>Calendar</h2>
 
     <PanelState v-if="today.loading" kind="loading" />
+    <PanelState v-else-if="today.error" kind="error" :code="today.error" />
 
     <template v-else-if="!hasAccounts">
       <div class="empty-state">

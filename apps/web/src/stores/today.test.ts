@@ -86,7 +86,7 @@ describe('Today store', () => {
       const store = useTodayStore();
 
       await expect(store.load()).rejects.toThrow();
-      expect(store.error).toBe('internal');
+      expect(store.error).toBe('server_error');
     });
   });
 
