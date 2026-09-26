@@ -1,18 +1,30 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import type { Db } from '@desk/db';
-import { connectedAccounts, users } from '@desk/db';
-import type { TodayResponseT, TodayAccountT } from '@desk/contracts';
+import { accountCalendars, cachedEvents, connectedAccounts, users } from '@desk/db';
+import type { TodayResponseT, TodayAccountT, TodayEventT } from '@desk/contracts';
 import type { Clock } from '../app.js';
-import { tierFor } from '@desk/core';
+import { tierFor, expandToDays, type Occurrence } from '@desk/core';
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type PanelsServiceDeps = {
   db: Db;
   clock: Clock;
+  /** Used to build reconnectUrl: the Connections page, which starts the reconnect flow (a link cannot POST). */
+  appOrigin: string;
   enqueue: (
     name: string,
     payload: unknown,
     opts?: { userId?: string; runAfter?: Date },
   ) => Promise<string>;
+};
+
+type EventOccurrence = Occurrence & {
+  id: string;
+  accountId: string;
+  title: string;
+  location: string | null;
+  link: string | null;
 };
 
 export class PanelsService {
@@ -101,40 +113,84 @@ export class PanelsService {
     // Determine refresh tier
     const tier = tierFor(user.lastActiveAt, now);
 
-    // Build accounts array (no cache data yet; Phase 3/4 fills these in)
-    const accountsPayload: TodayAccountT[] = accounts.map((a) => ({
-      id: a.id,
-      provider: a.provider as 'google' | 'microsoft' | 'standards',
-      label: a.label,
-      colour: a.colour ?? 'teal',
-      capabilities: a.capabilities as ('mail' | 'calendar')[],
-      status: (a.pausedAt ? 'paused' : a.status) as TodayAccountT['status'],
-      lastRefreshAt: a.lastRefreshAt ? a.lastRefreshAt.toISOString() : null,
-      lastError: a.lastError,
-      // FR-014: stale = last successful refresh older than the tier's interval.
-      stale: a.lastRefreshAt
-        ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
-        : true,
-      purged: !!a.cachePurgedAt,
-      unreadCount: a.unreadTotal ?? 0,
-    }));
+    // Build accounts array (no message data yet; Phase 4 fills that in)
+    const accountsPayload: TodayAccountT[] = accounts.map((a) => {
+      const status = (a.pausedAt ? 'paused' : a.status) as TodayAccountT['status'];
+      return {
+        id: a.id,
+        provider: a.provider as 'google' | 'microsoft' | 'standards',
+        label: a.label,
+        colour: a.colour ?? 'teal',
+        capabilities: a.capabilities as ('mail' | 'calendar')[],
+        status,
+        lastRefreshAt: a.lastRefreshAt ? a.lastRefreshAt.toISOString() : null,
+        lastError: a.lastError,
+        // FR-014: stale = last successful refresh older than the tier's interval.
+        stale: a.lastRefreshAt
+          ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
+          : true,
+        purged: !!a.cachePurgedAt,
+        unreadCount: a.unreadTotal ?? 0,
+        ...(status === 'reconnect_needed' && {
+          reconnectUrl: `${this.deps.appOrigin}/settings/connections?reconnect=${a.id}`,
+        }),
+      };
+    });
 
-    // Empty days for now (Phase 3 fills with events)
-    // FR-006: seven display days, today to today plus six, in the user's time zone.
-    const localToday = new Intl.DateTimeFormat('en-CA', {
-      timeZone: user.timeZone,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-    }).format(now);
-    const [y, m, d] = localToday.split('-').map(Number) as [number, number, number];
+    // FR-006: seven display days, today to today plus six, in the user's time zone; events read
+    // from unpaused accounts' enabled calendars, overlapping yesterday..today+7 (same test the
+    // refresh job trims by, so a row that survives the trim is always readable here).
+    const from = new Date(now.getTime() - DAY_MS);
+    const to = new Date(now.getTime() + 8 * DAY_MS);
+    const eventRows =
+      accounts.length === 0
+        ? []
+        : await this.deps.db
+            .select({
+              id: cachedEvents.id,
+              accountId: cachedEvents.accountId,
+              title: cachedEvents.title,
+              startsAt: cachedEvents.startsAt,
+              endsAt: cachedEvents.endsAt,
+              allDay: cachedEvents.allDay,
+              location: cachedEvents.location,
+              tentative: cachedEvents.tentative,
+              link: cachedEvents.link,
+            })
+            .from(cachedEvents)
+            .innerJoin(accountCalendars, eq(cachedEvents.calendarId, accountCalendars.id))
+            .innerJoin(connectedAccounts, eq(cachedEvents.accountId, connectedAccounts.id))
+            .where(
+              and(
+                eq(connectedAccounts.userId, userId),
+                isNull(connectedAccounts.pausedAt),
+                eq(accountCalendars.enabled, true),
+                lt(cachedEvents.startsAt, to),
+                gt(cachedEvents.endsAt, from),
+              ),
+            );
+
+    const occurrences: EventOccurrence[] = eventRows.map((r) => ({
+      ...r,
+      declined: false,
+    }));
     // Contract: empty arrays when nothing is connected.
     const days =
       accounts.length === 0
         ? []
-        : Array.from({ length: 7 }, (_, i) => ({
-            date: new Date(Date.UTC(y, m - 1, d + i)).toISOString().slice(0, 10),
-            events: [],
+        : expandToDays(occurrences, user.timeZone, now).map((bucket) => ({
+            date: bucket.date,
+            events: bucket.events.map((e): TodayEventT => ({
+              id: e.id,
+              accountId: e.accountId,
+              title: e.title,
+              startsAt: e.startsAt.toISOString(),
+              endsAt: e.endsAt.toISOString(),
+              allDay: e.allDay,
+              location: e.location,
+              tentative: e.tentative,
+              link: e.link,
+            })),
           }));
 
     return {

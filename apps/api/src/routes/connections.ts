@@ -1,10 +1,16 @@
 import { Hono } from 'hono';
-import { sealCredential } from '../lib/credential.js';
+import { openCredential, sealCredential } from '../lib/credential.js';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '@desk/db';
-import { connectedAccounts, resolveAllFlags } from '@desk/db';
-import type { CapabilityT, ProvidersResponseT, ConnectionsResponseT } from '@desk/contracts';
+import { accountCalendars, connectedAccounts, resolveAllFlags } from '@desk/db';
+import type {
+  CalendarT,
+  CalendarsResponseT,
+  CapabilityT,
+  ProvidersResponseT,
+  ConnectionsResponseT,
+} from '@desk/contracts';
 import type { AppVariables } from '../app.js';
 import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
@@ -14,6 +20,7 @@ import type { Clock } from '../app.js';
 import type { ConnectionsService } from '../services/connections.js';
 import type { PanelsService } from '../services/panels.js';
 import { providerRegistry } from '../services/provider-registry.js';
+import { AuthError, type CalendarSource } from '@desk/connectors/panels';
 
 const OAUTH_STATE_COOKIE = 'desk_connections_oauth_state';
 const OAUTH_STATE_MAX_AGE_S = 600;
@@ -40,6 +47,7 @@ type ConnectionsRouteDeps = {
   microsoftOAuthEndpoints?: { authorize?: string; token?: string } | undefined;
   connections: ConnectionsService;
   panels: PanelsService;
+  calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>>;
   limiter: RateLimiter;
   jobs:
     | {
@@ -415,6 +423,84 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       limit: 10,
     };
 
+    return c.json(body);
+  });
+
+  // GET /connections/:id/calendars — re-list from the provider, upserting account_calendars
+  app.get('/:id/calendars', async (c) => {
+    const user = requireAuth(c);
+    const accountId = c.req.param('id');
+
+    const [account] = await deps.db
+      .select()
+      .from(connectedAccounts)
+      .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.userId, user.id)));
+    if (!account) throw new ApiError('not_found', 'Account not found', 404);
+
+    const source = deps.calendarSources[account.provider as 'google' | 'microsoft'];
+    if (!source) {
+      throw new ApiError('validation_failed', 'Provider not configured', 400);
+    }
+
+    let listed: Array<{ id: string; name: string; isPrimary: boolean; colour?: string }>;
+    try {
+      const credential = await openCredential(deps.secretBox, account.credentialEnc);
+      listed = await source.listCalendars(credential);
+    } catch (error) {
+      if (error instanceof AuthError) {
+        await deps.db
+          .update(connectedAccounts)
+          .set({ status: 'reconnect_needed', lastError: 'access_revoked' })
+          .where(eq(connectedAccounts.id, accountId));
+        // Not in contracts/api.md; a reconnect is the only way to clear this account (FR-004),
+        // so 'conflict' (the closest existing error code) rather than a bespoke one.
+        throw new ApiError('conflict', 'Account needs reconnecting', 409);
+      }
+      throw error;
+    }
+
+    const existingRows = await deps.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.accountId, accountId));
+    const existingByProviderId = new Map(existingRows.map((r) => [r.providerCalendarId, r]));
+
+    const calendars: CalendarT[] = [];
+    for (const cal of listed) {
+      const prior = existingByProviderId.get(cal.id);
+      const enabled = prior ? prior.enabled : cal.isPrimary;
+      const [row] = await deps.db
+        .insert(accountCalendars)
+        .values({
+          userId: account.userId,
+          accountId,
+          providerCalendarId: cal.id,
+          name: cal.name,
+          isPrimary: cal.isPrimary,
+          enabled,
+          colour: cal.colour ?? null,
+        })
+        .onConflictDoUpdate({
+          target: [accountCalendars.accountId, accountCalendars.providerCalendarId],
+          set: {
+            name: cal.name,
+            isPrimary: cal.isPrimary,
+            colour: cal.colour ?? null,
+            updatedAt: deps.clock.now(),
+          },
+        })
+        .returning();
+      if (row) {
+        calendars.push({
+          id: row.id,
+          name: row.name,
+          isPrimary: row.isPrimary,
+          enabled: row.enabled,
+        });
+      }
+    }
+
+    const body: CalendarsResponseT = { calendars };
     return c.json(body);
   });
 

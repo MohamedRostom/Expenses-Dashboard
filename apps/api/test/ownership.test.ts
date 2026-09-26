@@ -133,6 +133,13 @@ const routes: Row[] = [
       return await createConnectedAccount(userB);
     },
   },
+  {
+    method: 'GET',
+    path: '/connections/:id/calendars',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
 ];
 
 const CSV_MAPPING = {
@@ -200,7 +207,6 @@ async function createConnectedAccount(userB: ApiClient): Promise<string> {
  * complete and each one turns into a real row in the task that adds the route. */
 const pendingPanelsRoutes = [
   ['PATCH /connections/:id', 'T060'],
-  ['GET /connections/:id/calendars', 'T035'],
   ['POST /connections/:id/reconnect', 'T060'],
   ['DELETE /connections/:id', 'T060'],
   ['POST /connections/standards', 'T070'],

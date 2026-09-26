@@ -1,10 +1,10 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { sql } from 'drizzle-orm';
-import { setGlobalFlag } from '@desk/db';
+import { connectedAccounts, setGlobalFlag } from '@desk/db';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
-import { openCredential } from '../src/lib/credential.js';
+import { openCredential, sealCredential } from '../src/lib/credential.js';
 
 const b64url = (s: string) => Buffer.from(s).toString('base64url');
 /** Unsigned id_token carrying only the email claim — the route decodes it without verifying. */
@@ -520,5 +520,88 @@ describe('Connections API — Slice A', () => {
       const user = await harness.asUser('today-page-path@test.com');
       expect((await user.get('/today')).status).toBe(404);
     });
+  });
+});
+
+describe('GET /connections/:id/calendars (T035)', () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await startHarness(undefined, {
+      calendarSources: {
+        google: {
+          async listCalendars() {
+            return [
+              { id: 'cal-primary', name: 'Primary', isPrimary: true },
+              { id: 'cal-other', name: 'Other', isPrimary: false },
+            ];
+          },
+          async fetchWindow() {
+            return { events: [], full: true };
+          },
+          async verify() {},
+          async revoke() {},
+        },
+      },
+    });
+    await setGlobalFlag(harness.db, 'panels.today', true);
+    await setGlobalFlag(harness.db, 'panels.google_calendar', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  async function insertAccount(userId: string) {
+    const box = createSecretBox(TEST_SECRET_BOX_KEY);
+    const credentialEnc = await sealCredential(box, { refreshToken: 'rt' });
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId,
+        provider: 'google',
+        address: 'calendars-route@example.com',
+        label: 'Acct',
+        colour: 'teal',
+        capabilities: ['calendar'],
+        grantedScopes: ['calendar.readonly'],
+        credentialEnc,
+        status: 'connected',
+        nextRefreshAt: new Date(),
+      })
+      .returning();
+    if (!account) throw new Error('failed to insert account');
+    return account.id;
+  }
+
+  it('upserts calendars, preserving an existing enabled flag and adding a new calendar', async () => {
+    const user = await harness.asUser('calendars-route@test.com');
+    const accountId = await insertAccount(user.userId);
+
+    // Pre-seed cal-primary as disabled — the route must preserve that, not reset it to enabled.
+    await harness.db.execute(sql`
+      INSERT INTO account_calendars
+        (user_id, account_id, provider_calendar_id, name, is_primary, enabled)
+      VALUES (${user.userId}, ${accountId}, 'cal-primary', 'Primary (old name)', true, false)`);
+
+    const res = await user.get(`/connections/${accountId}/calendars`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      calendars: Array<{ id: string; name: string; isPrimary: boolean; enabled: boolean }>;
+    };
+
+    const primary = body.calendars.find((c) => c.name === 'Primary');
+    const other = body.calendars.find((c) => c.name === 'Other');
+    expect(body.calendars).toHaveLength(2);
+    expect(primary).toMatchObject({ isPrimary: true, enabled: false });
+    expect(other).toMatchObject({ isPrimary: false, enabled: false });
+
+    const rows = (await harness.db.execute(
+      sql`SELECT provider_calendar_id, enabled FROM account_calendars WHERE account_id = ${accountId} ORDER BY provider_calendar_id`,
+    )) as unknown as { provider_calendar_id: string; enabled: boolean }[];
+    expect(rows).toEqual([
+      { provider_calendar_id: 'cal-other', enabled: false },
+      { provider_calendar_id: 'cal-primary', enabled: false },
+    ]);
   });
 });

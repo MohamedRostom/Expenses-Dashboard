@@ -40,6 +40,9 @@ import { registerJob, panelsRefreshJob, panelsSchedulerJob } from './jobs/index.
 import { ensurePanelsScheduler } from './jobs/panels-scheduler.js';
 import { notionSyncJob } from './jobs/notion-sync.js';
 import type { RatesProvider } from '@desk/connectors/rates';
+import type { CalendarSource } from '@desk/connectors/panels';
+import { createGoogleCalendarSource } from '@desk/connectors/google/calendar';
+import { createMicrosoftCalendarSource } from '@desk/connectors/microsoft/calendar';
 
 export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
@@ -85,6 +88,13 @@ export type AppDeps = {
   googleOAuthEndpoints?: { authorize?: string; token?: string; revoke?: string };
   /** Optional OAuth endpoint overrides for Microsoft (for mocking in tests/compose). */
   microsoftOAuthEndpoints?: { authorize?: string; token?: string };
+  /** Google Calendar/Gmail API base (GOOGLE_API_BASE); defaults to the real API. */
+  googleApiBase?: string;
+  /** Microsoft Graph API base (GRAPH_API_BASE); defaults to the real API. */
+  graphApiBase?: string;
+  /** Calendar sources per provider for the panels.refresh job. Built from googlePanels/microsoft
+   * when omitted; pass explicit fakes in tests to script provider behaviour. */
+  calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -197,6 +207,7 @@ export function createApp(deps: AppDeps) {
   const panelsService = new PanelsService({
     db: deps.db,
     clock: deps.clock,
+    appOrigin: deps.appOrigin,
     enqueue: deps.jobs
       ? deps.jobs.enqueue.bind(deps.jobs)
       : async () => {
@@ -204,11 +215,39 @@ export function createApp(deps: AppDeps) {
         },
   });
 
+  // Real calendar sources built from AppDeps when the caller hasn't supplied fakes (tests do).
+  const calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>> =
+    deps.calendarSources ?? {
+      ...(deps.googlePanels && {
+        google: createGoogleCalendarSource({
+          clientId: deps.googlePanels.clientId,
+          clientSecret: deps.googlePanels.clientSecret,
+          apiBase: deps.googleApiBase ?? 'https://www.googleapis.com',
+          ...(deps.googleOAuthEndpoints && { oauthEndpoints: deps.googleOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+      ...(deps.microsoft && {
+        microsoft: createMicrosoftCalendarSource({
+          clientId: deps.microsoft.clientId,
+          clientSecret: deps.microsoft.clientSecret,
+          apiBase: deps.graphApiBase ?? 'https://graph.microsoft.com',
+          ...(deps.microsoftOAuthEndpoints && { oauthEndpoints: deps.microsoftOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+    };
+
   // Register panels jobs
   if (deps.jobs) {
     registerJob(
       'panels.refresh',
-      panelsRefreshJob({ db: deps.db, secretBox: deps.secretBox, clock: deps.clock }),
+      panelsRefreshJob({
+        db: deps.db,
+        secretBox: deps.secretBox,
+        clock: deps.clock,
+        calendarSources,
+      }),
     );
     registerJob(
       'panels.scheduler',
@@ -242,6 +281,7 @@ export function createApp(deps: AppDeps) {
       microsoftOAuthEndpoints: deps.microsoftOAuthEndpoints,
       connections: connectionsService,
       panels: panelsService,
+      calendarSources,
       limiter: deps.limiter,
       jobs: deps.jobs,
     }),

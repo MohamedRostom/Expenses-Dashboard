@@ -7,6 +7,7 @@ import { FakeRates } from '@desk/connectors/rates';
 import type { RatesProvider } from '@desk/connectors/rates';
 import { FakeNotion } from '@desk/connectors/notion';
 import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
+import type { CalendarSource } from '@desk/connectors/panels';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
@@ -84,7 +85,10 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
 export async function startHarness(
   ratesProvider: RatesProvider = new FakeRates(),
   /** withJobs wires a real JobRunner so enqueued jobs land in the jobs table (off by default). */
-  opts: { withJobs?: boolean } = {},
+  opts: {
+    withJobs?: boolean;
+    calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  } = {},
 ): Promise<Harness> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     'postgres:16-alpine',
@@ -149,6 +153,7 @@ export async function startHarness(
       clientId: 'test-microsoft-client-id',
       clientSecret: 'test-microsoft-client-secret',
     },
+    ...(opts.calendarSources && { calendarSources: opts.calendarSources }),
   } satisfies AppDeps);
 
   async function asUser(email: string) {

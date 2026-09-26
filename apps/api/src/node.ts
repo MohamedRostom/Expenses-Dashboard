@@ -129,6 +129,8 @@ const app = createApp({
       : undefined,
   googleOAuthEndpoints: googleOAuthEndpoints(env.GOOGLE_OAUTH_BASE),
   microsoftOAuthEndpoints: microsoftOAuthEndpoints(env.MICROSOFT_LOGIN_BASE),
+  googleApiBase: env.GOOGLE_API_BASE,
+  graphApiBase: env.GRAPH_API_BASE,
 });
 
 app.use('/*', serveStatic({ root: './public' }));
