@@ -39,6 +39,11 @@ Answers chosen by the agent at Rostom's request ("answer with reasonable answer 
 - Q: How long should a connect attempt stay valid, and can its return link be used more than once? → A: 10 minutes, single use.
 - Q: How is a user told their Notion access was lost? → A: In-app only — a "Reconnect needed" status on Connectors and a small indicator on the dashboard; no email.
 - Q: What should be recorded when connecting or syncing fails, for diagnosing bugs like this one? → A: A log entry per failed exchange, renewal or refused access, with user id, outcome code and Notion's error code — never a token or its fragment.
+- Q: Should a temporary sync failure (Notion slow or rate-limiting) have its own connection status, separate from "Reconnect needed"? → A: Yes — "sync error" is retried automatically on the next cycle; only "Reconnect needed" requires the user.
+- Q: What do per-pull-request preview environments show for Notion, given Notion can't send users back to an unregistered preview address? → A: The unavailable state (previews get no Notion credentials); automated tests use the mocked Notion instead.
+- Q: When a user approves but shares no pages, is the connection kept or discarded? → A: Kept — the user reconnects to add pages without losing the link.
+- Q: When a user deletes their dashboard account, is their Notion access revoked at Notion too? → A: Yes — same best-effort revoke as Disconnect, then local deletion regardless.
+- Q: How quickly must a revoked connection show "Reconnect needed"? → A: Within 10 minutes (one 5-minute sync cycle plus scheduling delay).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -113,7 +118,7 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 - The same connect-return link is replayed: the second use is rejected and nothing changes.
 - The user reconnects to a different workspace than before: the new workspace replaces the old connection, and the previously chosen database is cleared so they pick again.
 - Notion is down during the connect return: treated as a failed connection (Story 3, scenario 3), not as an expired one.
-- A preview environment (one per pull request) cannot receive Notion's return because its address isn't registered with Notion: previews use the mocked Notion; the real round trip is verified on staging only.
+- A preview environment (one per pull request) cannot receive Notion's return because its address isn't registered with Notion: previews get no Notion credentials and show the unavailable state (Story 1); automated tests use the mocked Notion, and the real round trip is verified on staging only.
 
 ## Requirements *(mandatory)*
 
@@ -126,16 +131,16 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 - **FR-001.5**: Users MUST be able to connect a Notion workspace through Notion's own consent screen, without the dashboard ever receiving their Notion password, and see the connected workspace's name on return.
 - **FR-001.6**: A connect attempt MUST be valid for 10 minutes and usable once; the connect flow MUST reject a return that doesn't match an unused attempt started by the same signed-in user within that window, and MUST store nothing in that case.
 - **FR-001.7**: Cancelled, expired and failed connect attempts MUST each return the user to Connectors with their own message and a way to try again.
-- **FR-001.8**: A connection with no shared pages MUST be explained to the user with an offer to reconnect and choose pages.
+- **FR-001.8**: A connection with no shared pages MUST be kept, and MUST be explained to the user with an offer to reconnect and choose pages.
 - **FR-001.9**: The system MUST keep Notion access renewed automatically; only when renewal is refused MUST it mark the connection "Reconnect needed", stop retrying sync for it, and tell the user in-app only (Connectors status and a dashboard indicator — no email).
-- **FR-001.10**: Users MUST be able to disconnect; disconnecting MUST ask Notion to revoke the dashboard's access (best effort) and MUST then remove the stored access locally whether or not Notion answered, after which the dashboard holds no usable Notion access for them.
+- **FR-001.10**: Users MUST be able to disconnect; disconnecting MUST ask Notion to revoke the dashboard's access (best effort) and MUST then remove the stored access locally whether or not Notion answered, after which the dashboard holds no usable Notion access for them. Deleting the dashboard account MUST do the same revoke-then-remove before the account's data is wiped.
 - **FR-001.11**: Each scenario above MUST be covered by an automated test, and the unavailable-server case MUST have a test that fails against today's behaviour before the fix is written.
 - **FR-001.12**: Every failed code exchange, failed renewal and refused access MUST be logged with the user's id, an outcome code and Notion's error code; logs MUST NOT contain any access or renewal credential, whole or partial.
 
 ### Key Entities
 
 - **Bug entry**: one row in the Bug Register — ID, title, when and where found, severity, status (Open, In progress, Fixed in <version>) — plus its diagnosis, stories, requirements and criteria in this spec.
-- **Notion connection**: a user's link to one Notion workspace — workspace name, chosen expenses database, sync direction, status (connected, reconnect needed, disconnected), last sync time and last error, plus its access and renewal credentials, both stored encrypted. At most one per user.
+- **Notion connection**: a user's link to one Notion workspace — workspace name, chosen expenses database, sync direction, status (connected; sync error — retried automatically on the next cycle; reconnect needed — only the user can clear it; disconnected), last sync time and last error, plus its access and renewal credentials, both stored encrypted. At most one per user.
 - **Connect attempt**: a single-use record, valid for 10 minutes, tying an outgoing trip to Notion to the signed-in user who started it.
 
 ## Success Criteria *(mandatory)*
@@ -145,7 +150,7 @@ A user who removes the dashboard's access from inside Notion sees, on their next
 - **SC-001.1**: On an environment without Notion set up, 0 of 10 visits to Connectors show an error toast; all 10 show the unavailable state.
 - **SC-001.2**: On staging, a user with a Notion account goes from clicking Connect to seeing their workspace name in under 1 minute, excluding time spent choosing pages on Notion's screen.
 - **SC-001.3**: Every way a connect attempt can end (success, cancel, expired, failed, no pages shared) lands the user on Connectors with a message specific to that outcome — 5 of 5 outcomes, none showing raw error output.
-- **SC-001.4**: After access is revoked in Notion, the connection shows "Reconnect needed" within one sync cycle, and no further sync attempts are made for it.
+- **SC-001.4**: After access is revoked in Notion, the connection shows "Reconnect needed" within 10 minutes (one 5-minute sync cycle plus scheduling delay), and no further sync attempts are made for it.
 - **SC-001.5**: No request made by the web app returns a web page where data was expected, verified across all routes by an automated check.
 
 ## Assumptions

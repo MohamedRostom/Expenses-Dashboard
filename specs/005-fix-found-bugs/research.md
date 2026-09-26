@@ -64,6 +64,8 @@ Phase 0 decisions for BUG-001. Each later bug appends its own section. Code fact
 
 **Decision**: `DELETE /notion/connection` calls Notion's revoke-token endpoint (Basic auth, body `{ token }`) with a 5 s timeout, logs the outcome, and then clears the local tokens regardless.
 
+Account deletion (`DELETE /me`) calls the same revoke step before its cascading wipe (spec FR-001.10, second clarification session).
+
 **Rationale**: spec Clarification Q2; best effort so a Notion outage never traps a user in a connection they want gone.
 
 ## R9 — Status model
