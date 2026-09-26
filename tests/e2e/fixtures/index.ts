@@ -2,6 +2,13 @@ import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const MAILPIT_URL = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
+const MOCKS_URL = process.env['MOCKS_URL'] ?? 'http://localhost:4000';
+
+// T036: infra/mocks/src/google.ts and graph.ts each serve their provider's calendar API, OAuth
+// endpoints and these control routes under one mount — 'microsoft' maps to '/graph' because
+// that mock is Microsoft Graph, while the app's own provider id (used in /connections/:provider)
+// is 'microsoft'.
+const MOCK_MOUNTS = { google: 'google', microsoft: 'graph' } as const;
 
 type MailpitMessage = { ID: string; To: { Address: string }[] };
 type MailpitMessagesResponse = { messages: MailpitMessage[] };
@@ -61,6 +68,37 @@ async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<str
     await new Promise((r) => setTimeout(r, 500));
   }
   throw new Error(`signUpAndVerify: no verification email for ${email} within ${timeoutMs}ms`);
+}
+
+/**
+ * Control-route helpers for the Google and Graph mock servers (infra/mocks/src/google.ts,
+ * graph.ts), so a Playwright spec can add/delete provider events and simulate a revoked
+ * connection without going through the real Google/Microsoft APIs.
+ */
+export function mockProvider(provider: 'google' | 'microsoft') {
+  const base = `${MOCKS_URL}/${MOCK_MOUNTS[provider]}`;
+  return {
+    async addEvent(calendarId: string, event: Record<string, unknown>): Promise<void> {
+      await postControl(`${base}/__control/events`, { action: 'add', calendarId, event });
+    },
+    async deleteEvent(calendarId: string, eventId: string): Promise<void> {
+      await postControl(`${base}/__control/events`, { action: 'delete', calendarId, eventId });
+    },
+    async revoke(): Promise<void> {
+      await postControl(`${base}/__control/revoke`, {});
+    },
+  };
+}
+
+async function postControl(url: string, body: unknown): Promise<void> {
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    throw new Error(`mockProvider: POST ${url} failed: ${res.status} ${await res.text()}`);
+  }
 }
 
 /** Runs axe against the current page and throws with violation details if any serious/critical ones are found. */

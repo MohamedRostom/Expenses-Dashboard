@@ -27,9 +27,21 @@ services:
       SMTP_URL: smtp://mailpit:1025
       NOTION_API_BASE: http://mocks:4000/notion
       GOOGLE_API_BASE: http://mocks:4000/google
+      # T036: same mock mount for both — googleOAuthEndpoints()/microsoftOAuthEndpoints() in
+      # apps/api/src/lib/credential.ts append the real providers' distinct authorize/token/revoke
+      # paths onto whatever base they're given, and infra/mocks/src/google.ts and graph.ts serve
+      # those paths alongside the calendar API at their one mount, so one mock base covers both.
+      GOOGLE_OAUTH_BASE: http://mocks:4000/google
       GRAPH_API_BASE: http://mocks:4000/graph
+      MICROSOFT_LOGIN_BASE: http://mocks:4000/graph
       CALDAV_TEST_URL: http://mocks:4000/caldav
       IMAP_TEST_HOST: mocks
+      # Dev-only fixed OAuth client values so the api service can complete the connect flow
+      # against the mocks (T036) — never reuse these outside compose/e2e-ci.
+      GOOGLE_PANELS_CLIENT_ID: dev-google-panels-client-id
+      GOOGLE_PANELS_CLIENT_SECRET: dev-google-panels-client-secret
+      MICROSOFT_CLIENT_ID: dev-microsoft-client-id
+      MICROSOFT_CLIENT_SECRET: dev-microsoft-client-secret
       # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
       # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
       # rates against the live API instead of the fixed-date FakeRates fixtures.
