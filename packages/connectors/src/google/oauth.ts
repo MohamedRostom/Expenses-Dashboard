@@ -9,14 +9,17 @@ export function buildAuthorizeUrl({
   scopes,
   state,
   codeChallenge,
+  endpoints,
 }: {
   clientId: string;
   redirectUri: string;
   scopes: string[];
   state: string;
   codeChallenge: string;
+  endpoints?: { authorize?: string };
 }): string {
-  const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+  const authorizeBase = endpoints?.authorize ?? 'https://accounts.google.com/o/oauth2/v2/auth';
+  const url = new URL(authorizeBase);
   url.searchParams.set('client_id', clientId);
   url.searchParams.set('redirect_uri', redirectUri);
   url.searchParams.set('response_type', 'code');
@@ -47,6 +50,7 @@ export async function exchangeCode(
     redirectUri: string;
   },
   fetchImpl: typeof fetch,
+  endpoints?: { token?: string },
 ): Promise<{
   refreshToken: string;
   accessToken: string;
@@ -62,7 +66,8 @@ export async function exchangeCode(
     redirect_uri: redirectUri,
   });
 
-  const response = await fetchImpl('https://oauth2.googleapis.com/token', {
+  const tokenUrl = endpoints?.token ?? 'https://oauth2.googleapis.com/token';
+  const response = await fetchImpl(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -134,6 +139,7 @@ export async function refreshAccessToken(
     clientSecret: string;
   },
   fetchImpl: typeof fetch,
+  endpoints?: { token?: string },
 ): Promise<{
   accessToken: string;
   rotatedRefreshToken?: string;
@@ -145,7 +151,8 @@ export async function refreshAccessToken(
     client_secret: clientSecret,
   });
 
-  const response = await fetchImpl('https://oauth2.googleapis.com/token', {
+  const tokenUrl = endpoints?.token ?? 'https://oauth2.googleapis.com/token';
+  const response = await fetchImpl(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -174,10 +181,15 @@ export async function refreshAccessToken(
 /**
  * Revoke a token at Google's revocation endpoint.
  */
-export async function revoke(token: string, fetchImpl: typeof fetch): Promise<void> {
+export async function revoke(
+  token: string,
+  fetchImpl: typeof fetch,
+  endpoints?: { revoke?: string },
+): Promise<void> {
   const body = new URLSearchParams({ token });
 
-  const response = await fetchImpl('https://oauth2.googleapis.com/revoke', {
+  const revokeUrl = endpoints?.revoke ?? 'https://oauth2.googleapis.com/revoke';
+  const response = await fetchImpl(revokeUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),

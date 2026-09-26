@@ -9,14 +9,18 @@ export function buildAuthorizeUrl({
   scopes,
   state,
   codeChallenge,
+  endpoints,
 }: {
   clientId: string;
   redirectUri: string;
   scopes: string[];
   state: string;
   codeChallenge: string;
+  endpoints?: { authorize?: string };
 }): string {
-  const url = new URL('https://login.microsoftonline.com/common/oauth2/v2.0/authorize');
+  const authorizeBase =
+    endpoints?.authorize ?? 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize';
+  const url = new URL(authorizeBase);
   // Ensure offline_access is included
   const allScopes = scopes.includes('offline_access') ? scopes : [...scopes, 'offline_access'];
   url.searchParams.set('client_id', clientId);
@@ -48,6 +52,7 @@ export async function exchangeCode(
     redirectUri: string;
   },
   fetchImpl: typeof fetch,
+  endpoints?: { token?: string },
 ): Promise<{
   refreshToken: string;
   accessToken: string;
@@ -64,7 +69,8 @@ export async function exchangeCode(
     redirect_uri: redirectUri,
   });
 
-  const response = await fetchImpl('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+  const tokenUrl = endpoints?.token ?? 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+  const response = await fetchImpl(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),
@@ -130,6 +136,7 @@ export async function refreshAccessToken(
     clientSecret: string;
   },
   fetchImpl: typeof fetch,
+  endpoints?: { token?: string },
 ): Promise<{
   accessToken: string;
   rotatedRefreshToken: string;
@@ -142,7 +149,8 @@ export async function refreshAccessToken(
     scope: 'offline_access',
   });
 
-  const response = await fetchImpl('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+  const tokenUrl = endpoints?.token ?? 'https://login.microsoftonline.com/common/oauth2/v2.0/token';
+  const response = await fetchImpl(tokenUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: body.toString(),

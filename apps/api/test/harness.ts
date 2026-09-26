@@ -20,7 +20,7 @@ import { SESSION_COOKIE } from '../src/middleware/session.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_HEADER = 'x-csrf-token';
-const TEST_SECRET_BOX_KEY = Buffer.alloc(32, 7).toString('base64');
+export const TEST_SECRET_BOX_KEY = Buffer.alloc(32, 7).toString('base64');
 
 /** SHA-256 of the raw token, hex — must match middleware/session.ts's hashToken exactly. */
 async function hashToken(token: string): Promise<string> {

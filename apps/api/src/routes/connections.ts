@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { sealCredential } from '../lib/credential.js';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '@desk/db';
@@ -35,6 +36,8 @@ type ConnectionsRouteDeps = {
   appOrigin: string;
   google: { clientId: string; clientSecret: string } | undefined;
   microsoft: { clientId: string; clientSecret: string } | undefined;
+  googleOAuthEndpoints?: { authorize?: string; token?: string; revoke?: string } | undefined;
+  microsoftOAuthEndpoints?: { authorize?: string; token?: string } | undefined;
   connections: ConnectionsService;
   panels: PanelsService;
   limiter: RateLimiter;
@@ -163,12 +166,15 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
 
     // Build authorize URL
     const registry = providerRegistry[provider as keyof typeof providerRegistry];
+    const endpoints =
+      provider === 'google' ? deps.googleOAuthEndpoints : deps.microsoftOAuthEndpoints;
     const authorizeUrl = registry.oauth.buildAuthorizeUrl({
       clientId: providerConfig.clientId,
       redirectUri: `${deps.appOrigin}/connections/${provider}/callback`,
       scopes,
       state,
       codeChallenge: challenge,
+      ...(endpoints && { endpoints }),
     });
 
     return c.redirect(authorizeUrl, 302);
@@ -244,6 +250,8 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       email?: string;
       grantedScopes: string[];
     };
+    const endpoints =
+      provider === 'google' ? deps.googleOAuthEndpoints : deps.microsoftOAuthEndpoints;
     try {
       const exchangeResult = await registry.oauth.exchangeCode(
         {
@@ -254,9 +262,15 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
           redirectUri: `${deps.appOrigin}/connections/${provider}/callback`,
         },
         globalThis.fetch,
+        endpoints,
       );
       tokenData = exchangeResult as typeof tokenData;
     } catch {
+      return c.redirect('/settings/connections?error=provider_unreachable', 302);
+    }
+
+    // Check refresh token is present before proceeding with DB write
+    if (!tokenData.refreshToken) {
       return c.redirect('/settings/connections?error=provider_unreachable', 302);
     }
 
@@ -304,11 +318,10 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       }
     }
 
-    // Seal credential (use refresh token, or fall back to access token for testing)
-    const credentialEncStr = await deps.connections.sealCredential(
-      tokenData.refreshToken || tokenData.accessToken || 'test-token',
-    );
-    const credentialEnc = new TextEncoder().encode(credentialEncStr);
+    // Seal credential
+    const credentialEncBytes = await sealCredential(deps.secretBox, {
+      refreshToken: tokenData.refreshToken,
+    });
 
     // Upsert account (merge or create)
     const existingRows = await deps.db
@@ -334,7 +347,7 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
         .set({
           capabilities: mergedCapabilities,
           grantedScopes: tokenData.grantedScopes,
-          credentialEnc,
+          credentialEnc: credentialEncBytes,
           status: 'connected',
           lastError: null,
           consecutiveFailures: 0,
@@ -356,7 +369,7 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
           colour,
           capabilities: grantedCapabilities,
           grantedScopes: tokenData.grantedScopes,
-          credentialEnc,
+          credentialEnc: credentialEncBytes,
           status: 'connected',
           nextRefreshAt: deps.connections.now(),
         })

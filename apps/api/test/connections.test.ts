@@ -2,7 +2,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
 import { sql } from 'drizzle-orm';
 import { setGlobalFlag } from '@desk/db';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
-import { startHarness, type Harness } from './harness.js';
+import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
+import { createSecretBox } from '../src/adapters/secret-box.js';
+import { openCredential } from '../src/lib/credential.js';
 
 const b64url = (s: string) => Buffer.from(s).toString('base64url');
 /** Unsigned id_token carrying only the email claim — the route decodes it without verifying. */
@@ -358,6 +360,20 @@ describe('Connections API — Slice A', () => {
       expect(await accountCount(user.userId)).toBe(0);
     });
 
+    it('a token response without refresh_token redirects with error=provider_unreachable and creates no row', async () => {
+      const user = await harness.asUser('oauth-callback-no-refresh@test.com');
+      const res = await runCallback(user, 'google', 'calendar', {
+        access_token: 'fake-access',
+        id_token: fakeIdToken('norefresh@example.com'),
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+      });
+
+      expect(res.status).toBe(302);
+      const location = res.headers.get('location');
+      expect(location).toBe('/settings/connections?error=provider_unreachable');
+      expect(await accountCount(user.userId)).toBe(0);
+    });
+
     it('success redirects to /settings/connections?connected=<id>', async () => {
       const user = await harness.asUser('oauth-callback-success@test.com');
       const res = await runCallback(user, 'google', 'calendar', {
@@ -379,12 +395,21 @@ describe('Connections API — Slice A', () => {
         access_token: 'fake-access-token-12345',
         scope: 'https://www.googleapis.com/auth/calendar.readonly',
         id_token: fakeIdToken('sealed@example.com'),
-        refresh_token: 'fake-refresh',
+        refresh_token: 'rt-google-1',
       });
 
       expect(res.status).toBe(302);
-      // After callback, the credential should be sealed in the DB
-      // (the implementation will verify this by checking it's not plaintext)
+      const location = res.headers.get('location');
+      const accountId = location?.match(/connected=([^&]+)/)?.[1];
+      expect(accountId).toBeTruthy();
+
+      const account = await harness.db.query.connectedAccounts.findFirst({
+        where: (table, { eq }) => eq(table.id, accountId!),
+      });
+      const box = createSecretBox(TEST_SECRET_BOX_KEY);
+      expect(await openCredential(box, account!.credentialEnc)).toEqual({
+        refreshToken: 'rt-google-1',
+      });
     });
 
     it('existing (provider, address) merges capabilities instead of creating a second row', async () => {

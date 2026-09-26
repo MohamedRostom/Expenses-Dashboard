@@ -35,6 +35,33 @@ describe('Microsoft OAuth', () => {
 
       expect(url).toContain('scope=Calendars.Read+Mail.Read+offline_access');
     });
+
+    it('uses custom authorize endpoint when provided', () => {
+      const url = buildAuthorizeUrl({
+        clientId: 'client-123',
+        redirectUri: 'http://localhost',
+        scopes: ['scope1'],
+        state: 'state',
+        codeChallenge: 'challenge',
+        endpoints: { authorize: 'http://x/auth' },
+      });
+
+      expect(new URL(url).origin + new URL(url).pathname).toBe('http://x/auth');
+    });
+
+    it('uses default Microsoft authorize endpoint when no override', () => {
+      const url = buildAuthorizeUrl({
+        clientId: 'client-123',
+        redirectUri: 'http://localhost',
+        scopes: ['scope1'],
+        state: 'state',
+        codeChallenge: 'challenge',
+      });
+
+      expect(new URL(url).origin + new URL(url).pathname).toBe(
+        'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
+      );
+    });
   });
 
   describe('exchangeCode', () => {
@@ -221,6 +248,63 @@ describe('Microsoft OAuth', () => {
         ),
       ).rejects.toThrow(ProviderError);
     });
+
+    it('uses custom token endpoint when provided', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'at',
+              refresh_token: 'rt',
+              scope: 'scope1',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await exchangeCode(
+        {
+          code: 'code',
+          codeVerifier: 'verifier',
+          clientId: 'client',
+          clientSecret: 'secret',
+          redirectUri: 'http://localhost',
+        },
+        fetchImpl,
+        { token: 'http://custom-token' },
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('http://custom-token');
+    });
+
+    it('uses default Microsoft token endpoint when no override', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'at',
+              refresh_token: 'rt',
+              scope: 'scope1',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await exchangeCode(
+        {
+          code: 'code',
+          codeVerifier: 'verifier',
+          clientId: 'client',
+          clientSecret: 'secret',
+          redirectUri: 'http://localhost',
+        },
+        fetchImpl,
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toContain('https://login.microsoftonline.com/common/oauth2/v2.0/token');
+    });
   });
 
   describe('refreshAccessToken', () => {
@@ -342,6 +426,57 @@ describe('Microsoft OAuth', () => {
           fetchImpl,
         ),
       ).rejects.toThrow(ProviderError);
+    });
+
+    it('uses custom token endpoint when provided', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'new-at',
+              refresh_token: 'new-rt',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await refreshAccessToken(
+        {
+          refreshToken: 'refresh',
+          clientId: 'client',
+          clientSecret: 'secret',
+        },
+        fetchImpl,
+        { token: 'http://custom-token' },
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('http://custom-token');
+    });
+
+    it('uses default Microsoft token endpoint when no override', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'new-at',
+              refresh_token: 'new-rt',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await refreshAccessToken(
+        {
+          refreshToken: 'refresh',
+          clientId: 'client',
+          clientSecret: 'secret',
+        },
+        fetchImpl,
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toContain('https://login.microsoftonline.com/common/oauth2/v2.0/token');
     });
   });
 });

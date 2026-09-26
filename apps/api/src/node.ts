@@ -21,6 +21,7 @@ import { registerAllJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
 import { createRatesService } from './services/rates.js';
+import { googleOAuthEndpoints, microsoftOAuthEndpoints } from './lib/credential.js';
 
 // Stage 1 entry point (Fly.io container). Migrations run on start; the built web app is
 // served from ./public next to the bundle so one process serves both.
@@ -126,6 +127,8 @@ const app = createApp({
           clientSecret: env.MICROSOFT_CLIENT_SECRET,
         }
       : undefined,
+  googleOAuthEndpoints: googleOAuthEndpoints(env.GOOGLE_OAUTH_BASE),
+  microsoftOAuthEndpoints: microsoftOAuthEndpoints(env.MICROSOFT_LOGIN_BASE),
 });
 
 app.use('/*', serveStatic({ root: './public' }));

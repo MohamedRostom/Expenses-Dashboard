@@ -32,6 +32,33 @@ describe('Google OAuth', () => {
       // NO include_granted_scopes
       expect(url).not.toContain('include_granted_scopes');
     });
+
+    it('uses custom authorize endpoint when provided', () => {
+      const url = buildAuthorizeUrl({
+        clientId: 'client-123',
+        redirectUri: 'https://app.local/oauth/google',
+        scopes: ['scope1'],
+        state: 'state-xyz',
+        codeChallenge: 'challenge-abc',
+        endpoints: { authorize: 'http://x/auth' },
+      });
+
+      expect(new URL(url).origin + new URL(url).pathname).toBe('http://x/auth');
+    });
+
+    it('uses default Google authorize endpoint when no override', () => {
+      const url = buildAuthorizeUrl({
+        clientId: 'client-123',
+        redirectUri: 'https://app.local/oauth/google',
+        scopes: ['scope1'],
+        state: 'state-xyz',
+        codeChallenge: 'challenge-abc',
+      });
+
+      expect(new URL(url).origin + new URL(url).pathname).toBe(
+        'https://accounts.google.com/o/oauth2/v2/auth',
+      );
+    });
   });
 
   describe('exchangeCode', () => {
@@ -195,6 +222,63 @@ describe('Google OAuth', () => {
         ),
       ).rejects.toThrow(ProviderError);
     });
+
+    it('uses custom token endpoint when provided', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'at',
+              refresh_token: 'rt',
+              scope: 'scope1',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await exchangeCode(
+        {
+          code: 'code',
+          codeVerifier: 'verifier',
+          clientId: 'client',
+          clientSecret: 'secret',
+          redirectUri: 'http://localhost',
+        },
+        fetchImpl,
+        { token: 'http://custom-token' },
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('http://custom-token');
+    });
+
+    it('uses default Google token endpoint when no override', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'at',
+              refresh_token: 'rt',
+              scope: 'scope1',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await exchangeCode(
+        {
+          code: 'code',
+          codeVerifier: 'verifier',
+          clientId: 'client',
+          clientSecret: 'secret',
+          redirectUri: 'http://localhost',
+        },
+        fetchImpl,
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('https://oauth2.googleapis.com/token');
+    });
   });
 
   describe('refreshAccessToken', () => {
@@ -289,6 +373,55 @@ describe('Google OAuth', () => {
         ),
       ).rejects.toThrow(ProviderError);
     });
+
+    it('uses custom token endpoint when provided', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'new-at',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await refreshAccessToken(
+        {
+          refreshToken: 'refresh',
+          clientId: 'client',
+          clientSecret: 'secret',
+        },
+        fetchImpl,
+        { token: 'http://custom-token' },
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('http://custom-token');
+    });
+
+    it('uses default Google token endpoint when no override', async () => {
+      const fetchImpl = vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              access_token: 'new-at',
+            }),
+            { status: 200 },
+          ),
+      );
+
+      await refreshAccessToken(
+        {
+          refreshToken: 'refresh',
+          clientId: 'client',
+          clientSecret: 'secret',
+        },
+        fetchImpl,
+      );
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('https://oauth2.googleapis.com/token');
+    });
   });
 
   describe('revoke', () => {
@@ -309,6 +442,24 @@ describe('Google OAuth', () => {
       );
 
       await expect(revoke('bad-token', fetchImpl)).rejects.toThrow(ProviderError);
+    });
+
+    it('uses custom revoke endpoint when provided', async () => {
+      const fetchImpl = vi.fn(async () => new Response('', { status: 200 }));
+
+      await revoke('token', fetchImpl, { revoke: 'http://custom-revoke' });
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toBe('http://custom-revoke');
+    });
+
+    it('uses default Google revoke endpoint when no override', async () => {
+      const fetchImpl = vi.fn(async () => new Response('', { status: 200 }));
+
+      await revoke('token', fetchImpl);
+
+      const call = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+      expect(call[0]).toContain('https://oauth2.googleapis.com/revoke');
     });
   });
 });

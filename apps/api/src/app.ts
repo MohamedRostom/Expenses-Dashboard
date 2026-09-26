@@ -81,6 +81,10 @@ export type AppDeps = {
   googlePanels: { clientId: string; clientSecret: string } | undefined;
   /** Microsoft OAuth for panels. */
   microsoft: { clientId: string; clientSecret: string } | undefined;
+  /** Optional OAuth endpoint overrides for Google (for mocking in tests/compose). */
+  googleOAuthEndpoints?: { authorize?: string; token?: string; revoke?: string };
+  /** Optional OAuth endpoint overrides for Microsoft (for mocking in tests/compose). */
+  microsoftOAuthEndpoints?: { authorize?: string; token?: string };
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -234,6 +238,8 @@ export function createApp(deps: AppDeps) {
       appOrigin: deps.appOrigin,
       google: deps.googlePanels,
       microsoft: deps.microsoft,
+      googleOAuthEndpoints: deps.googleOAuthEndpoints,
+      microsoftOAuthEndpoints: deps.microsoftOAuthEndpoints,
       connections: connectionsService,
       panels: panelsService,
       limiter: deps.limiter,

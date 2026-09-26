@@ -119,4 +119,24 @@ describe('parseEnv', () => {
     expect(env.GOOGLE_API_BASE).toBe('https://custom.google.com');
     expect(env.GRAPH_API_BASE).toBe('https://custom.graph.com');
   });
+
+  it('GOOGLE_OAUTH_BASE parses as optional URL', () => {
+    const env = parseEnv({ ...required, GOOGLE_OAUTH_BASE: 'http://mocks:4000/google' });
+    expect(env.GOOGLE_OAUTH_BASE).toBe('http://mocks:4000/google');
+  });
+
+  it('GOOGLE_OAUTH_BASE omitted defaults to undefined', () => {
+    const env = parseEnv(required);
+    expect(env.GOOGLE_OAUTH_BASE).toBeUndefined();
+  });
+
+  it('MICROSOFT_LOGIN_BASE parses as optional URL', () => {
+    const env = parseEnv({ ...required, MICROSOFT_LOGIN_BASE: 'http://mocks:4000/microsoft' });
+    expect(env.MICROSOFT_LOGIN_BASE).toBe('http://mocks:4000/microsoft');
+  });
+
+  it('MICROSOFT_LOGIN_BASE omitted defaults to undefined', () => {
+    const env = parseEnv(required);
+    expect(env.MICROSOFT_LOGIN_BASE).toBeUndefined();
+  });
 });
