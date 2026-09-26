@@ -4,93 +4,96 @@ Moves the live app from Fly (Stage 1) to Cloudflare Workers + Pages + Neon-via-H
 (Stage 2), per `docs/ROADMAP.md` Phase 6 and `.github/workflows/deploy-cf.yml` (T118). Executed
 by Rostom — this document is the procedure, not an authorization to run it.
 
+**Both stages use the same database.** ADR-0002 item 3 (decided 2026-09-20) put every environment
+on Neon from day one, and Stage 2 reaches the same Neon `production` branch through Hyperdrive. So
+this cut-over moves traffic, not data: there is no dump, no restore and no read-only window.
+While DNS propagates, requests reaching either stage read and write the one database, so no
+write can be lost or split between them. (An earlier draft of this runbook assumed Stage 1 might
+be on Fly Postgres and asked for a `MAINTENANCE_MODE` read-only switch and a `pg_dump` step; both
+were only needed for a data migration and are dropped.)
+
+**Sessions do not carry over.** Stage 1 keeps sessions in Postgres (`PgSessionStore`, `node.ts`)
+and Stage 2 keeps them in KV (`KvSessionStore`, `worker.ts`), so every user is signed out once
+when their DNS resolves to Stage 2 (and again on a rollback). Their data is untouched; they sign
+in again. Announce this in advance.
+
 ## 0. Preconditions
 
 - `deploy-cf.yml` has run green at least once against a tag (proves the Worker deploys, Pages
   deploys, and the full e2e-ci suite passes against the Cloudflare preview).
 - `infra/cloudflare/wrangler.toml`'s `[[hyperdrive]]` and `[[kv_namespaces]]` `id` placeholders
   are replaced with real resource ids (`wrangler hyperdrive create`, `wrangler kv namespace
-  create` — see the comments in that file).
-- Database: per ADR-0002 item 3, Neon is the assumed default for Stage 1 too. **If Stage 1 is
-  already on Neon, skip step 2 (pg_dump) entirely** — Hyperdrive points at the same database, no
-  data migration needed, only a DNS/traffic switch. Confirm which is true before starting; do
-  not assume.
+  create` — see the comments in that file). The Hyperdrive config's origin is the **same**
+  connection string as the `PRODUCTION_DATABASE_URL` repo secret — check this before starting;
+  pointing it anywhere else turns this into a data migration and this runbook no longer applies.
+- The Worker has the same `SECRET_BOX_KEY` as `ros-desk-production` (`wrangler secret put`). A
+  different value makes every stored connector token (Notion) undecryptable.
+- Background jobs: both stages may run the job queue during the overlap. That is safe — the
+  runner claims jobs with `FOR UPDATE SKIP LOCKED` (`apps/api/src/jobs/runner.ts`), so no job runs
+  twice — but keep Stage 2's Cron Trigger disabled until step 3 to keep the logs readable.
+- Lower the TTL on the DNS records to 300s or less a day ahead, so the flip and any rollback
+  take minutes.
+- Tell users (in-app banner and the feedback-digest email list) that they will need to sign in
+  again once, on the cut-over date.
 
-## 1. Read-only window on Fly
+## 1. Totals baseline
 
-No maintenance-mode code path exists yet (checked: no `readonly`/`maintenance` concept anywhere
-in `apps/api/src`). Before a real cut-over, add one — the smallest version is a `MAINTENANCE_MODE`
-env var checked in a middleware ahead of the write routes, returning 503 with a `Retry-After`
-header. This is a small follow-up task, not something to improvise during the cutover itself;
-write and test it ahead of time, then flip the env var (`flyctl secrets set MAINTENANCE_MODE=true
---app ros-desk-production`) to open the window and unset it to close.
-
-Announce the window to users (in-app banner + the feedback-digest email list) before flipping it.
-
-## 2. Data migration (skip if Stage 1 is already Neon — see step 0)
+Save the per-user totals before the flip:
 
 ```
-pg_dump "$STAGE1_DATABASE_URL" --format=custom --file=cutover.dump
-pg_restore --dbname="$NEON_DATABASE_URL" --clean --if-exists cutover.dump
+psql "$PRODUCTION_DATABASE_URL" -f packages/db/src/verify-totals.sql > before.txt
 ```
 
-Run this only while the read-only window (step 1) is open, so no writes land on Stage 1 after
-the dump is taken.
+Then sign in through the Stage 2 preview as a known test user and confirm its month total
+matches that user's row in `before.txt`. A mismatch means Hyperdrive points at the wrong
+database — stop.
 
-## 3. Totals check (before and after)
-
-Run `packages/db/src/verify-totals.sql` against Stage 1 before the dump/DNS flip and again
-against Stage 2 (Neon via Hyperdrive) after. Every row (per user: `expense_count`,
-`total_minor`) must match exactly. Any mismatch stops the cutover — do not flip DNS.
-
-```
-psql "$STAGE1_DATABASE_URL" -f packages/db/src/verify-totals.sql > before.txt
-# ... after DNS flip ...
-psql "$NEON_DATABASE_URL" -f packages/db/src/verify-totals.sql > after.txt
-diff before.txt after.txt   # must be empty
-```
-
-## 4. DNS flip
+## 2. DNS flip
 
 - Registrar: **[Rostom to fill in]**. Point the app's custom domain (also a placeholder —
   ADR-0002 item 1, product name, is still open, so no domain is chosen yet) at the Cloudflare
   Pages project (`desk-web`) and the API worker's route.
 - Cloudflare gives free TLS on the custom domain automatically once DNS resolves through it —
   no manual cert step.
-- Close the read-only window (unset `MAINTENANCE_MODE`) once DNS has propagated and
-  `smoke-custom-domain` in `deploy-cf.yml` has passed against the real domain.
+- The cut-over is done when DNS has propagated and `smoke-custom-domain` in `deploy-cf.yml` has
+  passed against the real domain.
 
-## 5. Rollback (one-hour path)
+## 3. After the flip
+
+- Enable Stage 2's Cron Trigger and confirm a job pass completes.
+- Re-run the totals query into `after.txt`; `diff before.txt after.txt` may only show rows for
+  users who added, edited or deleted expenses since step 1 — never a missing user or a total that
+  moved without a matching change.
+- Watch the uptime check (`docs/runbooks/uptime.md`) for an hour.
+
+## 4. Rollback (one-hour path)
 
 Stage 1 (`ros-desk-production` on Fly) is left running, not deleted, for this exact reason:
 
-1. Flip DNS back to Fly's `ros-desk-production.fly.dev` (or its own custom-domain record, whichever
-   was live before step 4).
-2. Re-open the read-only window on the *Cloudflare* side is not needed — Stage 1 already has the
-   data as of the last write before the dump; any writes that landed on Stage 2 after the flip
-   are lost unless step 2 is re-run in reverse (Neon → Fly) before flipping back. For a same-day
-   rollback this is normally acceptable (the window is short); for anything later, re-run step 3
-   in reverse first.
-3. No code rollback needed — Stage 1's `node.ts` never stopped running.
+1. Flip DNS back to Fly's `ros-desk-production.fly.dev` (or its own custom-domain record,
+   whichever was live before step 2).
+2. Disable Stage 2's Cron Trigger.
 
-This whole path is designed to complete in under an hour: DNS TTL is the dominant cost, so set a
-short TTL (300s or less) on the relevant records before the cutover, not after.
+Nothing else: the database is shared, so every write made through Stage 2 is already visible to
+Stage 1, and no code rollback is needed because Stage 1's `node.ts` never stopped running. Users
+signed in on Stage 2 must sign in again (their old Stage 1 sessions still work if not expired).
+DNS TTL is the only real delay, which is why it is lowered in step 0.
 
-## 6. 30-day read-only fallback, then scale Stage 1 to zero
+## 5. 30-day fallback, then scale Stage 1 to zero
 
-Per the roadmap exit criteria: keep Stage 1 running (read-only, not serving live traffic) for 30
-days after a successful cut-over, as the rollback target above. After 30 days with no incident:
+Per the roadmap exit criteria: keep Stage 1 deployed (not serving live traffic) for 30 days after
+a successful cut-over, as the rollback target above. After 30 days with no incident:
 
 ```
 fly scale count 0 --app ros-desk-production
 ```
 
 Stage 1 stays scaled to zero (not deleted) so `fly scale count 1` is still a fast un-rollback if
-something surfaces later; delete the app only well after that, per Rostom's own call.
+something surfaces later; delete the app only well after that, per Rostom's own call. Disable the
+Fly-side `jobs-safety-net.yml` schedule at the same time, since Stage 2's Cron Trigger replaces it.
 
 ## Execution note
 
-This runbook is written, not run, by this task. Tagging `v1.0.0` and actually executing the
-steps above are Rostom's own actions — no Cloudflare resources exist yet (Hyperdrive/KV ids are
-still placeholders in `infra/cloudflare/wrangler.toml`), and a real cutover needs the
-maintenance-mode code path from step 1 built and tested first.
+This runbook is written, not run. Tagging `v1.0.0` and executing the steps above are Rostom's
+own actions, after the beta (roadmap Phase 5) meets its exit criteria. No Cloudflare resources
+exist yet (Hyperdrive/KV ids are still placeholders in `infra/cloudflare/wrangler.toml`).

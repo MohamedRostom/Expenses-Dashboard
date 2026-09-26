@@ -3,7 +3,17 @@ name: codeql
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - 'specs/**'
+      - '.specify/**'
+      - '*.md'
   pull_request:
+    paths-ignore:
+      - 'docs/**'
+      - 'specs/**'
+      - '.specify/**'
+      - '*.md'
   schedule:
     - cron: '0 3 * * 1'
 
