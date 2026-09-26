@@ -49,7 +49,7 @@ Phase 3 (US1) onward waits for the Stage 2 cut-over (spec 001 T119, owner-only).
 
 ## Known issues and open items
 
-- **e2e-ci flags (not fixed):** `packages/db/src/seed.ts` can switch the five `panels.*` flags on (`ENABLE_PANELS_FLAGS=true` or `flagsOn`), but the seed isn't run by the CI e2e job or compose. The e2e-ci job needs a step such as `pnpm flags set panels.today --global on` for each flag. Until then, `tests/e2e/tests/connections.spec.ts` will fail in CI.
+- **e2e-ci flags (fixed in b5a6f92, unverified until CI runs):** `packages/db/src/seed.ts` can switch the five `panels.*` flags on (`ENABLE_PANELS_FLAGS=true` or `flagsOn`), but the seed isn't run by the CI e2e job or compose. The e2e-ci job needs a step such as `pnpm flags set panels.today --global on` for each flag. Until then, `tests/e2e/tests/connections.spec.ts` will fail in CI.
 - **e2e not run:** the Phase 2 compose e2e run (`pnpm test:e2e -- --project=ci --grep "Connections and Today"`) was not run locally this session.
 - **Rate limit:** the refresh limit uses the shared fixed-window `PgRateLimiter`. "One per minute" can allow two calls across a window boundary. It's documented in the tests, and a sliding limit is a later decision if it matters.
 - **Lint warnings:** 6 remain (4 in existing `packages/ui` files, 2 attribute-order warnings in the new Inbox and Connections views).
