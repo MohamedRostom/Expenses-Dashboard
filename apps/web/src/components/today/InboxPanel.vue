@@ -1,31 +1,50 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
+import type { TodayAccountT, TodayMessageT } from '@desk/contracts';
 import { useTodayStore } from '../../stores/today.js';
+import { formatDateTime } from '../../utils/format.js';
 import PanelState from '../PanelState.vue';
 import AccountChip from './AccountChip.vue';
 
 const today = useTodayStore();
 
-const visibleMessages = computed(() => {
-  if (!today.payload) return [];
-  if (!today.filterAccountId) return today.payload.messages;
-  return today.payload.messages.filter((m) => m.accountId === today.filterAccountId);
-});
+const locale = typeof navigator !== 'undefined' ? navigator.language : undefined;
 
-const hasAccounts = computed(
-  () => today.payload?.accounts.some((a) => a.capabilities.includes('mail')) ?? false,
+const mailAccounts = computed(
+  () => today.payload?.accounts.filter((a) => a.capabilities.includes('mail')) ?? [],
 );
 
-const isEmpty = computed(
-  () => hasAccounts.value && (!today.payload?.messages || today.payload.messages.length === 0),
+const staleAccounts = computed(() => mailAccounts.value.filter((a) => a.stale));
+const reconnectAccounts = computed(() =>
+  mailAccounts.value.filter((a) => a.status === 'reconnect_needed' && a.reconnectUrl),
 );
 
-const unreadTotal = computed(() => {
-  if (!today.payload?.messages) return 0;
-  return today.payload.messages.filter((m) => m.unread).length;
+const hasAccounts = computed(() => mailAccounts.value.length > 0);
+
+// FR-009: unread total across every connected mail account, including a reconnect_needed
+// account's last-known count — it stays in the total but is called out as possibly stale.
+const totalUnread = computed(() => mailAccounts.value.reduce((sum, a) => sum + a.unreadCount, 0));
+const hasOutOfDateUnread = computed(() =>
+  mailAccounts.value.some((a) => a.status === 'reconnect_needed'),
+);
+
+const visibleMessages = computed<TodayMessageT[]>(() => today.visibleMessages);
+
+const isEmpty = computed(() => hasAccounts.value && visibleMessages.value.length === 0);
+
+const accountsMap = computed(() => {
+  const map = new Map<string, TodayAccountT>();
+  today.payload?.accounts.forEach((a) => map.set(a.id, a));
+  return map;
 });
 
+function senderLabel(message: TodayMessageT): string {
+  return message.fromName || message.fromAddress;
+}
+
+// FR-023: time for today, "Yesterday", then the date — the full timestamp stays available via
+// title and the accessible name (see fullTimestamp below).
 function formatReceivedTime(dateStr: string): string {
   const date = new Date(dateStr);
   const tdy = new Date();
@@ -33,16 +52,38 @@ function formatReceivedTime(dateStr: string): string {
   yesterday.setDate(yesterday.getDate() - 1);
 
   if (date.toDateString() === tdy.toDateString()) {
-    return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    return new Intl.DateTimeFormat(locale, { hour: 'numeric', minute: '2-digit' }).format(date);
   }
   if (date.toDateString() === yesterday.toDateString()) {
     return 'Yesterday';
   }
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'short' }).format(date);
+}
+
+function fullTimestamp(dateStr: string): string {
+  return formatDateTime(dateStr, locale);
+}
+
+// FR-024: every message link's accessible name includes its subject, sender, full timestamp and
+// says it opens in a new tab.
+function messageLinkLabel(message: TodayMessageT): string {
+  const subject = message.subject || '(no subject)';
+  const unreadPrefix = message.unread ? 'Unread, ' : '';
+  return `${unreadPrefix}${subject}, from ${senderLabel(message)}, ${fullTimestamp(message.receivedAt)}, opens in a new tab`;
 }
 
 function truncatePreview(preview: string): string {
   return preview.length > 200 ? preview.slice(0, 200) + '...' : preview;
+}
+
+function lastRefreshedLabel(account: TodayAccountT): string {
+  return account.lastRefreshAt
+    ? `Last refreshed ${formatDateTime(account.lastRefreshAt, locale)}`
+    : 'Last refreshed: never';
+}
+
+function onRefresh() {
+  void today.refresh();
 }
 </script>
 
@@ -62,30 +103,85 @@ function truncatePreview(preview: string): string {
       </div>
     </template>
 
-    <template v-else-if="isEmpty">
-      <p class="no-messages">No messages in your inbox</p>
-    </template>
-
     <template v-else>
       <div class="account-chips">
-        <AccountChip
-          v-for="account in today.payload?.accounts.filter((a) => a.capabilities.includes('mail'))"
-          :key="account.id"
-          :account="account"
-        />
+        <AccountChip v-for="account in mailAccounts" :key="account.id" :account="account" />
       </div>
-      <div v-if="unreadTotal > 0" class="unread-badge">{{ unreadTotal }} unread</div>
-      <div class="messages">
-        <div v-for="message in visibleMessages" :key="message.id" class="message">
-          <div class="message-header">
-            <div class="sender">
-              <strong>{{ message.fromName || message.fromAddress }}</strong>
-              <span v-if="!message.unread" class="read-indicator">(read)</span>
+
+      <div class="unread-summary">
+        <span v-if="totalUnread > 0" class="unread-total">{{ totalUnread }} unread</span>
+        <span v-if="totalUnread > 0 && hasOutOfDateUnread" class="unread-stale-note">
+          (possibly out of date)
+        </span>
+        <button
+          type="button"
+          class="refresh-button"
+          :disabled="today.retryAfterSeconds !== null"
+          @click="onRefresh"
+        >
+          {{
+            today.retryAfterSeconds !== null
+              ? `Try again in ${today.retryAfterSeconds}s`
+              : 'Refresh'
+          }}
+        </button>
+      </div>
+
+      <div v-if="staleAccounts.length > 0" class="stale-notices">
+        <p v-for="account in staleAccounts" :key="account.id" class="stale-notice">
+          {{ account.label }}: {{ lastRefreshedLabel(account) }}
+        </p>
+      </div>
+
+      <div v-if="reconnectAccounts.length > 0" class="reconnect-notices">
+        <p v-for="account in reconnectAccounts" :key="account.id" class="reconnect-notice">
+          {{ account.label }} needs reconnecting.
+          <a class="reconnect-link" :href="account.reconnectUrl">Reconnect {{ account.label }}</a>
+        </p>
+      </div>
+
+      <p v-if="isEmpty" class="no-messages">No messages in your inbox</p>
+
+      <div v-else class="messages">
+        <div
+          v-for="msg in visibleMessages"
+          :key="msg.id"
+          class="message"
+          :class="{ unread: msg.unread }"
+        >
+          <a
+            v-if="msg.link"
+            class="message-link"
+            :href="msg.link"
+            target="_blank"
+            rel="noopener"
+            :aria-label="messageLinkLabel(msg)"
+          >
+            <div class="message-header">
+              <span class="sender">{{ senderLabel(msg) }}</span>
+              <span v-if="msg.unread" class="unread-marker">Unread</span>
+              <time class="received-time" :title="fullTimestamp(msg.receivedAt)">
+                {{ formatReceivedTime(msg.receivedAt) }}
+              </time>
             </div>
-            <div class="received-time">{{ formatReceivedTime(message.receivedAt) }}</div>
+            <div class="message-subject">{{ msg.subject || '(no subject)' }}</div>
+            <div class="message-preview">{{ truncatePreview(msg.preview) }}</div>
+          </a>
+          <div v-else class="message-body">
+            <div class="message-header">
+              <span class="sender">{{ senderLabel(msg) }}</span>
+              <span v-if="msg.unread" class="unread-marker">Unread</span>
+              <time class="received-time" :title="fullTimestamp(msg.receivedAt)">
+                {{ formatReceivedTime(msg.receivedAt) }}
+              </time>
+            </div>
+            <div class="message-subject">{{ msg.subject || '(no subject)' }}</div>
+            <div class="message-preview">{{ truncatePreview(msg.preview) }}</div>
           </div>
-          <div class="message-subject">{{ message.subject || '(no subject)' }}</div>
-          <div class="message-preview">{{ truncatePreview(message.preview) }}</div>
+          <AccountChip
+            v-if="accountsMap.get(msg.accountId)"
+            :account="accountsMap.get(msg.accountId)!"
+          />
         </div>
       </div>
     </template>
@@ -134,11 +230,61 @@ h2 {
   flex-wrap: wrap;
 }
 
-.unread-badge {
+.unread-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   margin-bottom: 0.75rem;
   font-size: 0.875rem;
+}
+
+.unread-total {
   color: var(--color-accent);
   font-weight: 500;
+}
+
+.unread-stale-note {
+  color: var(--color-warn);
+  font-size: 0.8rem;
+}
+
+.refresh-button {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.8rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-secondary);
+  color: var(--color-fg);
+  cursor: pointer;
+}
+
+.refresh-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.stale-notices,
+.reconnect-notices {
+  margin-bottom: 1rem;
+}
+
+.stale-notice {
+  font-size: 0.8rem;
+  color: var(--color-fg-secondary);
+  margin: 0 0 0.25rem 0;
+}
+
+.reconnect-notice {
+  font-size: 0.85rem;
+  color: var(--color-warn);
+  margin: 0 0 0.25rem 0;
+}
+
+.reconnect-link {
+  color: var(--color-accent);
+  margin-left: 0.5rem;
 }
 
 .messages {
@@ -151,30 +297,45 @@ h2 {
   padding: 0.75rem;
   border-radius: 0.5rem;
   background: var(--color-bg-secondary);
-  border-left: 3px solid var(--color-accent);
+  border-left: 3px solid var(--color-border);
+}
+
+.message.unread {
+  border-left-color: var(--color-accent);
+}
+
+.message-link,
+.message-body {
+  display: block;
+  color: inherit;
+  text-decoration: none;
 }
 
 .message-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
   margin-bottom: 0.25rem;
 }
 
 .sender {
   font-size: 0.875rem;
+  font-weight: 600;
 }
 
-.read-indicator {
-  color: var(--color-fg-secondary);
-  font-weight: normal;
+.unread-marker {
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  text-transform: uppercase;
 }
 
 .received-time {
   font-size: 0.75rem;
   color: var(--color-fg-secondary);
   white-space: nowrap;
+  margin-left: auto;
 }
 
 .message-subject {
@@ -191,5 +352,10 @@ h2 {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.message .account-chip {
+  margin-top: 0.5rem;
 }
 </style>

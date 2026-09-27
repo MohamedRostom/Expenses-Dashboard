@@ -90,6 +90,24 @@ describe('Today store', () => {
     });
   });
 
+  describe('refresh()', () => {
+    it('posts the refresh even when every account is fresh (the manual button)', async () => {
+      const { postTodayRefresh } = await import('../api/today.js');
+      vi.mocked(postTodayRefresh).mockResolvedValue({ queued: [] });
+      const { useTodayStore } = await import('./today.js');
+      const store = useTodayStore();
+      store.payload = {
+        ...mockPayload,
+        accounts: [{ ...baseAccount, lastRefreshAt: new Date().toISOString() }],
+      };
+
+      await store.refresh();
+      store.stop();
+
+      expect(postTodayRefresh).toHaveBeenCalledOnce();
+    });
+  });
+
   describe('refreshIfStale()', () => {
     it('does nothing when all accounts have fresh lastRefreshAt', async () => {
       const { postTodayRefresh } = await import('../api/today.js');

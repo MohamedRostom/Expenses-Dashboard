@@ -51,8 +51,12 @@ export const useTodayStore = defineStore('today', {
         return now.getTime() - lastRefresh.getTime() > twoMinutesMs;
       });
 
-      if (!shouldRefresh) return;
+      if (shouldRefresh) await this.refresh();
+    },
 
+    /** Manual refresh (the panel button): the server marks due only accounts older than two
+     * minutes; a 429 sets retryAfterSeconds instead of erroring. */
+    async refresh() {
       try {
         await postTodayRefresh();
         // After refresh fires, start polling
