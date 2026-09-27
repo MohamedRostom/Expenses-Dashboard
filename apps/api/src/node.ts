@@ -18,6 +18,7 @@ import { FrankfurterRates, FakeRates } from '@desk/connectors/rates';
 import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
 import { socketNodeConnect } from './adapters/socket-node.js';
+import { resolveHostNode } from './adapters/host-resolver-node.js';
 import { registerAllJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
@@ -95,6 +96,8 @@ const app = createApp({
   jobs: jobRunner,
   runJobsNow: () => jobRunner.runDueJobs(),
   socketConnect: socketNodeConnect,
+  hostResolver: resolveHostNode,
+  standardsAllowPrivateHosts: env.STANDARDS_ALLOW_PRIVATE_HOSTS,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
   appOrigin: env.APP_ORIGIN,

@@ -217,6 +217,8 @@ export {
   type ProvidersResponseT,
   StandardsCreate,
   type StandardsCreateT,
+  StandardsCreateResponse,
+  type StandardsCreateResponseT,
   AccountPatch,
   type AccountPatchT,
   CalendarsResponse,
@@ -224,3 +226,4 @@ export {
   ReconnectResponse,
   type ReconnectResponseT,
 } from './connections.js';
+export { PROVIDER_PRIVACY_TEXT, type ProviderPrivacyText } from './privacy-text.js';

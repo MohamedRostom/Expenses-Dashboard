@@ -18,7 +18,7 @@ import { AuthError, ProviderError } from '@desk/connectors/panels';
 import { PanelsService } from '../src/services/panels.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
-import { sealCredential, openCredential } from '../src/lib/credential.js';
+import { sealCredential, openCredential, type StandardsCredential } from '../src/lib/credential.js';
 import { panelsRefreshJob, type PanelsRefreshDeps } from '../src/jobs/panels-refresh.js';
 
 const NOW = new Date('2026-10-05T12:00:00Z');
@@ -829,5 +829,94 @@ describe('panels.refresh job — mail (T042/T050)', () => {
       const acct = payload.accounts.find((a) => a.id === account.id)!;
       expect([acct.status, acct.lastError, acct.stale]).toEqual(['connected', null, true]);
     });
+  });
+});
+
+describe('panels.refresh job — standards CalDAV (T070)', () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await startHarness();
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  async function insertAccount(credential: StandardsCredential) {
+    const user = await harness.asUser(`standards-refresh-${crypto.randomUUID()}@example.com`);
+    const credentialEnc = await sealCredential(secretBox, credential);
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId: user.userId,
+        provider: 'standards',
+        address: 'standards-acct@example.com',
+        label: 'Standards',
+        colour: 'teal',
+        capabilities: ['calendar'],
+        grantedScopes: [],
+        credentialEnc,
+        status: 'connected',
+        nextRefreshAt: NOW,
+      })
+      .returning();
+    if (!account) throw new Error('failed to insert account');
+    return account;
+  }
+
+  it("refreshes a standards account's calendar through app.ts's CalDAV source, keyed 'standards'", async () => {
+    const account = await insertAccount({
+      password: 'app-password',
+      caldavUrl: 'https://caldav.example.com/personal/',
+    });
+    const { source, calls } = fakeCalendarSource(
+      [{ id: 'cal-personal', name: 'Personal', isPrimary: true }],
+      () => ({
+        events: [
+          occurrence({
+            providerEventId: 'standards-event',
+            title: 'Standards Event',
+            startsAt: new Date('2026-10-06T09:00:00Z'),
+            endsAt: new Date('2026-10-06T09:30:00Z'),
+          }),
+        ],
+        full: true,
+      }),
+    );
+
+    await panelsRefreshJob({
+      db: harness.db,
+      secretBox,
+      clock: { now: () => NOW },
+      calendarSources: { standards: source },
+    })({ accountId: account.id }, noopCtx);
+
+    // fetchWindow received the merged CalDAV cred (url/username/password) the standards source
+    // expects, not the raw sealed { password, caldavUrl } shape.
+    expect(calls).toHaveLength(1);
+
+    const calendarRows = await harness.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.accountId, account.id));
+    expect(calendarRows).toHaveLength(1);
+    expect(calendarRows[0]).toMatchObject({ providerCalendarId: 'cal-personal', enabled: true });
+
+    const eventRows = await harness.db
+      .select()
+      .from(cachedEvents)
+      .where(eq(cachedEvents.accountId, account.id));
+    expect(eventRows).toHaveLength(1);
+    expect(eventRows[0]).toMatchObject({
+      providerEventId: 'standards-event',
+      title: 'Standards Event',
+    });
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row).toMatchObject({ status: 'connected', lastError: null });
   });
 });

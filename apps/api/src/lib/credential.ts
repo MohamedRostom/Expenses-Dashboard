@@ -1,23 +1,36 @@
 import type { SecretBox } from '../adapters/secret-box.js';
 
+/** Sealed shape for a `standards` (IMAP/CalDAV) connected account — services/connections.ts
+ * (T070) seals it on connect/reconnect, jobs/panels-refresh.ts opens it to build the IMAP/CalDAV
+ * credential each source expects. Never returned by the API (contracts/api.md). */
+export interface StandardsCredential {
+  password: string;
+  imapHost?: string;
+  imapPort?: number;
+  caldavUrl?: string;
+}
+
 /**
- * Seal a credential (containing refreshToken) into an encrypted Uint8Array.
+ * Seal a credential into an encrypted Uint8Array. Generic over the credential shape: OAuth
+ * providers seal `{ refreshToken }` (the default and only shape before T070); standards accounts
+ * seal `{ password, imapHost, imapPort, caldavUrl }` (services/connections.ts, jobs/panels-refresh.ts).
  */
-export async function sealCredential(
+export async function sealCredential<T extends object = { refreshToken: string }>(
   box: SecretBox,
-  cred: { refreshToken: string },
+  cred: T,
 ): Promise<Uint8Array> {
   return new TextEncoder().encode(await box.seal(JSON.stringify(cred)));
 }
 
 /**
- * Open (decrypt and parse) a sealed credential.
+ * Open (decrypt and parse) a sealed credential. Same generic as sealCredential — pass the type
+ * argument at the call site when the stored shape isn't the `{ refreshToken }` default.
  */
-export async function openCredential(
+export async function openCredential<T = { refreshToken: string }>(
   box: SecretBox,
   bytes: Uint8Array,
-): Promise<{ refreshToken: string }> {
-  return JSON.parse(await box.open(new TextDecoder().decode(bytes)));
+): Promise<T> {
+  return JSON.parse(await box.open(new TextDecoder().decode(bytes))) as T;
 }
 
 /**

@@ -7,6 +7,7 @@ import type { Db } from '@desk/db';
 import { accountCalendars, auditLog, connectedAccounts, resolveAllFlags } from '@desk/db';
 import {
   AccountPatch,
+  StandardsCreate,
   type AccountT,
   type CalendarT,
   type CalendarsResponseT,
@@ -15,10 +16,12 @@ import {
   type ProvidersResponseT,
   type ConnectionsResponseT,
   type ReconnectResponseT,
+  type StandardsCreateResponseT,
 } from '@desk/contracts';
 import type { AppVariables } from '../app.js';
 import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
+import { clientIp } from '../lib/client-ip.js';
 import type { SecretBox } from '../adapters/secret-box.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import type { Clock } from '../app.js';
@@ -26,6 +29,7 @@ import type { ConnectionsService } from '../services/connections.js';
 import type { PanelsService } from '../services/panels.js';
 import { providerRegistry } from '../services/provider-registry.js';
 import { AuthError, type CalendarSource } from '@desk/connectors/panels';
+import { STANDARDS_PRESETS } from '@desk/connectors/panels/presets';
 import { kickJobsNow } from '../lib/kick-jobs.js';
 
 const OAUTH_STATE_COOKIE = 'desk_connections_oauth_state';
@@ -53,7 +57,7 @@ type ConnectionsRouteDeps = {
   microsoftOAuthEndpoints?: { authorize?: string; token?: string } | undefined;
   connections: ConnectionsService;
   panels: PanelsService;
-  calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  calendarSources: Partial<Record<'google' | 'microsoft' | 'standards', CalendarSource>>;
   limiter: RateLimiter;
   jobs:
     | {
@@ -164,10 +168,51 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
 
     // Standards: appears if flag is on
     if (flags['panels.standards']) {
-      providers.push({ id: 'standards', capabilities: ['calendar', 'mail'] });
+      providers.push({
+        id: 'standards',
+        capabilities: ['calendar', 'mail'],
+        presets: STANDARDS_PRESETS,
+      });
     }
 
     return c.json({ providers });
+  });
+
+  // POST /connections/standards — connect (or reconnect-by-merge) a standards-based account
+  app.post('/standards', async (c) => {
+    const user = requireAuth(c);
+    const body = StandardsCreate.parse(await c.req.json());
+    const ip = clientIp(c) ?? 'unknown';
+
+    const account = await deps.connections.createStandards(user.id, body, ip);
+
+    const calendarRows = await deps.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.accountId, account.id));
+
+    const responseBody: StandardsCreateResponseT = {
+      account: {
+        id: account.id,
+        provider: account.provider as ProviderIdT,
+        address: account.address,
+        label: account.label,
+        colour: account.colour ?? 'teal',
+        capabilities: account.capabilities as CapabilityT[],
+        grantedScopes: account.grantedScopes,
+        status: account.pausedAt ? 'paused' : (account.status as AccountT['status']),
+        pausedAt: account.pausedAt ? account.pausedAt.toISOString() : null,
+        lastRefreshAt: account.lastRefreshAt ? account.lastRefreshAt.toISOString() : null,
+        lastError: account.lastError,
+        calendars: calendarRows.map((r): CalendarT => ({
+          id: r.id,
+          name: r.name,
+          isPrimary: r.isPrimary,
+          enabled: r.enabled,
+        })),
+      },
+    };
+    return c.json(responseBody, 201);
   });
 
   // GET /connections/:provider/start — begin OAuth flow
@@ -481,7 +526,7 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       .where(and(eq(connectedAccounts.id, accountId), eq(connectedAccounts.userId, user.id)));
     if (!account) throw new ApiError('not_found', 'Account not found', 404);
 
-    const source = deps.calendarSources[account.provider as 'google' | 'microsoft'];
+    const source = deps.calendarSources[account.provider as 'google' | 'microsoft' | 'standards'];
     if (!source) {
       throw new ApiError('validation_failed', 'Provider not configured', 400);
     }

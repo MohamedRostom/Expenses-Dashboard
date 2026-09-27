@@ -18,7 +18,7 @@ import {
   type CalendarSource,
   type MailSource,
 } from '@desk/connectors/panels';
-import { openCredential, sealCredential } from '../lib/credential.js';
+import { openCredential, sealCredential, type StandardsCredential } from '../lib/credential.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -28,7 +28,7 @@ export type PanelsRefreshDeps = {
   clock: Clock;
   /** Real calendar sources per provider; a provider with no source configured is treated as a
    * plain provider failure (not a crash) rather than being skipped silently. */
-  calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  calendarSources?: Partial<Record<'google' | 'microsoft' | 'standards', CalendarSource>>;
   /** Real mail sources per provider; same "no source configured is a crash, not a skip" rule
    * as calendarSources — except a Google account is skipped (not a crash) when the
    * panels.google_mail flag is off for that user, since no source may be registered at all. */
@@ -37,21 +37,44 @@ export type PanelsRefreshDeps = {
 
 type ConnectedAccountRow = typeof connectedAccounts.$inferSelect;
 
+/** The two sealed credential shapes a connected_accounts row can hold (lib/credential.ts). */
+type AccountCredential = { refreshToken: string } | StandardsCredential;
+
+/** Builds the `cred` object a CalendarSource/MailSource actually reads: the OAuth shape
+ * (`{ refreshToken }`) unchanged for google/microsoft, or the merged IMAP+CalDAV shape a
+ * standards account's sources pick their own fields from (ImapMailSource: host/port/tls/
+ * username/password; the CalDAV client: url/username/password) — one shape covers both since
+ * each source only reads what it needs, and the account's own address is always the login
+ * username (T070 never stores a separate one). */
+function credentialFor(account: ConnectedAccountRow, raw: AccountCredential): unknown {
+  if (account.provider !== 'standards') return raw;
+  const sc = raw as StandardsCredential;
+  return {
+    host: sc.imapHost,
+    port: sc.imapPort,
+    tls: sc.imapPort === 993,
+    url: sc.caldavUrl,
+    username: account.address,
+    password: sc.password,
+  };
+}
+
 /** T034: refreshes an account's enabled calendars into cached_events. No-op unless the account
  * has the 'calendar' capability. Returns the last rotatedCredential seen across all calendars
  * (the caller re-seals and stores it). */
 async function refreshCalendar(
   deps: PanelsRefreshDeps,
   account: ConnectedAccountRow,
-  credential: { refreshToken: string },
+  credential: AccountCredential,
   now: Date,
 ): Promise<{ rotatedCredential?: unknown }> {
   if (!account.capabilities.includes('calendar')) return {};
 
-  const source = deps.calendarSources?.[account.provider as 'google' | 'microsoft'];
+  const source = deps.calendarSources?.[account.provider as 'google' | 'microsoft' | 'standards'];
   if (!source) {
     throw new Error(`panels.refresh: no calendar source configured for ${account.provider}`);
   }
+  const cred = credentialFor(account, credential);
 
   let rotatedCredential: unknown;
   const from = new Date(now.getTime() - DAY_MS);
@@ -63,7 +86,7 @@ async function refreshCalendar(
     .where(eq(accountCalendars.accountId, account.id));
 
   if (calendars.length === 0) {
-    const listed = await source.listCalendars(credential);
+    const listed = await source.listCalendars(cred);
     const inserted = [];
     for (const cal of listed) {
       const [row] = await deps.db
@@ -87,7 +110,7 @@ async function refreshCalendar(
     if (!calendar.enabled) continue;
 
     const result = await source.fetchWindow(
-      credential,
+      cred,
       [calendar.providerCalendarId],
       from,
       to,
@@ -187,7 +210,7 @@ async function refreshCalendar(
 async function refreshMail(
   deps: PanelsRefreshDeps,
   account: ConnectedAccountRow,
-  credential: { refreshToken: string },
+  credential: AccountCredential,
   now: Date,
 ): Promise<{ rotatedCredential?: unknown }> {
   if (!account.capabilities.includes('mail')) return {};
@@ -203,7 +226,11 @@ async function refreshMail(
     throw new Error(`panels.refresh: no mail source configured for ${provider}`);
   }
 
-  const result = await source.fetchInbox(credential, 50, account.mailCursor ?? undefined);
+  const result = await source.fetchInbox(
+    credentialFor(account, credential),
+    50,
+    account.mailCursor ?? undefined,
+  );
 
   const keptIds: string[] = [];
   for (const m of result.messages) {
@@ -305,7 +332,10 @@ export function panelsRefreshJob(deps: PanelsRefreshDeps): JobHandler {
     const tier = tierFor(user.lastActiveAt, now);
 
     try {
-      const credential = await openCredential(deps.secretBox, account.credentialEnc);
+      const credential = await openCredential<AccountCredential>(
+        deps.secretBox,
+        account.credentialEnc,
+      );
 
       const calendarResult = await refreshCalendar(deps, account, credential, now);
       const mailResult = await refreshMail(deps, account, credential, now);

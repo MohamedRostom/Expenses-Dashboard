@@ -48,6 +48,8 @@ import { createGmailSource } from '@desk/connectors/google/gmail';
 import { createMicrosoftMailSource } from '@desk/connectors/microsoft/mail';
 import { ImapMailSource } from '@desk/connectors/imap/client';
 import type { Connect } from '@desk/connectors/imap/socket';
+import { createCalDavSource } from '@desk/connectors/caldav/client';
+import type { HostResolver } from './lib/host-policy.js';
 
 export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
@@ -102,8 +104,9 @@ export type AppDeps = {
   /** Microsoft Graph API base (GRAPH_API_BASE); defaults to the real API. */
   graphApiBase?: string;
   /** Calendar sources per provider for the panels.refresh job. Built from googlePanels/microsoft
-   * when omitted; pass explicit fakes in tests to script provider behaviour. */
-  calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+   * (plus 'standards', always available — CalDAV needs no OAuth config) when omitted; pass
+   * explicit fakes in tests to script provider behaviour. */
+  calendarSources?: Partial<Record<'google' | 'microsoft' | 'standards', CalendarSource>>;
   /** Mail sources per provider for the panels.refresh job. Built from googlePanels/microsoft/
    * socketConnect when omitted; pass explicit fakes in tests to script provider behaviour.
    * Whether the Google source is actually used is gated per-account on the panels.google_mail
@@ -114,6 +117,14 @@ export type AppDeps = {
    * createSocketWorkerConnect(cfConnect) (cloudflare:sockets). Undefined means no standards
    * mail source is built (the Connections settings section hides that option). */
   socketConnect?: Connect | undefined;
+  /** T070/FR-017: resolves a hostname to the addresses it answers to, so createStandards can
+   * refuse a non-public one. node.ts passes adapters/host-resolver-node.ts's resolveHostNode;
+   * undefined (Workers, for now) makes createStandards refuse to run rather than skip the check. */
+  hostResolver?: HostResolver | undefined;
+  /** STANDARDS_ALLOW_PRIVATE_HOSTS (env.ts) — bypasses createStandards's public-address check so
+   * e2e-ci can reach the compose `mocks` service at its private Docker address. Off by default;
+   * env.ts refuses it outright when a production marker is set. */
+  standardsAllowPrivateHosts?: boolean | undefined;
   /** Kicks the job runner once right after a user-triggered refresh (SC-002); background
    * refreshes still wait for the tick. */
   runJobsNow?: (() => Promise<void>) | undefined;
@@ -135,7 +146,7 @@ export function createApp(deps: AppDeps) {
   // Real calendar sources built from AppDeps when the caller hasn't supplied fakes (tests do).
   // Hoisted above createMeRoutes: DELETE /me needs ConnectionsService.revokeAllForUser, which
   // needs these to revoke at the provider.
-  const calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>> =
+  const calendarSources: Partial<Record<'google' | 'microsoft' | 'standards', CalendarSource>> =
     deps.calendarSources ?? {
       ...(deps.googlePanels && {
         google: createGoogleCalendarSource({
@@ -155,6 +166,9 @@ export function createApp(deps: AppDeps) {
           fetchImpl: globalThis.fetch,
         }),
       }),
+      // CalDAV needs no OAuth client config (Basic auth, per-account credential) — always built,
+      // so panels.refresh can refresh a standards account's enabled calendars (T070).
+      standards: createCalDavSource(),
     };
 
   // Real mail sources built from AppDeps when the caller hasn't supplied fakes (tests do).
@@ -188,11 +202,21 @@ export function createApp(deps: AppDeps) {
     secretBox: deps.secretBox,
     clock: deps.clock,
     calendarSources,
+    mailSources,
     enqueue: deps.jobs
       ? deps.jobs.enqueue.bind(deps.jobs)
       : async () => {
           throw new Error('jobs runner not configured');
         },
+    limiter: deps.limiter,
+    hostResolver:
+      deps.hostResolver ??
+      (async () => {
+        // ponytail: no Workers-compatible DNS resolver yet — createStandards is unreachable until
+        // worker.ts wires one; add a DNS-over-HTTPS adapter there when Workers needs it for real.
+        throw new Error('createStandards: no hostResolver configured for this runtime');
+      }),
+    allowPrivateHosts: deps.standardsAllowPrivateHosts ?? false,
   });
 
   app.route('/auth', authRoutes(deps));

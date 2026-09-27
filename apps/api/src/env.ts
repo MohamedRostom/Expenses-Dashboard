@@ -46,6 +46,17 @@ const envObjectSchema = z.object({
   // Mail and calendar connectors: caldav and imap test endpoints (optional).
   CALDAV_TEST_URL: z.string().optional(),
   IMAP_TEST_HOST: z.string().optional(),
+  // T070/FR-017: bypasses createStandards's public-address check, so e2e-ci can reach the
+  // compose `mocks` service at its private Docker address. Only ever set (true) in
+  // infra/docker-compose.yml; refused below on any Fly deployment (FLY_APP_NAME is set there;
+  // NODE_ENV can't be the marker because the compose image is the production image).
+  // z.coerce.boolean() would treat any non-empty string (including "false") as true, so this
+  // reads the string exactly, the same way ROUTES/expenses.ts's showPending flag does.
+  STANDARDS_ALLOW_PRIVATE_HOSTS: z
+    .string()
+    .optional()
+    .transform((s) => s === 'true'),
+  FLY_APP_NAME: z.string().optional(),
 });
 
 export const envSchema = envObjectSchema
@@ -68,6 +79,10 @@ export const envSchema = envObjectSchema
   .refine((env) => Boolean(env.NOTION_CLIENT_ID) === Boolean(env.NOTION_CLIENT_SECRET), {
     message: 'NOTION_CLIENT_ID and NOTION_CLIENT_SECRET must be set together or not at all',
     path: ['NOTION_CLIENT_ID'],
+  })
+  .refine((env) => !(env.STANDARDS_ALLOW_PRIVATE_HOSTS && env.FLY_APP_NAME), {
+    message: 'STANDARDS_ALLOW_PRIVATE_HOSTS must not be set on a Fly deployment',
+    path: ['STANDARDS_ALLOW_PRIVATE_HOSTS'],
   });
 export type Env = z.infer<typeof envSchema>;
 

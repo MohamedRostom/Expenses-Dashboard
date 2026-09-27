@@ -1,6 +1,17 @@
 import { sql } from 'drizzle-orm';
 import { setGlobalFlag } from '@desk/db';
+import type { MailSource } from '@desk/connectors/panels';
 import { startHarness, type ApiClient, type Harness } from './harness.js';
+
+/** T070: connect a standards account with the correct password every time — ownership isolation
+ * is what this file tests, not verification failure paths (covered in connections.test.ts). */
+const fakeStandardsMail: MailSource = {
+  async fetchInbox() {
+    return { messages: [], full: true };
+  },
+  async verify() {},
+  async revoke() {},
+};
 
 /**
  * Ownership matrix (CLAUDE.md "Testing rules": every route x user A / user B must prove
@@ -225,20 +236,20 @@ async function createConnectedAccount(userB: ApiClient): Promise<string> {
   return (rows as unknown as { id: string }[])[0]!.id;
 }
 
-/** Contract routes whose handlers arrive in later phases of spec 002; listed so the matrix stays
- * complete and each one turns into a real row in the task that adds the route. */
-const pendingPanelsRoutes = [['POST /connections/standards', 'T070']] as const;
-
 describe('ownership matrix', () => {
   let harness: Harness;
   let userA: ApiClient & { userId: string };
   let userB: ApiClient & { userId: string };
 
   beforeAll(async () => {
-    harness = await startHarness();
+    harness = await startHarness(undefined, {
+      withJobs: true,
+      mailSources: { standards: fakeStandardsMail },
+    });
     db = harness.db;
     await setGlobalFlag(db, 'panels.today', true);
     await setGlobalFlag(db, 'panels.google_calendar', true);
+    await setGlobalFlag(db, 'panels.standards', true);
     userA = await harness.asUser('ownership-a@example.com');
     userB = await harness.asUser('ownership-b@example.com');
   }, 120_000);
@@ -305,8 +316,34 @@ describe('ownership matrix', () => {
       expect(JSON.stringify(after)).toBe(JSON.stringify(before));
     });
 
-    for (const [route, task] of pendingPanelsRoutes) {
-      it.todo(`${route} as user A against user B's account is isolated (row lands with ${task})`);
-    }
+    it("POST /connections/standards is scoped per user: the same address for two users creates two separate rows, and neither user's list exposes the other's (T070)", async () => {
+      const address = `standards-ownership-${crypto.randomUUID()}@example.com`;
+      const requestBody = {
+        address,
+        password: 'correct-app-password',
+        imapHost: 'mail.example.com',
+        imapPort: 993,
+        capabilities: ['mail'] as const,
+      };
+
+      const resB = await userB.post('/connections/standards', requestBody);
+      expect(resB.status).toBe(201);
+      const bodyB = (await resB.json()) as { account: { id: string } };
+
+      const resA = await userA.post('/connections/standards', requestBody);
+      expect(resA.status).toBe(201);
+      const bodyA = (await resA.json()) as { account: { id: string } };
+
+      expect(bodyA.account.id).not.toBe(bodyB.account.id);
+
+      const listA = await userA.get('/connections');
+      const listAJson = (await listA.json()) as { accounts: { id: string }[] };
+      expect(listAJson.accounts.map((a) => a.id)).not.toContain(bodyB.account.id);
+      expect(listAJson.accounts.map((a) => a.id)).toContain(bodyA.account.id);
+
+      const listB = await userB.get('/connections');
+      const listBJson = (await listB.json()) as { accounts: { id: string }[] };
+      expect(listBJson.accounts.map((a) => a.id)).not.toContain(bodyA.account.id);
+    });
   });
 });

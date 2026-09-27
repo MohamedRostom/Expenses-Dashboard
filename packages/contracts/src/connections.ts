@@ -66,6 +66,11 @@ export const StandardsCreate = z.object({
 });
 export type StandardsCreateT = z.infer<typeof StandardsCreate>;
 
+export const StandardsCreateResponse = z.object({
+  account: Account,
+});
+export type StandardsCreateResponseT = z.infer<typeof StandardsCreateResponse>;
+
 export const AccountPatch = z.object({
   label: z.string().optional(),
   colour: z.string().optional(),

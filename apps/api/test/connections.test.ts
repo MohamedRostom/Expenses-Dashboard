@@ -1,6 +1,11 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
-import { AuthError, type CalendarSource } from '@desk/connectors/panels';
+import {
+  AuthError,
+  VerificationError,
+  type CalendarSource,
+  type MailSource,
+} from '@desk/connectors/panels';
 import {
   accountCalendars,
   auditLog,
@@ -11,7 +16,7 @@ import {
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
-import { openCredential, sealCredential } from '../src/lib/credential.js';
+import { openCredential, sealCredential, type StandardsCredential } from '../src/lib/credential.js';
 
 const b64url = (s: string) => Buffer.from(s).toString('base64url');
 /** Unsigned id_token carrying only the email claim — the route decodes it without verifying. */
@@ -952,4 +957,450 @@ describe('PATCH/DELETE/reconnect /connections/:id (T059/T060)', () => {
     expect(body.connections[0]).not.toHaveProperty('credentialEnc');
     expect(body.connections[0]).not.toHaveProperty('calendars');
   });
+});
+
+describe('POST /connections/standards (T065/T070)', () => {
+  let harness: Harness;
+  let verifyMailCalls: Array<{ host?: string; port?: number; username: string; password: string }>;
+  let verifyCalendarCalls: Array<{ url?: string; username: string; password: string }>;
+
+  const CORRECT_PASSWORD = 'correct-app-password';
+  /** A second accepted app password — stands in for the new one a reconnect-by-merge (re-POST
+   * with the same address) rotates in. */
+  const ROTATED_PASSWORD = 'new-app-password';
+  const CONNECT_FAIL_HOST = 'connect-fail.example.com';
+  const BAD_DISCOVERY_MARKER = 'bad-discovery';
+  /** Not an IP literal, so the fake resolver below answers it with a private address — the one
+   * FR-017 "hostname resolving to a private address" case the four IP-literal cases don't cover. */
+  const PRIVATE_HOSTNAME = 'internal.example.com';
+
+  const fakeStandardsMail: MailSource = {
+    async fetchInbox() {
+      return { messages: [], full: true };
+    },
+    async verify(cred) {
+      const c = cred as { host?: string; port?: number; username: string; password: string };
+      verifyMailCalls.push(c);
+      if (c.host === CONNECT_FAIL_HOST) {
+        throw new VerificationError('connection refused', 'connect');
+      }
+      if (c.password !== CORRECT_PASSWORD) {
+        throw new VerificationError('bad credentials', 'login');
+      }
+    },
+    async revoke() {},
+  };
+
+  const fakeStandardsCalendar: CalendarSource = {
+    async listCalendars() {
+      return [];
+    },
+    async fetchWindow() {
+      return { events: [], full: true };
+    },
+    async verify(cred) {
+      const c = cred as { url?: string; username: string; password: string };
+      verifyCalendarCalls.push(c);
+      const acceptedPassword = c.password === CORRECT_PASSWORD || c.password === ROTATED_PASSWORD;
+      if (c.url?.includes(BAD_DISCOVERY_MARKER) || !acceptedPassword) {
+        throw new VerificationError('discovery failed', 'discovery');
+      }
+    },
+    async revoke() {},
+  };
+
+  /** IP literals (what the four FR-017 test hosts are) resolve to themselves, as node:dns/promises
+   * really does; PRIVATE_HOSTNAME resolves to a private address; every other hostname resolves
+   * publicly — a fake standing in for apps/api/src/adapters/host-resolver-node.ts. */
+  async function fakeResolver(host: string): Promise<string[]> {
+    if (host === PRIVATE_HOSTNAME) return ['10.1.2.3'];
+    if (/^[0-9a-fA-F:.]+$/.test(host)) return [host];
+    return ['203.0.113.10'];
+  }
+
+  // Fixed-window rate limiter (apps/api/src/adapters/rate-limiter.ts): keyed by
+  // `standards:ip:unknown` here (the test client sends no x-forwarded-for), shared across every
+  // test in this file. Each test moves the clock into its own fresh ten-minute window first, so
+  // one test's attempts never count against another's.
+  let windowCursor = new Date('2026-09-18T00:00:00Z').getTime();
+  function freshWindow(): void {
+    windowCursor += 11 * 60 * 1000;
+    harness.clock.set(new Date(windowCursor));
+  }
+
+  beforeAll(async () => {
+    harness = await startHarness(undefined, {
+      withJobs: true,
+      mailSources: { standards: fakeStandardsMail },
+      calendarSources: { standards: fakeStandardsCalendar },
+      hostResolver: fakeResolver,
+    });
+    await setGlobalFlag(harness.db, 'panels.today', true);
+    await setGlobalFlag(harness.db, 'panels.standards', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  beforeEach(() => {
+    verifyMailCalls = [];
+    verifyCalendarCalls = [];
+    freshWindow();
+  });
+
+  async function accountCount(userId: string): Promise<number> {
+    const rows = (await harness.db.execute(
+      sql`SELECT count(*)::int AS n FROM connected_accounts WHERE user_id = ${userId}`,
+    )) as unknown as { n: number }[];
+    return rows[0]!.n;
+  }
+
+  it('FR-017: refuses loopback/private/link-local/unique-local hosts and a hostname resolving to one, without opening a socket', async () => {
+    const user = await harness.asUser('standards-host-private@test.com');
+    for (const host of ['127.0.0.1', '10.0.0.5', '169.254.169.254', 'fdaa::1', PRIVATE_HOSTNAME]) {
+      const res = await user.post('/connections/standards', {
+        address: `host-${crypto.randomUUID()}@example.com`,
+        password: CORRECT_PASSWORD,
+        imapHost: host,
+        imapPort: 993,
+        capabilities: ['mail'],
+      });
+      expect(res.status).toBe(422);
+      const body = (await res.json()) as { error: { code: string } };
+      expect(body.error.code).toBe('host_not_allowed');
+    }
+    expect(verifyMailCalls).toEqual([]);
+  });
+
+  it('FR-017: refuses an IMAP port other than 993/143', async () => {
+    const user = await harness.asUser('standards-bad-port@test.com');
+    const res = await user.post('/connections/standards', {
+      address: 'bad-port@example.com',
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 587,
+      capabilities: ['mail'],
+    });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe('host_not_allowed');
+    expect(verifyMailCalls).toEqual([]);
+  });
+
+  it('FR-017: refuses a non-https CalDAV URL', async () => {
+    const user = await harness.asUser('standards-bad-scheme@test.com');
+    const res = await user.post('/connections/standards', {
+      address: 'bad-scheme@example.com',
+      password: CORRECT_PASSWORD,
+      caldavUrl: 'http://caldav.example.com/',
+      capabilities: ['calendar'],
+    });
+    expect(res.status).toBe(422);
+    expect(((await res.json()) as { error: { code: string } }).error.code).toBe('host_not_allowed');
+    expect(verifyCalendarCalls).toEqual([]);
+  });
+
+  it('a wrong password answers 422 verification_failed { step: "login" } for IMAP', async () => {
+    const user = await harness.asUser('standards-wrong-pw@test.com');
+    const res = await user.post('/connections/standards', {
+      address: 'wrong-pw@example.com',
+      password: 'nope',
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { code: string; details?: { step?: string } } };
+    expect(body.error.code).toBe('verification_failed');
+    expect(body.error.details?.step).toBe('login');
+  });
+
+  it('an unreachable host answers 422 verification_failed { step: "connect" }', async () => {
+    const user = await harness.asUser('standards-unreachable@test.com');
+    const res = await user.post('/connections/standards', {
+      address: 'unreachable@example.com',
+      password: CORRECT_PASSWORD,
+      imapHost: CONNECT_FAIL_HOST,
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { code: string; details?: { step?: string } } };
+    expect(body.error.code).toBe('verification_failed');
+    expect(body.error.details?.step).toBe('connect');
+  });
+
+  it('a bad CalDAV URL answers 422 verification_failed { step: "discovery" }', async () => {
+    const user = await harness.asUser('standards-bad-discovery@test.com');
+    const res = await user.post('/connections/standards', {
+      address: 'bad-discovery@example.com',
+      password: CORRECT_PASSWORD,
+      caldavUrl: `https://caldav.example.com/${BAD_DISCOVERY_MARKER}`,
+      capabilities: ['calendar'],
+    });
+    expect(res.status).toBe(422);
+    const body = (await res.json()) as { error: { code: string; details?: { step?: string } } };
+    expect(body.error.code).toBe('verification_failed');
+    expect(body.error.details?.step).toBe('discovery');
+  });
+
+  it('succeeds, seals the credential (never returns it) and enqueues a refresh; a second POST for the same address merges capabilities, replaces the credential, and audits reconnect', async () => {
+    const user = await harness.asUser('standards-success@test.com');
+    const address = `standards-${crypto.randomUUID()}@example.com`;
+
+    const res1 = await user.post('/connections/standards', {
+      address,
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(res1.status).toBe(201);
+    const body1 = (await res1.json()) as {
+      account: { id: string; provider: string; capabilities: string[] };
+    };
+    expect(body1.account.provider).toBe('standards');
+    expect(body1.account.capabilities).toEqual(['mail']);
+    expect(JSON.stringify(body1)).not.toContain(CORRECT_PASSWORD);
+
+    const [row1] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, body1.account.id));
+    expect(row1!.credentialEnc.length).toBeGreaterThan(0);
+    const opened1 = await openCredential<StandardsCredential>(
+      createSecretBox(TEST_SECRET_BOX_KEY),
+      row1!.credentialEnc,
+    );
+    expect(opened1).toEqual({
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+    });
+
+    const audits1 = await harness.db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.subject, body1.account.id));
+    expect(audits1.some((a) => a.action === 'connect')).toBe(true);
+
+    const jobRows1 = await harness.db
+      .select()
+      .from(jobsTable)
+      .where(eq(jobsTable.userId, user.userId));
+    expect(
+      jobRows1.some(
+        (j) =>
+          j.name === 'panels.refresh' &&
+          (j.payload as { accountId?: string }).accountId === body1.account.id,
+      ),
+    ).toBe(true);
+
+    // Merge: same address, new password, adds the calendar capability — reconnect-by-merge, the
+    // web client's actual reconnect flow.
+    const res2 = await user.post('/connections/standards', {
+      address,
+      password: ROTATED_PASSWORD,
+      caldavUrl: 'https://caldav.example.com/',
+      capabilities: ['calendar'],
+    });
+    expect(res2.status).toBe(201);
+    const body2 = (await res2.json()) as { account: { id: string; capabilities: string[] } };
+    expect(body2.account.id).toBe(body1.account.id);
+    expect(body2.account.capabilities.slice().sort()).toEqual(['calendar', 'mail']);
+    expect(await accountCount(user.userId)).toBe(1);
+
+    const [row2] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, body1.account.id));
+    const opened2 = await openCredential<StandardsCredential>(
+      createSecretBox(TEST_SECRET_BOX_KEY),
+      row2!.credentialEnc,
+    );
+    expect(opened2.password).toBe(ROTATED_PASSWORD);
+
+    const audits2 = await harness.db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.subject, body1.account.id));
+    expect(audits2.some((a) => a.action === 'reconnect')).toBe(true);
+  });
+
+  it('presets for yahoo, icloud and fastmail come from GET /connections/providers', async () => {
+    const user = await harness.asUser('standards-presets@test.com');
+    const res = await user.get('/connections/providers');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      providers: Array<{ id: string; presets?: Array<{ name: string; imapHost: string }> }>;
+    };
+    const standards = body.providers.find((p) => p.id === 'standards');
+    expect(standards?.presets?.map((p) => p.name).sort()).toEqual(['fastmail', 'icloud', 'yahoo']);
+  });
+
+  it('rate-limits at five attempts per ten minutes (the sixth answers 429)', async () => {
+    const user = await harness.asUser('standards-rate-limit@test.com');
+    for (let i = 0; i < 5; i++) {
+      const res = await user.post('/connections/standards', {
+        address: `rl-${i}-${crypto.randomUUID()}@example.com`,
+        password: 'nope',
+        imapHost: 'mail.example.com',
+        imapPort: 993,
+        capabilities: ['mail'],
+      });
+      expect(res.status).toBe(422); // wrong password each time; still an attempt
+    }
+    const sixth = await user.post('/connections/standards', {
+      address: `rl-6-${crypto.randomUUID()}@example.com`,
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(sixth.status).toBe(429);
+  });
+
+  it('answers 409 limit_reached at ten accounts for a new address, while an existing address still merges', async () => {
+    const user = await harness.asUser('standards-limit@test.com');
+    const existingAddress = `standards-limit-existing-${crypto.randomUUID()}@example.com`;
+    const box = createSecretBox(TEST_SECRET_BOX_KEY);
+    const existingCredentialEnc = await sealCredential(box, {
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+    } satisfies StandardsCredential);
+
+    for (let i = 0; i < 9; i++) {
+      await harness.db.insert(connectedAccounts).values({
+        userId: user.userId,
+        provider: 'google',
+        address: `seed-${i}-${crypto.randomUUID()}@example.com`,
+        label: 'seed',
+        colour: 'teal',
+        capabilities: ['calendar'],
+        grantedScopes: [],
+        credentialEnc: new Uint8Array([0]),
+        status: 'connected',
+        nextRefreshAt: harness.clock.now(),
+      });
+    }
+    await harness.db.insert(connectedAccounts).values({
+      userId: user.userId,
+      provider: 'standards',
+      address: existingAddress,
+      label: existingAddress,
+      colour: 'teal',
+      capabilities: ['mail'],
+      grantedScopes: [],
+      credentialEnc: existingCredentialEnc,
+      status: 'connected',
+      nextRefreshAt: harness.clock.now(),
+    });
+    expect(await accountCount(user.userId)).toBe(10);
+
+    const newRes = await user.post('/connections/standards', {
+      address: `eleventh-${crypto.randomUUID()}@example.com`,
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(newRes.status).toBe(409);
+    expect(((await newRes.json()) as { error: { code: string } }).error.code).toBe('limit_reached');
+
+    const mergeRes = await user.post('/connections/standards', {
+      address: existingAddress,
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(mergeRes.status).toBe(201);
+    expect(await accountCount(user.userId)).toBe(10);
+  });
+});
+
+describe('createStandards with STANDARDS_ALLOW_PRIVATE_HOSTS (e2e-ci only)', () => {
+  const CORRECT_PASSWORD = 'correct-app-password';
+
+  const fakeStandardsCalendar: CalendarSource = {
+    async listCalendars() {
+      return [];
+    },
+    async fetchWindow() {
+      return { events: [], full: true };
+    },
+    async verify(cred) {
+      const c = cred as { password: string };
+      if (c.password !== CORRECT_PASSWORD) throw new VerificationError('bad login', 'discovery');
+    },
+    async revoke() {},
+  };
+
+  /** Stands in for host-resolver-node.ts resolving the compose `mocks` service name to its
+   * private Docker network address — the exact case the flag exists for. */
+  async function dockerLikeResolver(host: string): Promise<string[]> {
+    return host === 'mocks' ? ['172.20.0.5'] : ['203.0.113.10'];
+  }
+
+  it('off (default): a private-Docker-address host and a plain-http CalDAV URL both answer host_not_allowed', async () => {
+    const harness = await startHarness(undefined, {
+      calendarSources: { standards: fakeStandardsCalendar },
+      hostResolver: dockerLikeResolver,
+      // standardsAllowPrivateHosts omitted — off by default (ConnectionsService's app.ts wiring).
+    });
+    try {
+      await setGlobalFlag(harness.db, 'panels.today', true);
+      await setGlobalFlag(harness.db, 'panels.standards', true);
+      const user = await harness.asUser('standards-flag-off@test.com');
+
+      const privateHost = await user.post('/connections/standards', {
+        address: 'flag-off-host@example.com',
+        password: CORRECT_PASSWORD,
+        caldavUrl: 'https://mocks/caldav/',
+        capabilities: ['calendar'],
+      });
+      expect(privateHost.status).toBe(422);
+      expect(((await privateHost.json()) as { error: { code: string } }).error.code).toBe(
+        'host_not_allowed',
+      );
+
+      const httpScheme = await user.post('/connections/standards', {
+        address: 'flag-off-scheme@example.com',
+        password: CORRECT_PASSWORD,
+        caldavUrl: 'http://caldav.example.com/',
+        capabilities: ['calendar'],
+      });
+      expect(httpScheme.status).toBe(422);
+      expect(((await httpScheme.json()) as { error: { code: string } }).error.code).toBe(
+        'host_not_allowed',
+      );
+    } finally {
+      await harness.close();
+    }
+  }, 120_000);
+
+  it('on: a private-Docker-address host and a plain-http CalDAV URL are both allowed', async () => {
+    const harness = await startHarness(undefined, {
+      withJobs: true,
+      calendarSources: { standards: fakeStandardsCalendar },
+      hostResolver: dockerLikeResolver,
+      standardsAllowPrivateHosts: true,
+    });
+    try {
+      await setGlobalFlag(harness.db, 'panels.today', true);
+      await setGlobalFlag(harness.db, 'panels.standards', true);
+      const user = await harness.asUser('standards-flag-on@test.com');
+
+      const res = await user.post('/connections/standards', {
+        address: 'flag-on@example.com',
+        password: CORRECT_PASSWORD,
+        caldavUrl: 'http://mocks:4000/caldav/',
+        capabilities: ['calendar'],
+      });
+      expect(res.status).toBe(201);
+    } finally {
+      await harness.close();
+    }
+  }, 120_000);
 });

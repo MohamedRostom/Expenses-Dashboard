@@ -42,6 +42,11 @@ services:
       MICROSOFT_LOGIN_BROWSER_BASE: http://localhost:4000/graph
       CALDAV_TEST_URL: http://mocks:4000/caldav
       IMAP_TEST_HOST: mocks
+      # T070/FR-017: the standards form's mocks resolve to `mocks`, a private Docker address, and
+      # the CalDAV mock is served over plain http — createStandards would otherwise refuse both
+      # with host_not_allowed. Compose only; never set this in staging/production (.env.example,
+      # env.ts refuses it there).
+      STANDARDS_ALLOW_PRIVATE_HOSTS: 'true'
       # Dev-only fixed OAuth client values so the api service can complete the connect flow
       # against the mocks (T036) — never reuse these outside compose/e2e-ci.
       GOOGLE_PANELS_CLIENT_ID: dev-google-panels-client-id

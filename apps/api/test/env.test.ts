@@ -25,6 +25,7 @@ describe('parseEnv', () => {
       GIT_SHA: 'unknown',
       GOOGLE_API_BASE: 'https://www.googleapis.com',
       GRAPH_API_BASE: 'https://graph.microsoft.com',
+      STANDARDS_ALLOW_PRIVATE_HOSTS: false,
     });
   });
 
@@ -138,5 +139,28 @@ describe('parseEnv', () => {
   it('MICROSOFT_LOGIN_BASE omitted defaults to undefined', () => {
     const env = parseEnv(required);
     expect(env.MICROSOFT_LOGIN_BASE).toBeUndefined();
+  });
+
+  it('STANDARDS_ALLOW_PRIVATE_HOSTS defaults off, is only true for the exact string "true", and is refused on a Fly deployment (T070/FR-017)', () => {
+    expect(parseEnv(required).STANDARDS_ALLOW_PRIVATE_HOSTS).toBe(false);
+    expect(
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'false' })
+        .STANDARDS_ALLOW_PRIVATE_HOSTS,
+    ).toBe(false);
+    expect(
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true' })
+        .STANDARDS_ALLOW_PRIVATE_HOSTS,
+    ).toBe(true);
+    expect(() =>
+      parseEnv({
+        ...required,
+        STANDARDS_ALLOW_PRIVATE_HOSTS: 'true',
+        FLY_APP_NAME: 'ros-desk-staging',
+      }),
+    ).toThrow(/STANDARDS_ALLOW_PRIVATE_HOSTS/);
+    // Compose (no FLY_APP_NAME there, NODE_ENV=production from the image) is unaffected.
+    expect(() =>
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true', NODE_ENV: 'production' }),
+    ).not.toThrow();
   });
 });

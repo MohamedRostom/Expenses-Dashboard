@@ -8,6 +8,7 @@
     "./rates": "./src/rates/index.ts",
     "./notion": "./src/notion/index.ts",
     "./panels": "./src/panels/index.ts",
+    "./panels/presets": "./src/panels/presets.ts",
     "./imap/socket": "./src/imap/socket.ts",
     "./imap/client": "./src/imap/client.ts",
     "./imap/fake-server": "./src/imap/fake-server.ts",
