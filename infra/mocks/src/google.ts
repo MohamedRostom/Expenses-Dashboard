@@ -39,6 +39,12 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
   }
   const accounts = new Map<string, Account>([['default', { fake, revoked: false }]]);
   let nextKey: string | null = null;
+  // The scope the authorize step actually saw requested, per account key — the token endpoint
+  // must echo back only what was requested (real Google never grants more than the consent
+  // screen was shown), not always both scopes regardless of what "Connect Calendar" vs "Add
+  // mail" asked for. Falls back to the full legacy default when a test hits /token directly
+  // without going through /o/oauth2/v2/auth first (google.test.ts's id_token test).
+  const requestedScopeByKey = new Map<string, string>();
 
   function accountFor(key: string): Account {
     let account = accounts.get(key);
@@ -64,6 +70,8 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
     const key = nextKey ?? 'default';
     nextKey = null;
     accountFor(key);
+    const requestedScope = c.req.query('scope');
+    if (requestedScope) requestedScopeByKey.set(key, requestedScope);
     const url = new URL(redirectUri);
     url.searchParams.set('code', `fake-google-auth-code:${key}`);
     if (state) url.searchParams.set('state', state);
@@ -84,7 +92,8 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
     if (accountFor(key).revoked) return c.json({ error: 'invalid_grant' }, 400);
     const scope =
       grantType === 'authorization_code'
-        ? 'openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly'
+        ? (requestedScopeByKey.get(key) ??
+          'openid email https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/gmail.readonly')
         : undefined;
     return c.json({
       access_token: `fake-google-access-token:${key}`,

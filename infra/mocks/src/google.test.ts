@@ -211,6 +211,33 @@ describe('createGoogleMockApp', () => {
     expect(stillOkB.status).toBe(200);
   });
 
+  // apps/api/src/routes/connections.ts derives capabilities from the granted scope string
+  // (calendar.readonly -> calendar, gmail.readonly -> mail), so a "Connect Calendar" round trip
+  // that only ever asked for calendar.readonly must not come back with gmail.readonly too — the
+  // mock has to echo what was actually requested at authorize, not a fixed pair.
+  it('the token endpoint only grants the scope requested at authorize, not always both', async () => {
+    const app = createGoogleMockApp();
+    const authorize = await app.request(
+      '/o/oauth2/v2/auth?redirect_uri=' +
+        encodeURIComponent('http://app.example.test/callback') +
+        '&state=s&scope=' +
+        encodeURIComponent('openid email https://www.googleapis.com/auth/calendar.readonly'),
+      { redirect: 'manual' },
+    );
+    const code = new URL(authorize.headers.get('location')!).searchParams.get('code')!;
+
+    const token = await json(
+      await app.request('/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=authorization_code&code=${code}`,
+      }),
+    );
+
+    expect(token['scope']).toContain('calendar.readonly');
+    expect(token['scope']).not.toContain('gmail.readonly');
+  });
+
   it('the token endpoint returns a decodable id_token carrying an email', async () => {
     const app = createGoogleMockApp();
     const res = await app.request('/token', {
