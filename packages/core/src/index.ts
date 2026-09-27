@@ -53,3 +53,9 @@ export {
   type Tier,
 } from './panels/refresh-policy.js';
 export { expandToDays, type Occurrence, type DayBucket } from './panels/window.js';
+export {
+  mergeMessages,
+  unreadCountFor,
+  type MessageRow,
+  type MergedMessageRow,
+} from './panels/merge.js';
