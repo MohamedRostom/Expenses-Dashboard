@@ -130,7 +130,7 @@ function navigateToOAuth(providerId: string, capability?: string) {
               type="button"
               :disabled="isLimitReached"
               class="connect-btn"
-              @click="navigateToOAuth(provider.id)"
+              @click="navigateToOAuth(provider.id, provider.capabilities.join(','))"
             >
               Connect {{ providerName(provider.id) }}
             </button>
