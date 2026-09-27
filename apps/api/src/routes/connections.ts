@@ -435,6 +435,17 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       .from(connectedAccounts)
       .where(eq(connectedAccounts.userId, user.id));
 
+    const calendarRows = await deps.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.userId, user.id));
+    const calendarsByAccount = new Map<string, CalendarT[]>();
+    for (const row of calendarRows) {
+      const list = calendarsByAccount.get(row.accountId) ?? [];
+      list.push({ id: row.id, name: row.name, isPrimary: row.isPrimary, enabled: row.enabled });
+      calendarsByAccount.set(row.accountId, list);
+    }
+
     const body: ConnectionsResponseT = {
       accounts: accounts.map((acc) => ({
         id: acc.id,
@@ -451,7 +462,7 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
         pausedAt: acc.pausedAt ? acc.pausedAt.toISOString() : null,
         lastRefreshAt: acc.lastRefreshAt ? acc.lastRefreshAt.toISOString() : null,
         lastError: acc.lastError,
-        calendars: [],
+        calendars: calendarsByAccount.get(acc.id) ?? [],
       })),
       limit: 10,
     };

@@ -1,21 +1,36 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
-import type { ProviderT, AccountT } from '@desk/contracts';
-import { getConnections, getProviders, postReconnect } from '../api/connections.js';
+import type { ProviderT, AccountT, CapabilityT } from '@desk/contracts';
+import { PALETTE_COLOURS } from '@desk/ui';
+import {
+  getConnections,
+  getProviders,
+  postReconnect,
+  patchConnection,
+  deleteConnection,
+} from '../api/connections.js';
+import { accountErrorCopy, connectErrorCopy } from '../utils/errors.js';
+import { revokeInstructionsFor } from '../utils/privacy-text.js';
 
 const providers = ref<ProviderT[]>([]);
 const accounts = ref<AccountT[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const connected = ref<string | null>(null);
+const errorCode = ref<string | null>(null);
 const passwordNeededFor = ref<string | null>(null);
+const disconnectTarget = ref<AccountT | null>(null);
 
 const isLimitReached = computed(() => accounts.value.length >= 10);
+const connectedAccount = computed(() =>
+  connected.value ? (accounts.value.find((a) => a.id === connected.value) ?? null) : null,
+);
 
 onMounted(async () => {
   await loadData();
   const params = new URLSearchParams(window.location.search);
   connected.value = params.get('connected');
+  errorCode.value = params.get('error');
 
   // T084: a link cannot POST, so the Today payload's reconnectUrl points here with
   // ?reconnect=<id>, and this page starts the reconnect flow on the user's behalf.
@@ -91,6 +106,87 @@ function navigateToOAuth(providerId: string, capability?: string) {
   }
   window.location.href = url;
 }
+
+/** The capabilities this account's provider can offer (per flags) that this account was not
+ * granted, so an "Add mail"/"Add calendar" link can be offered (FR-001). */
+function missingCapabilities(account: AccountT): CapabilityT[] {
+  const provider = providers.value.find((p) => p.id === account.provider);
+  if (!provider) return [];
+  return provider.capabilities.filter((c) => !account.capabilities.includes(c));
+}
+
+function addCapabilityUrl(account: AccountT, capability: CapabilityT): string {
+  return `/connections/${account.provider}/start?capabilities=${capability}&account=${account.id}`;
+}
+
+function capabilityLabel(capability: CapabilityT): string {
+  return capability === 'mail' ? 'mail' : 'calendar';
+}
+
+async function applyPatch(account: AccountT, patch: Parameters<typeof patchConnection>[1]) {
+  try {
+    const res = await patchConnection(account.id, patch);
+    const idx = accounts.value.findIndex((a) => a.id === account.id);
+    if (idx !== -1) accounts.value[idx] = res.account;
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to save change';
+  }
+}
+
+function onLabelChange(account: AccountT, event: Event) {
+  const value = (event.target as HTMLInputElement).value;
+  void applyPatch(account, { label: value });
+}
+
+function togglePause(account: AccountT) {
+  void applyPatch(account, { paused: account.status !== 'paused' });
+}
+
+function toggleCalendar(account: AccountT, calendarId: string, event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked;
+  void applyPatch(account, { calendars: [{ id: calendarId, enabled }] });
+}
+
+// Colour radio group (FR-024): roving tabindex, operable with the arrow keys, each colour named.
+function selectColour(account: AccountT, colourId: string) {
+  if (account.colour === colourId) return;
+  void applyPatch(account, { colour: colourId });
+}
+
+function onColourKeydown(account: AccountT, index: number, event: KeyboardEvent) {
+  const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
+  const backward = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
+  if (!forward && !backward) return;
+  event.preventDefault();
+  const count = PALETTE_COLOURS.length;
+  const nextIndex = forward ? (index + 1) % count : (index - 1 + count) % count;
+  const groupEl = (event.currentTarget as HTMLElement).closest('[role="radiogroup"]');
+  const radios = groupEl?.querySelectorAll<HTMLElement>('[role="radio"]');
+  const nextEl = radios?.[nextIndex];
+  nextEl?.focus();
+  selectColour(account, PALETTE_COLOURS[nextIndex]!.id);
+}
+
+function askDisconnect(account: AccountT) {
+  disconnectTarget.value = account;
+}
+
+function cancelDisconnect() {
+  disconnectTarget.value = null;
+}
+
+async function confirmDisconnect() {
+  const account = disconnectTarget.value;
+  if (!account) return;
+  try {
+    await deleteConnection(account.id);
+    accounts.value = accounts.value.filter((a) => a.id !== account.id);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Failed to disconnect';
+  } finally {
+    disconnectTarget.value = null;
+  }
+}
 </script>
 
 <template>
@@ -98,8 +194,16 @@ function navigateToOAuth(providerId: string, capability?: string) {
     <h1>Connected Accounts</h1>
 
     <div v-if="error" class="error-banner">{{ error }}</div>
+    <div v-if="errorCode" class="error-banner">{{ connectErrorCopy(errorCode) }}</div>
 
-    <div v-if="connected" class="success-banner">Account connected successfully</div>
+    <div v-if="connectedAccount" class="success-banner">
+      <p>Account connected successfully.</p>
+      <p>
+        Capabilities granted: {{ connectedAccount.capabilities.join(', ') || 'none' }}<br />
+        Scopes granted: {{ connectedAccount.grantedScopes.join(', ') || 'none' }}
+      </p>
+    </div>
+    <div v-else-if="connected" class="success-banner">Account connected successfully</div>
 
     <section class="providers">
       <h2>Add a Provider</h2>
@@ -150,7 +254,13 @@ function navigateToOAuth(providerId: string, capability?: string) {
         <div v-for="account in accounts" :key="account.id" class="account-card">
           <div class="account-header">
             <div>
-              <h3>{{ account.label || account.address }}</h3>
+              <input
+                type="text"
+                class="label-input"
+                aria-label="Account label"
+                :value="account.label"
+                @change="onLabelChange(account, $event)"
+              />
               <p class="provider">{{ providerName(account.provider) }} · {{ account.address }}</p>
             </div>
             <div class="account-status" :class="account.status">
@@ -158,28 +268,95 @@ function navigateToOAuth(providerId: string, capability?: string) {
             </div>
           </div>
 
+          <div role="radiogroup" class="colour-group" :aria-label="`Colour for ${account.label}`">
+            <button
+              v-for="(swatch, index) in PALETTE_COLOURS"
+              :key="swatch.id"
+              type="button"
+              role="radio"
+              class="colour-swatch"
+              :style="{ '--swatch-color': `var(--palette-${swatch.id})` }"
+              :aria-checked="account.colour === swatch.id"
+              :aria-label="swatch.name"
+              :tabindex="account.colour === swatch.id ? 0 : -1"
+              @click="selectColour(account, swatch.id)"
+              @keydown="onColourKeydown(account, index, $event)"
+            ></button>
+          </div>
+
           <div class="account-details">
             <div><strong>Capabilities:</strong> {{ account.capabilities.join(', ') }}</div>
             <div v-if="account.lastRefreshAt">
               <strong>Last refresh:</strong> {{ formatDate(account.lastRefreshAt) }}
             </div>
-            <div v-if="account.lastError"><strong>Error:</strong> {{ account.lastError }}</div>
+            <div v-if="account.lastError">
+              <strong>Error:</strong> {{ accountErrorCopy(account.lastError) }}
+            </div>
           </div>
 
-          <button
-            v-if="account.status === 'reconnect_needed' || account.status === 'error'"
-            type="button"
-            class="reconnect-btn"
-            @click="startReconnect(account.id)"
-          >
-            Reconnect
-          </button>
+          <div v-if="account.calendars.length > 0" class="calendar-checklist">
+            <p class="checklist-title">Calendars shown on Today</p>
+            <label v-for="cal in account.calendars" :key="cal.id" class="calendar-item">
+              <input
+                type="checkbox"
+                :aria-label="cal.name"
+                :checked="cal.enabled"
+                @change="toggleCalendar(account, cal.id, $event)"
+              />
+              {{ cal.name }}<span v-if="cal.isPrimary" class="primary-tag"> (primary)</span>
+            </label>
+          </div>
+
+          <div class="account-actions">
+            <button type="button" class="pause-btn" @click="togglePause(account)">
+              {{ account.status === 'paused' ? 'Resume' : 'Pause' }}
+            </button>
+
+            <button
+              v-if="account.status === 'reconnect_needed' || account.status === 'error'"
+              type="button"
+              class="reconnect-btn"
+              @click="startReconnect(account.id)"
+            >
+              Reconnect
+            </button>
+
+            <a
+              v-for="capability in missingCapabilities(account)"
+              :key="capability"
+              class="add-capability-link"
+              :href="addCapabilityUrl(account, capability)"
+            >
+              Add {{ capabilityLabel(capability) }}
+            </a>
+
+            <button type="button" class="disconnect-btn" @click="askDisconnect(account)">
+              Disconnect
+            </button>
+          </div>
+
           <p v-if="passwordNeededFor === account.id" class="password-note">
             Enter a new app password to finish reconnecting.
           </p>
         </div>
       </div>
     </section>
+
+    <dialog v-if="disconnectTarget" open class="disconnect-dialog" aria-label="Disconnect account">
+      <p>
+        Disconnect {{ disconnectTarget.label }} ({{ disconnectTarget.address }})? This removes the
+        stored credential and every cached message and event for this account.
+      </p>
+      <p v-if="revokeInstructionsFor(disconnectTarget.provider)">
+        {{ revokeInstructionsFor(disconnectTarget.provider) }}
+      </p>
+      <div class="dialog-actions">
+        <button type="button" @click="cancelDisconnect">Cancel</button>
+        <button type="button" class="disconnect-confirm-btn" @click="confirmDisconnect">
+          Disconnect
+        </button>
+      </div>
+    </dialog>
   </div>
 </template>
 
@@ -304,9 +481,21 @@ h2 {
   padding-bottom: 1rem;
 }
 
-.account-header h3 {
-  margin: 0;
+.label-input {
+  font: inherit;
   font-size: 1rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-fg);
+  padding: 0.1rem 0.3rem;
+  margin: 0 0 0 -0.3rem;
+}
+
+.label-input:hover,
+.label-input:focus {
+  border-color: var(--color-border);
+  border-radius: 0.25rem;
 }
 
 .provider {
@@ -344,6 +533,26 @@ h2 {
   color: #666;
 }
 
+.colour-group {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.colour-swatch {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--swatch-color);
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.colour-swatch[aria-checked='true'] {
+  border-color: var(--color-fg);
+}
+
 .account-details {
   display: flex;
   flex-direction: column;
@@ -356,8 +565,38 @@ h2 {
   gap: 0.5rem;
 }
 
-.reconnect-btn {
+.calendar-checklist {
   margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.checklist-title {
+  margin: 0 0 0.4rem 0;
+  font-weight: 600;
+}
+
+.calendar-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.15rem 0;
+}
+
+.primary-tag {
+  color: var(--color-fg-secondary);
+}
+
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  align-items: center;
+}
+
+.pause-btn,
+.reconnect-btn,
+.disconnect-btn {
   padding: 0.5rem 1rem;
   background: transparent;
   color: var(--color-accent);
@@ -368,13 +607,59 @@ h2 {
   font-weight: 500;
 }
 
+.disconnect-btn {
+  color: var(--color-critical);
+  border-color: var(--color-critical);
+}
+
+.pause-btn:hover,
 .reconnect-btn:hover {
   background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.05));
+}
+
+.add-capability-link {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: 0.4rem;
+  color: var(--color-fg);
+  text-decoration: none;
+  font-size: 0.9rem;
 }
 
 .password-note {
   margin: 0.75rem 0 0 0;
   font-size: 0.85rem;
   color: var(--color-warn);
+}
+
+.disconnect-dialog {
+  border: none;
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  max-width: 420px;
+  color: var(--color-fg);
+  background: var(--color-bg);
+}
+
+.disconnect-dialog::backdrop {
+  background: rgb(0 0 0 / 40%);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.disconnect-confirm-btn {
+  background: var(--color-critical);
+  color: white;
+  border: none;
+  border-radius: 0.4rem;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 500;
 }
 </style>

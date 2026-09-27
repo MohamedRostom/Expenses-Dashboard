@@ -511,6 +511,61 @@ describe('Connections API — Slice A', () => {
       expect(body.accounts).toEqual([]);
       expect(body.limit).toBe(10);
     });
+
+    it("lists each account's own account_calendars rows, not an empty array", async () => {
+      const user = await harness.asUser('connections-calendars@test.com');
+      const [account] = await harness.db
+        .insert(connectedAccounts)
+        .values({
+          userId: user.userId,
+          provider: 'google',
+          address: 'connections-calendars@example.com',
+          label: 'Acct',
+          colour: 'teal',
+          capabilities: ['calendar'],
+          grantedScopes: ['calendar.readonly'],
+          credentialEnc: Buffer.from([0]),
+          status: 'connected',
+          nextRefreshAt: new Date(),
+        })
+        .returning();
+      if (!account) throw new Error('failed to insert account');
+      await harness.db.insert(accountCalendars).values([
+        {
+          userId: user.userId,
+          accountId: account.id,
+          providerCalendarId: 'primary',
+          name: 'Primary',
+          isPrimary: true,
+          enabled: true,
+        },
+        {
+          userId: user.userId,
+          accountId: account.id,
+          providerCalendarId: 'other',
+          name: 'Other',
+          isPrimary: false,
+          enabled: false,
+        },
+      ]);
+
+      const res = await user.get('/connections');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as {
+        accounts: Array<{
+          id: string;
+          calendars: Array<{ id: string; name: string; isPrimary: boolean; enabled: boolean }>;
+        }>;
+      };
+      const returned = body.accounts.find((a) => a.id === account.id);
+      expect(returned).toBeDefined();
+      expect(returned!.calendars.map((c) => c.name).sort()).toEqual(['Other', 'Primary']);
+      const primary = returned!.calendars.find((c) => c.name === 'Primary');
+      expect(primary?.isPrimary).toBe(true);
+      expect(primary?.enabled).toBe(true);
+      const other = returned!.calendars.find((c) => c.name === 'Other');
+      expect(other?.enabled).toBe(false);
+    });
   });
 
   describe('GET /panels/today', () => {
