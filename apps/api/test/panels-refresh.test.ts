@@ -14,7 +14,8 @@ import type {
   MailSource,
   MessageHeader,
 } from '@desk/connectors/panels';
-import { AuthError } from '@desk/connectors/panels';
+import { AuthError, ProviderError } from '@desk/connectors/panels';
+import { PanelsService } from '../src/services/panels.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { sealCredential, openCredential } from '../src/lib/credential.js';
@@ -775,5 +776,58 @@ describe('panels.refresh job — mail (T042/T050)', () => {
       .from(connectedAccounts)
       .where(eq(connectedAccounts.id, account.id));
     expect(row!.cachePurgedAt).toBeNull();
+  });
+
+  describe('failure escalation (T056)', () => {
+    const failing = fakeMailSource(() => {
+      throw new ProviderError('upstream down');
+    }).source;
+    const ok = fakeMailSource(() => ({ messages: [], full: true })).source;
+
+    async function statusOf(id: string) {
+      const [row] = await harness.db
+        .select()
+        .from(connectedAccounts)
+        .where(eq(connectedAccounts.id, id));
+      return [row!.status, row!.consecutiveFailures, row!.lastError];
+    }
+
+    it('twenty consecutive failures set error; the nineteenth still reads connected', async () => {
+      const { account } = await insertAccount();
+      for (let i = 0; i < 19; i++) {
+        await panelsRefreshJob(deps({ google: failing }))({ accountId: account.id }, noopCtx);
+      }
+      expect(await statusOf(account.id)).toEqual(['connected', 19, 'provider_unreachable']);
+
+      await panelsRefreshJob(deps({ google: failing }))({ accountId: account.id }, noopCtx);
+      expect(await statusOf(account.id)).toEqual(['error', 20, 'provider_unreachable']);
+    });
+
+    it('a successful user-triggered refresh returns an error account to connected', async () => {
+      const { account } = await insertAccount();
+      await harness.db
+        .update(connectedAccounts)
+        .set({ status: 'error', consecutiveFailures: 20, lastError: 'provider_unreachable' })
+        .where(eq(connectedAccounts.id, account.id));
+
+      await panelsRefreshJob(deps({ google: ok }))({ accountId: account.id }, noopCtx);
+
+      expect(await statusOf(account.id)).toEqual(['connected', 0, null]);
+    });
+
+    it('a single failure shows no error in the Today payload, only the stale mark', async () => {
+      const { account, userId } = await insertAccount();
+      await panelsRefreshJob(deps({ google: failing }))({ accountId: account.id }, noopCtx);
+
+      const panels = new PanelsService({
+        db: harness.db,
+        clock: { now: () => NOW },
+        appOrigin: 'https://app.test',
+        enqueue: async () => 'job',
+      });
+      const payload = await panels.todayPayload(userId, NOW);
+      const acct = payload.accounts.find((a) => a.id === account.id)!;
+      expect([acct.status, acct.lastError, acct.stale]).toEqual(['connected', null, true]);
+    });
   });
 });

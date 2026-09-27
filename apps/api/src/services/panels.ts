@@ -166,7 +166,8 @@ export class PanelsService {
         capabilities: a.capabilities as ('mail' | 'calendar')[],
         status,
         lastRefreshAt: a.lastRefreshAt ? a.lastRefreshAt.toISOString() : null,
-        lastError: a.lastError,
+        // Spec: until an account reaches error, a failed refresh shows only as the stale mark.
+        lastError: status === 'connected' ? null : a.lastError,
         // FR-014: stale = last successful refresh older than the tier's interval.
         stale: a.lastRefreshAt
           ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
