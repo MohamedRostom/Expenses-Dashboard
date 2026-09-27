@@ -337,7 +337,9 @@ test.describe('Today calendar panel @ci', () => {
     // before refreshIfStale's background POST has had any chance to complete — this must be
     // true immediately, not after a poll.
     await expect(page.getByText(GOOGLE_ACCOUNT_LABEL).first()).toBeVisible();
-    await expect(page.getByText('Last refreshed', { exact: false })).toBeVisible();
+    await expect(
+      page.locator('.calendar-panel').getByText('Last refreshed', { exact: false }),
+    ).toBeVisible();
 
     // SC-002 (on-open half): the event appears within 10s of opening /today (T086).
     await waitForTodayPayload(page, (b) => eventTitles(b).includes('Retro'), 10_000);
@@ -361,9 +363,13 @@ test.describe('Today calendar panel @ci', () => {
     await waitForTodayPayload(page, (b) => b.accounts[0]?.status === 'reconnect_needed');
 
     await page.goto('/today');
-    await expect(page.getByText(`${GOOGLE_ACCOUNT_LABEL} needs reconnecting.`)).toBeVisible();
     await expect(
-      page.getByRole('link', { name: `Reconnect ${GOOGLE_ACCOUNT_LABEL}` }),
+      page.locator('.calendar-panel').getByText(`${GOOGLE_ACCOUNT_LABEL} needs reconnecting.`),
+    ).toBeVisible();
+    await expect(
+      page
+        .locator('.calendar-panel')
+        .getByRole('link', { name: `Reconnect ${GOOGLE_ACCOUNT_LABEL}` }),
     ).toBeVisible();
 
     await page.setViewportSize({ width: 360, height: 800 });
