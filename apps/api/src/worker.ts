@@ -49,6 +49,7 @@ export function buildDeps(
     breachChecker: new HibpBreachChecker(),
     rates: new FrankfurterRates(),
     jobs: jobRunner,
+    runJobsNow: () => jobRunner.runDueJobs(),
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: env.GIT_SHA },
     appOrigin: env.APP_ORIGIN,

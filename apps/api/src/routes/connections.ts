@@ -21,6 +21,7 @@ import type { ConnectionsService } from '../services/connections.js';
 import type { PanelsService } from '../services/panels.js';
 import { providerRegistry } from '../services/provider-registry.js';
 import { AuthError, type CalendarSource } from '@desk/connectors/panels';
+import { kickJobsNow } from '../lib/kick-jobs.js';
 
 const OAUTH_STATE_COOKIE = 'desk_connections_oauth_state';
 const OAUTH_STATE_MAX_AGE_S = 600;
@@ -58,6 +59,9 @@ type ConnectionsRouteDeps = {
         ): Promise<string>;
       }
     | undefined;
+  /** Kicks the job runner once right after a user-triggered refresh (SC-002); background
+   * refreshes still wait for the tick. */
+  runJobsNow?: (() => Promise<void>) | undefined;
 };
 
 export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
@@ -537,6 +541,7 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
     // Check ownership and enqueue refresh
     try {
       await deps.panels.refreshNow(user.id, accountId);
+      kickJobsNow(c, deps.runJobsNow);
       return c.json({}, 202);
     } catch (error) {
       if ((error as Error).message === 'not_found') {

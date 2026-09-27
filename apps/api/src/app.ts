@@ -97,6 +97,9 @@ export type AppDeps = {
   /** Calendar sources per provider for the panels.refresh job. Built from googlePanels/microsoft
    * when omitted; pass explicit fakes in tests to script provider behaviour. */
   calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  /** Kicks the job runner once right after a user-triggered refresh (SC-002); background
+   * refreshes still wait for the tick. */
+  runJobsNow?: (() => Promise<void>) | undefined;
 };
 
 export type AppVariables = RequestLoggerVariables & SessionVariables & CspNonceVariables;
@@ -286,6 +289,7 @@ export function createApp(deps: AppDeps) {
       calendarSources,
       limiter: deps.limiter,
       jobs: deps.jobs,
+      runJobsNow: deps.runJobsNow,
     }),
   );
   app.route('/connections', connectionsRouter);
@@ -299,6 +303,7 @@ export function createApp(deps: AppDeps) {
       panels: panelsService,
       limiter: deps.limiter,
       clock: deps.clock,
+      runJobsNow: deps.runJobsNow,
     }),
   );
   app.route('/panels/today', todayRouter);

@@ -4,6 +4,7 @@ import { requireAuth } from '../lib/require-auth.js';
 import type { PanelsService } from '../services/panels.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import type { Clock } from '../app.js';
+import { kickJobsNow } from '../lib/kick-jobs.js';
 
 const RATE_LIMIT_KEY_PREFIX = 'panels.refresh:';
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
@@ -13,6 +14,9 @@ type TodayRouteDeps = {
   panels: PanelsService;
   limiter: RateLimiter;
   clock: Clock;
+  /** Kicks the job runner once right after a user-triggered refresh (SC-002); background
+   * refreshes still wait for the tick. */
+  runJobsNow?: (() => Promise<void>) | undefined;
 };
 
 export function createTodayRoutes(deps: TodayRouteDeps) {
@@ -54,6 +58,8 @@ export function createTodayRoutes(deps: TodayRouteDeps) {
     // Mark accounts older than 2 minutes as due
     const twoMinutesMs = 2 * 60 * 1000;
     const queued = await deps.panels.markDue(user.id, twoMinutesMs);
+
+    if (queued.length > 0) kickJobsNow(c, deps.runJobsNow);
 
     return c.json({ queued }, 202);
   });

@@ -92,6 +92,7 @@ const app = createApp({
   breachChecker: new HibpBreachChecker(),
   rates: ratesProvider,
   jobs: jobRunner,
+  runJobsNow: () => jobRunner.runDueJobs(),
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
   appOrigin: env.APP_ORIGIN,

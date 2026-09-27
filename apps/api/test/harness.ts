@@ -87,10 +87,16 @@ export async function startHarness(
   /** withJobs wires a real JobRunner so enqueued jobs land in the jobs table (off by default). */
   opts: {
     withJobs?: boolean;
+    /** T086: wires AppDeps.runJobsNow to the same JobRunner as `jobs`, so a user-triggered
+     * refresh runs its job immediately instead of waiting for a tick. Requires withJobs. */
+    runJobsNow?: boolean;
     calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
     registerIpLimitPerHour?: number;
   } = {},
 ): Promise<Harness> {
+  if (opts.runJobsNow && !opts.withJobs) {
+    throw new Error('startHarness: runJobsNow requires withJobs');
+  }
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     'postgres:16-alpine',
   ).start();
@@ -121,6 +127,8 @@ export async function startHarness(
     return notionMockApp.request(path, init);
   };
 
+  const jobRunner = opts.withJobs ? new JobRunner(queryDb) : undefined;
+
   const app = createApp({
     db,
     hasher: passwordHasher,
@@ -130,7 +138,8 @@ export async function startHarness(
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
     breachChecker: new FakeBreachChecker(),
     rates: ratesProvider,
-    jobs: opts.withJobs ? new JobRunner(queryDb) : undefined,
+    jobs: jobRunner,
+    runJobsNow: opts.runJobsNow ? () => jobRunner!.runDueJobs() : undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
     appOrigin: 'https://app.test',
