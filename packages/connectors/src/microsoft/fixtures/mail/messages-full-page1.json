@@ -1,0 +1,46 @@
+{
+  "value": [
+    {
+      "id": "msg-1",
+      "receivedDateTime": "2026-10-01T08:15:00Z",
+      "subject": "Weekly newsletter",
+      "bodyPreview": "This week: five things worth reading, a roundup of the best links from around the web, an update on what the team shipped, a note on upcoming events, and a short reminder about the survey we sent out last week which still needs your input please.",
+      "isRead": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=msg-1",
+      "from": {
+        "emailAddress": {
+          "name": "Newsletter Team",
+          "address": "newsletter@example.test"
+        }
+      }
+    },
+    {
+      "id": "msg-2",
+      "receivedDateTime": "2026-10-02T09:30:00Z",
+      "subject": "Invoice #4821",
+      "bodyPreview": "Please find attached your invoice for September.",
+      "isRead": true,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=msg-2",
+      "from": {
+        "emailAddress": {
+          "name": "Billing",
+          "address": "billing@example.test"
+        }
+      }
+    },
+    {
+      "id": "msg-3",
+      "receivedDateTime": "2026-10-03T10:00:00Z",
+      "subject": "Account alert",
+      "bodyPreview": "Unusual sign-in detected on your account.",
+      "isRead": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=msg-3",
+      "from": {
+        "emailAddress": {
+          "address": "security@example.test"
+        }
+      }
+    }
+  ],
+  "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$select=from%2Csubject%2CbodyPreview%2CreceivedDateTime%2CisRead%2CwebLink&$top=50&$skiptoken=page2"
+}

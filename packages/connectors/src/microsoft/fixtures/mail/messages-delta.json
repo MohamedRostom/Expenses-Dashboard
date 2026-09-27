@@ -1,0 +1,25 @@
+{
+  "value": [
+    {
+      "id": "msg-delta-new",
+      "receivedDateTime": "2026-10-05T12:00:00Z",
+      "subject": "New message since last sync",
+      "bodyPreview": "This one arrived after the last refresh.",
+      "isRead": false,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=msg-delta-new",
+      "from": {
+        "emailAddress": {
+          "name": "Sam Sender",
+          "address": "sam@example.test"
+        }
+      }
+    },
+    {
+      "id": "msg-2",
+      "@removed": {
+        "reason": "deleted"
+      }
+    }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$select=from%2Csubject%2CbodyPreview%2CreceivedDateTime%2CisRead%2CwebLink&$top=50&$deltatoken=sync-2"
+}

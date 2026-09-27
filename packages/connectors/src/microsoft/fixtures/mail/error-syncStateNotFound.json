@@ -1,0 +1,6 @@
+{
+  "error": {
+    "code": "syncStateNotFound",
+    "message": "Sync state not found"
+  }
+}

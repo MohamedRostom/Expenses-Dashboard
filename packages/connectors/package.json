@@ -13,9 +13,11 @@
     "./imap/fake-server": "./src/imap/fake-server.ts",
     "./google/oauth": "./src/google/oauth.ts",
     "./google/calendar": "./src/google/calendar.ts",
+    "./google/gmail": "./src/google/gmail.ts",
     "./google/fake": "./src/google/fake.ts",
     "./microsoft/oauth": "./src/microsoft/oauth.ts",
     "./microsoft/calendar": "./src/microsoft/calendar.ts",
+    "./microsoft/mail": "./src/microsoft/mail.ts",
     "./microsoft/fake": "./src/microsoft/fake.ts"
   },
   "scripts": {

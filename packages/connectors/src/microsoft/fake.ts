@@ -1,26 +1,38 @@
 import { AuthError } from '../panels/index.js';
-import type { CalendarSource, EventOccurrence } from '../panels/index.js';
+import type {
+  CalendarSource,
+  EventOccurrence,
+  MailSource,
+  MessageHeader,
+} from '../panels/index.js';
 import { toOccurrence } from './calendar.js';
 import type { MicrosoftRawEvent, MicrosoftRawCalendar } from './calendar.js';
+import { toMessageHeader } from './mail.js';
+import type { MicrosoftRawMessage } from './mail.js';
 import calendarsFixture from './fixtures/calendar/calendars.json';
 import page1 from './fixtures/calendar/view-full-page1.json';
 import page2 from './fixtures/calendar/view-full-page2.json';
+import mailPage1 from './fixtures/mail/messages-full-page1.json';
+import mailPage2 from './fixtures/mail/messages-full-page2.json';
 
 /**
- * In-memory fake implementation of Microsoft Graph calendar provider.
+ * In-memory fake implementation of Microsoft Graph calendar and mail providers.
  */
-export class GraphFake implements CalendarSource {
+export class GraphFake implements CalendarSource, MailSource {
   private calendars: Record<string, MicrosoftRawCalendar>;
   private items: Record<string, MicrosoftRawEvent[]>;
+  private messages: MicrosoftRawMessage[];
   private revoked = false;
   // ponytail: a monotonic "changed since" counter in place of Graph's opaque delta tokens — the
   // fake only needs "what changed after seq N", not a real deltaLink shape.
   private changeSeq = 0;
   private seqByKey = new Map<string, number>();
+  private mailSeqById = new Map<string, number>();
 
   constructor(seed?: {
     calendars?: Record<string, MicrosoftRawCalendar>;
     items?: Record<string, MicrosoftRawEvent[]>;
+    messages?: MicrosoftRawMessage[];
   }) {
     this.calendars =
       seed?.calendars ?? Object.fromEntries(calendarsFixture.value.map((c) => [c.id, c]));
@@ -35,6 +47,11 @@ export class GraphFake implements CalendarSource {
       for (const item of events) {
         this.seqByKey.set(this.key(calendarId, item.id), 0);
       }
+    }
+    this.messages =
+      seed?.messages ?? ([...mailPage1.value, ...mailPage2.value] as MicrosoftRawMessage[]);
+    for (const item of this.messages) {
+      this.mailSeqById.set(item.id, 0);
     }
   }
 
@@ -101,6 +118,30 @@ export class GraphFake implements CalendarSource {
     return result;
   }
 
+  /** Messages changed since `cursor` (`@removed` tombstones included); a full fetch (no cursor)
+   * excludes removed messages entirely. */
+  private changedMessages(cursor?: string): MicrosoftRawMessage[] {
+    if (!cursor) return this.messages.filter((item) => !item['@removed']);
+    const cursorSeq = Number(cursor) || 0;
+    return this.messages.filter((item) => (this.mailSeqById.get(item.id) ?? 0) > cursorSeq);
+  }
+
+  async fetchInbox(cred: unknown, limit: number, cursor?: string) {
+    if (this.revoked) {
+      throw new AuthError('Access revoked');
+    }
+
+    const full = !cursor;
+    const messages: MessageHeader[] = [];
+    for (const item of this.changedMessages(cursor)) {
+      if (item['@removed']) continue;
+      messages.push(toMessageHeader(item));
+      if (messages.length >= limit) break;
+    }
+
+    return { messages, cursor: String(this.changeSeq), full };
+  }
+
   async verify() {
     if (this.revoked) {
       throw new AuthError('Access revoked');
@@ -109,6 +150,33 @@ export class GraphFake implements CalendarSource {
 
   async revoke() {
     this.revoked = true;
+  }
+
+  /**
+   * Add a message to the inbox in the fake.
+   */
+  addMessage(rawItem: MicrosoftRawMessage) {
+    this.messages.push(rawItem);
+    this.changeSeq++;
+    this.mailSeqById.set(rawItem.id, this.changeSeq);
+  }
+
+  /**
+   * Flip a message's read state in the fake (default: mark read).
+   */
+  markRead(messageId: string, isRead = true) {
+    const item = this.messages.find((m) => m.id === messageId);
+    if (!item) return;
+    item.isRead = isRead;
+    this.changeSeq++;
+    this.mailSeqById.set(messageId, this.changeSeq);
+  }
+
+  /** Raw delta page for the HTTP mock's `messages/delta`: a full listing (no deltatoken) excludes
+   * removed messages; given a deltatoken cursor, only messages changed since it (`@removed`
+   * tombstones included). Also hands back the current seq to embed in the next deltaLink. */
+  rawMailDeltaPage(cursor?: string): { items: MicrosoftRawMessage[]; seq: number } {
+    return { items: this.changedMessages(cursor), seq: this.changeSeq };
   }
 
   /**

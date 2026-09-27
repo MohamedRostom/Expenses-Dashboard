@@ -1,0 +1,19 @@
+{
+  "value": [
+    {
+      "id": "msg-4",
+      "receivedDateTime": "2026-10-04T11:45:00Z",
+      "subject": "Meeting notes",
+      "bodyPreview": "Attached are notes from today's meeting, plus the action items we agreed on.",
+      "isRead": true,
+      "webLink": "https://outlook.office365.com/owa/?ItemID=msg-4",
+      "from": {
+        "emailAddress": {
+          "name": "Alex Colleague",
+          "address": "alex@example.test"
+        }
+      }
+    }
+  ],
+  "@odata.deltaLink": "https://graph.microsoft.com/v1.0/me/mailFolders/inbox/messages/delta?$select=from%2Csubject%2CbodyPreview%2CreceivedDateTime%2CisRead%2CwebLink&$top=50&$deltatoken=sync-1"
+}
