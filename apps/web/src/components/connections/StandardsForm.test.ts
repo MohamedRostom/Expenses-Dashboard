@@ -185,16 +185,14 @@ describe('StandardsForm — connect mode', () => {
   ])(
     'shows step-specific copy for verification_failed { step: %s }',
     async (step, expectedText) => {
-      const fetchMock = vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              error: { code: 'verification_failed', message: 'failed', details: { step } },
-            }),
-            { status: 422 },
-          ),
-        );
+      const fetchMock = vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            error: { code: 'verification_failed', message: 'failed', details: { step } },
+          }),
+          { status: 422 },
+        ),
+      );
       vi.stubGlobal('fetch', fetchMock);
       const { el, app } = mount();
 
@@ -214,13 +212,11 @@ describe('StandardsForm — connect mode', () => {
   );
 
   it('shows copy for a rate-limited submission', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ error: { code: 'rate_limited', message: 'too many' } }), {
-          status: 429,
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'rate_limited', message: 'too many' } }), {
+        status: 429,
+      }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     const { el, app } = mount();
 
@@ -239,13 +235,11 @@ describe('StandardsForm — connect mode', () => {
   });
 
   it('shows copy for a refused host', async () => {
-    const fetchMock = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ error: { code: 'host_not_allowed', message: 'refused' } }), {
-          status: 422,
-        }),
-      );
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ error: { code: 'host_not_allowed', message: 'refused' } }), {
+        status: 422,
+      }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     const { el, app } = mount();
 

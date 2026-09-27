@@ -4187,6 +4187,100 @@
         "required": ["address", "password", "capabilities"],
         "additionalProperties": false
       },
+      "StandardsCreateResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "account": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "provider": {
+                "type": "string",
+                "enum": ["google", "microsoft", "standards"]
+              },
+              "address": {
+                "type": "string",
+                "format": "email",
+                "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+              },
+              "label": {
+                "type": "string"
+              },
+              "colour": {
+                "type": "string"
+              },
+              "capabilities": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": ["mail", "calendar"]
+                }
+              },
+              "grantedScopes": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "status": {
+                "type": "string",
+                "enum": ["connected", "reconnect_needed", "error", "paused"]
+              },
+              "pausedAt": {
+                "type": ["string", "null"]
+              },
+              "lastRefreshAt": {
+                "type": ["string", "null"]
+              },
+              "lastError": {
+                "type": ["string", "null"]
+              },
+              "calendars": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "isPrimary": {
+                      "type": "boolean"
+                    },
+                    "enabled": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["id", "name", "isPrimary", "enabled"],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "id",
+              "provider",
+              "address",
+              "label",
+              "colour",
+              "capabilities",
+              "grantedScopes",
+              "status",
+              "pausedAt",
+              "lastRefreshAt",
+              "lastError",
+              "calendars"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": ["account"],
+        "additionalProperties": false
+      },
       "SyncNotionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
