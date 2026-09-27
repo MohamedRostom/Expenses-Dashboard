@@ -168,10 +168,16 @@ export class PanelsService {
         lastRefreshAt: a.lastRefreshAt ? a.lastRefreshAt.toISOString() : null,
         // Spec: until an account reaches error, a failed refresh shows only as the stale mark.
         lastError: status === 'connected' ? null : a.lastError,
-        // FR-014: stale = last successful refresh older than the tier's interval.
-        stale: a.lastRefreshAt
-          ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
-          : true,
+        // FR-014/edge cases: stale = last successful refresh older than the tier's interval, but
+        // a reconnect_needed or error account is unconditionally stale — it will never refresh
+        // again until fixed, so time-based freshness alone would under-report it right after the
+        // status changes (spec.md US3 scenario 1, "its data stays visible but marked stale").
+        stale:
+          status === 'reconnect_needed' || status === 'error'
+            ? true
+            : a.lastRefreshAt
+              ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
+              : true,
         purged: !!a.cachePurgedAt,
         unreadCount: unreadCountFor(messagesByAccount[a.id] ?? [], a.unreadTotal ?? undefined),
         ...(status === 'reconnect_needed' && {

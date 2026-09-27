@@ -707,6 +707,28 @@ describe('panels.refresh job — mail (T042/T050)', () => {
     expect(messages).toHaveLength(1);
   });
 
+  // Spec (specs/002-mail-calendar-panels/spec.md US3 scenario 1 and Edge Cases): "the account
+  // shows 'reconnect needed', its data stays visible but marked stale" — unconditionally, not
+  // only once the tier's time threshold has also elapsed. A revoked account never refreshes
+  // again, so time-based staleness alone would under-report it as fresh right after revocation.
+  it('a reconnect_needed account is stale in the Today payload even with a recent last_refresh_at', async () => {
+    const { account, userId } = await insertAccount();
+    await harness.db
+      .update(connectedAccounts)
+      .set({ lastRefreshAt: NOW, status: 'reconnect_needed', lastError: 'access_revoked' })
+      .where(eq(connectedAccounts.id, account.id));
+
+    const panels = new PanelsService({
+      db: harness.db,
+      clock: { now: () => NOW },
+      appOrigin: 'https://app.test',
+      enqueue: async () => 'job',
+    });
+    const payload = await panels.todayPayload(userId, NOW);
+    const acct = payload.accounts.find((a) => a.id === account.id)!;
+    expect([acct.status, acct.stale]).toEqual(['reconnect_needed', true]);
+  });
+
   it('an account without the mail capability never calls the source', async () => {
     const { account } = await insertAccount({ capabilities: ['calendar'] });
     const { source, calls } = fakeMailSource(() => ({ messages: [], full: true }));
