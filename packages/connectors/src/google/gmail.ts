@@ -65,11 +65,17 @@ export function decodeHtmlEntities(text: string): string {
 // add if a real account fixture ever needs one; Gmail's own web client always shows encoded
 // names verbatim in metadata-format responses, so this is a documented gap, not a guess.
 export function parseFrom(value: string): { fromName?: string; fromAddress: string } {
+  // String scanning, not a regex: the header is sender-controlled and the backtracking pattern
+  // this replaces was quadratic on crafted input (CodeQL js/polynomial-redos).
   const trimmed = value.trim();
-  const m = /^(.*)<([^>]+)>\s*$/.exec(trimmed);
-  if (m) {
-    const name = m[1]!.trim().replace(/^"(.*)"$/, '$1');
-    return name ? { fromName: name, fromAddress: m[2]!.trim() } : { fromAddress: m[2]!.trim() };
+  const lt = trimmed.lastIndexOf('<');
+  if (lt !== -1 && trimmed.endsWith('>')) {
+    const address = trimmed.slice(lt + 1, -1).trim();
+    if (address) {
+      let name = trimmed.slice(0, lt).trim();
+      if (name.length >= 2 && name.startsWith('"') && name.endsWith('"')) name = name.slice(1, -1);
+      return name ? { fromName: name, fromAddress: address } : { fromAddress: address };
+    }
   }
   return { fromAddress: trimmed };
 }

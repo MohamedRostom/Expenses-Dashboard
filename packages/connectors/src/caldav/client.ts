@@ -46,8 +46,38 @@ export interface XmlElement {
   text: string;
 }
 
-const XML_TOKEN_RE =
-  /<!\[CDATA\[[\s\S]*?\]\]>|<!--[\s\S]*?-->|<\?[\s\S]*?\?>|<\/[^>]+>|<[^>]+?\/>|<[^>]+>|[^<]+/g;
+/** Responses bigger than this are refused: a standards CalDAV server is user-chosen, so its
+ * output is untrusted and must not be able to exhaust memory or time. */
+const MAX_RESPONSE_CHARS = 2 * 1024 * 1024;
+
+/** Splits XML into markup and text tokens in one forward pass. Each markup token's end is found
+ * with a single indexOf from its start, and unterminated markup ends the scan, so the cost is
+ * linear (the regex tokenizer this replaces was quadratic on crafted input, CodeQL
+ * js/polynomial-redos). */
+function xmlTokens(xml: string): string[] {
+  const tokens: string[] = [];
+  let i = 0;
+  while (i < xml.length) {
+    const lt = xml.indexOf('<', i);
+    if (lt === -1) {
+      tokens.push(xml.slice(i));
+      break;
+    }
+    if (lt > i) tokens.push(xml.slice(i, lt));
+    const end = xml.startsWith('<![CDATA[', lt)
+      ? ']]>'
+      : xml.startsWith('<!--', lt)
+        ? '-->'
+        : xml.startsWith('<?', lt)
+          ? '?>'
+          : '>';
+    const close = xml.indexOf(end, lt + 1);
+    if (close === -1) break; // unterminated markup: the rest is malformed, drop it
+    tokens.push(xml.slice(lt, close + end.length));
+    i = close + end.length;
+  }
+  return tokens;
+}
 
 function decodeXmlEntities(s: string): string {
   return s
@@ -61,7 +91,7 @@ function decodeXmlEntities(s: string): string {
 }
 
 export function parseXml(xml: string): XmlElement {
-  const tokens = xml.match(XML_TOKEN_RE) ?? [];
+  const tokens = xmlTokens(xml);
   const root: XmlElement = { name: '#root', attrs: {}, children: [], text: '' };
   const stack: XmlElement[] = [root];
   for (const token of tokens) {
@@ -160,7 +190,15 @@ async function davRequest(
   if (!response.ok && response.status !== 207) {
     throw new ProviderError(`caldav ${method} ${response.status}`);
   }
-  return parseXml(await response.text());
+  const declared = Number(response.headers.get('content-length') ?? 0);
+  if (declared > MAX_RESPONSE_CHARS) {
+    throw new ProviderError(`caldav ${method} response too large`);
+  }
+  const text = await response.text();
+  if (text.length > MAX_RESPONSE_CHARS) {
+    throw new ProviderError(`caldav ${method} response too large`);
+  }
+  return parseXml(text);
 }
 
 async function propfindCurrentUserPrincipal(

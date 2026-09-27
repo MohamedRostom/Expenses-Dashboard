@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createGmailSource, decodeHtmlEntities, toMessageHeader } from './gmail.js';
+import { createGmailSource, decodeHtmlEntities, parseFrom, toMessageHeader } from './gmail.js';
 import { GoogleFake } from './fake.js';
 import { AuthError, RateLimited } from '../panels/index.js';
 import messagesListFixture from './fixtures/mail/messages-list.json';
@@ -500,5 +500,29 @@ describe('Gmail Source', () => {
         AuthError,
       );
     });
+  });
+});
+
+// CodeQL js/polynomial-redos (alert 9): the From header is sender-controlled, so parsing it must
+// stay linear on crafted input.
+describe('parseFrom', () => {
+  it('splits a display name and an address, stripping quotes', () => {
+    expect(parseFrom('"Ada Lovelace" <ada@example.test>')).toEqual({
+      fromName: 'Ada Lovelace',
+      fromAddress: 'ada@example.test',
+    });
+    expect(parseFrom('Ada <ada@example.test>')).toEqual({
+      fromName: 'Ada',
+      fromAddress: 'ada@example.test',
+    });
+    expect(parseFrom('<ada@example.test>')).toEqual({ fromAddress: 'ada@example.test' });
+    expect(parseFrom('ada@example.test')).toEqual({ fromAddress: 'ada@example.test' });
+  });
+
+  it('stays linear on a crafted header', () => {
+    const crafted = '<' + '<='.repeat(50_000);
+    const started = performance.now();
+    expect(parseFrom(crafted)).toEqual({ fromAddress: crafted });
+    expect(performance.now() - started).toBeLessThan(200);
   });
 });

@@ -4,8 +4,8 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { AuthError, VerificationError } from '../panels/index.js';
-import { createCalDavSource, type CalDavCredential } from './client.js';
+import { AuthError, ProviderError, VerificationError } from '../panels/index.js';
+import { createCalDavSource, parseXml, type CalDavCredential } from './client.js';
 import { CalDavFake } from './fake.js';
 
 const ROOT = 'https://caldav.example.test/';
@@ -305,3 +305,38 @@ function extractCalendarDataBlocks(xml: string): Record<string, string> {
   }
   return blocks;
 }
+
+// CodeQL js/polynomial-redos (alert 10): a standards CalDAV server is chosen by the user, so its
+// responses are untrusted; the XML tokenizer must stay linear and the body size bounded.
+describe('parseXml', () => {
+  it('builds the element tree: namespaces dropped, attributes, text, CDATA, comments skipped', () => {
+    const root = parseXml(
+      '<?xml version="1.0"?><!-- c --><D:multistatus xmlns:D="DAV:"><D:href a="x&amp;y">/p/</D:href>' +
+        '<C:data><![CDATA[BEGIN:VCALENDAR]]></C:data><D:empty/></D:multistatus>',
+    );
+    const ms = root.children[0]!;
+    expect(ms.name).toBe('multistatus');
+    expect(ms.children.map((c) => [c.name, c.attrs, c.text])).toEqual([
+      ['href', { a: 'x&y' }, '/p/'],
+      ['data', {}, 'BEGIN:VCALENDAR'],
+      ['empty', {}, ''],
+    ]);
+  });
+
+  it.each(['<!--', '<?', '</', '<![CDATA[', '<'])('stays linear on %s repeated', (start) => {
+    const crafted = start.repeat(50_000);
+    const started = performance.now();
+    parseXml(crafted);
+    expect(performance.now() - started).toBeLessThan(200);
+  });
+
+  it('refuses a response body over the size cap', async () => {
+    const huge = '<D:multistatus>' + ' '.repeat(3 * 1024 * 1024) + '</D:multistatus>';
+    const source = createCalDavSource({
+      fetchImpl: (async () => new Response(huge, { status: 207 })) as unknown as typeof fetch,
+    });
+    await expect(
+      source.listCalendars({ url: 'https://dav.example.test/', username: 'u', password: 'p' }),
+    ).rejects.toBeInstanceOf(ProviderError);
+  });
+});
