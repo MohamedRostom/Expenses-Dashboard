@@ -34,6 +34,8 @@ interface Mailbox {
 
 export interface ImapStore {
   mailboxes: Map<string, Mailbox>;
+  /** Per-username password override; everyone else logs in with 'app-password'. */
+  passwords: Map<string, string>;
 }
 
 // ponytail: one fixed UIDVALIDITY shared by every mailbox — "stable per mailbox" only requires it
@@ -42,7 +44,7 @@ export interface ImapStore {
 const UID_VALIDITY = 1000001;
 
 export function createImapStore(): ImapStore {
-  return { mailboxes: new Map() };
+  return { mailboxes: new Map(), passwords: new Map() };
 }
 
 function mailboxFor(store: ImapStore, username: string): Mailbox {
@@ -74,6 +76,7 @@ function markRead(store: ImapStore, username: string, uid: number): void {
 /**
  * Control route for Playwright (tests/e2e/fixtures/index.ts's `mockProvider('imap')`):
  *   POST /__control/imap/messages { username, action: 'add', message } | { username, action: 'markRead', uid }
+ *     | { username, action: 'setPassword', password } (lets a test drive a reconnect)
  * Mounted at the mocks app's root in server.ts, sharing an ImapStore with startImapMockServer so
  * a message added here is immediately visible to the next fetch over the TCP server.
  */
@@ -84,11 +87,14 @@ export function createImapMockApp(store: ImapStore = createImapStore()): Hono {
     const body = await c.req.json<
       | { username: string; action: 'add'; message: ImapMessageInput }
       | { username: string; action: 'markRead'; uid: number }
+      | { username: string; action: 'setPassword'; password: string }
     >();
     if (body.action === 'add') {
       addMessage(store, body.username, body.message);
     } else if (body.action === 'markRead') {
       markRead(store, body.username, body.uid);
+    } else if (body.action === 'setPassword') {
+      store.passwords.set(body.username, body.password);
     } else {
       return c.json({ error: 'unknown action' }, 400);
     }
@@ -184,7 +190,7 @@ async function handleConnection(socket: NetSocket, store: ImapStore): Promise<vo
     const loginMatch = LOGIN_RE.exec(rest);
     if (loginMatch) {
       const [, user, password] = loginMatch;
-      if (password !== 'app-password') {
+      if (password !== (store.passwords.get(user!) ?? 'app-password')) {
         socket.write(`${tag} NO LOGIN failed\r\n`);
       } else {
         username = user!;

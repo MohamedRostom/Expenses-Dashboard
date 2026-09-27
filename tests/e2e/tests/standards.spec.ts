@@ -10,11 +10,10 @@ import { signUpAndVerify, axeCheck, mockProvider } from '../fixtures/index.js';
  */
 
 const IMAP_HOST = process.env['IMAP_TEST_HOST'] ?? 'mocks';
-// infra/mocks/src/server.ts starts the real TCP IMAP mock on 1143 (infra/docker-compose.yml
-// publishes 1143:1143), not the standard IMAP port — 143 has nothing listening on it, which
-// surfaced as a "couldn't reach that server" connect-step error instead of exercising login.
-const IMAP_PORT = '1143';
-const CALDAV_URL = process.env['CALDAV_TEST_URL'] ?? 'http://mocks:4000/caldav';
+// The api dials the IMAP mock inside the compose network, where it listens on the standard
+// plaintext port (IMAP_MOCK_PORT=143 in infra/docker-compose.yml); FR-017 allows only 993 or 143.
+const IMAP_PORT = '143';
+const CALDAV_URL = process.env['CALDAV_TEST_URL'] ?? 'http://mocks:4000/caldav/dav/';
 const IMAP_PASSWORD = 'app-password'; // infra/mocks/src/imap.ts's fixed accepted password
 
 async function openStandardsForm(page: Page): Promise<void> {
@@ -101,6 +100,23 @@ test.describe('Standards-based connect form @ci', () => {
     await page.getByLabel('IMAP port').fill(IMAP_PORT);
     await page.getByRole('button', { name: 'Connect', exact: true }).click();
     await expect(page.locator('.account-card')).toContainText(address);
+
+    // The mailbox's app password is rotated, so the next refresh fails LOGIN and the account
+    // needs reconnecting; only then does the card offer Reconnect.
+    await mockProvider('imap').setPassword(address, 'new-app-password-123');
+    const csrf = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf')?.value;
+    const { accounts } = (await (await page.request.get('/connections')).json()) as {
+      accounts: { id: string; address: string }[];
+    };
+    const accountId = accounts.find((a) => a.address === address)!.id;
+    const refresh = await page.request.post(`/connections/${accountId}/refresh`, {
+      headers: { 'x-csrf-token': csrf ?? '' },
+    });
+    expect(refresh.status()).toBe(202);
+    await expect(async () => {
+      await page.reload();
+      await expect(page.getByRole('button', { name: 'Reconnect' })).toBeVisible({ timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
 
     await page.getByRole('button', { name: 'Reconnect' }).click();
     await expect(page.getByLabel('Address')).toHaveCount(0);

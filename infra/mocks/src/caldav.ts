@@ -19,14 +19,16 @@ import { CalDavFake } from '@desk/connectors/caldav/fake';
  *     that username (defaults to 'app-password', matching the IMAP mock's fixed password); lets a
  *     test drive a wrong-password reconnect without a second mock username.
  */
-export function createCalDavMockApp(): Hono {
+/** `prefix` is the path the app is mounted at (server.ts mounts it at /caldav), so the hrefs
+ * discovery returns resolve against the same origin. */
+export function createCalDavMockApp(prefix = ''): Hono {
   const app = new Hono();
 
   const fakes = new Map<string, CalDavFake>();
   const passwords = new Map<string, string>();
 
   function calendarUrl(username: string): string {
-    return `/dav/calendars/${encodeURIComponent(username)}/personal/`;
+    return `${prefix}/dav/calendars/${encodeURIComponent(username)}/personal/`;
   }
 
   function fakeFor(username: string): CalDavFake {
@@ -79,8 +81,8 @@ export function createCalDavMockApp(): Hono {
     const { username, ok } = checkAuth(c);
     if (!ok) return unauthorized();
     return multistatus(
-      `<D:response><D:href>/dav/</D:href><D:propstat><D:prop>` +
-        `<D:current-user-principal><D:href>/dav/principals/${encodeURIComponent(username)}/</D:href></D:current-user-principal>` +
+      `<D:response><D:href>${prefix}/dav/</D:href><D:propstat><D:prop>` +
+        `<D:current-user-principal><D:href>${prefix}/dav/principals/${encodeURIComponent(username)}/</D:href></D:current-user-principal>` +
         `</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`,
     );
   });
@@ -90,8 +92,8 @@ export function createCalDavMockApp(): Hono {
     if (!ok) return unauthorized();
     const username = decodeURIComponent(c.req.param('username'));
     return multistatus(
-      `<D:response><D:href>/dav/principals/${encodeURIComponent(username)}/</D:href><D:propstat><D:prop>` +
-        `<C:calendar-home-set><D:href>/dav/calendars/${encodeURIComponent(username)}/</D:href></C:calendar-home-set>` +
+      `<D:response><D:href>${prefix}/dav/principals/${encodeURIComponent(username)}/</D:href><D:propstat><D:prop>` +
+        `<C:calendar-home-set><D:href>${prefix}/dav/calendars/${encodeURIComponent(username)}/</D:href></C:calendar-home-set>` +
         `</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`,
     );
   });
@@ -102,7 +104,7 @@ export function createCalDavMockApp(): Hono {
     const username = decodeURIComponent(c.req.param('username'));
     const fake = fakeFor(username);
     return multistatus(
-      `<D:response><D:href>/dav/calendars/${encodeURIComponent(username)}/</D:href><D:propstat><D:prop>` +
+      `<D:response><D:href>${prefix}/dav/calendars/${encodeURIComponent(username)}/</D:href><D:propstat><D:prop>` +
         `<D:resourcetype><D:collection/></D:resourcetype><D:displayname>${username}</D:displayname>` +
         `</D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>` +
         `<D:response><D:href>${calendarUrl(username)}</D:href><D:propstat><D:prop>` +

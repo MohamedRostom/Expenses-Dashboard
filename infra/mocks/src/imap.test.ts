@@ -154,6 +154,35 @@ describe('IMAP mock (T052)', () => {
     }
   });
 
+  // Lets e2e drive a standards reconnect: rotate one username's password, the old one fails.
+  it('control setPassword: the new password logs in, the old one fails, other usernames unaffected', async () => {
+    const { server, store, port } = await startServer();
+    try {
+      const app = createImapMockApp(store);
+      const res = await app.request('/__control/imap/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          username: 'alice@example.test',
+          action: 'setPassword',
+          password: 'rotated',
+        }),
+      });
+      expect(res.status).toBe(200);
+      const source = new ImapMailSource(testConnect);
+      await expect(source.verify(credFor(port, 'alice@example.test'))).rejects.toMatchObject({
+        name: 'VerificationError',
+        step: 'login',
+      });
+      await expect(
+        source.verify(credFor(port, 'alice@example.test', 'rotated')),
+      ).resolves.toBeUndefined();
+      await expect(source.verify(credFor(port, 'bob@example.test'))).resolves.toBeUndefined();
+    } finally {
+      server.close();
+    }
+  });
+
   it('isolation: two usernames never see each other messages', async () => {
     const { server, store, port } = await startServer();
     const controlApp = createImapMockApp(store);

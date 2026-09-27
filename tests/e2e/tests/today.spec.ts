@@ -265,7 +265,14 @@ test.describe('Today calendar panel @ci', () => {
     });
     expect(resFirst.status()).toBe(202);
 
-    const body = await waitForTodayPayload(page, (b) => eventTitles(b).includes('Team sync'));
+    // Wait for every event added above, not just the first: a tick-driven refresh can land
+    // between the mock adds and return a payload holding only some of them.
+    const body = await waitForTodayPayload(
+      page,
+      (b) =>
+        eventTitles(b).includes('Team sync') &&
+        eventTitles(b).filter((t) => t === 'Daily standup').length >= 3,
+    );
 
     for (const day of [dateOnly(0), dateOnly(1), dateOnly(2)]) {
       const bucket = body.days.find((d) => d.date === day);

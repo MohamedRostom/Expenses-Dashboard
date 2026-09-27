@@ -18,6 +18,24 @@ describe('CalDAV mock (T071)', () => {
     return { url: 'http://mocks.test/dav/', username, password };
   }
 
+  // server.ts mounts the mock at /caldav; discovery hrefs must carry that prefix or the client
+  // follows them to the origin root and finds nothing (seen in e2e-ci as "no calendar found").
+  it('discovers the calendar through the /caldav mount the compose stack uses', async () => {
+    const { Hono } = await import('hono');
+    const server = new Hono().route('/caldav', createCalDavMockApp('/caldav'));
+    const fetchImpl = ((input: string | URL, init?: RequestInit) =>
+      server.request(input, init)) as unknown as typeof fetch;
+    const source = createCalDavSource({ fetchImpl });
+    const calendars = await source.listCalendars({
+      url: 'http://mocks.test/caldav/dav/',
+      username: 'alice@example.test',
+      password: 'app-password',
+    });
+    expect(calendars.map((c) => [c.id, c.name])).toEqual([
+      ['http://mocks.test/caldav/dav/calendars/alice%40example.test/personal/', 'Personal'],
+    ]);
+  });
+
   it('discovers one calendar per username, isolated from other usernames', async () => {
     const { source } = harness();
     const alice = await source.listCalendars(cred('alice@example.test'));

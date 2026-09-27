@@ -40,7 +40,7 @@ services:
       # localhost:4000 reaches the same server from the host.
       GOOGLE_OAUTH_BROWSER_BASE: http://localhost:4000/google
       MICROSOFT_LOGIN_BROWSER_BASE: http://localhost:4000/graph
-      CALDAV_TEST_URL: http://mocks:4000/caldav
+      CALDAV_TEST_URL: http://mocks:4000/caldav/dav/
       IMAP_TEST_HOST: mocks
       # T070/FR-017: the standards form's mocks resolve to `mocks`, a private Docker address, and
       # the CalDAV mock is served over plain http — createStandards would otherwise refuse both
@@ -168,10 +168,12 @@ services:
     command: pnpm --filter @desk/mocks start
     environment:
       PORT: 4000
+      # Standard plaintext IMAP port inside the network, so the api's FR-017 port rule (993/143) holds.
+      IMAP_MOCK_PORT: 143
     ports:
       - '4000:4000'
       # T052: real TCP IMAP server (infra/mocks/src/imap.ts) for ImapMailSource e2e-ci coverage.
-      - '1143:1143'
+      - '1143:143'
 
   mailpit:
     image: axllent/mailpit

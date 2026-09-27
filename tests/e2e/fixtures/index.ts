@@ -103,6 +103,8 @@ export function mockProvider(provider: 'imap'): {
     message: { from: string; subject: string; body: string; date: string; seen?: boolean },
   ): Promise<void>;
   markRead(username: string, uid: number): Promise<void>;
+  /** Rotates the mailbox's password, so the stored credential fails and a reconnect is needed. */
+  setPassword(username: string, password: string): Promise<void>;
 };
 // T071: `mockProvider('caldav')` drives the CalDAV mock (infra/mocks/src/caldav.ts) — HTTP like
 // Google/Graph, but with no OAuth account key (CalDAV has no OAuth), so isolation is by
@@ -132,6 +134,13 @@ export function mockProvider(provider: 'google' | 'microsoft' | 'imap' | 'caldav
           username,
           action: 'markRead',
           uid,
+        });
+      },
+      async setPassword(username: string, password: string): Promise<void> {
+        await postControl(`${MOCKS_URL}/__control/imap/messages`, {
+          username,
+          action: 'setPassword',
+          password,
         });
       },
     };
