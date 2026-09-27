@@ -464,6 +464,82 @@ describe('Google Calendar Source', () => {
       ).toBeUndefined();
     });
 
+    it('fake: deleteEvent tombstones — an incremental fetch reports the deletion, a later full fetch omits it', async () => {
+      const fake = new GoogleFake({
+        calendars: calendarListFixture.items,
+        items: { 'primary-cal@example.test': eventsFullFixture.items },
+      });
+
+      const cred = { refreshToken: 'rt-test' };
+      const from = new Date('2026-10-01T00:00:00Z');
+      const to = new Date('2026-10-20T00:00:00Z');
+
+      const first = await fake.fetchWindow(cred, ['primary-cal@example.test'], from, to);
+      expect(first.full).toBe(true);
+
+      fake.deleteEvent('primary-cal@example.test', 'evt-rec_20261001T090000Z');
+
+      const incremental = await fake.fetchWindow(
+        cred,
+        ['primary-cal@example.test'],
+        from,
+        to,
+        first.cursor,
+      );
+      expect(incremental.full).toBe(false);
+      expect(incremental.deletedIds).toEqual(['evt-rec_20261001T090000Z']);
+
+      const full = await fake.fetchWindow(cred, ['primary-cal@example.test'], from, to);
+      expect(
+        full.events.find((e) => e.providerEventId === 'evt-rec_20261001T090000Z'),
+      ).toBeUndefined();
+    });
+
+    it('fake: incremental fetch through the real client reports the deleted id in deletedIds', async () => {
+      const fake = new GoogleFake({
+        calendars: calendarListFixture.items,
+        items: { 'primary-cal@example.test': eventsFullFixture.items },
+      });
+
+      const fetchImpl = vi.fn(async (url: string) => {
+        if (isTokenUrl(url)) {
+          return new Response(JSON.stringify({ access_token: 'at' }), { status: 200 });
+        }
+        const u = new URL(url);
+        const calendarId = decodeURIComponent(
+          u.pathname.split('/calendars/')[1]!.split('/events')[0]!,
+        );
+        const syncToken = u.searchParams.get('syncToken') ?? undefined;
+        const { items, nextSyncToken } = fake.rawEventsPage(calendarId, syncToken);
+        return new Response(JSON.stringify({ items, nextSyncToken }), { status: 200 });
+      }) as unknown as typeof fetch;
+
+      const source = createGoogleCalendarSource({
+        clientId: 'test-id',
+        clientSecret: 'test-secret',
+        apiBase: 'https://www.googleapis.com',
+        fetchImpl,
+      });
+
+      const cred = { refreshToken: 'rt-test' };
+      const from = new Date('2026-10-01T00:00:00Z');
+      const to = new Date('2026-10-20T00:00:00Z');
+
+      const first = await source.fetchWindow(cred, ['primary-cal@example.test'], from, to);
+      fake.deleteEvent('primary-cal@example.test', 'evt-rec_20261001T090000Z');
+
+      const second = await source.fetchWindow(
+        cred,
+        ['primary-cal@example.test'],
+        from,
+        to,
+        first.cursor,
+      );
+
+      expect(second.full).toBe(false);
+      expect(second.deletedIds).toEqual(['evt-rec_20261001T090000Z']);
+    });
+
     it('fake: revoke causes AuthError on subsequent calls', async () => {
       const fake = new GoogleFake({
         calendars: calendarListFixture.items,

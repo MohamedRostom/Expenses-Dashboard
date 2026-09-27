@@ -36,7 +36,10 @@ export class GoogleFake implements CalendarSource {
   private calendars: GoogleCalendarListItem[];
   private items: Record<string, GoogleEventItem[]>;
   private revoked = false;
-  private syncCounter = 0;
+  // ponytail: a monotonic "changed since" counter instead of real opaque sync tokens — the fake
+  // only needs to answer "what changed after cursor N", not produce Google-shaped tokens.
+  private changeSeq = 0;
+  private seqByKey = new Map<string, number>();
 
   constructor(seed?: {
     calendars: GoogleCalendarListItem[];
@@ -44,6 +47,26 @@ export class GoogleFake implements CalendarSource {
   }) {
     this.calendars = seed?.calendars || [];
     this.items = seed?.items || {};
+    for (const [calendarId, items] of Object.entries(this.items)) {
+      for (const item of items) {
+        this.seqByKey.set(this.key(calendarId, item.id), 0);
+      }
+    }
+  }
+
+  private key(calendarId: string, id: string): string {
+    return `${calendarId}::${id}`;
+  }
+
+  /** Items changed since `cursor` (tombstones included); a full fetch (no cursor) excludes
+   * cancelled items entirely, same as the real API's `showDeleted=true` semantics. */
+  private changedItems(calendarId: string, cursor?: string): GoogleEventItem[] {
+    const items = this.items[calendarId] || [];
+    if (!cursor) return items.filter((item) => item.status !== 'cancelled');
+    const cursorSeq = Number(cursor) || 0;
+    return items.filter(
+      (item) => (this.seqByKey.get(this.key(calendarId, item.id)) ?? 0) > cursorSeq,
+    );
   }
 
   async listCalendars(): Promise<
@@ -69,6 +92,7 @@ export class GoogleFake implements CalendarSource {
     calendarIds: string[],
     from: Date,
     to: Date,
+    cursor?: string,
   ): Promise<{
     events: EventOccurrence[];
     deletedIds?: string[];
@@ -80,38 +104,42 @@ export class GoogleFake implements CalendarSource {
       throw new AuthError('Access revoked');
     }
 
+    const full = !cursor;
     const events: EventOccurrence[] = [];
+    const deletedIds: string[] = [];
 
     for (const calendarId of calendarIds) {
-      const calendarItems = this.items[calendarId] || [];
-
-      for (const item of calendarItems) {
+      for (const item of this.changedItems(calendarId, cursor)) {
         if (item.status === 'cancelled') {
+          // A full fetch never includes cancelled items (changedItems already excludes them);
+          // an incremental fetch reports them as deletions instead of occurrences.
+          deletedIds.push(item.id);
           continue;
         }
 
         const occurrence = toOccurrence(item, calendarId);
-        if (occurrence) {
-          // Check if occurrence overlaps with [from, to)
+        if (!occurrence) continue;
+
+        if (full) {
+          // Only a full fetch is windowed by [from, to) — same as the real client, which sends
+          // timeMin/timeMax only when there's no syncToken.
           const eventStart = occurrence.startsAt.getTime();
           const eventEnd = occurrence.endsAt.getTime();
-          const fromTime = from.getTime();
-          const toTime = to.getTime();
-
-          if (eventStart < toTime && eventEnd > fromTime) {
-            events.push(occurrence);
-          }
+          if (!(eventStart < to.getTime() && eventEnd > from.getTime())) continue;
         }
+
+        events.push(occurrence);
       }
     }
 
-    this.syncCounter++;
-
-    return {
-      events,
-      cursor: `fake-sync-${this.syncCounter}`,
-      full: true,
-    };
+    const result: {
+      events: EventOccurrence[];
+      deletedIds?: string[];
+      cursor?: string;
+      full: boolean;
+    } = { events, cursor: String(this.changeSeq), full };
+    if (deletedIds.length > 0) result.deletedIds = deletedIds;
+    return result;
   }
 
   async verify(): Promise<void> {
@@ -127,12 +155,18 @@ export class GoogleFake implements CalendarSource {
       this.items[calendarId] = [];
     }
     this.items[calendarId].push(item);
+    this.changeSeq++;
+    this.seqByKey.set(this.key(calendarId, item.id), this.changeSeq);
   }
 
+  /** Tombstones instead of removing the item — real Google/Graph delta feeds report a deletion
+   * as an item with `status: 'cancelled'` on the next incremental fetch, not a gap. */
   deleteEvent(calendarId: string, eventId: string): void {
-    if (this.items[calendarId]) {
-      this.items[calendarId] = this.items[calendarId].filter((e) => e.id !== eventId);
-    }
+    const item = (this.items[calendarId] || []).find((e) => e.id === eventId);
+    if (!item) return;
+    item.status = 'cancelled';
+    this.changeSeq++;
+    this.seqByKey.set(this.key(calendarId, eventId), this.changeSeq);
   }
 
   rawCalendars(): GoogleCalendarListItem[] {
@@ -141,5 +175,16 @@ export class GoogleFake implements CalendarSource {
 
   rawEvents(calendarId: string): GoogleEventItem[] {
     return this.items[calendarId] || [];
+  }
+
+  /** Raw (un-mapped-to-EventOccurrence) items for the HTTP mock's `events.list`: a full listing
+   * (no cursor) excludes cancelled items; given a syncToken cursor, only items changed since it
+   * (tombstones included) — the same "changed since" logic `fetchWindow` uses, at the wire shape
+   * the real Google API returns. Also hands back the next syncToken to advertise. */
+  rawEventsPage(
+    calendarId: string,
+    cursor?: string,
+  ): { items: GoogleEventItem[]; nextSyncToken: string } {
+    return { items: this.changedItems(calendarId, cursor), nextSyncToken: String(this.changeSeq) };
   }
 }

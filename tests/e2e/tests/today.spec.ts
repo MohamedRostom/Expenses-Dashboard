@@ -1,6 +1,6 @@
 import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { signUpAndVerify, axeCheck, mockProvider } from '../fixtures/index.js';
+import { signUpAndVerify, axeCheck, mockProvider, nextMockAccount } from '../fixtures/index.js';
 
 /**
  * T029 (ci, calendar): the Today page's calendar panel against the fake Google and Graph
@@ -12,13 +12,11 @@ import { signUpAndVerify, axeCheck, mockProvider } from '../fixtures/index.js';
  * - `POST /panels/today/refresh` is rate-limited to once per minute per user
  *   (apps/api/src/routes/today.ts) — a test that needs a second refresh cycle for the same
  *   account polls with `refreshUntilAllowed` instead of a fixed sleep.
- * - Jobs it enqueues (`panels.refresh`) run on the api process's own poll loop
- *   (`JOB_TICK_MS = 30_000` in apps/api/src/node.ts), not immediately on enqueue. SC-002's
- *   "within 10s of opening /today" (spec.md) is therefore not guaranteed by the current
- *   30-second tick — worst case is closer to 30s plus job time. That's a real gap between the
- *   spec's target and the implementation (flagged in this run's report), not a test bug, so the
- *   assertions below poll with a bound wide enough to be reliable (40s) rather than asserting
- *   the literal 10s figure, which would make this test flaky by construction.
+ * - A user-triggered refresh (POST /panels/today/refresh, including the on-open one /today
+ *   fires when data is older than two minutes) kicks the job runner at once (T086,
+ *   apps/api/src/lib/kick-jobs.ts), so SC-002's on-open half is asserted with the literal 10s.
+ *   Other waits keep a wider default: the first refresh after connecting runs on the api's
+ *   30s JOB_TICK_MS tick.
  */
 
 const DB_URL = process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:5432/desk';
@@ -26,11 +24,16 @@ const DB_URL = process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:54
 const GOOGLE_ACCOUNT_LABEL = 'mock-google-user@example.test';
 const MICROSOFT_ACCOUNT_LABEL = 'mock-graph-user@example.test';
 
-async function connect(page: Page, provider: 'google' | 'microsoft'): Promise<void> {
+/** Reserves a fresh, isolated mock account (T087) before driving the real connect flow, and
+ * returns its key so this test's mockProvider(provider, key) calls only ever touch its own
+ * account's events — never another test's, even when this file runs in parallel. */
+async function connect(page: Page, provider: 'google' | 'microsoft'): Promise<string> {
+  const key = await nextMockAccount(provider);
   await page.goto('/settings/connections');
   const buttonName = provider === 'google' ? 'Connect Calendar' : 'Connect Microsoft';
   await page.getByRole('button', { name: buttonName }).click();
   await page.waitForURL(/\/settings\/connections\?connected=/);
+  return key;
 }
 
 /** Reads the double-submit CSRF cookie the app sets on any GET, for a page.request POST. */
@@ -104,11 +107,9 @@ function eventTitles(body: TodayPayload): string[] {
   return body.days.flatMap((d) => d.events.map((e) => e.title));
 }
 
-/** Sets a connected account's cached last_refresh_at into the past and clears its calendar
- * cursor (packages/db's backdate-refresh CLI), so a test can prove staleness behaviour without
- * waiting for real time to pass or adding a clock override to the running api service. Clearing
- * the cursor also forces the next refresh to be a full resync — see the CLI's own comment for
- * why that matters for the "deleting it removes it" case. */
+/** Sets a connected account's cached last_refresh_at into the past (packages/db's
+ * backdate-refresh CLI), so a test can prove staleness behaviour without waiting for real time
+ * to pass or adding a clock override to the running api service. */
 function backdateLastRefresh(email: string, provider: string, minutesAgo: number): void {
   execSync(`pnpm --filter @desk/db backdate-refresh "${email}" "${provider}" ${minutesAgo}`, {
     env: { ...process.env, DATABASE_URL: DB_URL },
@@ -138,14 +139,6 @@ function googleEvent(id: string, title: string, daysFromNow: number) {
 }
 
 test.describe('Today calendar panel @ci', () => {
-  // The Google and Graph mocks (infra/mocks/src/google.ts, graph.ts) hold one shared, global
-  // GoogleFake/GraphFake per compose run, keyed by a fixed calendarId ('primary',
-  // 'primary-cal@example.test') rather than per-account state — every test's addEvent/deleteEvent
-  // calls mutate the same underlying list. fullyParallel would let tests in this file race on
-  // that shared state, so this file runs serially. Worth a mock-side fix (scope events per
-  // account/credential) if this suite grows; noted in this run's report.
-  test.describe.configure({ mode: 'serial' });
-
   test('shows the empty state when no calendar accounts are connected, axe clean', async ({
     page,
   }) => {
@@ -221,26 +214,29 @@ test.describe('Today calendar panel @ci', () => {
     test.setTimeout(240_000);
     const email = `today-google-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
-    await connect(page, 'google');
+    const key = await connect(page, 'google');
 
     // Wait for the connect-time auto-refresh job to finish discovering calendars before adding
     // events and asking for another refresh — avoids two jobs racing to create the same
     // account_calendars row.
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
 
-    await mockProvider('google').addEvent('primary', googleEvent('evt-team-sync', 'Team sync', 1));
+    await mockProvider('google', key).addEvent(
+      'primary',
+      googleEvent('evt-team-sync', 'Team sync', 1),
+    );
     // "a recurring event shows once per day": three daily instances, one per day, same title —
     // this is how the real Google API represents a recurring series once expanded
     // (events.list with singleEvents=true, per T031), so the fake models it the same way.
-    await mockProvider('google').addEvent(
+    await mockProvider('google', key).addEvent(
       'primary',
       googleEvent('evt-standup-0', 'Daily standup', 0),
     );
-    await mockProvider('google').addEvent(
+    await mockProvider('google', key).addEvent(
       'primary',
       googleEvent('evt-standup-1', 'Daily standup', 1),
     );
-    await mockProvider('google').addEvent(
+    await mockProvider('google', key).addEvent(
       'primary',
       googleEvent('evt-standup-2', 'Daily standup', 2),
     );
@@ -273,28 +269,20 @@ test.describe('Today calendar panel @ci', () => {
     // the first refresh cycle just reset last_refresh_at to "now". Wait for that first cycle's
     // job to fully settle first (see waitForRefreshToSettle) before backdating again.
     await waitForRefreshToSettle(page);
-    await mockProvider('google').deleteEvent('primary', 'evt-team-sync');
+    await mockProvider('google', key).deleteEvent('primary', 'evt-team-sync');
     backdateLastRefresh(email, 'google', 3);
     await refreshUntilAllowed(page);
     await waitForTodayPayload(page, (b) => !eventTitles(b).includes('Team sync'));
 
     await page.reload();
     await expect(page.getByText('Team sync')).toHaveCount(0);
-
-    // The mock's 'primary' calendar is shared, global state for the whole compose run (see the
-    // test.describe.configure comment above) — the standup events added earlier in this test
-    // outlive it and would otherwise leak into the next Google-connecting test's very first
-    // sync. Delete them so this test leaves the shared mock as it found it.
-    await mockProvider('google').deleteEvent('primary', 'evt-standup-0');
-    await mockProvider('google').deleteEvent('primary', 'evt-standup-1');
-    await mockProvider('google').deleteEvent('primary', 'evt-standup-2');
   });
 
   test('a Microsoft event appears after refresh with the right account chip', async ({ page }) => {
     test.setTimeout(120_000);
     const email = `today-microsoft-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
-    await connect(page, 'microsoft');
+    const key = await connect(page, 'microsoft');
 
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
 
@@ -306,7 +294,7 @@ test.describe('Today calendar panel @ci', () => {
     // itself, packages/connectors/src/microsoft/calendar.ts's toOccurrence).
     const naive = (d: Date) => d.toISOString().replace('Z', '');
 
-    await mockProvider('microsoft').addEvent('primary-cal@example.test', {
+    await mockProvider('microsoft', key).addEvent('primary-cal@example.test', {
       id: 'evt-planning',
       subject: 'Planning sync',
       location: { displayName: 'Room 2' },
@@ -333,10 +321,10 @@ test.describe('Today calendar panel @ci', () => {
     test.setTimeout(120_000);
     const email = `today-stale-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
-    await connect(page, 'google');
+    const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
 
-    await mockProvider('google').addEvent('primary', googleEvent('evt-late-add', 'Retro', 1));
+    await mockProvider('google', key).addEvent('primary', googleEvent('evt-late-add', 'Retro', 1));
 
     // 6 minutes: past both the 2-minute auto-refresh threshold (apps/web/src/stores/today.ts,
     // apps/api/src/services/panels.ts markDue) and the 5-minute "stale" tier threshold for an
@@ -351,18 +339,18 @@ test.describe('Today calendar panel @ci', () => {
     await expect(page.getByText(GOOGLE_ACCOUNT_LABEL).first()).toBeVisible();
     await expect(page.getByText('Last refreshed', { exact: false })).toBeVisible();
 
-    // See the file-level comment: bounded by the 30s job tick, not the spec's literal 10s.
-    await waitForTodayPayload(page, (b) => eventTitles(b).includes('Retro'), 40_000);
+    // SC-002 (on-open half): the event appears within 10s of opening /today (T086).
+    await waitForTodayPayload(page, (b) => eventTitles(b).includes('Retro'), 10_000);
   });
 
   test('shows a reconnect notice once the mock revokes access, axe clean', async ({ page }) => {
     test.setTimeout(120_000);
     const email = `today-reconnect-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
-    await connect(page, 'google');
+    const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
 
-    await mockProvider('google').revoke();
+    await mockProvider('google', key).revoke();
 
     backdateLastRefresh(email, 'google', 3);
     const res = await page.request.post('/panels/today/refresh', {

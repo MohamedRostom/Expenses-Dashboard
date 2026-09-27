@@ -215,6 +215,56 @@ describe('GraphFake', () => {
     expect(ids).not.toContain('evt-added');
   });
 
+  it('deleteEvent tombstones — an incremental fetch reports the removal, a later full fetch omits it', async () => {
+    const fake = new GraphFake();
+    fake.addEvent(CAL, { ...page1.value[0]!, id: 'evt-tomb' } as MicrosoftRawEvent);
+
+    const first = await fake.fetchWindow(cred, [CAL], FROM, TO);
+    expect(first.events.map((e) => e.providerEventId)).toContain('evt-tomb');
+
+    fake.deleteEvent(CAL, 'evt-tomb');
+
+    const incremental = await fake.fetchWindow(cred, [CAL], FROM, TO, first.cursor);
+    expect(incremental.full).toBe(false);
+    expect(incremental.deletedIds).toEqual(['evt-tomb']);
+
+    const full = await fake.fetchWindow(cred, [CAL], FROM, TO);
+    expect(full.events.map((e) => e.providerEventId)).not.toContain('evt-tomb');
+  });
+
+  it('incremental fetch through the real client reports removals via rawDeltaPage', async () => {
+    const fake = new GraphFake();
+    fake.addEvent(CAL, { ...page1.value[0]!, id: 'evt-to-delete' } as MicrosoftRawEvent);
+
+    const deltaLink = (seq: number) =>
+      `${API}/v1.0/me/calendars/${encodeURIComponent(CAL)}/calendarView/delta?$deltatoken=${seq}`;
+
+    const fetchImpl = vi.fn(async (url: string) => {
+      if (url.includes('/oauth2/v2.0/token')) {
+        return json({ access_token: 'at', refresh_token: 'rt-2' });
+      }
+      const u = new URL(url);
+      const deltaToken = u.searchParams.get('$deltatoken') ?? undefined;
+      const { items, seq } = fake.rawDeltaPage(CAL, deltaToken);
+      return json({ value: items, '@odata.deltaLink': deltaLink(seq) });
+    }) as unknown as typeof fetch;
+
+    const source = createMicrosoftCalendarSource({
+      clientId: 'client',
+      clientSecret: 'secret',
+      apiBase: API,
+      fetchImpl,
+    });
+
+    const first = await source.fetchWindow(cred, [CAL], FROM, TO);
+    fake.deleteEvent(CAL, 'evt-to-delete');
+
+    const second = await source.fetchWindow(cred, [CAL], FROM, TO, first.cursor);
+
+    expect(second.full).toBe(false);
+    expect(second.deletedIds).toEqual(['evt-to-delete']);
+  });
+
   it('throws AuthError on every call after revoke', async () => {
     const fake = new GraphFake();
     await fake.revoke();

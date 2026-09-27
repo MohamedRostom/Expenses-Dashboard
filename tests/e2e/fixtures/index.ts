@@ -75,19 +75,38 @@ async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<str
  * graph.ts), so a Playwright spec can add/delete provider events and simulate a revoked
  * connection without going through the real Google/Microsoft APIs.
  */
-export function mockProvider(provider: 'google' | 'microsoft') {
+/**
+ * Drives the mock's control routes for one connected account. `key` scopes every call to a single
+ * account's fake (T087) — pass the key `nextMockAccount` returned before the OAuth connect that
+ * created it; omit it only for a test that never called `nextMockAccount` and is content with the
+ * mock's single shared 'default' account.
+ */
+export function mockProvider(provider: 'google' | 'microsoft', key?: string) {
   const base = `${MOCKS_URL}/${MOCK_MOUNTS[provider]}`;
   return {
     async addEvent(calendarId: string, event: Record<string, unknown>): Promise<void> {
-      await postControl(`${base}/__control/events`, { action: 'add', calendarId, event });
+      await postControl(`${base}/__control/events`, { action: 'add', calendarId, event, key });
     },
     async deleteEvent(calendarId: string, eventId: string): Promise<void> {
-      await postControl(`${base}/__control/events`, { action: 'delete', calendarId, eventId });
+      await postControl(`${base}/__control/events`, { action: 'delete', calendarId, eventId, key });
     },
     async revoke(): Promise<void> {
-      await postControl(`${base}/__control/revoke`, {});
+      await postControl(`${base}/__control/revoke`, { key });
     },
   };
+}
+
+/**
+ * Reserves a fresh, isolated mock account for `provider` (T087) — call this right before clicking
+ * Connect. The mock creates a new GoogleFake/GraphFake for the returned key and routes the OAuth
+ * code, then the access/refresh tokens, so the resulting connected account never sees another
+ * test's events. Pass the returned key to `mockProvider()` afterwards.
+ */
+export async function nextMockAccount(provider: 'google' | 'microsoft'): Promise<string> {
+  const key = crypto.randomUUID();
+  const base = `${MOCKS_URL}/${MOCK_MOUNTS[provider]}`;
+  await postControl(`${base}/__control/next-account`, { key });
+  return key;
 }
 
 async function postControl(url: string, body: unknown): Promise<void> {
