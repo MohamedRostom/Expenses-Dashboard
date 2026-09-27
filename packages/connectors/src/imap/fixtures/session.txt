@@ -1,0 +1,58 @@
+# Happy path (T039/T047): two messages, one unread, plain 7-bit ASCII text/plain bodies.
+# UIDVALIDITY 1000001, UIDNEXT 104 -> cursor "1000001:104"; first fetch (no prior cursor) -> full.
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 2 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 104]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 102 103
+S OK UID SEARCH completed
+
+C UID FETCH 103 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 2 FETCH (UID 103 FLAGS (\Seen) INTERNALDATE "03-Jan-2026 09:15:00 +0000" BODYSTRUCTURE ("TEXT" "PLAIN" "UTF-8" "7BIT"))
+S OK UID FETCH completed
+
+C UID FETCH 103 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 2 FETCH (UID 103 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Bob <bob@example.com>
+Subject: Lunch tomorrow?
+Date: Sat, 3 Jan 2026 09:15:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 103 (BODY.PEEK[1]<0.200>)
+L * 2 FETCH (UID 103 BODY[1]<0>
+Hey, are you free for lunch tomorrow at noon?
+)
+S OK UID FETCH completed
+
+C UID FETCH 102 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 102 FLAGS () INTERNALDATE "02-Jan-2026 08:00:00 +0000" BODYSTRUCTURE ("TEXT" "PLAIN" "UTF-8" "7BIT"))
+S OK UID FETCH completed
+
+C UID FETCH 102 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 102 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Carol <carol@example.com>
+Subject: Invoice #204
+Date: Fri, 2 Jan 2026 08:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 102 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 102 BODY[1]<0>
+Please find attached invoice 204 for January.
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

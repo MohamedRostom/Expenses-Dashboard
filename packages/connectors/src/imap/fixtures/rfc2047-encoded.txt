@@ -1,0 +1,40 @@
+# From and Subject use RFC 2047 encoded-words (UTF-8, base64): "=?UTF-8?B?RnJhbsOnb2lz?=" is
+# "François", "=?UTF-8?B?UsOpdW5pb24gY2Fmw6k=?=" is "Réunion café".
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 1 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 2]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 1
+S OK UID SEARCH completed
+
+C UID FETCH 1 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 1 FLAGS () INTERNALDATE "09-Jan-2026 15:00:00 +0000" BODYSTRUCTURE ("TEXT" "PLAIN" "UTF-8" "7BIT"))
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 1 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: =?UTF-8?B?RnJhbsOnb2lz?= <francois@example.com>
+Subject: =?UTF-8?B?UsOpdW5pb24gY2Fmw6k=?=
+Date: Fri, 9 Jan 2026 15:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 1 BODY[1]<0>
+See you at the meeting.
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

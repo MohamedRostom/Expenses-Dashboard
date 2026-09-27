@@ -1,0 +1,14 @@
+# verify(): LOGIN + SELECT INBOX succeed, then verify() logs out immediately (it never issues
+# SEARCH/FETCH — those are fetchInbox's job).
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 2 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 104]
+S OK [READ-ONLY] SELECT completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

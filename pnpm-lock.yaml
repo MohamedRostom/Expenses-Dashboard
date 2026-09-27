@@ -374,6 +374,10 @@ importers:
       ical.js:
         specifier: ^2.2.1
         version: 2.2.1
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.4
+        version: 22.20.4
 
   packages/contracts:
     dependencies:

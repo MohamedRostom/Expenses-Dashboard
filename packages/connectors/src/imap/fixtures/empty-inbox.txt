@@ -1,0 +1,22 @@
+# Empty inbox: SEARCH UNSEEN and UID SEARCH ALL both return no ids, so fetchInbox never sends a
+# UID FETCH at all -> messages: [], unreadTotal: 0, full: true (no cursor).
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 0 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 1]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH
+S OK UID SEARCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

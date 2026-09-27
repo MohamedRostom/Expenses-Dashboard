@@ -1,0 +1,40 @@
+# text/plain, Content-Transfer-Encoding QUOTED-PRINTABLE, charset ISO-8859-1: "Caf=E9" decodes
+# to the QP byte 0xE9, which ISO-8859-1 maps to U+00E9 (é) -> preview "Café résumé attached."
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 1 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 2]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 1
+S OK UID SEARCH completed
+
+C UID FETCH 1 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 1 FLAGS () INTERNALDATE "07-Jan-2026 13:00:00 +0000" BODYSTRUCTURE ("TEXT" "PLAIN" "ISO-8859-1" "QUOTED-PRINTABLE"))
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 1 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Gaelle <gaelle@example.com>
+Subject: Accents
+Date: Wed, 7 Jan 2026 13:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 1 BODY[1]<0>
+Caf=E9 r=E9sum=E9 attached.
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed
