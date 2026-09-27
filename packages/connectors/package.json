@@ -18,7 +18,9 @@
     "./microsoft/oauth": "./src/microsoft/oauth.ts",
     "./microsoft/calendar": "./src/microsoft/calendar.ts",
     "./microsoft/mail": "./src/microsoft/mail.ts",
-    "./microsoft/fake": "./src/microsoft/fake.ts"
+    "./microsoft/fake": "./src/microsoft/fake.ts",
+    "./caldav/client": "./src/caldav/client.ts",
+    "./caldav/fake": "./src/caldav/fake.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

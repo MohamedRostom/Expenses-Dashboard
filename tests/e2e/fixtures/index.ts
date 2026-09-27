@@ -104,7 +104,17 @@ export function mockProvider(provider: 'imap'): {
   ): Promise<void>;
   markRead(username: string, uid: number): Promise<void>;
 };
-export function mockProvider(provider: 'google' | 'microsoft' | 'imap', key?: string) {
+// T071: `mockProvider('caldav')` drives the CalDAV mock (infra/mocks/src/caldav.ts) — HTTP like
+// Google/Graph, but with no OAuth account key (CalDAV has no OAuth), so isolation is by
+// `username` directly, the same as `mockProvider('imap')` above. `addEvent`/`deleteEvent` take the
+// object resource's `href` and full ICS text (CalDavFake.addEvent's shape) rather than a
+// friendlier per-field object, so the mock never needs its own second ICS-building logic.
+export function mockProvider(provider: 'caldav'): {
+  addEvent(username: string, href: string, icsText: string): Promise<void>;
+  deleteEvent(username: string, href: string): Promise<void>;
+  setPassword(username: string, password: string): Promise<void>;
+};
+export function mockProvider(provider: 'google' | 'microsoft' | 'imap' | 'caldav', key?: string) {
   if (provider === 'imap') {
     return {
       async addMessage(
@@ -123,6 +133,21 @@ export function mockProvider(provider: 'google' | 'microsoft' | 'imap', key?: st
           action: 'markRead',
           uid,
         });
+      },
+    };
+  }
+
+  if (provider === 'caldav') {
+    const base = `${MOCKS_URL}/caldav`;
+    return {
+      async addEvent(username: string, href: string, icsText: string): Promise<void> {
+        await postControl(`${base}/__control/events`, { action: 'add', username, href, icsText });
+      },
+      async deleteEvent(username: string, href: string): Promise<void> {
+        await postControl(`${base}/__control/events`, { action: 'delete', username, href });
+      },
+      async setPassword(username: string, password: string): Promise<void> {
+        await postControl(`${base}/__control/password`, { username, password });
       },
     };
   }
