@@ -11,6 +11,7 @@ const envObjectSchema = z.object({
   SESSION_SECRET: z.string().min(1),
   SECRET_BOX_KEY: z.string().min(1),
   APP_ORIGIN: z.string().min(1),
+  REGISTER_IP_LIMIT_PER_HOUR: z.coerce.number().int().positive().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
   GOOGLE_PANELS_CLIENT_ID: z.string().optional(),

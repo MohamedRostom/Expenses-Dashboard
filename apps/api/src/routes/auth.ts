@@ -81,7 +81,12 @@ export function authRoutes(deps: AppDeps) {
   app.post('/register', async (c) => {
     const input = RegisterRequest.parse(await c.req.json());
     await guard(deps, `register:email:${input.email}`, 5, 15 * MINUTE);
-    await guard(deps, `register:ip:${clientIp(c) ?? 'unknown'}`, 20, HOUR);
+    await guard(
+      deps,
+      `register:ip:${clientIp(c) ?? 'unknown'}`,
+      deps.registerIpLimitPerHour ?? 20,
+      HOUR,
+    );
     await auth.register(authDeps, input);
     return c.body(null, 202);
   });

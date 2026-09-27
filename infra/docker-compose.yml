@@ -56,6 +56,8 @@ services:
       SESSION_SECRET: dev-session-secret-not-for-production-use-000000
       SECRET_BOX_KEY: YWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWE=
       APP_ORIGIN: http://localhost:5173
+      # e2e-ci signs up every test's user from one IP; the default 20/hour cuts the suite short.
+      REGISTER_IP_LIMIT_PER_HOUR: '1000'
     ports:
       - '3000:3000'
     depends_on:

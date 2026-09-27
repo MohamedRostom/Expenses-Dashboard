@@ -88,6 +88,7 @@ export async function startHarness(
   opts: {
     withJobs?: boolean;
     calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+    registerIpLimitPerHour?: number;
   } = {},
 ): Promise<Harness> {
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
@@ -133,6 +134,7 @@ export async function startHarness(
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
     appOrigin: 'https://app.test',
+    registerIpLimitPerHour: opts.registerIpLimitPerHour,
     google: {
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
