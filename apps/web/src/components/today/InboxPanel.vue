@@ -91,7 +91,7 @@ function onRefresh() {
   <div class="inbox-panel">
     <h2>Inbox</h2>
 
-    <PanelState v-if="today.loading" kind="loading" />
+    <PanelState v-if="today.loading || today.purged" kind="loading" />
     <PanelState v-else-if="today.error" kind="error" :code="today.error" />
 
     <template v-else-if="!hasAccounts">

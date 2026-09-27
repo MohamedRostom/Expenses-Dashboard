@@ -16,6 +16,10 @@ export const useTodayStore = defineStore('today', {
   }),
 
   getters: {
+    /** T063: the 30-day purge emptied the cache; panels show loading until the next refresh. */
+    purged(): boolean {
+      return this.payload?.accounts.some((a) => a.purged) ?? false;
+    },
     visibleMessages(): TodayResponseT['messages'] {
       if (!this.payload || !Array.isArray(this.payload.messages)) {
         return [];
