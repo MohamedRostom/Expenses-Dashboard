@@ -58,3 +58,38 @@ const CONNECT_ERROR_COPY: Record<string, string> = {
 export function connectErrorCopy(code: string): string {
   return CONNECT_ERROR_COPY[code] ?? 'Something went wrong connecting that account.';
 }
+
+/** Copy for `POST /connections/standards` (contracts/api.md), keyed by verification `step`
+ * (FR-018: "errors name the failing step") for the IMAP/CalDAV connect flow the standards form
+ * runs through: connect (host reachable) -> login -> inbox (IMAP) / discovery (CalDAV). */
+const STANDARDS_STEP_COPY: Record<string, string> = {
+  connect: "Desk couldn't reach that server. Check the host and port and try again.",
+  login: 'That address or app password was rejected. Check them and try again.',
+  inbox: "Signed in, but the inbox couldn't be opened. Check the account has IMAP access.",
+  discovery: 'Signed in, but no calendar was found at that address. Check the CalDAV URL.',
+};
+
+/** Maps a thrown error from `postStandardsConnection` to the copy the form's error summary
+ * shows (FR-017, FR-018). */
+export function standardsErrorCopy(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.code === 'verification_failed') {
+      const step = err.details?.['step'];
+      return (
+        (typeof step === 'string' && STANDARDS_STEP_COPY[step]) ||
+        'Desk could not verify that account. Check the details and try again.'
+      );
+    }
+    if (err.code === 'host_not_allowed') {
+      return "That host isn't allowed. Desk only connects to public internet mail and calendar servers.";
+    }
+    if (err.code === 'rate_limited') {
+      return 'Too many attempts. Wait a few minutes and try again.';
+    }
+    if (err.code === 'limit_reached') {
+      return 'You can connect up to 10 accounts. Disconnect one to add another.';
+    }
+    return err.message;
+  }
+  return err instanceof Error ? err.message : 'Something went wrong. Try again.';
+}

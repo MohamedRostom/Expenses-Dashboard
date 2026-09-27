@@ -5,6 +5,8 @@ import {
   type ProvidersResponseT,
   type CalendarsResponseT,
   type ReconnectResponseT,
+  type StandardsCreateT,
+  type StandardsCreateResponseT,
 } from '@desk/contracts';
 import { apiFetch } from './client.js';
 
@@ -36,4 +38,13 @@ export async function patchConnection(
 
 export async function deleteConnection(accountId: string): Promise<void> {
   await apiFetch<void>(`/connections/${accountId}`, { method: 'DELETE' });
+}
+
+export async function postStandardsConnection(
+  payload: StandardsCreateT,
+): Promise<StandardsCreateResponseT> {
+  return apiFetch<StandardsCreateResponseT>('/connections/standards', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  });
 }

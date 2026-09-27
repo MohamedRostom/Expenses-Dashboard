@@ -275,6 +275,9 @@ importers:
 
   apps/landing:
     dependencies:
+      '@desk/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@desk/ui':
         specifier: workspace:*
         version: link:../../packages/ui

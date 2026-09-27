@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
-import type { ProviderT, AccountT, CapabilityT } from '@desk/contracts';
+import {
+  PROVIDER_PRIVACY_TEXT,
+  type ProviderT,
+  type AccountT,
+  type CapabilityT,
+} from '@desk/contracts';
 import { PALETTE_COLOURS } from '@desk/ui';
 import {
   getConnections,
@@ -11,6 +16,7 @@ import {
 } from '../api/connections.js';
 import { accountErrorCopy, connectErrorCopy } from '../utils/errors.js';
 import { revokeInstructionsFor } from '../utils/privacy-text.js';
+import StandardsForm from '../components/connections/StandardsForm.vue';
 
 const providers = ref<ProviderT[]>([]);
 const accounts = ref<AccountT[]>([]);
@@ -20,11 +26,41 @@ const connected = ref<string | null>(null);
 const errorCode = ref<string | null>(null);
 const passwordNeededFor = ref<string | null>(null);
 const disconnectTarget = ref<AccountT | null>(null);
+const showStandardsForm = ref(false);
 
 const isLimitReached = computed(() => accounts.value.length >= 10);
 const connectedAccount = computed(() =>
   connected.value ? (accounts.value.find((a) => a.id === connected.value) ?? null) : null,
 );
+const standardsProvider = computed(() => providers.value.find((p) => p.id === 'standards'));
+const reconnectAccount = computed(() => {
+  const account = accounts.value.find((a) => a.id === passwordNeededFor.value);
+  if (!account) return null;
+  return { id: account.id, address: account.address, capabilities: account.capabilities };
+});
+
+/** Marks an account connected the same way an OAuth callback redirect does
+ * (`?connected=<id>`, contracts/api.md `GET /connections/:provider/callback`), so a
+ * standards-based connect or reconnect lands the user in the same state without a page reload. */
+function landAsConnected(account: AccountT) {
+  const idx = accounts.value.findIndex((a) => a.id === account.id);
+  if (idx === -1) accounts.value.push(account);
+  else accounts.value[idx] = account;
+  connected.value = account.id;
+  const url = new URL(window.location.href);
+  url.searchParams.set('connected', account.id);
+  window.history.replaceState({}, '', url.toString());
+}
+
+function onStandardsConnected(account: AccountT) {
+  showStandardsForm.value = false;
+  landAsConnected(account);
+}
+
+function onStandardsReconnected(account: AccountT) {
+  passwordNeededFor.value = null;
+  landAsConnected(account);
+}
 
 onMounted(async () => {
   await loadData();
@@ -214,6 +250,28 @@ async function confirmDisconnect() {
       <div class="provider-grid">
         <div v-for="provider in providers" :key="provider.id" class="provider-card">
           <h3>{{ providerName(provider.id) }}</h3>
+          <!-- T073/FR-016: same source as the landing privacy page. -->
+          <details class="privacy-details">
+            <summary>What Desk reads and stores</summary>
+            <dl>
+              <dt>Reads</dt>
+              <dd class="reads">{{ PROVIDER_PRIVACY_TEXT[provider.id].reads }}</dd>
+              <dt>Stores</dt>
+              <dd class="stores">{{ PROVIDER_PRIVACY_TEXT[provider.id].stores }}</dd>
+              <dt>How long</dt>
+              <dd class="retention">{{ PROVIDER_PRIVACY_TEXT[provider.id].retention }}</dd>
+              <dt>Revoking access</dt>
+              <dd class="revoke">{{ PROVIDER_PRIVACY_TEXT[provider.id].revoke }}</dd>
+              <dt>Permissions</dt>
+              <dd class="scopes">
+                <ul>
+                  <li v-for="scope in PROVIDER_PRIVACY_TEXT[provider.id].scopes" :key="scope">
+                    {{ scope }}
+                  </li>
+                </ul>
+              </dd>
+            </dl>
+          </details>
 
           <div v-if="provider.id === 'google'" class="capabilities">
             <button
@@ -229,6 +287,17 @@ async function confirmDisconnect() {
             </p>
           </div>
 
+          <div v-else-if="provider.id === 'standards'" class="capabilities">
+            <button
+              type="button"
+              :disabled="isLimitReached"
+              class="connect-btn"
+              @click="showStandardsForm = true"
+            >
+              Add another provider
+            </button>
+          </div>
+
           <div v-else class="capabilities">
             <button
               type="button"
@@ -241,6 +310,13 @@ async function confirmDisconnect() {
           </div>
         </div>
       </div>
+
+      <StandardsForm
+        v-if="showStandardsForm && standardsProvider"
+        :presets="standardsProvider.presets ?? []"
+        class="standards-form-panel"
+        @success="onStandardsConnected"
+      />
     </section>
 
     <section class="accounts">
@@ -335,9 +411,14 @@ async function confirmDisconnect() {
             </button>
           </div>
 
-          <p v-if="passwordNeededFor === account.id" class="password-note">
-            Enter a new app password to finish reconnecting.
-          </p>
+          <StandardsForm
+            v-if="passwordNeededFor === account.id && reconnectAccount"
+            mode="reconnect"
+            :presets="[]"
+            :reconnect-account="reconnectAccount"
+            class="standards-form-panel"
+            @success="onStandardsReconnected"
+          />
         </div>
       </div>
     </section>
@@ -626,10 +707,8 @@ h2 {
   font-size: 0.9rem;
 }
 
-.password-note {
-  margin: 0.75rem 0 0 0;
-  font-size: 0.85rem;
-  color: var(--color-warn);
+.standards-form-panel {
+  margin-top: 1rem;
 }
 
 .disconnect-dialog {

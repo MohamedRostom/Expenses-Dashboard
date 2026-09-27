@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createApp, nextTick } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PROVIDER_PRIVACY_TEXT } from '@desk/contracts';
 import ConnectionsView from './ConnectionsView.vue';
 
 const ACCOUNT = {
@@ -109,7 +110,7 @@ describe('ConnectionsView — ?reconnect=<id>', () => {
     app.unmount();
   });
 
-  it('opens the password step for a standards account that needs a new app password', async () => {
+  it('opens the standards reconnect form asking only for a new app password', async () => {
     const fetchMock = fetchMockFor({ needsPassword: true });
     vi.stubGlobal('fetch', fetchMock);
 
@@ -119,7 +120,11 @@ describe('ConnectionsView — ?reconnect=<id>', () => {
     await vi.waitFor(() =>
       expect(fetchMock).toHaveBeenCalledWith('/connections/acc-1/reconnect', expect.anything()),
     );
-    await vi.waitFor(() => expect(el.textContent).toContain('new app password'));
+    await vi.waitFor(() =>
+      expect(el.textContent).toContain('This is never shown again once saved.'),
+    );
+    expect(el.querySelector('input[name="address"]')).toBeNull();
+    expect(el.querySelector('input[name="password"]')).not.toBeNull();
     expect(window.location.search).toBe('');
 
     app.unmount();
@@ -448,6 +453,158 @@ describe('ConnectionsView — account card (T062)', () => {
 
     const dialog = el.querySelector('dialog, [role="dialog"]');
     expect(dialog!.textContent).toContain('account.microsoft.com/privacy');
+    app.unmount();
+  });
+});
+
+describe('ConnectionsView — standards provider (T072)', () => {
+  const STANDARDS_PROVIDER = {
+    id: 'standards',
+    capabilities: ['mail', 'calendar'],
+    presets: [
+      {
+        name: 'fastmail',
+        imapHost: 'imap.fastmail.com',
+        imapPort: 993,
+        caldavUrl: 'https://caldav.fastmail.com',
+      },
+    ],
+  };
+
+  function fetchMockWithProviders(
+    providers: unknown[],
+    accounts: unknown[],
+    handlers: Record<string, (init?: RequestInit) => Response> = {},
+  ) {
+    return vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      const method = (init?.method ?? 'GET').toUpperCase();
+      const key = `${method} ${url}`;
+      if (handlers[key]) return Promise.resolve(handlers[key](init));
+      if (url === '/connections/providers') {
+        return Promise.resolve(new Response(JSON.stringify({ providers }), { status: 200 }));
+      }
+      if (url === '/connections') {
+        return Promise.resolve(
+          new Response(JSON.stringify({ accounts, limit: 10 }), { status: 200 }),
+        );
+      }
+      throw new Error(`unexpected fetch: ${method} ${url}`);
+    });
+  }
+
+  async function mount() {
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/settings/connections', name: 'settings-connections', component: ConnectionsView },
+      ],
+    });
+    await router.push('/settings/connections');
+    await router.isReady();
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const app = createApp(ConnectionsView);
+    app.use(pinia);
+    app.use(router);
+    app.mount(el);
+    await nextTick();
+    return { el, app };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+    window.history.replaceState({}, '', '/settings/connections');
+  });
+
+  // T073/FR-016: the connect card shows the same privacy text as the privacy page (one source).
+  it('shows the provider privacy text from the shared source on the connect card', async () => {
+    vi.stubGlobal('fetch', fetchMockWithProviders([STANDARDS_PROVIDER], []));
+    const { el, app } = await mount();
+    await vi.waitFor(() => expect(el.textContent).toContain('Standards-Based'));
+
+    const privacy = el.querySelector('.provider-card .privacy-details');
+    const text = PROVIDER_PRIVACY_TEXT.standards;
+    expect(privacy?.querySelector('dd.reads')?.textContent?.trim()).toBe(text.reads);
+    expect(privacy?.querySelector('dd.stores')?.textContent?.trim()).toBe(text.stores);
+    expect(privacy?.querySelector('dd.retention')?.textContent?.trim()).toBe(text.retention);
+    expect(privacy?.querySelector('dd.revoke')?.textContent?.trim()).toBe(text.revoke);
+    expect(
+      [...(privacy?.querySelectorAll('dd.scopes li') ?? [])].map((li) => li.textContent?.trim()),
+    ).toEqual(text.scopes);
+    app.unmount();
+  });
+
+  it('shows "Add another provider" for the standards provider and opens the connect form with its presets', async () => {
+    const fetchMock = fetchMockWithProviders([STANDARDS_PROVIDER], []);
+    vi.stubGlobal('fetch', fetchMock);
+    const { el, app } = await mount();
+    await vi.waitFor(() => expect(el.textContent).toContain('Standards-Based'));
+
+    const addBtn = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Add another provider',
+    );
+    expect(addBtn).toBeDefined();
+    addBtn!.click();
+    await nextTick();
+
+    expect(el.querySelector('input[name="address"]')).not.toBeNull();
+    const presetSelect = el.querySelector<HTMLSelectElement>('select[name="preset"]');
+    expect([...presetSelect!.options].map((o) => o.value)).toContain('fastmail');
+    app.unmount();
+  });
+
+  it('lands the new account with ?connected=<id>, same as an OAuth callback', async () => {
+    const created = {
+      id: 'acc-9',
+      provider: 'standards',
+      address: 'me@fastmail.com',
+      label: 'me@fastmail.com',
+      colour: 'teal',
+      capabilities: ['mail'],
+      grantedScopes: [],
+      status: 'connected',
+      pausedAt: null,
+      lastRefreshAt: null,
+      lastError: null,
+      calendars: [],
+    };
+    const fetchMock = fetchMockWithProviders([STANDARDS_PROVIDER], [], {
+      'POST /connections/standards': () =>
+        new Response(JSON.stringify({ account: created }), { status: 201 }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    const { el, app } = await mount();
+    await vi.waitFor(() => expect(el.textContent).toContain('Standards-Based'));
+
+    const addBtn = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Add another provider',
+    );
+    addBtn!.click();
+    await nextTick();
+
+    const address = el.querySelector<HTMLInputElement>('input[name="address"]')!;
+    address.value = 'me@fastmail.com';
+    address.dispatchEvent(new Event('input'));
+    const password = el.querySelector<HTMLInputElement>('input[name="password"]')!;
+    password.value = 'app-password';
+    password.dispatchEvent(new Event('input'));
+    const mailCheckbox = el.querySelector<HTMLInputElement>('input[name="capability-mail"]')!;
+    mailCheckbox.checked = true;
+    mailCheckbox.dispatchEvent(new Event('change'));
+    const imapHost = el.querySelector<HTMLInputElement>('input[name="imapHost"]')!;
+    imapHost.value = 'imap.fastmail.com';
+    imapHost.dispatchEvent(new Event('input'));
+    const imapPort = el.querySelector<HTMLInputElement>('input[name="imapPort"]')!;
+    imapPort.value = '993';
+    imapPort.dispatchEvent(new Event('input'));
+    await nextTick();
+    el.querySelector('form')!.dispatchEvent(new Event('submit', { cancelable: true }));
+
+    await vi.waitFor(() => expect(window.location.search).toBe('?connected=acc-9'));
+    await vi.waitFor(() => expect(el.textContent).toContain('me@fastmail.com'));
     app.unmount();
   });
 });
