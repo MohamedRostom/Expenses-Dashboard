@@ -24,9 +24,17 @@ const hasAccounts = computed(() => mailAccounts.value.length > 0);
 
 // FR-009: unread total across every connected mail account, including a reconnect_needed
 // account's last-known count — it stays in the total but is called out as possibly stale.
-const totalUnread = computed(() => mailAccounts.value.reduce((sum, a) => sum + a.unreadCount, 0));
+// T043: filtering by account narrows the count as well as the list.
+const countedAccounts = computed(() =>
+  today.filterAccountId
+    ? mailAccounts.value.filter((a) => a.id === today.filterAccountId)
+    : mailAccounts.value,
+);
+const totalUnread = computed(() =>
+  countedAccounts.value.reduce((sum, a) => sum + a.unreadCount, 0),
+);
 const hasOutOfDateUnread = computed(() =>
-  mailAccounts.value.some((a) => a.status === 'reconnect_needed'),
+  countedAccounts.value.some((a) => a.status === 'reconnect_needed'),
 );
 
 const visibleMessages = computed<TodayMessageT[]>(() => today.visibleMessages);

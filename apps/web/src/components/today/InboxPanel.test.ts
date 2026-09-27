@@ -227,6 +227,19 @@ describe('InboxPanel', () => {
     expect(el.textContent).not.toContain('From personal');
   });
 
+  it('narrows the unread total to the account selected via filterAccountId', async () => {
+    const el = await render((s) => {
+      s.payload = payload({
+        accounts: [
+          account({ id: 'acc-1', label: 'Personal', unreadCount: 1 }),
+          account({ id: 'acc-2', label: 'Work', unreadCount: 4 }),
+        ],
+      });
+      s.filterAccountId = 'acc-2';
+    });
+    expect(el.querySelector('.unread-total')?.textContent?.trim()).toBe('4 unread');
+  });
+
   it('shows "No messages in your inbox" when an account is connected but nothing is due', async () => {
     const el = await render((s) => {
       s.payload = payload({ messages: [] });
