@@ -1,6 +1,12 @@
-import type { CalendarSource, EventOccurrence } from '../panels/index.js';
+import type {
+  CalendarSource,
+  EventOccurrence,
+  MailSource,
+  MessageHeader,
+} from '../panels/index.js';
 import { AuthError } from '../panels/index.js';
 import { toOccurrence } from './calendar.js';
+import { toMessageHeader, type GmailMessageMetadata } from './gmail.js';
 
 interface GoogleEventItem {
   id: string;
@@ -32,7 +38,7 @@ interface GoogleCalendarListItem {
   backgroundColor?: string;
 }
 
-export class GoogleFake implements CalendarSource {
+export class GoogleFake implements CalendarSource, MailSource {
   private calendars: GoogleCalendarListItem[];
   private items: Record<string, GoogleEventItem[]>;
   private revoked = false;
@@ -41,9 +47,15 @@ export class GoogleFake implements CalendarSource {
   private changeSeq = 0;
   private seqByKey = new Map<string, number>();
 
+  // Mail: Gmail's historyId is one counter for the whole mailbox (not per-calendar like sync
+  // tokens), so it gets its own sequence rather than reusing changeSeq.
+  private mailMessages: GmailMessageMetadata[] = [];
+  private mailHistorySeq = 0;
+
   constructor(seed?: {
-    calendars: GoogleCalendarListItem[];
-    items: Record<string, GoogleEventItem[]>;
+    calendars?: GoogleCalendarListItem[];
+    items?: Record<string, GoogleEventItem[]>;
+    mail?: { messages: GmailMessageMetadata[] };
   }) {
     this.calendars = seed?.calendars || [];
     this.items = seed?.items || {};
@@ -51,6 +63,11 @@ export class GoogleFake implements CalendarSource {
       for (const item of items) {
         this.seqByKey.set(this.key(calendarId, item.id), 0);
       }
+    }
+    this.mailMessages = seed?.mail?.messages ?? [];
+    for (const message of this.mailMessages) {
+      const historyId = Number(message.historyId ?? 0);
+      if (historyId > this.mailHistorySeq) this.mailHistorySeq = historyId;
     }
   }
 
@@ -186,5 +203,85 @@ export class GoogleFake implements CalendarSource {
     cursor?: string,
   ): { items: GoogleEventItem[]; nextSyncToken: string } {
     return { items: this.changedItems(calendarId, cursor), nextSyncToken: String(this.changeSeq) };
+  }
+
+  // --- Mail (MailSource) ---
+
+  private inboxMessages(): GmailMessageMetadata[] {
+    // Mirrors the real query `-category:promotions -category:social`.
+    return this.mailMessages.filter(
+      (m) =>
+        !(m.labelIds ?? []).includes('CATEGORY_PROMOTIONS') &&
+        !(m.labelIds ?? []).includes('CATEGORY_SOCIAL'),
+    );
+  }
+
+  async fetchInbox(
+    _cred: unknown,
+    limit: number,
+    cursor?: string,
+  ): Promise<{
+    messages: MessageHeader[];
+    unreadTotal?: number;
+    cursor?: string;
+    full: boolean;
+  }> {
+    if (this.revoked) {
+      throw new AuthError('Access revoked');
+    }
+
+    const full = !cursor;
+    const cursorSeq = cursor ? Number(cursor) || 0 : 0;
+    const candidates = full
+      ? this.inboxMessages()
+      : this.mailMessages.filter((m) => Number(m.historyId ?? 0) > cursorSeq);
+
+    const messages = candidates.slice(0, limit).map(toMessageHeader);
+    const unreadTotal = this.inboxMessages().filter((m) =>
+      (m.labelIds ?? []).includes('UNREAD'),
+    ).length;
+
+    return { messages, unreadTotal, cursor: String(this.mailHistorySeq), full };
+  }
+
+  /** Adds a message and assigns it the next historyId, as a real incremental sync would see it. */
+  addMessage(message: Omit<GmailMessageMetadata, 'historyId'>): void {
+    this.mailHistorySeq++;
+    this.mailMessages.push({ ...message, historyId: String(this.mailHistorySeq) });
+  }
+
+  /** Drops the UNREAD label from a message, as reading it in a real client would. */
+  markRead(messageId: string): void {
+    const message = this.mailMessages.find((m) => m.id === messageId);
+    if (!message) return;
+    message.labelIds = (message.labelIds ?? []).filter((l) => l !== 'UNREAD');
+  }
+
+  rawMessagesList(limit?: number): Array<{ id: string; threadId?: string }> {
+    const items = this.inboxMessages().map((m) =>
+      m.threadId !== undefined ? { id: m.id, threadId: m.threadId } : { id: m.id },
+    );
+    return limit === undefined ? items : items.slice(0, limit);
+  }
+
+  rawMessage(id: string): GmailMessageMetadata | undefined {
+    return this.mailMessages.find((m) => m.id === id);
+  }
+
+  rawHistorySince(startHistoryId: string): { addedIds: string[]; historyId: string } {
+    const startSeq = Number(startHistoryId) || 0;
+    const added = this.mailMessages.filter((m) => Number(m.historyId ?? 0) > startSeq);
+    return { addedIds: added.map((m) => m.id), historyId: String(this.mailHistorySeq) };
+  }
+
+  rawLabelInbox(): { messagesUnread: number } {
+    return {
+      messagesUnread: this.inboxMessages().filter((m) => (m.labelIds ?? []).includes('UNREAD'))
+        .length,
+    };
+  }
+
+  rawProfile(): { historyId: string } {
+    return { historyId: String(this.mailHistorySeq) };
   }
 }

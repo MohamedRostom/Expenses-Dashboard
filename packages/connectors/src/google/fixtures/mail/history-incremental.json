@@ -1,0 +1,13 @@
+{
+  "history": [
+    {
+      "id": "2000",
+      "messagesAdded": [
+        {
+          "message": { "id": "msg-3", "threadId": "thread-3", "labelIds": ["INBOX", "UNREAD"] }
+        }
+      ]
+    }
+  ],
+  "historyId": "2000"
+}

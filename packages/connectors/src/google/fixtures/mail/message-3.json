@@ -1,0 +1,15 @@
+{
+  "id": "msg-3",
+  "threadId": "thread-3",
+  "labelIds": ["INBOX", "UNREAD"],
+  "snippet": "New sign-in to your account detected from a new device.",
+  "historyId": "2000",
+  "internalDate": "1759010000000",
+  "payload": {
+    "headers": [
+      { "name": "From", "value": "Security <security@example.test>" },
+      { "name": "Subject", "value": "New sign-in detected" },
+      { "name": "Date", "value": "Wed, 24 Sep 2026 12:00:00 +0000" }
+    ]
+  }
+}

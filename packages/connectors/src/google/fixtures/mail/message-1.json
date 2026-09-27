@@ -1,0 +1,15 @@
+{
+  "id": "msg-1",
+  "threadId": "thread-1",
+  "labelIds": ["INBOX", "UNREAD"],
+  "snippet": "Hey, just checking in about the invoice &#39;Q3 Expenses&#39; &mdash; let me know if you need anything else.",
+  "historyId": "1000",
+  "internalDate": "1759000000000",
+  "payload": {
+    "headers": [
+      { "name": "From", "value": "Aisha Bello <aisha.bello@example.test>" },
+      { "name": "Subject", "value": "Q3 Expenses follow-up" },
+      { "name": "Date", "value": "Wed, 24 Sep 2026 09:00:00 +0000" }
+    ]
+  }
+}
