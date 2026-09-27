@@ -34,6 +34,12 @@ services:
       GOOGLE_OAUTH_BASE: http://mocks:4000/google
       GRAPH_API_BASE: http://mocks:4000/graph
       MICROSOFT_LOGIN_BASE: http://mocks:4000/graph
+      # T029 fix: the OAuth authorize URL is sent to the browser as a 302 redirect, so unlike the
+      # bases above (server-to-server, resolved by the api container's own DNS) it needs a
+      # hostname the host browser can resolve too. `mocks` is published on 4000:4000, so
+      # localhost:4000 reaches the same server from the host.
+      GOOGLE_OAUTH_BROWSER_BASE: http://localhost:4000/google
+      MICROSOFT_LOGIN_BROWSER_BASE: http://localhost:4000/graph
       CALDAV_TEST_URL: http://mocks:4000/caldav
       IMAP_TEST_HOST: mocks
       # Dev-only fixed OAuth client values so the api service can complete the connect flow

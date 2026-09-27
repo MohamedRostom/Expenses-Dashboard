@@ -13,7 +13,8 @@
     "generate": "drizzle-kit generate",
     "migrate": "tsx src/migrate-cli.ts",
     "db:seed": "tsx src/seed.ts",
-    "flags": "tsx src/flags-cli.ts"
+    "flags": "tsx src/flags-cli.ts",
+    "backdate-refresh": "tsx src/backdate-refresh-cli.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

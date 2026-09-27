@@ -17,10 +17,18 @@ const envObjectSchema = z.object({
   GOOGLE_PANELS_CLIENT_SECRET: z.string().optional(),
   GOOGLE_API_BASE: z.string().default('https://www.googleapis.com'),
   GOOGLE_OAUTH_BASE: z.string().url().optional(),
+  // T029 fix: in compose, GOOGLE_OAUTH_BASE/MICROSOFT_LOGIN_BASE point at the `mocks` service
+  // name (e.g. http://mocks:4000/google), which the api container can resolve but a browser on
+  // the host cannot — the OAuth authorize redirect (302 sent to the browser) needs a
+  // host-reachable base, while the token/revoke calls (server-to-server, from inside the api
+  // container) keep using the base above. Optional and unused outside compose/e2e-ci; when unset
+  // the authorize URL falls back to GOOGLE_OAUTH_BASE/MICROSOFT_LOGIN_BASE as before.
+  GOOGLE_OAUTH_BROWSER_BASE: z.string().url().optional(),
   MICROSOFT_CLIENT_ID: z.string().optional(),
   MICROSOFT_CLIENT_SECRET: z.string().optional(),
   GRAPH_API_BASE: z.string().default('https://graph.microsoft.com'),
   MICROSOFT_LOGIN_BASE: z.string().url().optional(),
+  MICROSOFT_LOGIN_BROWSER_BASE: z.string().url().optional(),
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),

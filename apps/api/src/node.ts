@@ -127,8 +127,11 @@ const app = createApp({
           clientSecret: env.MICROSOFT_CLIENT_SECRET,
         }
       : undefined,
-  googleOAuthEndpoints: googleOAuthEndpoints(env.GOOGLE_OAUTH_BASE),
-  microsoftOAuthEndpoints: microsoftOAuthEndpoints(env.MICROSOFT_LOGIN_BASE),
+  googleOAuthEndpoints: googleOAuthEndpoints(env.GOOGLE_OAUTH_BASE, env.GOOGLE_OAUTH_BROWSER_BASE),
+  microsoftOAuthEndpoints: microsoftOAuthEndpoints(
+    env.MICROSOFT_LOGIN_BASE,
+    env.MICROSOFT_LOGIN_BROWSER_BASE,
+  ),
   googleApiBase: env.GOOGLE_API_BASE,
   graphApiBase: env.GRAPH_API_BASE,
 });
