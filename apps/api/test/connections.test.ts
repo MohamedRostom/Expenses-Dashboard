@@ -1260,6 +1260,45 @@ describe('POST /connections/standards (T065/T070)', () => {
     expect(sixth.status).toBe(429);
   });
 
+  // The web form's reconnect mode sends only address, new password and the account's
+  // capabilities; the stored server details must carry over, and the account comes back connected.
+  it('a reconnect with only address, password and capabilities keeps the stored IMAP server and reconnects', async () => {
+    const user = await harness.asUser('standards-reconnect-only-password@test.com');
+    const address = `standards-${crypto.randomUUID()}@example.com`;
+    const res1 = await user.post('/connections/standards', {
+      address,
+      password: CORRECT_PASSWORD,
+      imapHost: 'mail.example.com',
+      imapPort: 993,
+      capabilities: ['mail'],
+    });
+    expect(res1.status).toBe(201);
+    const { account } = (await res1.json()) as { account: { id: string } };
+    await harness.db
+      .update(connectedAccounts)
+      .set({ status: 'reconnect_needed', lastError: 'access_revoked' })
+      .where(eq(connectedAccounts.id, account.id));
+
+    const res2 = await user.post('/connections/standards', {
+      address,
+      password: CORRECT_PASSWORD,
+      capabilities: ['mail'],
+    });
+    expect(res2.status).toBe(201);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect([row!.status, row!.lastError]).toEqual(['connected', null]);
+    expect(
+      await openCredential<StandardsCredential>(
+        createSecretBox(TEST_SECRET_BOX_KEY),
+        row!.credentialEnc,
+      ),
+    ).toEqual({ password: CORRECT_PASSWORD, imapHost: 'mail.example.com', imapPort: 993 });
+  });
+
   it('answers 409 limit_reached at ten accounts for a new address, while an existing address still merges', async () => {
     const user = await harness.asUser('standards-limit@test.com');
     const existingAddress = `standards-limit-existing-${crypto.randomUUID()}@example.com`;

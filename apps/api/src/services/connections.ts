@@ -359,7 +359,6 @@ export class ConnectionsService {
     }
 
     const address = body.address.toLowerCase();
-    await this.assertHostPolicy(body.capabilities, body.imapHost, body.imapPort, body.caldavUrl);
 
     const [existingRow] = await this.deps.db
       .select()
@@ -377,20 +376,30 @@ export class ConnectionsService {
       if (atLimit) throw new ApiError('limit_reached', 'Maximum 10 accounts', 409);
     }
 
+    // A reconnect (the web form's reconnect mode) sends only the new password: server details it
+    // omits carry over from the stored credential, so a merge never drops them.
+    const stored = existingRow
+      ? await openCredential<StandardsCredential>(this.deps.secretBox, existingRow.credentialEnc)
+      : undefined;
+    const imapHost = body.imapHost ?? stored?.imapHost;
+    const imapPort = body.imapPort ?? stored?.imapPort;
+    const caldavUrl = body.caldavUrl ?? stored?.caldavUrl;
+
+    await this.assertHostPolicy(body.capabilities, imapHost, imapPort, caldavUrl);
     await this.verifyStandards(
       body.capabilities,
       address,
       body.password,
-      body.imapHost,
-      body.imapPort,
-      body.caldavUrl,
+      imapHost,
+      imapPort,
+      caldavUrl,
     );
 
     const credential: StandardsCredential = {
       password: body.password,
-      ...(body.imapHost !== undefined && { imapHost: body.imapHost }),
-      ...(body.imapPort !== undefined && { imapPort: body.imapPort }),
-      ...(body.caldavUrl !== undefined && { caldavUrl: body.caldavUrl }),
+      ...(imapHost !== undefined && { imapHost }),
+      ...(imapPort !== undefined && { imapPort }),
+      ...(caldavUrl !== undefined && { caldavUrl }),
     };
     const sealed = await sealCredential(this.deps.secretBox, credential);
 
