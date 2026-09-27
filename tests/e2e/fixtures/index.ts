@@ -80,8 +80,53 @@ async function pollForVerifyLink(email: string, timeoutMs = 15_000): Promise<str
  * account's fake (T087) — pass the key `nextMockAccount` returned before the OAuth connect that
  * created it; omit it only for a test that never called `nextMockAccount` and is content with the
  * mock's single shared 'default' account.
+ *
+ * T052: `mockProvider('imap')` drives the IMAP mock (infra/mocks/src/imap.ts) instead — a real TCP
+ * IMAP server backed by an in-memory mailbox per username (IMAP has no OAuth account key, so
+ * isolation is by `username` directly and every call takes it explicitly; `addEvent`/`deleteEvent`/
+ * `revoke` don't apply to a mail-only, revoke-less provider, so IMAP's helper only offers
+ * `addMessage`/`markRead`).
  */
-export function mockProvider(provider: 'google' | 'microsoft', key?: string) {
+export function mockProvider(
+  provider: 'google' | 'microsoft',
+  key?: string,
+): {
+  addEvent(calendarId: string, event: Record<string, unknown>): Promise<void>;
+  deleteEvent(calendarId: string, eventId: string): Promise<void>;
+  addMessage(message: Record<string, unknown>): Promise<void>;
+  markRead(id: string): Promise<void>;
+  revoke(): Promise<void>;
+};
+export function mockProvider(provider: 'imap'): {
+  addMessage(
+    username: string,
+    message: { from: string; subject: string; body: string; date: string; seen?: boolean },
+  ): Promise<void>;
+  markRead(username: string, uid: number): Promise<void>;
+};
+export function mockProvider(provider: 'google' | 'microsoft' | 'imap', key?: string) {
+  if (provider === 'imap') {
+    return {
+      async addMessage(
+        username: string,
+        message: { from: string; subject: string; body: string; date: string; seen?: boolean },
+      ): Promise<void> {
+        await postControl(`${MOCKS_URL}/__control/imap/messages`, {
+          username,
+          action: 'add',
+          message,
+        });
+      },
+      async markRead(username: string, uid: number): Promise<void> {
+        await postControl(`${MOCKS_URL}/__control/imap/messages`, {
+          username,
+          action: 'markRead',
+          uid,
+        });
+      },
+    };
+  }
+
   const base = `${MOCKS_URL}/${MOCK_MOUNTS[provider]}`;
   return {
     async addEvent(calendarId: string, event: Record<string, unknown>): Promise<void> {
@@ -89,6 +134,14 @@ export function mockProvider(provider: 'google' | 'microsoft', key?: string) {
     },
     async deleteEvent(calendarId: string, eventId: string): Promise<void> {
       await postControl(`${base}/__control/events`, { action: 'delete', calendarId, eventId, key });
+    },
+    // T052: message.id below is the provider's raw message id (Gmail message id / Graph message
+    // id) — the same id passed to markRead.
+    async addMessage(message: Record<string, unknown>): Promise<void> {
+      await postControl(`${base}/__control/messages`, { action: 'add', message, key });
+    },
+    async markRead(id: string): Promise<void> {
+      await postControl(`${base}/__control/messages`, { action: 'markRead', id, key });
     },
     async revoke(): Promise<void> {
       await postControl(`${base}/__control/revoke`, { key });

@@ -165,6 +165,8 @@ services:
       PORT: 4000
     ports:
       - '4000:4000'
+      # T052: real TCP IMAP server (infra/mocks/src/imap.ts) for ImapMailSource e2e-ci coverage.
+      - '1143:1143'
 
   mailpit:
     image: axllent/mailpit

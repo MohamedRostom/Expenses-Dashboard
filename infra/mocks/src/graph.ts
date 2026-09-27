@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { GraphFake } from '@desk/connectors/microsoft/fake';
 import type { MicrosoftRawCalendar, MicrosoftRawEvent } from '@desk/connectors/microsoft/calendar';
+import type { MicrosoftRawMessage } from '@desk/connectors/microsoft/mail';
 
 /**
  * T036: Microsoft Graph calendar mock, backed by GraphFake. Mounted at `/graph` in server.ts, so
@@ -16,8 +17,12 @@ import type { MicrosoftRawCalendar, MicrosoftRawEvent } from '@desk/connectors/m
  *
  * Control routes for Playwright (tests/e2e/fixtures/index.ts's `mockProvider('microsoft')`):
  *   POST /graph/__control/events       { action: 'add', calendarId, event, key? } | { action: 'delete', calendarId, eventId, key? }
+ *   POST /graph/__control/messages     { action: 'add', message, key? } | { action: 'markRead', id, key? } — T052
  *   POST /graph/__control/revoke       { key? } — flips that one account into "access revoked" mode
  *   POST /graph/__control/next-account { key } — the next OAuth connect creates/reuses this account
+ *
+ * T052: the mail delta route for createMicrosoftMailSource (packages/connectors/src/microsoft/mail.ts)
+ * follows the same deltaLink pattern as the calendar route above, at the exact path/params it fetches.
  */
 export function createGraphMockApp(fake: GraphFake = defaultFake()): Hono {
   const app = new Hono();
@@ -106,6 +111,34 @@ export function createGraphMockApp(fake: GraphFake = defaultFake()): Hono {
     return c.json({ value: items, '@odata.deltaLink': deltaLink.toString() });
   });
 
+  // T052: the mail delta route createMicrosoftMailSource fetches (full on no $deltatoken,
+  // incremental otherwise) — same "changed since" shape as the calendarView/delta route above.
+  app.get('/v1.0/me/mailFolders/inbox/messages/delta', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { code: 'InvalidAuthenticationToken' } }, 401);
+    const deltaToken = c.req.query('$deltatoken') ?? undefined;
+    const { items, seq } = account.fake.rawMailDeltaPage(deltaToken);
+    const deltaLink = new URL(c.req.url);
+    deltaLink.search = `?$deltatoken=${seq}`;
+    return c.json({ value: items, '@odata.deltaLink': deltaLink.toString() });
+  });
+
+  app.post('/__control/messages', async (c) => {
+    const body = await c.req.json<
+      | { action: 'add'; message: MicrosoftRawMessage; key?: string }
+      | { action: 'markRead'; id: string; key?: string }
+    >();
+    const account = accountFor(body.key ?? 'default');
+    if (body.action === 'add') {
+      account.fake.addMessage(body.message);
+    } else if (body.action === 'markRead') {
+      account.fake.markRead(body.id);
+    } else {
+      return c.json({ error: 'unknown action' }, 400);
+    }
+    return c.json({ ok: true });
+  });
+
   app.post('/__control/events', async (c) => {
     const body = await c.req.json<
       | { action: 'add'; calendarId: string; event: Record<string, unknown>; key?: string }
@@ -147,7 +180,7 @@ function defaultFake(): GraphFake {
       hexColor: '#1f6e5a',
     },
   };
-  return new GraphFake({ calendars, items: { 'primary-cal@example.test': [] } });
+  return new GraphFake({ calendars, items: { 'primary-cal@example.test': [] }, messages: [] });
 }
 
 function fakeIdToken(email: string): string {

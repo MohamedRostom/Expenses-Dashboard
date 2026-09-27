@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { GoogleFake } from '@desk/connectors/google/fake';
+import type { GmailMessageMetadata } from '@desk/connectors/google/gmail';
 
 /**
  * T036: Google Calendar mock, backed by GoogleFake. Mounted at `/google` in server.ts, so with
@@ -21,8 +22,13 @@ import { GoogleFake } from '@desk/connectors/google/fake';
  *
  * Control routes for Playwright (tests/e2e/fixtures/index.ts's `mockProvider('google')`):
  *   POST /google/__control/events       { action: 'add', calendarId, event, key? } | { action: 'delete', calendarId, eventId, key? }
+ *   POST /google/__control/messages     { action: 'add', message, key? } | { action: 'markRead', id, key? } — T052
  *   POST /google/__control/revoke       { key? } — flips that one account into "access revoked" mode
  *   POST /google/__control/next-account { key } — the next OAuth connect creates/reuses this account
+ *
+ * T052: Gmail routes for createGmailSource (packages/connectors/src/google/gmail.ts) — messages.list,
+ * messages.get?format=metadata, history.list, labels/INBOX and profile — served from the same
+ * per-account GoogleFake as the calendar routes above.
  */
 export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
   const app = new Hono();
@@ -107,6 +113,68 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
     const syncToken = c.req.query('syncToken') ?? undefined;
     const { items, nextSyncToken } = account.fake.rawEventsPage(calendarId, syncToken);
     return c.json({ items, nextSyncToken });
+  });
+
+  // T052: Gmail mail routes (createGmailSource's apiBase + these exact paths/params).
+  app.get('/gmail/v1/users/me/messages', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
+    const maxResults = Number(c.req.query('maxResults') ?? '50');
+    const messages = account.fake.rawMessagesList(maxResults);
+    return c.json({ messages, resultSizeEstimate: messages.length });
+  });
+
+  app.get('/gmail/v1/users/me/messages/:id', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
+    const raw = account.fake.rawMessage(decodeURIComponent(c.req.param('id')));
+    if (!raw) return c.json({ error: { message: 'not found' } }, 404);
+    return c.json(raw);
+  });
+
+  app.get('/gmail/v1/users/me/history', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
+    const startHistoryId = c.req.query('startHistoryId') ?? '0';
+    const { addedIds, historyId } = account.fake.rawHistorySince(startHistoryId);
+    const body: {
+      history?: Array<{ id: string; messagesAdded: Array<{ message: { id: string } }> }>;
+      historyId: string;
+    } = { historyId };
+    if (addedIds.length > 0) {
+      body.history = [
+        { id: historyId, messagesAdded: addedIds.map((id) => ({ message: { id } })) },
+      ];
+    }
+    return c.json(body);
+  });
+
+  app.get('/gmail/v1/users/me/labels/INBOX', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
+    return c.json(account.fake.rawLabelInbox());
+  });
+
+  app.get('/gmail/v1/users/me/profile', (c) => {
+    const account = accountFor(keyFromAuth(c));
+    if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
+    return c.json(account.fake.rawProfile());
+  });
+
+  app.post('/__control/messages', async (c) => {
+    const body = await c.req.json<
+      | { action: 'add'; message: Omit<GmailMessageMetadata, 'historyId'>; key?: string }
+      | { action: 'markRead'; id: string; key?: string }
+    >();
+    const account = accountFor(body.key ?? 'default');
+    if (body.action === 'add') {
+      account.fake.addMessage(body.message);
+    } else if (body.action === 'markRead') {
+      account.fake.markRead(body.id);
+    } else {
+      return c.json({ error: 'unknown action' }, 400);
+    }
+    return c.json({ ok: true });
   });
 
   app.post('/__control/events', async (c) => {

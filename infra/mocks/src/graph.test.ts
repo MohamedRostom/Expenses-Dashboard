@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GraphFake } from '@desk/connectors/microsoft/fake';
+import { createMicrosoftMailSource } from '@desk/connectors/microsoft/mail';
 import { createGraphMockApp } from './graph.js';
 
 const json = async (res: Response) => (await res.json()) as Record<string, unknown>;
@@ -234,5 +235,155 @@ describe('createGraphMockApp', () => {
       headers: { Authorization: `Bearer ${tokenB['access_token']}` },
     });
     expect(stillOkB.status).toBe(200);
+  });
+});
+
+// T052: createMicrosoftMailSource (the real client) driven against this mock over Hono's
+// app.request(), proving graph.ts's mail delta route matches the exact path/params it fetches.
+describe('createGraphMockApp: mail delta (T052)', () => {
+  function sourceFor(app: ReturnType<typeof createGraphMockApp>) {
+    return createMicrosoftMailSource({
+      clientId: 'test-id',
+      clientSecret: 'test-secret',
+      apiBase: '',
+      oauthEndpoints: { token: '/common/oauth2/v2.0/token' },
+      fetchImpl: ((url: string, init?: RequestInit) =>
+        app.request(url, init)) as unknown as typeof fetch,
+    });
+  }
+
+  it('control add: a message added via the control route appears in a full fetchInbox', async () => {
+    const app = createGraphMockApp(new GraphFake({ messages: [] }));
+    const source = sourceFor(app);
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-1',
+          subject: 'Hi',
+          bodyPreview: 'Hello there',
+          receivedDateTime: '2026-09-28T09:00:00Z',
+          isRead: false,
+          from: { emailAddress: { name: 'A', address: 'a@example.test' } },
+        },
+      }),
+    });
+
+    const result = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(result.full).toBe(true);
+    expect(result.messages.map((m) => m.providerMessageId)).toEqual(['msg-1']);
+    expect(result.messages[0]!.unread).toBe(true);
+  });
+
+  it('markRead flips unread to false', async () => {
+    const app = createGraphMockApp(new GraphFake({ messages: [] }));
+    const source = sourceFor(app);
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-1',
+          subject: 'Hi',
+          bodyPreview: 'Hello',
+          receivedDateTime: '2026-09-28T09:00:00Z',
+          isRead: false,
+          from: { emailAddress: { address: 'a@example.test' } },
+        },
+      }),
+    });
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'markRead', id: 'msg-1' }),
+    });
+
+    const result = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(result.messages[0]!.unread).toBe(false);
+  });
+
+  it('an incremental fetch (deltaLink cursor) only returns the newly added message', async () => {
+    const app = createGraphMockApp(new GraphFake({ messages: [] }));
+    const source = sourceFor(app);
+
+    const first = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    const cursor = first.cursor!;
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-2',
+          subject: 'Second',
+          bodyPreview: 'Second',
+          receivedDateTime: '2026-09-28T10:00:00Z',
+          isRead: false,
+          from: { emailAddress: { address: 'b@example.test' } },
+        },
+      }),
+    });
+
+    const second = await source.fetchInbox({ refreshToken: 'rt' }, 10, cursor);
+    expect(second.full).toBe(false);
+    expect(second.messages.map((m) => m.providerMessageId)).toEqual(['msg-2']);
+  });
+
+  it("isolation: two connected accounts never see each other's messages", async () => {
+    const app = createGraphMockApp(new GraphFake({ messages: [] }));
+
+    await app.request('/__control/next-account', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key: 'account-a' }),
+    });
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        key: 'account-a',
+        message: {
+          id: 'msg-a',
+          subject: 'Only in A',
+          bodyPreview: 'Only in A',
+          receivedDateTime: '2026-09-28T09:00:00Z',
+          isRead: false,
+          from: { emailAddress: { address: 'a@example.test' } },
+        },
+      }),
+    });
+
+    const authA = await app.request(
+      '/common/oauth2/v2.0/authorize?redirect_uri=' +
+        encodeURIComponent('http://app.example.test/callback') +
+        '&state=s',
+      { redirect: 'manual' },
+    );
+    const codeA = new URL(authA.headers.get('location')!).searchParams.get('code')!;
+    const tokenA = await json(
+      await app.request('/common/oauth2/v2.0/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=authorization_code&code=${codeA}`,
+      }),
+    );
+
+    const sourceA = sourceFor(app);
+    const resultA = await sourceA.fetchInbox(
+      { refreshToken: tokenA['refresh_token'] as string },
+      10,
+    );
+    expect(resultA.messages.map((m) => m.providerMessageId)).toEqual(['msg-a']);
+
+    const sourceDefault = sourceFor(app);
+    const resultDefault = await sourceDefault.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(resultDefault.messages).toEqual([]);
   });
 });

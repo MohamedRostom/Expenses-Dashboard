@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { GoogleFake } from '@desk/connectors/google/fake';
+import { createGmailSource } from '@desk/connectors/google/gmail';
 import { createGoogleMockApp } from './google.js';
 
 const json = async (res: Response) => (await res.json()) as Record<string, unknown>;
@@ -225,5 +226,178 @@ describe('createGoogleMockApp', () => {
     };
     expect(payload.email).toBe('mock-google-user@example.test');
     expect(body['scope']).toContain('calendar.readonly');
+  });
+});
+
+// T052: createGmailSource (the real client) driven against this mock over Hono's app.request(),
+// proving google.ts's Gmail routes match messages.list/messages.get/history.list/labels/profile.
+describe('createGoogleMockApp: Gmail (T052)', () => {
+  function sourceFor(app: ReturnType<typeof createGoogleMockApp>) {
+    return createGmailSource({
+      clientId: 'test-id',
+      clientSecret: 'test-secret',
+      apiBase: 'http://mock',
+      oauthEndpoints: { token: '/token' },
+      fetchImpl: ((url: string | URL, init?: RequestInit) =>
+        app.request(String(url), init)) as unknown as typeof fetch,
+    });
+  }
+
+  it('control add: a message added via the control route appears in a full fetchInbox', async () => {
+    const app = createGoogleMockApp();
+    const source = sourceFor(app);
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-1',
+          labelIds: ['INBOX', 'UNREAD'],
+          snippet: 'Hello there',
+          internalDate: '1700000000000',
+          payload: {
+            headers: [
+              { name: 'From', value: 'A <a@example.test>' },
+              { name: 'Subject', value: 'Hi' },
+            ],
+          },
+        },
+      }),
+    });
+
+    const result = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(result.full).toBe(true);
+    expect(result.messages.map((m) => m.providerMessageId)).toEqual(['msg-1']);
+    expect(result.messages[0]!.unread).toBe(true);
+    expect(result.unreadTotal).toBe(1);
+  });
+
+  it('markRead drops unread from unreadTotal and from the message itself', async () => {
+    const app = createGoogleMockApp();
+    const source = sourceFor(app);
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-1',
+          labelIds: ['INBOX', 'UNREAD'],
+          snippet: 'Hello',
+          internalDate: '1700000000000',
+          payload: {
+            headers: [
+              { name: 'From', value: 'a@example.test' },
+              { name: 'Subject', value: 'Hi' },
+            ],
+          },
+        },
+      }),
+    });
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ action: 'markRead', id: 'msg-1' }),
+    });
+
+    const result = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(result.messages[0]!.unread).toBe(false);
+    expect(result.unreadTotal).toBe(0);
+  });
+
+  it('an incremental fetch (cursor) only returns the newly added message', async () => {
+    const app = createGoogleMockApp();
+    const source = sourceFor(app);
+
+    const first = await source.fetchInbox({ refreshToken: 'rt' }, 10);
+    const cursor = first.cursor!;
+
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        message: {
+          id: 'msg-2',
+          labelIds: ['INBOX'],
+          snippet: 'Second',
+          internalDate: '1700000001000',
+          payload: {
+            headers: [
+              { name: 'From', value: 'b@example.test' },
+              { name: 'Subject', value: 'Second' },
+            ],
+          },
+        },
+      }),
+    });
+
+    const second = await source.fetchInbox({ refreshToken: 'rt' }, 10, cursor);
+    expect(second.full).toBe(false);
+    expect(second.messages.map((m) => m.providerMessageId)).toEqual(['msg-2']);
+  });
+
+  it('isolation: an account key sees only its own messages', async () => {
+    const app = createGoogleMockApp();
+
+    await app.request('/__control/next-account', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ key: 'account-a' }),
+    });
+    await app.request('/__control/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        action: 'add',
+        key: 'account-a',
+        message: {
+          id: 'msg-a',
+          labelIds: ['INBOX'],
+          snippet: 'Only in A',
+          internalDate: '1700000000000',
+          payload: {
+            headers: [
+              { name: 'From', value: 'a@example.test' },
+              { name: 'Subject', value: 'A' },
+            ],
+          },
+        },
+      }),
+    });
+
+    const authA = await app.request(
+      '/o/oauth2/v2/auth?redirect_uri=' +
+        encodeURIComponent('http://app.example.test/callback') +
+        '&state=s',
+      { redirect: 'manual' },
+    );
+    const codeA = new URL(authA.headers.get('location')!).searchParams.get('code')!;
+    const tokenA = await json(
+      await app.request('/token', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: `grant_type=authorization_code&code=${codeA}`,
+      }),
+    );
+    const refreshTokenA = tokenA['refresh_token'] as string;
+
+    const sourceA = createGmailSource({
+      clientId: 'test-id',
+      clientSecret: 'test-secret',
+      apiBase: 'http://mock',
+      oauthEndpoints: { token: '/token' },
+      fetchImpl: ((url: string | URL, init?: RequestInit) =>
+        app.request(String(url), init)) as unknown as typeof fetch,
+    });
+    const resultA = await sourceA.fetchInbox({ refreshToken: refreshTokenA }, 10);
+    expect(resultA.messages.map((m) => m.providerMessageId)).toEqual(['msg-a']);
+
+    const sourceDefault = sourceFor(app);
+    const resultDefault = await sourceDefault.fetchInbox({ refreshToken: 'rt' }, 10);
+    expect(resultDefault.messages).toEqual([]);
   });
 });
