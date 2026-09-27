@@ -10,7 +10,10 @@ import { signUpAndVerify, axeCheck, mockProvider } from '../fixtures/index.js';
  */
 
 const IMAP_HOST = process.env['IMAP_TEST_HOST'] ?? 'mocks';
-const IMAP_PORT = '143';
+// infra/mocks/src/server.ts starts the real TCP IMAP mock on 1143 (infra/docker-compose.yml
+// publishes 1143:1143), not the standard IMAP port — 143 has nothing listening on it, which
+// surfaced as a "couldn't reach that server" connect-step error instead of exercising login.
+const IMAP_PORT = '1143';
 const CALDAV_URL = process.env['CALDAV_TEST_URL'] ?? 'http://mocks:4000/caldav';
 const IMAP_PASSWORD = 'app-password'; // infra/mocks/src/imap.ts's fixed accepted password
 
@@ -29,7 +32,9 @@ test.describe('Standards-based connect form @ci', () => {
 
     await expect(page.getByLabel('IMAP host')).toHaveValue('imap.fastmail.com');
     await expect(page.getByLabel('IMAP port')).toHaveValue('993');
-    await expect(page.getByLabel('CalDAV URL')).toHaveValue('https://caldav.fastmail.com');
+    // packages/connectors/src/panels/presets.ts's fastmail preset — Fastmail's real published
+    // CalDAV URL includes the /dav/ path.
+    await expect(page.getByLabel('CalDAV URL')).toHaveValue('https://caldav.fastmail.com/dav/');
   });
 
   test('a wrong password shows the login-step error', async ({ page }) => {

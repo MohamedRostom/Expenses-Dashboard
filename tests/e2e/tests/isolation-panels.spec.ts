@@ -113,7 +113,10 @@ test.describe('Panel isolation between users @ci', () => {
     await expect(pageB.getByText('OnlyForBob')).toBeVisible();
     await expect(pageB.getByText('OnlyForAlice')).toHaveCount(0);
     await expect(pageB.getByText('AliceMailOnly')).toHaveCount(0);
-    await expect(pageB.locator('.calendar-panel .account-chip')).toHaveCount(1);
+    // AccountChip renders once per account in the top strip (CalendarPanel.vue's
+    // `.account-chips`) AND again per event in that event's footer, so `.account-chip` alone
+    // double-counts a single account with one event — scope to the strip to count accounts.
+    await expect(pageB.locator('.calendar-panel .account-chips .account-chip')).toHaveCount(1);
 
     await pageB.goto('/settings/connections');
     await expect(pageB.locator('.account-card')).toHaveCount(1);

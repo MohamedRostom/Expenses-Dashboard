@@ -253,9 +253,12 @@ test.describe('Today inbox panel @ci', () => {
     await mockProvider('google', googleKey).markRead('msg-g-2');
     backdateLastRefresh(email, 'google', 3);
     await refreshUntilAllowed(page);
+    // TodayMessageT.id is cached_messages' own row id (apps/api/src/services/panels.ts), not the
+    // provider's raw message id passed to markRead above — match by subject instead, the same way
+    // every other assertion in this file identifies a message.
     await waitForTodayPayload(
       page,
-      (b) => (b.messages.find((m) => m.id === 'msg-g-2')?.unread ?? true) === false,
+      (b) => (b.messages.find((m) => m.subject === 'Google only')?.unread ?? true) === false,
     );
 
     await page.goto('/today');
@@ -274,7 +277,9 @@ test.describe('Today inbox panel @ci', () => {
     );
     backdateLastRefresh(email, 'microsoft', 3);
     await refreshUntilAllowed(page);
-    await waitForTodayPayload(page, (b) => b.messages.some((m) => m.id === 'msg-ms-nosubject'));
+    // Same as above: match by subject, not by the mock's raw message id — TodayMessageT.id is the
+    // cached row's own id.
+    await waitForTodayPayload(page, (b) => b.messages.some((m) => m.subject === ''));
 
     await page.goto('/today');
     await expect(page.locator('.inbox-panel').getByText('(no subject)')).toBeVisible();
