@@ -13,3 +13,4 @@ export function registerJob(name: string, handler: JobHandler): void {
 // Export job factory functions for registration in app.ts
 export { panelsRefreshJob, type PanelsRefreshDeps } from './panels-refresh.js';
 export { panelsSchedulerJob, type PanelsSchedulerDeps } from './panels-scheduler.js';
+export { panelsPurgeJob, type PanelsPurgeDeps } from './panels-purge.js';

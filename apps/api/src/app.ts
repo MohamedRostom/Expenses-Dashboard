@@ -36,13 +36,18 @@ import { createNotionService, type NotionConfig } from './services/notion.js';
 import { ConnectionsService } from './services/connections.js';
 import { PanelsService } from './services/panels.js';
 import { requireFlag } from './middleware/require-flag.js';
-import { registerJob, panelsRefreshJob, panelsSchedulerJob } from './jobs/index.js';
+import { registerJob, panelsRefreshJob, panelsSchedulerJob, panelsPurgeJob } from './jobs/index.js';
 import { ensurePanelsScheduler } from './jobs/panels-scheduler.js';
+import { ensurePanelsPurge } from './jobs/panels-purge.js';
 import { notionSyncJob } from './jobs/notion-sync.js';
 import type { RatesProvider } from '@desk/connectors/rates';
-import type { CalendarSource } from '@desk/connectors/panels';
+import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { createGoogleCalendarSource } from '@desk/connectors/google/calendar';
 import { createMicrosoftCalendarSource } from '@desk/connectors/microsoft/calendar';
+import { createGmailSource } from '@desk/connectors/google/gmail';
+import { createMicrosoftMailSource } from '@desk/connectors/microsoft/mail';
+import { ImapMailSource } from '@desk/connectors/imap/client';
+import type { Connect } from '@desk/connectors/imap/socket';
 
 export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
@@ -55,6 +60,8 @@ export type JobsDep =
         payload: unknown,
         opts?: { userId?: string; runAfter?: Date },
       ): Promise<string>;
+      /** JobRunner has this; not every caller's fake does — guard with `?.` before calling. */
+      cancelForUser?(userId: string): Promise<void>;
     }
   | undefined;
 export type Clock = { now(): Date };
@@ -97,6 +104,16 @@ export type AppDeps = {
   /** Calendar sources per provider for the panels.refresh job. Built from googlePanels/microsoft
    * when omitted; pass explicit fakes in tests to script provider behaviour. */
   calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  /** Mail sources per provider for the panels.refresh job. Built from googlePanels/microsoft/
+   * socketConnect when omitted; pass explicit fakes in tests to script provider behaviour.
+   * Whether the Google source is actually used is gated per-account on the panels.google_mail
+   * flag in panels-refresh.ts (ADR-0004 CASA gate), not here. */
+  mailSources?: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>>;
+  /** Real TCP socket dialer for the standards (IMAP) mail source — node.ts passes
+   * socketNodeConnect (node:tls/node:net), worker.ts passes
+   * createSocketWorkerConnect(cfConnect) (cloudflare:sockets). Undefined means no standards
+   * mail source is built (the Connections settings section hides that option). */
+  socketConnect?: Connect | undefined;
   /** Kicks the job runner once right after a user-triggered refresh (SC-002); background
    * refreshes still wait for the tick. */
   runJobsNow?: (() => Promise<void>) | undefined;
@@ -114,6 +131,69 @@ export function createApp(deps: AppDeps) {
   app.use('*', csrf);
 
   app.onError(errorHandler);
+
+  // Real calendar sources built from AppDeps when the caller hasn't supplied fakes (tests do).
+  // Hoisted above createMeRoutes: DELETE /me needs ConnectionsService.revokeAllForUser, which
+  // needs these to revoke at the provider.
+  const calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>> =
+    deps.calendarSources ?? {
+      ...(deps.googlePanels && {
+        google: createGoogleCalendarSource({
+          clientId: deps.googlePanels.clientId,
+          clientSecret: deps.googlePanels.clientSecret,
+          apiBase: deps.googleApiBase ?? 'https://www.googleapis.com',
+          ...(deps.googleOAuthEndpoints && { oauthEndpoints: deps.googleOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+      ...(deps.microsoft && {
+        microsoft: createMicrosoftCalendarSource({
+          clientId: deps.microsoft.clientId,
+          clientSecret: deps.microsoft.clientSecret,
+          apiBase: deps.graphApiBase ?? 'https://graph.microsoft.com',
+          ...(deps.microsoftOAuthEndpoints && { oauthEndpoints: deps.microsoftOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+    };
+
+  // Real mail sources built from AppDeps when the caller hasn't supplied fakes (tests do).
+  // Google is always built when googlePanels is configured — the panels.google_mail flag gates
+  // its per-account *use* in panels-refresh.ts, not whether the client exists (ADR-0004).
+  const mailSources: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>> =
+    deps.mailSources ?? {
+      ...(deps.googlePanels && {
+        google: createGmailSource({
+          clientId: deps.googlePanels.clientId,
+          clientSecret: deps.googlePanels.clientSecret,
+          apiBase: deps.googleApiBase ?? 'https://www.googleapis.com',
+          ...(deps.googleOAuthEndpoints && { oauthEndpoints: deps.googleOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+      ...(deps.microsoft && {
+        microsoft: createMicrosoftMailSource({
+          clientId: deps.microsoft.clientId,
+          clientSecret: deps.microsoft.clientSecret,
+          apiBase: deps.graphApiBase ?? 'https://graph.microsoft.com',
+          ...(deps.microsoftOAuthEndpoints && { oauthEndpoints: deps.microsoftOAuthEndpoints }),
+          fetchImpl: globalThis.fetch,
+        }),
+      }),
+      ...(deps.socketConnect && { standards: new ImapMailSource(deps.socketConnect) }),
+    };
+
+  const connectionsService = new ConnectionsService({
+    db: deps.db,
+    secretBox: deps.secretBox,
+    clock: deps.clock,
+    calendarSources,
+    enqueue: deps.jobs
+      ? deps.jobs.enqueue.bind(deps.jobs)
+      : async () => {
+          throw new Error('jobs runner not configured');
+        },
+  });
 
   app.route('/auth', authRoutes(deps));
   if (deps.google) {
@@ -138,6 +218,8 @@ export function createApp(deps: AppDeps) {
       clock: deps.clock,
       appOrigin: deps.appOrigin,
       limiter: deps.limiter,
+      connections: connectionsService,
+      jobs: deps.jobs,
     }),
   );
   // Built up front (not inside the `if (deps.notion)` block below) so its debounced
@@ -201,13 +283,6 @@ export function createApp(deps: AppDeps) {
     app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
   }
 
-  // Connections routes for panels — OAuth start/callback and account management
-  const connectionsService = new ConnectionsService({
-    db: deps.db,
-    secretBox: deps.secretBox,
-    clock: deps.clock,
-  });
-
   // Panels service for Today and account refreshes
   const panelsService = new PanelsService({
     db: deps.db,
@@ -220,29 +295,6 @@ export function createApp(deps: AppDeps) {
         },
   });
 
-  // Real calendar sources built from AppDeps when the caller hasn't supplied fakes (tests do).
-  const calendarSources: Partial<Record<'google' | 'microsoft', CalendarSource>> =
-    deps.calendarSources ?? {
-      ...(deps.googlePanels && {
-        google: createGoogleCalendarSource({
-          clientId: deps.googlePanels.clientId,
-          clientSecret: deps.googlePanels.clientSecret,
-          apiBase: deps.googleApiBase ?? 'https://www.googleapis.com',
-          ...(deps.googleOAuthEndpoints && { oauthEndpoints: deps.googleOAuthEndpoints }),
-          fetchImpl: globalThis.fetch,
-        }),
-      }),
-      ...(deps.microsoft && {
-        microsoft: createMicrosoftCalendarSource({
-          clientId: deps.microsoft.clientId,
-          clientSecret: deps.microsoft.clientSecret,
-          apiBase: deps.graphApiBase ?? 'https://graph.microsoft.com',
-          ...(deps.microsoftOAuthEndpoints && { oauthEndpoints: deps.microsoftOAuthEndpoints }),
-          fetchImpl: globalThis.fetch,
-        }),
-      }),
-    };
-
   // Register panels jobs
   if (deps.jobs) {
     registerJob(
@@ -252,6 +304,7 @@ export function createApp(deps: AppDeps) {
         secretBox: deps.secretBox,
         clock: deps.clock,
         calendarSources,
+        mailSources,
       }),
     );
     registerJob(
@@ -262,11 +315,26 @@ export function createApp(deps: AppDeps) {
         enqueue: deps.jobs.enqueue.bind(deps.jobs),
       }),
     );
+    registerJob(
+      'panels.purge',
+      panelsPurgeJob({
+        db: deps.db,
+        clock: deps.clock,
+        enqueue: deps.jobs.enqueue.bind(deps.jobs),
+        cancelForUser: deps.jobs.cancelForUser
+          ? deps.jobs.cancelForUser.bind(deps.jobs)
+          : async () => {},
+      }),
+    );
 
     // Start the recurring scheduler once; it re-enqueues itself every minute after that.
     // ponytail: fire-and-forget at app creation; if it is ever lost, the next app start re-seeds it.
     void ensurePanelsScheduler(deps.db, deps.jobs.enqueue.bind(deps.jobs), deps.clock.now()).catch(
       (err) => console.error('panels.scheduler: could not enqueue', err),
+    );
+    // Same pattern for the daily purge.
+    void ensurePanelsPurge(deps.db, deps.jobs.enqueue.bind(deps.jobs), deps.clock.now()).catch(
+      (err) => console.error('panels.purge: could not enqueue', err),
     );
   }
 

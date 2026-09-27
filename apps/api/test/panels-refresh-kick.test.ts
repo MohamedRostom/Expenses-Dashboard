@@ -1,7 +1,13 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { setGlobalFlag, connectedAccounts, cachedEvents, jobs as jobsTable } from '@desk/db';
-import type { CalendarSource } from '@desk/connectors/panels';
+import {
+  setGlobalFlag,
+  connectedAccounts,
+  cachedEvents,
+  cachedMessages,
+  jobs as jobsTable,
+} from '@desk/db';
+import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { sealCredential } from '../src/lib/credential.js';
@@ -198,5 +204,74 @@ describe('runJobsNow kicks the job runner after a user-triggered refresh (T086)'
         .where(eq(connectedAccounts.id, account.id));
       expect(row?.lastRefreshAt?.getTime()).toBe(oldTime.getTime());
     });
+  });
+});
+
+// app.ts must hand the mail sources to the registered panels.refresh job, not just build them.
+describe('the registered panels.refresh job refreshes mail through AppDeps.mailSources', () => {
+  let harness: Harness;
+  const mail: MailSource = {
+    async fetchInbox() {
+      return {
+        messages: [
+          {
+            providerMessageId: 'msg-kick',
+            fromAddress: 'sender@example.com',
+            subject: 'Kicked mail',
+            preview: 'hello',
+            receivedAt: new Date('2026-09-17T09:00:00Z'),
+            unread: true,
+          },
+        ],
+        full: true,
+      };
+    },
+    async verify() {},
+    async revoke() {},
+  };
+
+  beforeAll(async () => {
+    harness = await startHarness(undefined, {
+      withJobs: true,
+      runJobsNow: true,
+      mailSources: { microsoft: mail },
+    });
+    await setGlobalFlag(harness.db, 'panels.today', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  it('POST /panels/today/refresh stores the fake inbox message', async () => {
+    const user = await harness.asUser('kick-mail@example.com');
+    const credentialEnc = await sealCredential(secretBox, { refreshToken: 'rt-mail' });
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId: user.userId,
+        provider: 'microsoft',
+        address: 'mail@example.com',
+        label: 'Mail',
+        colour: 'teal',
+        capabilities: ['mail'],
+        grantedScopes: ['Mail.Read'],
+        credentialEnc,
+        status: 'connected',
+        nextRefreshAt: harness.clock.now(),
+        lastRefreshAt: new Date(harness.clock.now().getTime() - 3 * 60 * 1000),
+      })
+      .returning();
+
+    expect((await user.post('/panels/today/refresh')).status).toBe(202);
+
+    const rows = await pollUntil(
+      () =>
+        harness.db.select().from(cachedMessages).where(eq(cachedMessages.accountId, account!.id)),
+      (r) => r.length > 0,
+    );
+    expect(rows.map((r) => [r.providerMessageId, r.subject, r.unread])).toEqual([
+      ['msg-kick', 'Kicked mail', true],
+    ]);
   });
 });

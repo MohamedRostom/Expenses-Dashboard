@@ -1,15 +1,20 @@
+import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { openCredential, sealCredential } from '../lib/credential.js';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import { and, eq } from 'drizzle-orm';
 import type { Db } from '@desk/db';
-import { accountCalendars, connectedAccounts, resolveAllFlags } from '@desk/db';
-import type {
-  CalendarT,
-  CalendarsResponseT,
-  CapabilityT,
-  ProvidersResponseT,
-  ConnectionsResponseT,
+import { accountCalendars, auditLog, connectedAccounts, resolveAllFlags } from '@desk/db';
+import {
+  AccountPatch,
+  type AccountT,
+  type CalendarT,
+  type CalendarsResponseT,
+  type CapabilityT,
+  type ProviderIdT,
+  type ProvidersResponseT,
+  type ConnectionsResponseT,
+  type ReconnectResponseT,
 } from '@desk/contracts';
 import type { AppVariables } from '../app.js';
 import { requireAuth } from '../lib/require-auth.js';
@@ -63,6 +68,76 @@ type ConnectionsRouteDeps = {
    * refreshes still wait for the tick. */
   runJobsNow?: (() => Promise<void>) | undefined;
 };
+
+/** Builds an OAuth authorize URL for google/microsoft and sets the PKCE state cookie — shared
+ * by GET /:provider/start (fresh connect, 302) and POST /:id/reconnect (200 { url }). */
+async function beginOAuthFlow(
+  c: Context<{ Variables: AppVariables }>,
+  deps: ConnectionsRouteDeps,
+  params: {
+    userId: string;
+    provider: 'google' | 'microsoft';
+    capabilities: CapabilityT[];
+    accountId?: string | undefined;
+    reconnect: boolean;
+  },
+): Promise<string> {
+  const providerConfig = params.provider === 'google' ? deps.google : deps.microsoft;
+  if (!providerConfig) {
+    throw new ApiError('validation_failed', 'Provider not configured', 400);
+  }
+
+  const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
+  const verifier = base64url(verifierBytes);
+  const challenge = await sha256Base64url(verifier);
+  const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
+
+  const stateCookieValue = JSON.stringify({
+    userId: params.userId,
+    provider: params.provider,
+    capabilities: params.capabilities,
+    accountId: params.accountId || null,
+    reconnect: params.reconnect,
+    verifier,
+    nonce: state,
+  });
+
+  setCookie(c, OAUTH_STATE_COOKIE, stateCookieValue, {
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+    path: '/',
+    maxAge: OAUTH_STATE_MAX_AGE_S,
+  });
+
+  const scopes =
+    params.provider === 'google'
+      ? params.capabilities.map((cap) =>
+          cap === 'calendar'
+            ? 'https://www.googleapis.com/auth/calendar.readonly'
+            : 'https://www.googleapis.com/auth/gmail.readonly',
+        )
+      : [
+          ...params.capabilities.map((cap) =>
+            cap === 'calendar' ? 'Calendars.Read' : 'Mail.Read',
+          ),
+          'offline_access',
+          'User.Read',
+        ];
+  scopes.push('openid', 'email');
+
+  const registry = providerRegistry[params.provider];
+  const endpoints =
+    params.provider === 'google' ? deps.googleOAuthEndpoints : deps.microsoftOAuthEndpoints;
+  return registry.oauth.buildAuthorizeUrl({
+    clientId: providerConfig.clientId,
+    redirectUri: `${deps.appOrigin}/connections/${params.provider}/callback`,
+    scopes,
+    state,
+    codeChallenge: challenge,
+    ...(endpoints && { endpoints }),
+  });
+}
 
 export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
   const app = new Hono<{ Variables: AppVariables }>();
@@ -128,65 +203,12 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       throw new ApiError('validation_failed', 'Provider not configured', 400);
     }
 
-    // Generate PKCE
-    const verifierBytes = crypto.getRandomValues(new Uint8Array(32));
-    const verifier = base64url(verifierBytes);
-    const challenge = await sha256Base64url(verifier);
-    const state = base64url(crypto.getRandomValues(new Uint8Array(16)));
-
-    // Build state cookie payload (HTTP-only cookie is the protection, no additional sealing)
-    const stateCookieValue = JSON.stringify({
+    const authorizeUrl = await beginOAuthFlow(c, deps, {
       userId: user.id,
-      provider,
+      provider: provider as 'google' | 'microsoft',
       capabilities,
-      accountId: accountId || null,
+      accountId,
       reconnect: false,
-      verifier,
-      nonce: state,
-    });
-
-    setCookie(c, OAUTH_STATE_COOKIE, stateCookieValue, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'Lax',
-      path: '/',
-      maxAge: OAUTH_STATE_MAX_AGE_S,
-    });
-
-    // Determine scopes based on capabilities
-    const scopes =
-      provider === 'google'
-        ? capabilities.map((cap) =>
-            cap === 'calendar'
-              ? 'https://www.googleapis.com/auth/calendar.readonly'
-              : 'https://www.googleapis.com/auth/gmail.readonly',
-          )
-        : provider === 'microsoft'
-          ? [
-              ...capabilities.map((cap) => (cap === 'calendar' ? 'Calendars.Read' : 'Mail.Read')),
-              'offline_access',
-              'User.Read',
-            ]
-          : [];
-
-    // Add openid email for both Google and Microsoft (needed to get email from id_token)
-    if (provider === 'google') {
-      scopes.push('openid', 'email');
-    } else if (provider === 'microsoft') {
-      scopes.push('openid', 'email');
-    }
-
-    // Build authorize URL
-    const registry = providerRegistry[provider as keyof typeof providerRegistry];
-    const endpoints =
-      provider === 'google' ? deps.googleOAuthEndpoints : deps.microsoftOAuthEndpoints;
-    const authorizeUrl = registry.oauth.buildAuthorizeUrl({
-      clientId: providerConfig.clientId,
-      redirectUri: `${deps.appOrigin}/connections/${provider}/callback`,
-      scopes,
-      state,
-      codeChallenge: challenge,
-      ...(endpoints && { endpoints }),
     });
 
     return c.redirect(authorizeUrl, 302);
@@ -395,6 +417,13 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       await deps.jobs.enqueue('panels.refresh', { accountId }, { userId: user.id });
     }
 
+    await deps.db.insert(auditLog).values({
+      userId: user.id,
+      actor: 'user',
+      action: 'connect',
+      subject: accountId,
+    });
+
     return c.redirect(`/settings/connections?connected=${accountId}`, 302);
   });
 
@@ -549,6 +578,99 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       }
       throw error;
     }
+  });
+
+  // PATCH /connections/:id — label/colour/paused/calendars
+  app.patch('/:id', async (c) => {
+    const user = requireAuth(c);
+    const accountId = c.req.param('id');
+    const patch = AccountPatch.parse(await c.req.json().catch(() => ({})));
+
+    let account;
+    try {
+      account = await deps.connections.update(user.id, accountId, patch);
+    } catch (error) {
+      if ((error as Error).message === 'not_found') {
+        throw new ApiError('not_found', 'Account not found', 404);
+      }
+      throw error;
+    }
+
+    const calendarRows = await deps.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.accountId, accountId));
+
+    const body: { account: AccountT } = {
+      account: {
+        id: account.id,
+        provider: account.provider as ProviderIdT,
+        address: account.address,
+        label: account.label,
+        colour: account.colour ?? 'teal',
+        capabilities: account.capabilities as CapabilityT[],
+        grantedScopes: account.grantedScopes,
+        status: account.pausedAt ? 'paused' : (account.status as AccountT['status']),
+        pausedAt: account.pausedAt ? account.pausedAt.toISOString() : null,
+        lastRefreshAt: account.lastRefreshAt ? account.lastRefreshAt.toISOString() : null,
+        lastError: account.lastError,
+        calendars: calendarRows.map((r): CalendarT => ({
+          id: r.id,
+          name: r.name,
+          isPrimary: r.isPrimary,
+          enabled: r.enabled,
+        })),
+      },
+    };
+    return c.json(body);
+  });
+
+  // POST /connections/:id/reconnect — 200 { url } for OAuth providers, { needsPassword: true } for standards
+  app.post('/:id/reconnect', async (c) => {
+    const user = requireAuth(c);
+    const accountId = c.req.param('id');
+
+    let info;
+    try {
+      info = await deps.connections.startReconnect(user.id, accountId);
+    } catch (error) {
+      if ((error as Error).message === 'not_found') {
+        throw new ApiError('not_found', 'Account not found', 404);
+      }
+      throw error;
+    }
+
+    if (info.provider !== 'google' && info.provider !== 'microsoft') {
+      const body: ReconnectResponseT = { needsPassword: true };
+      return c.json(body, 200);
+    }
+
+    const url = await beginOAuthFlow(c, deps, {
+      userId: user.id,
+      provider: info.provider,
+      capabilities: info.capabilities,
+      accountId,
+      reconnect: true,
+    });
+    const body: ReconnectResponseT = { url };
+    return c.json(body, 200);
+  });
+
+  // DELETE /connections/:id — revoke at the provider (best effort), then delete the row and its cache
+  app.delete('/:id', async (c) => {
+    const user = requireAuth(c);
+    const accountId = c.req.param('id');
+
+    try {
+      await deps.connections.disconnect(user.id, accountId);
+    } catch (error) {
+      if ((error as Error).message === 'not_found') {
+        throw new ApiError('not_found', 'Account not found', 404);
+      }
+      throw error;
+    }
+
+    return c.body(null, 204);
   });
 
   return app;

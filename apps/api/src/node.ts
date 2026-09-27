@@ -17,6 +17,7 @@ import type { Db as QueryDb } from './adapters/rate-limiter.js';
 import { FrankfurterRates, FakeRates } from '@desk/connectors/rates';
 import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
+import { socketNodeConnect } from './adapters/socket-node.js';
 import { registerAllJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
@@ -93,6 +94,7 @@ const app = createApp({
   rates: ratesProvider,
   jobs: jobRunner,
   runJobsNow: () => jobRunner.runDueJobs(),
+  socketConnect: socketNodeConnect,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
   appOrigin: env.APP_ORIGIN,

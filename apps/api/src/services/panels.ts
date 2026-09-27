@@ -1,9 +1,16 @@
 import { and, eq, gt, isNull, lt } from 'drizzle-orm';
 import type { Db } from '@desk/db';
-import { accountCalendars, cachedEvents, connectedAccounts, users } from '@desk/db';
-import type { TodayResponseT, TodayAccountT, TodayEventT } from '@desk/contracts';
+import { accountCalendars, cachedEvents, cachedMessages, connectedAccounts, users } from '@desk/db';
+import type { TodayResponseT, TodayAccountT, TodayEventT, TodayMessageT } from '@desk/contracts';
 import type { Clock } from '../app.js';
-import { tierFor, expandToDays, type Occurrence } from '@desk/core';
+import {
+  tierFor,
+  expandToDays,
+  mergeMessages,
+  unreadCountFor,
+  type Occurrence,
+  type MessageRow,
+} from '@desk/core';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -26,6 +33,10 @@ type EventOccurrence = Occurrence & {
   location: string | null;
   link: string | null;
 };
+
+/** cached_messages row shape mergeMessages/unreadCountFor operate on, plus its own id and
+ * accountId (mergeMessages only adds accountId to the row it's given). */
+type MessageDbRow = MessageRow & { id: string; accountId: string };
 
 export class PanelsService {
   constructor(private deps: PanelsServiceDeps) {}
@@ -113,7 +124,38 @@ export class PanelsService {
     // Determine refresh tier
     const tier = tierFor(user.lastActiveAt, now);
 
-    // Build accounts array (no message data yet; Phase 4 fills that in)
+    // FR-012: cached_messages of unpaused accounts only — paused accounts contribute neither
+    // messages nor unread count, same as a paused account's calendars below.
+    const messageRows: MessageDbRow[] =
+      accounts.length === 0
+        ? []
+        : (
+            await this.deps.db
+              .select({
+                id: cachedMessages.id,
+                accountId: cachedMessages.accountId,
+                providerMessageId: cachedMessages.providerMessageId,
+                fromName: cachedMessages.fromName,
+                fromAddress: cachedMessages.fromAddress,
+                subject: cachedMessages.subject,
+                preview: cachedMessages.preview,
+                receivedAt: cachedMessages.receivedAt,
+                unread: cachedMessages.unread,
+                link: cachedMessages.link,
+              })
+              .from(cachedMessages)
+              .innerJoin(connectedAccounts, eq(cachedMessages.accountId, connectedAccounts.id))
+              .where(and(eq(connectedAccounts.userId, userId), isNull(connectedAccounts.pausedAt)))
+          ).map(({ fromName, link, ...r }) => ({
+            ...r,
+            ...(fromName !== null && { fromName }),
+            ...(link !== null && { link }),
+          }));
+
+    const messagesByAccount: Record<string, MessageDbRow[]> = {};
+    for (const r of messageRows) (messagesByAccount[r.accountId] ??= []).push(r);
+
+    // Build accounts array
     const accountsPayload: TodayAccountT[] = accounts.map((a) => {
       const status = (a.pausedAt ? 'paused' : a.status) as TodayAccountT['status'];
       return {
@@ -130,12 +172,27 @@ export class PanelsService {
           ? now.getTime() - a.lastRefreshAt.getTime() > (tier === 'active' ? 5 : 60) * 60_000
           : true,
         purged: !!a.cachePurgedAt,
-        unreadCount: a.unreadTotal ?? 0,
+        unreadCount: unreadCountFor(messagesByAccount[a.id] ?? [], a.unreadTotal ?? undefined),
         ...(status === 'reconnect_needed' && {
           reconnectUrl: `${this.deps.appOrigin}/settings/connections?reconnect=${a.id}`,
         }),
       };
     });
+
+    // FR-012: newest first across every account, capped at the newest fifty per account (the
+    // refresh job already trims cached_messages to fifty; mergeMessages re-applies the cap so
+    // the contract holds even if a row ever slips past that trim).
+    const messages: TodayMessageT[] = mergeMessages(messagesByAccount).map((m) => ({
+      id: m.id,
+      accountId: m.accountId,
+      fromName: m.fromName ?? '',
+      fromAddress: m.fromAddress,
+      subject: m.subject,
+      preview: m.preview,
+      receivedAt: m.receivedAt.toISOString(),
+      unread: m.unread,
+      link: m.link ?? null,
+    }));
 
     // FR-006: seven display days, today to today plus six, in the user's time zone; events read
     // from unpaused accounts' enabled calendars, overlapping yesterday..today+7 (same test the
@@ -195,7 +252,7 @@ export class PanelsService {
 
     return {
       days,
-      messages: [], // Phase 4 fills with messages
+      messages,
       accounts: accountsPayload,
       generatedAt: now.toISOString(),
     };

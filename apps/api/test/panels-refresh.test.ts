@@ -1,7 +1,19 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { accountCalendars, cachedEvents, connectedAccounts } from '@desk/db';
-import type { CalendarSource, EventOccurrence } from '@desk/connectors/panels';
+import {
+  accountCalendars,
+  cachedEvents,
+  cachedMessages,
+  connectedAccounts,
+  setGlobalFlag,
+  setUserFlag,
+} from '@desk/db';
+import type {
+  CalendarSource,
+  EventOccurrence,
+  MailSource,
+  MessageHeader,
+} from '@desk/connectors/panels';
 import { AuthError } from '@desk/connectors/panels';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
@@ -420,5 +432,348 @@ describe('panels.refresh job — calendar (T027)', () => {
       .from(accountCalendars)
       .where(eq(accountCalendars.accountId, account.id));
     expect(rows).toHaveLength(0);
+  });
+});
+
+type FetchInboxResult = Awaited<ReturnType<MailSource['fetchInbox']>>;
+
+/** Records every fetchInbox call and answers via `handler`. */
+function fakeMailSource(handler: (cursor?: string) => FetchInboxResult): {
+  source: MailSource;
+  calls: Array<{ cursor: string | undefined }>;
+} {
+  const calls: Array<{ cursor: string | undefined }> = [];
+  return {
+    calls,
+    source: {
+      async fetchInbox(_cred, _limit, cursor) {
+        calls.push({ cursor });
+        return handler(cursor);
+      },
+      async verify() {},
+      async revoke() {},
+    },
+  };
+}
+
+function message(over: Partial<MessageHeader> & { providerMessageId: string }): MessageHeader {
+  return {
+    fromAddress: 'sender@example.com',
+    subject: 'Subject',
+    preview: 'Preview',
+    receivedAt: new Date('2026-10-05T09:00:00Z'),
+    unread: true,
+    ...over,
+  };
+}
+
+describe('panels.refresh job — mail (T042/T050)', () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await startHarness();
+    await setGlobalFlag(harness.db, 'panels.google_mail', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  async function insertAccount(
+    overrides: {
+      provider?: string;
+      capabilities?: string[];
+      credential?: { refreshToken: string };
+      mailCursor?: string | null;
+      email?: string;
+    } = {},
+  ) {
+    const user = await harness.asUser(
+      overrides.email ?? `mail-refresh-${crypto.randomUUID()}@example.com`,
+    );
+    const credentialEnc = await sealCredential(
+      secretBox,
+      overrides.credential ?? { refreshToken: 'rt-original' },
+    );
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId: user.userId,
+        provider: overrides.provider ?? 'google',
+        address: 'acct@example.com',
+        label: 'Acct',
+        colour: 'teal',
+        capabilities: overrides.capabilities ?? ['mail'],
+        grantedScopes: ['mail.readonly'],
+        credentialEnc,
+        status: 'connected',
+        mailCursor: overrides.mailCursor ?? null,
+        nextRefreshAt: NOW,
+      })
+      .returning();
+    if (!account) throw new Error('failed to insert account');
+    return { account, userId: user.userId };
+  }
+
+  async function insertMessage(
+    accountId: string,
+    userId: string,
+    overrides: Partial<{
+      providerMessageId: string;
+      receivedAt: Date;
+      unread: boolean;
+      subject: string;
+    }> = {},
+  ) {
+    await harness.db.insert(cachedMessages).values({
+      userId,
+      accountId,
+      providerMessageId: overrides.providerMessageId ?? 'pre-existing',
+      fromAddress: 'sender@example.com',
+      subject: overrides.subject ?? 'Subject',
+      preview: 'Preview',
+      receivedAt: overrides.receivedAt ?? new Date('2026-10-05T09:00:00Z'),
+      unread: overrides.unread ?? true,
+      seenAt: NOW,
+    });
+  }
+
+  function deps(mailSources: NonNullable<PanelsRefreshDeps['mailSources']>): PanelsRefreshDeps {
+    return {
+      db: harness.db,
+      secretBox,
+      clock: { now: () => NOW },
+      mailSources,
+    };
+  }
+
+  it('full fetch replaces the cache (exact fields) and deletes a pre-seeded row not in the result', async () => {
+    const { account, userId } = await insertAccount();
+    await insertMessage(account.id, userId, { providerMessageId: 'stale-message' });
+
+    const { source } = fakeMailSource(() => ({
+      messages: [
+        message({
+          providerMessageId: 'new-message',
+          fromName: 'Alice',
+          fromAddress: 'alice@example.com',
+          subject: 'Hello',
+          preview: 'Hi there',
+          receivedAt: new Date('2026-10-05T10:00:00Z'),
+          unread: true,
+          link: 'https://mail.example.com/new-message',
+        }),
+      ],
+      full: true,
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const rows = await harness.db
+      .select()
+      .from(cachedMessages)
+      .where(eq(cachedMessages.accountId, account.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      providerMessageId: 'new-message',
+      fromName: 'Alice',
+      fromAddress: 'alice@example.com',
+      subject: 'Hello',
+      preview: 'Hi there',
+      receivedAt: new Date('2026-10-05T10:00:00Z'),
+      unread: true,
+      link: 'https://mail.example.com/new-message',
+    });
+  });
+
+  it('incremental fetch (full: false) appends new rows, passes the stored cursor back, and keeps existing ones', async () => {
+    const { account, userId } = await insertAccount({ mailCursor: 'cursor-1' });
+    await insertMessage(account.id, userId, {
+      providerMessageId: 'kept-message',
+      receivedAt: new Date('2026-10-04T09:00:00Z'),
+    });
+
+    const { source, calls } = fakeMailSource((cursor) => ({
+      messages: [
+        message({
+          providerMessageId: 'added-message',
+          receivedAt: new Date('2026-10-05T09:00:00Z'),
+        }),
+      ],
+      full: false,
+      cursor: `${cursor}-next`,
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    expect(calls[0]?.cursor).toBe('cursor-1');
+    const rows = await harness.db
+      .select()
+      .from(cachedMessages)
+      .where(eq(cachedMessages.accountId, account.id));
+    expect(rows.map((r) => r.providerMessageId).sort()).toEqual(['added-message', 'kept-message']);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row?.mailCursor).toBe('cursor-1-next');
+  });
+
+  it('trims to the newest fifty rows per account after an incremental append', async () => {
+    const { account, userId } = await insertAccount({ mailCursor: 'cursor-1' });
+    for (let i = 0; i < 50; i++) {
+      await insertMessage(account.id, userId, {
+        providerMessageId: `old-${i}`,
+        receivedAt: new Date(2026, 8, 1 + i, 9, 0, 0),
+      });
+    }
+
+    const { source } = fakeMailSource(() => ({
+      messages: [
+        message({ providerMessageId: 'newest', receivedAt: new Date('2026-12-01T09:00:00Z') }),
+      ],
+      full: false,
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const rows = await harness.db
+      .select()
+      .from(cachedMessages)
+      .where(eq(cachedMessages.accountId, account.id));
+    expect(rows).toHaveLength(50);
+    expect(rows.map((r) => r.providerMessageId)).toContain('newest');
+    expect(rows.map((r) => r.providerMessageId)).not.toContain('old-0');
+  });
+
+  it('stores unread_total when the provider reports one, and mail_cursor from a full fetch', async () => {
+    const { account } = await insertAccount();
+
+    const { source } = fakeMailSource(() => ({
+      messages: [message({ providerMessageId: 'm1' })],
+      full: true,
+      unreadTotal: 120,
+      cursor: 'cursor-after-full',
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row).toMatchObject({ unreadTotal: 120, mailCursor: 'cursor-after-full' });
+  });
+
+  it('does not store an unread_total when the provider does not report one', async () => {
+    const { account } = await insertAccount();
+
+    const { source } = fakeMailSource(() => ({
+      messages: [],
+      full: true,
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row?.unreadTotal).toBeNull();
+  });
+
+  it('an AuthError sets reconnect_needed/access_revoked and leaves cached_messages untouched', async () => {
+    const { account, userId } = await insertAccount();
+    await insertMessage(account.id, userId, { providerMessageId: 'kept-message' });
+
+    const { source } = fakeMailSource(() => {
+      throw new AuthError('access revoked');
+    });
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row).toMatchObject({ status: 'reconnect_needed', lastError: 'access_revoked' });
+
+    const messages = await harness.db
+      .select()
+      .from(cachedMessages)
+      .where(eq(cachedMessages.accountId, account.id));
+    expect(messages).toHaveLength(1);
+  });
+
+  it('an account without the mail capability never calls the source', async () => {
+    const { account } = await insertAccount({ capabilities: ['calendar'] });
+    const { source, calls } = fakeMailSource(() => ({ messages: [], full: true }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    expect(calls).toHaveLength(0);
+  });
+
+  it('a Google mail account is skipped (no fetch, no error) when panels.google_mail is off for that user', async () => {
+    const email = `mail-flag-off-${crypto.randomUUID()}@example.com`;
+    const { account } = await insertAccount({ email });
+    await setUserFlag(harness.db, email, 'panels.google_mail', false);
+    const { source, calls } = fakeMailSource(() => ({ messages: [], full: true }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    expect(calls).toHaveLength(0);
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    // Skipped silently, not an error: the job still records a successful refresh.
+    expect(row).toMatchObject({ status: 'connected', lastError: null });
+  });
+
+  it('a standards (IMAP) mail account is never gated by the google_mail flag', async () => {
+    const { account } = await insertAccount({ provider: 'standards' });
+    const { source, calls } = fakeMailSource(() => ({ messages: [], full: true }));
+
+    await panelsRefreshJob(deps({ standards: source }))({ accountId: account.id }, noopCtx);
+
+    expect(calls).toHaveLength(1);
+  });
+
+  it('a rotatedCredential from the mail source is re-sealed onto the account', async () => {
+    const { account } = await insertAccount();
+
+    const { source } = fakeMailSource(() => ({
+      messages: [],
+      full: true,
+      rotatedCredential: { refreshToken: 'rt-new-mail' },
+    }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    const opened = await openCredential(secretBox, row!.credentialEnc);
+    expect(opened).toEqual({ refreshToken: 'rt-new-mail' });
+  });
+
+  it('a successful refresh clears cache_purged_at, so Today stops reporting purged (T055)', async () => {
+    const { account } = await insertAccount();
+    await harness.db
+      .update(connectedAccounts)
+      .set({ cachePurgedAt: new Date('2026-09-01T00:00:00Z') })
+      .where(eq(connectedAccounts.id, account.id));
+    const { source } = fakeMailSource(() => ({ messages: [], full: true }));
+
+    await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row!.cachePurgedAt).toBeNull();
   });
 });

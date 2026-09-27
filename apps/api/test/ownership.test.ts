@@ -140,6 +140,28 @@ const routes: Row[] = [
       return await createConnectedAccount(userB);
     },
   },
+  {
+    method: 'PATCH',
+    path: '/connections/:id',
+    body: { label: 'attempted takeover' },
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/connections/:id/reconnect',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/connections/:id',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
 ];
 
 const CSV_MAPPING = {
@@ -205,12 +227,7 @@ async function createConnectedAccount(userB: ApiClient): Promise<string> {
 
 /** Contract routes whose handlers arrive in later phases of spec 002; listed so the matrix stays
  * complete and each one turns into a real row in the task that adds the route. */
-const pendingPanelsRoutes = [
-  ['PATCH /connections/:id', 'T060'],
-  ['POST /connections/:id/reconnect', 'T060'],
-  ['DELETE /connections/:id', 'T060'],
-  ['POST /connections/standards', 'T070'],
-] as const;
+const pendingPanelsRoutes = [['POST /connections/standards', 'T070']] as const;
 
 describe('ownership matrix', () => {
   let harness: Harness;

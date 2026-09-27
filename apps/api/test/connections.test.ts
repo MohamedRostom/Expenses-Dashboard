@@ -1,7 +1,13 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
-import { AuthError } from '@desk/connectors/panels';
-import { connectedAccounts, setGlobalFlag } from '@desk/db';
+import { AuthError, type CalendarSource } from '@desk/connectors/panels';
+import {
+  accountCalendars,
+  auditLog,
+  connectedAccounts,
+  jobs as jobsTable,
+  setGlobalFlag,
+} from '@desk/db';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
@@ -448,6 +454,20 @@ describe('Connections API — Slice A', () => {
       expect(res.status).toBe(302);
       // Implementation will verify the job is enqueued
     });
+
+    it('audits a connect action (T054)', async () => {
+      const user = await harness.asUser('oauth-callback-audit@test.com');
+      const res = await runCallback(user, 'google', 'calendar', {
+        access_token: 'fake-access',
+        scope: 'https://www.googleapis.com/auth/calendar.readonly',
+        id_token: fakeIdToken('audit@example.com'),
+        refresh_token: 'fake-refresh',
+      });
+
+      expect(res.status).toBe(302);
+      const rows = await harness.db.select().from(auditLog).where(eq(auditLog.userId, user.userId));
+      expect(rows.some((r) => r.action === 'connect')).toBe(true);
+    });
   });
 
   describe('GET /connections', () => {
@@ -627,5 +647,254 @@ describe('GET /connections/:id/calendars (T035)', () => {
       .from(connectedAccounts)
       .where(eq(connectedAccounts.id, accountId));
     expect(row).toEqual({ status: 'reconnect_needed', lastError: 'access_revoked' });
+  });
+});
+
+describe('PATCH/DELETE/reconnect /connections/:id (T059/T060)', () => {
+  let harness: Harness;
+  let revokeCalls: Array<{ refreshToken?: string }>;
+
+  beforeAll(async () => {
+    revokeCalls = [];
+    const fakeGoogleCalendar: CalendarSource = {
+      async listCalendars() {
+        return [];
+      },
+      async fetchWindow() {
+        return { events: [], full: true };
+      },
+      async verify() {},
+      async revoke(cred) {
+        const c = cred as { refreshToken?: string };
+        revokeCalls.push(c);
+        if (c.refreshToken === 'boom') throw new Error('provider unreachable');
+      },
+    };
+    harness = await startHarness(undefined, {
+      withJobs: true,
+      calendarSources: { google: fakeGoogleCalendar },
+    });
+    await setGlobalFlag(harness.db, 'panels.today', true);
+    await setGlobalFlag(harness.db, 'panels.google_calendar', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  async function accountCount(userId: string): Promise<number> {
+    const rows = (await harness.db.execute(
+      sql`SELECT count(*)::int AS n FROM connected_accounts WHERE user_id = ${userId}`,
+    )) as unknown as { n: number }[];
+    return rows[0]!.n;
+  }
+
+  async function insertAccount(
+    userId: string,
+    opts: {
+      provider?: 'google' | 'microsoft' | 'standards';
+      refreshToken?: string;
+      status?: string;
+      paused?: boolean;
+    } = {},
+  ) {
+    const box = createSecretBox(TEST_SECRET_BOX_KEY);
+    const credentialEnc = await sealCredential(box, { refreshToken: opts.refreshToken ?? 'rt' });
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId,
+        provider: opts.provider ?? 'google',
+        address: `${crypto.randomUUID()}@example.com`,
+        label: 'Acct',
+        colour: 'teal',
+        capabilities: ['calendar'],
+        grantedScopes: ['calendar.readonly'],
+        credentialEnc,
+        status: opts.status ?? 'connected',
+        pausedAt: opts.paused ? new Date('2026-01-01T00:00:00Z') : null,
+        nextRefreshAt: new Date(),
+      })
+      .returning();
+    if (!account) throw new Error('failed to insert account');
+    return account;
+  }
+
+  it('updates label and colour', async () => {
+    const user = await harness.asUser('patch-label@test.com');
+    const account = await insertAccount(user.userId);
+    const res = await user.patch(`/connections/${account.id}`, {
+      label: 'Work mail',
+      colour: 'blue',
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { account: { label: string; colour: string } };
+    expect(body.account.label).toBe('Work mail');
+    expect(body.account.colour).toBe('blue');
+  });
+
+  it('pausing sets paused_at, reports status paused, and stops scheduling (audited)', async () => {
+    const user = await harness.asUser('patch-pause@test.com');
+    const account = await insertAccount(user.userId);
+    const res = await user.patch(`/connections/${account.id}`, { paused: true });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { account: { status: string; pausedAt: string | null } };
+    expect(body.account.status).toBe('paused');
+    expect(body.account.pausedAt).toBeTruthy();
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row!.pausedAt).not.toBeNull();
+
+    const audits = await harness.db.select().from(auditLog).where(eq(auditLog.subject, account.id));
+    expect(audits.some((a) => a.action === 'pause')).toBe(true);
+  });
+
+  it('resuming restores the stored status (a paused reconnect_needed account resumes as reconnect_needed) and marks it due', async () => {
+    const user = await harness.asUser('patch-resume@test.com');
+    const account = await insertAccount(user.userId, { status: 'reconnect_needed', paused: true });
+    const res = await user.patch(`/connections/${account.id}`, { paused: false });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { account: { status: string; pausedAt: string | null } };
+    expect(body.account.status).toBe('reconnect_needed');
+    expect(body.account.pausedAt).toBeNull();
+
+    const [row] = await harness.db
+      .select()
+      .from(connectedAccounts)
+      .where(eq(connectedAccounts.id, account.id));
+    expect(row!.nextRefreshAt.getTime()).toBeLessThanOrEqual(harness.clock.now().getTime());
+  });
+
+  it('enabling a calendar toggles enabled and enqueues a refresh', async () => {
+    const user = await harness.asUser('patch-calendar@test.com');
+    const account = await insertAccount(user.userId);
+    const [cal] = await harness.db
+      .insert(accountCalendars)
+      .values({
+        userId: user.userId,
+        accountId: account.id,
+        providerCalendarId: 'cal-1',
+        name: 'Cal',
+        isPrimary: false,
+        enabled: false,
+      })
+      .returning();
+
+    const res = await user.patch(`/connections/${account.id}`, {
+      calendars: [{ id: cal!.id, enabled: true }],
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      account: { calendars: Array<{ id: string; enabled: boolean }> };
+    };
+    expect(body.account.calendars.find((c) => c.id === cal!.id)?.enabled).toBe(true);
+
+    const jobRows = await harness.db
+      .select()
+      .from(jobsTable)
+      .where(eq(jobsTable.userId, user.userId));
+    expect(jobRows.filter((j) => j.name === 'panels.refresh').map((j) => j.payload)).toContainEqual(
+      {
+        accountId: account.id,
+      },
+    );
+  });
+
+  it('POST /connections/:id/reconnect returns 200 { url } for an OAuth provider and keeps the row (audited)', async () => {
+    const user = await harness.asUser('reconnect-google@test.com');
+    const account = await insertAccount(user.userId);
+    const res = await user.post(`/connections/${account.id}/reconnect`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { url?: string };
+    expect(body.url).toContain('https://accounts.google.com');
+    expect(await accountCount(user.userId)).toBe(1);
+
+    const audits = await harness.db.select().from(auditLog).where(eq(auditLog.subject, account.id));
+    expect(audits.some((a) => a.action === 'reconnect')).toBe(true);
+  });
+
+  it('POST /connections/:id/reconnect returns 200 { needsPassword: true } for standards', async () => {
+    const user = await harness.asUser('reconnect-standards@test.com');
+    const account = await insertAccount(user.userId, { provider: 'standards' });
+    const res = await user.post(`/connections/${account.id}/reconnect`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { needsPassword?: boolean };
+    expect(body.needsPassword).toBe(true);
+  });
+
+  it('DELETE /connections/:id revokes at the provider, then deletes the row and cascades calendars', async () => {
+    const user = await harness.asUser('delete-google@test.com');
+    const account = await insertAccount(user.userId, { refreshToken: 'delete-me' });
+    await harness.db.insert(accountCalendars).values({
+      userId: user.userId,
+      accountId: account.id,
+      providerCalendarId: 'cal-x',
+      name: 'X',
+      isPrimary: true,
+      enabled: true,
+    });
+
+    const res = await user.delete(`/connections/${account.id}`);
+    expect(res.status).toBe(204);
+
+    expect(revokeCalls).toContainEqual({ refreshToken: 'delete-me' });
+    expect(await accountCount(user.userId)).toBe(0);
+    const calendarRows = await harness.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.accountId, account.id));
+    expect(calendarRows).toEqual([]);
+
+    const audits = await harness.db.select().from(auditLog).where(eq(auditLog.subject, account.id));
+    expect(audits.some((a) => a.action === 'disconnect')).toBe(true);
+  });
+
+  it('DELETE /connections/:id still deletes when revoke throws, and audits the failure (FR-003)', async () => {
+    const user = await harness.asUser('delete-revoke-fails@test.com');
+    const account = await insertAccount(user.userId, { refreshToken: 'boom' });
+
+    const res = await user.delete(`/connections/${account.id}`);
+    expect(res.status).toBe(204);
+    expect(await accountCount(user.userId)).toBe(0);
+
+    const audits = await harness.db.select().from(auditLog).where(eq(auditLog.subject, account.id));
+    expect(audits.some((a) => a.action === 'revoke_failure')).toBe(true);
+    expect(audits.some((a) => a.action === 'disconnect')).toBe(true);
+  });
+
+  it('DELETE /me revokes every connected account before the cascade', async () => {
+    const user = await harness.asUser('delete-me-revokes@test.com');
+    await insertAccount(user.userId, { refreshToken: 'delete-me-cascade' });
+
+    const res = await user.delete('/me', { password: 'test-password' });
+    expect(res.status).toBe(204);
+    expect(revokeCalls).toContainEqual({ refreshToken: 'delete-me-cascade' });
+  });
+
+  it('GET /me/export includes connections, no credentials or cached items', async () => {
+    const user = await harness.asUser('export-connections@test.com');
+    await insertAccount(user.userId);
+    const res = await user.get('/me/export');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      connections: Array<{
+        provider: string;
+        address: string;
+        label: string;
+        capabilities: string[];
+        status: string;
+      }>;
+    };
+    expect(body.connections).toHaveLength(1);
+    expect(body.connections[0]).toMatchObject({
+      provider: 'google',
+      label: 'Acct',
+      status: 'connected',
+    });
+    expect(body.connections[0]).not.toHaveProperty('credentialEnc');
+    expect(body.connections[0]).not.toHaveProperty('calendars');
   });
 });

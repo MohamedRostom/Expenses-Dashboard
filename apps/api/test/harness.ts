@@ -7,7 +7,7 @@ import { FakeRates } from '@desk/connectors/rates';
 import type { RatesProvider } from '@desk/connectors/rates';
 import { FakeNotion } from '@desk/connectors/notion';
 import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
-import type { CalendarSource } from '@desk/connectors/panels';
+import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
@@ -91,6 +91,7 @@ export async function startHarness(
      * refresh runs its job immediately instead of waiting for a tick. Requires withJobs. */
     runJobsNow?: boolean;
     calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+    mailSources?: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>>;
     registerIpLimitPerHour?: number;
   } = {},
 ): Promise<Harness> {
@@ -165,6 +166,7 @@ export async function startHarness(
       clientSecret: 'test-microsoft-client-secret',
     },
     ...(opts.calendarSources && { calendarSources: opts.calendarSources }),
+    ...(opts.mailSources && { mailSources: opts.mailSources }),
   } satisfies AppDeps);
 
   async function asUser(email: string) {

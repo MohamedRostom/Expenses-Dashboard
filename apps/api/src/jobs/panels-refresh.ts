@@ -1,11 +1,23 @@
-import { and, eq, gt, inArray, lt, notInArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, lt, notInArray } from 'drizzle-orm';
 import type { Db } from '@desk/db';
-import { accountCalendars, cachedEvents, connectedAccounts, users } from '@desk/db';
+import {
+  accountCalendars,
+  cachedEvents,
+  cachedMessages,
+  connectedAccounts,
+  resolveFlag,
+  users,
+} from '@desk/db';
 import type { JobHandler } from './index.js';
 import type { SecretBox } from '../adapters/secret-box.js';
 import type { Clock } from '../app.js';
 import { tierFor, nextDueAt, statusAfterFailures } from '@desk/core';
-import { AuthError, RateLimited, type CalendarSource } from '@desk/connectors/panels';
+import {
+  AuthError,
+  RateLimited,
+  type CalendarSource,
+  type MailSource,
+} from '@desk/connectors/panels';
 import { openCredential, sealCredential } from '../lib/credential.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -17,6 +29,10 @@ export type PanelsRefreshDeps = {
   /** Real calendar sources per provider; a provider with no source configured is treated as a
    * plain provider failure (not a crash) rather than being skipped silently. */
   calendarSources?: Partial<Record<'google' | 'microsoft', CalendarSource>>;
+  /** Real mail sources per provider; same "no source configured is a crash, not a skip" rule
+   * as calendarSources — except a Google account is skipped (not a crash) when the
+   * panels.google_mail flag is off for that user, since no source may be registered at all. */
+  mailSources?: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>>;
 };
 
 type ConnectedAccountRow = typeof connectedAccounts.$inferSelect;
@@ -163,6 +179,105 @@ async function refreshCalendar(
   return rotatedCredential !== undefined ? { rotatedCredential } : {};
 }
 
+/** T050: refreshes an account's inbox into cached_messages. No-op unless the account has the
+ * 'mail' capability. A Google account is also a no-op (not an error) while panels.google_mail
+ * is off for its user — CASA gates Gmail production use per ADR-0004, so there may be no Gmail
+ * source registered at all yet. Returns the last rotatedCredential seen (the caller re-seals and
+ * stores it), mirroring refreshCalendar. */
+async function refreshMail(
+  deps: PanelsRefreshDeps,
+  account: ConnectedAccountRow,
+  credential: { refreshToken: string },
+  now: Date,
+): Promise<{ rotatedCredential?: unknown }> {
+  if (!account.capabilities.includes('mail')) return {};
+
+  const provider = account.provider as 'google' | 'microsoft' | 'standards';
+  if (provider === 'google') {
+    const googleMailOn = await resolveFlag(deps.db, account.userId, 'panels.google_mail');
+    if (!googleMailOn) return {};
+  }
+
+  const source = deps.mailSources?.[provider];
+  if (!source) {
+    throw new Error(`panels.refresh: no mail source configured for ${provider}`);
+  }
+
+  const result = await source.fetchInbox(credential, 50, account.mailCursor ?? undefined);
+
+  const keptIds: string[] = [];
+  for (const m of result.messages) {
+    keptIds.push(m.providerMessageId);
+    const values = {
+      fromName: m.fromName ?? null,
+      fromAddress: m.fromAddress,
+      subject: m.subject,
+      preview: m.preview,
+      receivedAt: m.receivedAt,
+      unread: m.unread,
+      link: m.link ?? null,
+      seenAt: now,
+    };
+    await deps.db
+      .insert(cachedMessages)
+      .values({
+        userId: account.userId,
+        accountId: account.id,
+        providerMessageId: m.providerMessageId,
+        ...values,
+      })
+      .onConflictDoUpdate({
+        target: [cachedMessages.accountId, cachedMessages.providerMessageId],
+        set: { ...values, updatedAt: now },
+      });
+  }
+
+  if (result.full) {
+    if (keptIds.length > 0) {
+      await deps.db
+        .delete(cachedMessages)
+        .where(
+          and(
+            eq(cachedMessages.accountId, account.id),
+            notInArray(cachedMessages.providerMessageId, keptIds),
+          ),
+        );
+    } else {
+      await deps.db.delete(cachedMessages).where(eq(cachedMessages.accountId, account.id));
+    }
+  }
+
+  // Trim to the newest fifty rows for this account (data-model.md cached_messages), whether the
+  // fetch was full or incremental — an incremental append can push the total past fifty.
+  const overflow = await deps.db
+    .select({ id: cachedMessages.id })
+    .from(cachedMessages)
+    .where(eq(cachedMessages.accountId, account.id))
+    .orderBy(desc(cachedMessages.receivedAt))
+    .offset(50);
+  if (overflow.length > 0) {
+    await deps.db.delete(cachedMessages).where(
+      inArray(
+        cachedMessages.id,
+        overflow.map((r) => r.id),
+      ),
+    );
+  }
+
+  await deps.db
+    .update(connectedAccounts)
+    .set({
+      mailCursor: result.cursor ?? null,
+      unreadTotal: result.unreadTotal ?? null,
+      updatedAt: now,
+    })
+    .where(eq(connectedAccounts.id, account.id));
+
+  return result.rotatedCredential !== undefined
+    ? { rotatedCredential: result.rotatedCredential }
+    : {};
+}
+
 export function panelsRefreshJob(deps: PanelsRefreshDeps): JobHandler {
   return async (payload) => {
     const { accountId } = payload as { accountId: string };
@@ -193,8 +308,7 @@ export function panelsRefreshJob(deps: PanelsRefreshDeps): JobHandler {
       const credential = await openCredential(deps.secretBox, account.credentialEnc);
 
       const calendarResult = await refreshCalendar(deps, account, credential, now);
-      // Stub for now; Phase 4 will fill this in.
-      const mailResult: { rotatedCredential?: unknown } = { rotatedCredential: undefined };
+      const mailResult = await refreshMail(deps, account, credential, now);
 
       // The last rotatedCredential seen wins.
       const rotatedCredential = calendarResult.rotatedCredential ?? mailResult.rotatedCredential;
@@ -221,6 +335,7 @@ export function panelsRefreshJob(deps: PanelsRefreshDeps): JobHandler {
           lastError: null,
           status: 'connected',
           nextRefreshAt: nextDue,
+          cachePurgedAt: null, // the cache is repopulated, so Today stops reporting purged
         })
         .where(eq(connectedAccounts.id, accountId));
     } catch (error) {

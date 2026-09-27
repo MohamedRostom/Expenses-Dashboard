@@ -2332,6 +2332,37 @@
             "required": ["connected", "direction", "databaseId"],
             "additionalProperties": false
           },
+          "connections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "provider": {
+                  "type": "string",
+                  "enum": ["google", "microsoft", "standards"]
+                },
+                "address": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "capabilities": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": ["mail", "calendar"]
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "enum": ["connected", "reconnect_needed", "error", "paused"]
+                }
+              },
+              "required": ["provider", "address", "label", "capabilities", "status"],
+              "additionalProperties": false
+            }
+          },
           "version": {
             "type": "number",
             "const": 1
@@ -2344,6 +2375,7 @@
           "expenses",
           "importBatches",
           "notion",
+          "connections",
           "version"
         ],
         "additionalProperties": false

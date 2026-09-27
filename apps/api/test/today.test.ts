@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { setGlobalFlag } from '@desk/db';
-import { accountCalendars, cachedEvents, connectedAccounts, users } from '@desk/db';
+import { accountCalendars, cachedEvents, cachedMessages, connectedAccounts, users } from '@desk/db';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { sealCredential } from '../src/lib/credential.js';
@@ -251,5 +251,150 @@ describe('GET /panels/today — calendar events (T028)', () => {
     expect(acc?.reconnectUrl).toBe(`https://app.test/settings/connections?reconnect=${account.id}`);
     const allIds = body.days.flatMap((d) => d.events.map((e) => e.id));
     expect(allIds).toContain(event.id);
+  });
+});
+
+describe('GET /panels/today — mail messages (T051)', () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await startHarness();
+    await setGlobalFlag(harness.db, 'panels.today', true);
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  async function insertAccount(
+    userId: string,
+    overrides: {
+      capabilities?: string[];
+      pausedAt?: Date | null;
+      unreadTotal?: number | null;
+    } = {},
+  ) {
+    const credentialEnc = await sealCredential(secretBox, { refreshToken: 'rt' });
+    const [account] = await harness.db
+      .insert(connectedAccounts)
+      .values({
+        userId,
+        provider: 'google',
+        address: `acct-${crypto.randomUUID()}@example.com`,
+        label: 'Acct',
+        colour: 'teal',
+        capabilities: overrides.capabilities ?? ['mail'],
+        grantedScopes: ['mail.readonly'],
+        credentialEnc,
+        status: 'connected',
+        pausedAt: overrides.pausedAt ?? null,
+        unreadTotal: overrides.unreadTotal ?? null,
+        nextRefreshAt: new Date('2026-10-05T12:00:00Z'),
+      })
+      .returning();
+    if (!account) throw new Error('failed to insert account');
+    return account;
+  }
+
+  async function insertMessage(
+    accountId: string,
+    userId: string,
+    overrides: Partial<{
+      fromName: string | null;
+      subject: string;
+      receivedAt: Date;
+      unread: boolean;
+    }> = {},
+  ) {
+    const [row] = await harness.db
+      .insert(cachedMessages)
+      .values({
+        userId,
+        accountId,
+        providerMessageId: `msg-${crypto.randomUUID()}`,
+        fromName: overrides.fromName ?? null,
+        fromAddress: 'sender@example.com',
+        subject: overrides.subject ?? 'Subject',
+        preview: 'Preview',
+        receivedAt: overrides.receivedAt ?? new Date('2026-10-05T09:00:00Z'),
+        unread: overrides.unread ?? true,
+        seenAt: new Date('2026-10-05T12:00:00Z'),
+      })
+      .returning();
+    if (!row) throw new Error('failed to insert message');
+    return row;
+  }
+
+  it('messages from two accounts are merged newest first', async () => {
+    const user = await harness.asUser('today-mail-newest@example.com');
+    const accountA = await insertAccount(user.userId);
+    const accountB = await insertAccount(user.userId);
+    const older = await insertMessage(accountA.id, user.userId, {
+      receivedAt: new Date('2026-10-04T09:00:00Z'),
+    });
+    const newer = await insertMessage(accountB.id, user.userId, {
+      receivedAt: new Date('2026-10-05T09:00:00Z'),
+    });
+
+    const res = await user.get('/panels/today');
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { messages: Array<{ id: string; accountId: string }> };
+    expect(body.messages.map((m) => m.id)).toEqual([newer.id, older.id]);
+  });
+
+  it('an empty subject is returned as ""', async () => {
+    const user = await harness.asUser('today-mail-empty-subject@example.com');
+    const account = await insertAccount(user.userId);
+    const blank = await insertMessage(account.id, user.userId, { subject: '', fromName: null });
+
+    const res = await user.get('/panels/today');
+    const body = (await res.json()) as {
+      messages: Array<{ id: string; subject: string; fromName: string }>;
+    };
+    const msg = body.messages.find((m) => m.id === blank.id);
+    expect(msg?.subject).toBe('');
+    expect(msg?.fromName).toBe('');
+  });
+
+  it('unreadCount uses unread_total when it is larger than the cached unread rows', async () => {
+    const user = await harness.asUser('today-mail-unread-total@example.com');
+    const account = await insertAccount(user.userId, { unreadTotal: 120 });
+    await insertMessage(account.id, user.userId, { unread: true });
+    await insertMessage(account.id, user.userId, { unread: false });
+
+    const res = await user.get('/panels/today');
+    const body = (await res.json()) as { accounts: Array<{ id: string; unreadCount: number }> };
+    const acc = body.accounts.find((a) => a.id === account.id);
+    expect(acc?.unreadCount).toBe(120);
+  });
+
+  it('unreadCount falls back to the cached unread row count when unread_total is null or smaller', async () => {
+    const user = await harness.asUser('today-mail-unread-cached@example.com');
+    const account = await insertAccount(user.userId, { unreadTotal: null });
+    await insertMessage(account.id, user.userId, { unread: true });
+    await insertMessage(account.id, user.userId, { unread: true });
+    await insertMessage(account.id, user.userId, { unread: false });
+
+    const res = await user.get('/panels/today');
+    const body = (await res.json()) as { accounts: Array<{ id: string; unreadCount: number }> };
+    const acc = body.accounts.find((a) => a.id === account.id);
+    expect(acc?.unreadCount).toBe(2);
+  });
+
+  it("a paused account's messages are absent from both the list and its own unread count", async () => {
+    const user = await harness.asUser('today-mail-paused@example.com');
+    const pausedAccount = await insertAccount(user.userId, {
+      pausedAt: new Date('2026-10-01T00:00:00Z'),
+    });
+    const pausedMessage = await insertMessage(pausedAccount.id, user.userId, { unread: true });
+
+    const res = await user.get('/panels/today');
+    const body = (await res.json()) as {
+      messages: Array<{ id: string }>;
+      accounts: Array<{ id: string; unreadCount: number }>;
+    };
+    expect(body.messages.map((m) => m.id)).not.toContain(pausedMessage.id);
+    const acc = body.accounts.find((a) => a.id === pausedAccount.id);
+    expect(acc?.unreadCount).toBe(0);
   });
 });

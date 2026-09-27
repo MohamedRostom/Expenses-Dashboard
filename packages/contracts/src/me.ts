@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UserResponse } from './auth.js';
+import { Capability, ProviderId } from './connections.js';
 
 export const MeResponse = z.object({ user: UserResponse });
 export type MeResponseT = z.infer<typeof MeResponse>;
@@ -53,6 +54,17 @@ export type CurrencyEntryT = z.infer<typeof CurrencyEntry>;
 export const CurrenciesResponse = z.object({ currencies: z.array(CurrencyEntry) });
 export type CurrenciesResponseT = z.infer<typeof CurrenciesResponse>;
 
+/** GET /me/export's connections entry (spec 002 contracts/api.md): no credential or cached
+ * items, just enough for the export to show what was connected. */
+export const ExportConnectionSummary = z.object({
+  provider: ProviderId,
+  address: z.string(),
+  label: z.string(),
+  capabilities: z.array(Capability),
+  status: z.enum(['connected', 'reconnect_needed', 'error', 'paused']),
+});
+export type ExportConnectionSummaryT = z.infer<typeof ExportConnectionSummary>;
+
 /** GET /me/export document (data-model.md). */
 export const ExportDocument = z.object({
   exportedAt: z.string(),
@@ -65,6 +77,7 @@ export const ExportDocument = z.object({
     direction: z.string().nullable(),
     databaseId: z.string().nullable(),
   }),
+  connections: z.array(ExportConnectionSummary),
   version: z.literal(1),
 });
 export type ExportDocumentT = z.infer<typeof ExportDocument>;
