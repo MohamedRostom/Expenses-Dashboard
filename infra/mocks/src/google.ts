@@ -145,14 +145,22 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
     const account = accountFor(keyFromAuth(c));
     if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
     const startHistoryId = c.req.query('startHistoryId') ?? '0';
-    const { addedIds, historyId } = account.fake.rawHistorySince(startHistoryId);
+    const { addedIds, labelChangedIds, historyId } = account.fake.rawHistorySince(startHistoryId);
     const body: {
-      history?: Array<{ id: string; messagesAdded: Array<{ message: { id: string } }> }>;
+      history?: Array<{
+        id: string;
+        messagesAdded: Array<{ message: { id: string } }>;
+        labelsRemoved: Array<{ message: { id: string }; labelIds: string[] }>;
+      }>;
       historyId: string;
     } = { historyId };
-    if (addedIds.length > 0) {
+    if (addedIds.length > 0 || labelChangedIds.length > 0) {
       body.history = [
-        { id: historyId, messagesAdded: addedIds.map((id) => ({ message: { id } })) },
+        {
+          id: historyId,
+          messagesAdded: addedIds.map((id) => ({ message: { id } })),
+          labelsRemoved: labelChangedIds.map((id) => ({ message: { id }, labelIds: ['UNREAD'] })),
+        },
       ];
     }
     return c.json(body);

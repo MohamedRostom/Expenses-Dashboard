@@ -51,6 +51,9 @@ export class GoogleFake implements CalendarSource, MailSource {
   // tokens), so it gets its own sequence rather than reusing changeSeq.
   private mailMessages: GmailMessageMetadata[] = [];
   private mailHistorySeq = 0;
+  /** History seq each message was added at, and label changes since, for rawHistorySince. */
+  private mailAddedSeq = new Map<string, number>();
+  private mailLabelChanges: Array<{ id: string; seq: number }> = [];
 
   constructor(seed?: {
     calendars?: GoogleCalendarListItem[];
@@ -68,6 +71,7 @@ export class GoogleFake implements CalendarSource, MailSource {
     for (const message of this.mailMessages) {
       const historyId = Number(message.historyId ?? 0);
       if (historyId > this.mailHistorySeq) this.mailHistorySeq = historyId;
+      this.mailAddedSeq.set(message.id, historyId);
     }
   }
 
@@ -248,6 +252,7 @@ export class GoogleFake implements CalendarSource, MailSource {
   addMessage(message: Omit<GmailMessageMetadata, 'historyId'>): void {
     this.mailHistorySeq++;
     this.mailMessages.push({ ...message, historyId: String(this.mailHistorySeq) });
+    this.mailAddedSeq.set(message.id, this.mailHistorySeq);
   }
 
   /** Drops the UNREAD label from a message, as reading it in a real client would. */
@@ -255,6 +260,10 @@ export class GoogleFake implements CalendarSource, MailSource {
     const message = this.mailMessages.find((m) => m.id === messageId);
     if (!message) return;
     message.labelIds = (message.labelIds ?? []).filter((l) => l !== 'UNREAD');
+    // A label change is a new history record, as in Gmail, so an incremental sync sees it.
+    this.mailHistorySeq++;
+    message.historyId = String(this.mailHistorySeq);
+    this.mailLabelChanges.push({ id: messageId, seq: this.mailHistorySeq });
   }
 
   rawMessagesList(limit?: number): Array<{ id: string; threadId?: string }> {
@@ -268,10 +277,19 @@ export class GoogleFake implements CalendarSource, MailSource {
     return this.mailMessages.find((m) => m.id === id);
   }
 
-  rawHistorySince(startHistoryId: string): { addedIds: string[]; historyId: string } {
+  rawHistorySince(startHistoryId: string): {
+    addedIds: string[];
+    labelChangedIds: string[];
+    historyId: string;
+  } {
     const startSeq = Number(startHistoryId) || 0;
-    const added = this.mailMessages.filter((m) => Number(m.historyId ?? 0) > startSeq);
-    return { addedIds: added.map((m) => m.id), historyId: String(this.mailHistorySeq) };
+    const addedIds = this.mailMessages
+      .filter((m) => (this.mailAddedSeq.get(m.id) ?? 0) > startSeq)
+      .map((m) => m.id);
+    const labelChangedIds = [
+      ...new Set(this.mailLabelChanges.filter((c) => c.seq > startSeq).map((c) => c.id)),
+    ].filter((id) => !addedIds.includes(id));
+    return { addedIds, labelChangedIds, historyId: String(this.mailHistorySeq) };
   }
 
   rawLabelInbox(): { messagesUnread: number } {

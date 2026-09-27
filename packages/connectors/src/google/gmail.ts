@@ -26,7 +26,12 @@ interface GmailMessagesListResponse {
 }
 
 interface GmailHistoryResponse {
-  history?: Array<{ id: string; messagesAdded?: Array<{ message: { id: string } }> }>;
+  history?: Array<{
+    id: string;
+    messagesAdded?: Array<{ message: { id: string } }>;
+    labelsAdded?: Array<{ message: { id: string } }>;
+    labelsRemoved?: Array<{ message: { id: string } }>;
+  }>;
   historyId?: string;
   nextPageToken?: string;
 }
@@ -198,7 +203,11 @@ export function createGmailSource(config: GmailConfig): MailSource {
     while (true) {
       const url = new URL(`${config.apiBase}/gmail/v1/users/me/history`);
       url.searchParams.set('startHistoryId', cursor);
-      url.searchParams.set('historyTypes', 'messageAdded');
+      // Label changes carry read state (UNREAD removed = read in Gmail), so those messages are
+      // re-read too and the cached unread flag follows.
+      for (const type of ['messageAdded', 'labelAdded', 'labelRemoved']) {
+        url.searchParams.append('historyTypes', type);
+      }
       url.searchParams.set('labelId', 'INBOX');
       if (pageToken) url.searchParams.set('pageToken', pageToken);
 
@@ -215,8 +224,12 @@ export function createGmailSource(config: GmailConfig): MailSource {
       const data = (await response.json()) as GmailHistoryResponse;
 
       for (const entry of data.history ?? []) {
-        for (const added of entry.messagesAdded ?? []) {
-          addedIds.add(added.message.id);
+        for (const changed of [
+          ...(entry.messagesAdded ?? []),
+          ...(entry.labelsAdded ?? []),
+          ...(entry.labelsRemoved ?? []),
+        ]) {
+          addedIds.add(changed.message.id);
         }
       }
       if (data.historyId) historyId = data.historyId;

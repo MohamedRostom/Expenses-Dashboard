@@ -114,7 +114,11 @@ describe('Gmail Source', () => {
         const { pathname, searchParams } = new URL(url);
         if (pathname === '/gmail/v1/users/me/history') {
           expect(searchParams.get('startHistoryId')).toBe('1005');
-          expect(searchParams.get('historyTypes')).toBe('messageAdded');
+          expect(searchParams.getAll('historyTypes')).toEqual([
+            'messageAdded',
+            'labelAdded',
+            'labelRemoved',
+          ]);
           expect(searchParams.get('labelId')).toBe('INBOX');
           return new Response(JSON.stringify(historyIncrementalFixture), { status: 200 });
         }
@@ -140,6 +144,49 @@ describe('Gmail Source', () => {
       expect(result.cursor).toBe('2000');
       expect(result.messages).toHaveLength(1);
       expect(result.messages[0]!.providerMessageId).toBe('msg-3');
+    });
+
+    // Reading a message in Gmail removes its UNREAD label; the incremental sync must re-read it so
+    // the cached row and the unread count follow (US2's independent test).
+    it('incremental fetch re-reads a message whose labels changed, so a read message comes back read', async () => {
+      const readMsg1 = { ...message1Fixture, labelIds: ['INBOX'] };
+      const fetchImpl = vi.fn(async (url: string) => {
+        if (isTokenUrl(url)) {
+          return new Response(JSON.stringify({ access_token: 'at' }), { status: 200 });
+        }
+        const { pathname } = new URL(url);
+        if (pathname === '/gmail/v1/users/me/history') {
+          return new Response(
+            JSON.stringify({
+              history: [
+                { id: '2001', labelsRemoved: [{ message: { id: 'msg-1' }, labelIds: ['UNREAD'] }] },
+              ],
+              historyId: '2001',
+            }),
+            { status: 200 },
+          );
+        }
+        if (pathname === '/gmail/v1/users/me/labels/INBOX') {
+          return new Response(JSON.stringify(labelsInboxFixture), { status: 200 });
+        }
+        if (pathname === '/gmail/v1/users/me/messages/msg-1') {
+          return new Response(JSON.stringify(readMsg1), { status: 200 });
+        }
+        return new Response('', { status: 404 });
+      }) as unknown as typeof fetch;
+
+      const source = createGmailSource({
+        clientId: 'test-id',
+        clientSecret: 'test-secret',
+        apiBase: 'https://gmail.googleapis.com',
+        fetchImpl,
+      });
+      const result = await source.fetchInbox({ refreshToken: 'rt-test' }, 10, '2000');
+
+      expect(result.messages.map((m) => [m.providerMessageId, m.unread])).toEqual([
+        ['msg-1', false],
+      ]);
+      expect(result.cursor).toBe('2001');
     });
 
     it('404 on history.list falls back to a full fetch', async () => {
@@ -394,6 +441,30 @@ describe('Gmail Source', () => {
 
       expect(result.messages[0]!.unread).toBe(false);
       expect(result.unreadTotal).toBe(0);
+    });
+
+    it('an incremental fetch after markRead returns that message as read, and not as a new one', async () => {
+      const fake = new GoogleFake();
+      fake.addMessage({
+        id: 'm-1',
+        labelIds: ['INBOX', 'UNREAD'],
+        snippet: 'hi',
+        internalDate: '1',
+        payload: { headers: [{ name: 'From', value: 'a@example.test' }] },
+      });
+      const first = await fake.fetchInbox({ refreshToken: 'rt-test' }, 10);
+
+      fake.markRead('m-1');
+      const incremental = await fake.fetchInbox({ refreshToken: 'rt-test' }, 10, first.cursor);
+
+      expect(incremental.messages.map((m) => [m.providerMessageId, m.unread])).toEqual([
+        ['m-1', false],
+      ]);
+      expect(fake.rawHistorySince(first.cursor!)).toEqual({
+        addedIds: [],
+        labelChangedIds: ['m-1'],
+        historyId: incremental.cursor,
+      });
     });
 
     it('an incremental fetch after addMessage only returns messages newer than the cursor', async () => {
