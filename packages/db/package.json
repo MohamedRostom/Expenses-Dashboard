@@ -14,7 +14,9 @@
     "migrate": "tsx src/migrate-cli.ts",
     "db:seed": "tsx src/seed.ts",
     "flags": "tsx src/flags-cli.ts",
-    "backdate-refresh": "tsx src/backdate-refresh-cli.ts"
+    "backdate-refresh": "tsx src/backdate-refresh-cli.ts",
+    "purge-idle": "tsx src/purge-idle-cli.ts",
+    "seed-dummy-accounts": "tsx src/seed-dummy-accounts-cli.ts"
   },
   "dependencies": {
     "drizzle-orm": "^0.45.3",

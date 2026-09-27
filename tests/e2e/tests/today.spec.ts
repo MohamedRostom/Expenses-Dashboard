@@ -52,6 +52,7 @@ type TodayPayload = {
     status: string;
     lastRefreshAt: string | null;
     stale: boolean;
+    purged: boolean;
   }[];
 };
 
@@ -112,6 +113,20 @@ function eventTitles(body: TodayPayload): string[] {
  * to pass or adding a clock override to the running api service. */
 function backdateLastRefresh(email: string, provider: string, minutesAgo: number): void {
   execSync(`pnpm --filter @desk/db backdate-refresh "${email}" "${provider}" ${minutesAgo}`, {
+    env: { ...process.env, DATABASE_URL: DB_URL },
+    stdio: 'pipe',
+  });
+}
+
+/** T058: there is no clock-override route on the mocks or the running api (checked — the mocks'
+ * clock control is per provider-account fake data, not the api's own JobRunner), so this drives
+ * the same end state `panels.purge` (apps/api/src/jobs/panels-purge.ts) leaves directly against
+ * the compose database via a small test-only CLI (packages/db/src/purge-idle-cli.ts): backdates
+ * `users.last_active_at` past the 30-day idle cutoff, deletes the user's cached_events and
+ * cached_messages, and sets `connected_accounts.cache_purged_at`, exactly as the real job does
+ * (its own JobRunner bookkeeping and audit row aren't observable from here, so aren't simulated). */
+function simulateIdlePurge(email: string): void {
+  execSync(`pnpm --filter @desk/db purge-idle "${email}"`, {
     env: { ...process.env, DATABASE_URL: DB_URL },
     stdio: 'pipe',
   });
@@ -376,5 +391,76 @@ test.describe('Today calendar panel @ci', () => {
     await axeCheck(page);
     await page.setViewportSize({ width: 1280, height: 800 });
     await axeCheck(page);
+  });
+
+  test('T058: after a simulated 30-day idle purge, panels show loading rather than stale rows until the refresh completes', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const email = `today-purge-${crypto.randomUUID()}@example.com`;
+    await signUpAndVerify(page, email);
+    const key = await connect(page, 'google');
+    await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+
+    await mockProvider('google', key).addEvent(
+      'primary',
+      googleEvent('evt-pre-purge', 'Pre-purge event', 1),
+    );
+    backdateLastRefresh(email, 'google', 3);
+    await refreshUntilAllowed(page);
+    await waitForTodayPayload(page, (b) => eventTitles(b).includes('Pre-purge event'));
+
+    // Wait for that cycle to settle before backdating past the purge job's own 30-day cutoff —
+    // otherwise a still-in-flight refresh could overwrite last_refresh_at right after the CLI
+    // deletes the cache, and this test would never observe the purged state.
+    await waitForRefreshToSettle(page);
+    simulateIdlePurge(email);
+
+    // purged: true (contracts/src/today.ts) — the cache is gone, so the panel must show its
+    // loading state, never the stale "Pre-purge event" row it deleted.
+    const purgedBody = await waitForTodayPayload(page, (b) => b.accounts[0]?.purged === true);
+    expect(eventTitles(purgedBody)).not.toContain('Pre-purge event');
+
+    await page.goto('/today');
+    await expect(page.locator('.calendar-panel .desk-skeleton').first()).toBeVisible();
+    await expect(page.getByText('Pre-purge event')).toHaveCount(0);
+
+    // markDue (apps/api/src/services/panels.ts) only looks at last_refresh_at, not the purged
+    // flag, so this account (freshly refreshed just before the purge) needs backdating again
+    // before a refresh will actually pick it up.
+    backdateLastRefresh(email, 'google', 3);
+    await refreshUntilAllowed(page);
+    await waitForTodayPayload(page, (b) => b.accounts[0]?.purged === false);
+  });
+});
+
+// T074 (e2e half): a Playwright device-project run proving already-cached Today content renders
+// fast — the `pixel-7`/`iphone-14` projects (tests/e2e/playwright.config.ts) run any spec whose
+// describe title contains "@mobile" in addition to the desktop `ci` project, so this also
+// exercises the panel on a phone-sized viewport. This is deliberately a warm navigation (data
+// already cached from a prior refresh), not the cold/empty-state load the loading-skeleton test
+// above covers — SC-005 is about the panel painting from cache quickly, not about network time.
+test.describe('Today render performance @mobile', () => {
+  test('renders cached calendar content within one second of navigating to /today', async ({
+    page,
+  }) => {
+    test.setTimeout(120_000);
+    const email = `today-perf-${crypto.randomUUID()}@example.com`;
+    await signUpAndVerify(page, email);
+    const key = await connect(page, 'google');
+    await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+
+    await mockProvider('google', key).addEvent(
+      'primary',
+      googleEvent('evt-perf', 'Perf check event', 1),
+    );
+    backdateLastRefresh(email, 'google', 3);
+    await refreshUntilAllowed(page);
+    await waitForTodayPayload(page, (b) => eventTitles(b).includes('Perf check event'));
+
+    const start = Date.now();
+    await page.goto('/today');
+    await expect(page.getByText('Perf check event')).toBeVisible();
+    expect(Date.now() - start).toBeLessThan(1000);
   });
 });
