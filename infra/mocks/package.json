@@ -8,7 +8,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "hono": "^4.13.8",
+    "hono": "^4.13.9",
     "@desk/connectors": "workspace:*"
   },
   "devDependencies": {
