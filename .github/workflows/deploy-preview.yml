@@ -75,6 +75,7 @@ jobs:
         env:
           GOOGLE_PANELS_CLIENT_ID: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_ID }}
           GOOGLE_PANELS_CLIENT_SECRET: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_SECRET }}
+
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
