@@ -54,6 +54,7 @@ jobs:
           APP_ORIGIN="https://$APP.fly.dev"
           GOOGLE_CLIENT_ID="${{ secrets.PREVIEW_GOOGLE_CLIENT_ID }}"
           GOOGLE_CLIENT_SECRET="${{ secrets.PREVIEW_GOOGLE_CLIENT_SECRET }}"
+
       - if: steps.gate.outputs.skip != 'true'
         name: Mail secrets (Resend), only when PREVIEW_RESEND_API_KEY is set
         # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,

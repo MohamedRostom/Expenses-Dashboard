@@ -14,6 +14,12 @@
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.63.0",
     "@types/node": "^22.20.4",
+    "basic-ftp": "6.2.1",
     "yaml": "^2.9.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "basic-ftp": "6.2.1"
+    }
   }
 }
