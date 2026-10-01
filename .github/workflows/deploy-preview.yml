@@ -52,6 +52,8 @@ jobs:
           SESSION_SECRET="${{ secrets.PREVIEW_SESSION_SECRET }}"
           SECRET_BOX_KEY="${{ secrets.PREVIEW_SECRET_BOX_KEY }}"
           APP_ORIGIN="https://$APP.fly.dev"
+          GOOGLE_CLIENT_ID="${{ secrets.PREVIEW_GOOGLE_CLIENT_ID }}"
+          GOOGLE_CLIENT_SECRET="${{ secrets.PREVIEW_GOOGLE_CLIENT_SECRET }}"
       - if: steps.gate.outputs.skip != 'true'
         name: Mail secrets (Resend), only when PREVIEW_RESEND_API_KEY is set
         # Unset: the app keeps its SMTP fallback. MAIL_FROM defaults to Resend's sandbox sender,
@@ -63,6 +65,16 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.PREVIEW_RESEND_API_KEY }}
           MAIL_FROM: ${{ secrets.PREVIEW_MAIL_FROM }}
+
+      - if: steps.gate.outputs.skip != 'true'
+        name: Google OAuth secrets (panels), only when PREVIEW_GOOGLE_PANELS_CLIENT_ID is set
+        run: |
+          if [ -n "$GOOGLE_PANELS_CLIENT_ID" ]; then
+            flyctl secrets set --app "$APP" --stage GOOGLE_PANELS_CLIENT_ID="$GOOGLE_PANELS_CLIENT_ID" GOOGLE_PANELS_CLIENT_SECRET="$GOOGLE_PANELS_CLIENT_SECRET"
+          fi
+        env:
+          GOOGLE_PANELS_CLIENT_ID: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_ID }}
+          GOOGLE_PANELS_CLIENT_SECRET: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_SECRET }}
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
