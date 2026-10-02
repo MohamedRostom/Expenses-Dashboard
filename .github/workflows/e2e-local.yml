@@ -26,12 +26,35 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+      # On the Windows runner `bash` otherwise resolves to C:\Windows\System32\bash.exe (the WSL
+      # launcher, which has no Node or pnpm) and the setup action's install step fails.
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\Git\bin'
       - uses: ./.github/actions/setup
       - run: pnpm --filter @desk/e2e exec playwright install chromium
+        shell: bash
+      # Real accounts come from one secret holding the whole YAML file; without it every
+      # account-dependent spec skips (tests/e2e/fixtures/test-accounts.ts).
+      - name: Write test accounts file
+        shell: bash
+        env:
+          E2E_TEST_ACCOUNTS_YAML: ${{ secrets.E2E_TEST_ACCOUNTS_YAML }}
+        run: |
+          if [ -n "$E2E_TEST_ACCOUNTS_YAML" ]; then
+            printf '%s\n' "$E2E_TEST_ACCOUNTS_YAML" > tests/e2e/test-accounts.local.yaml
+            echo "Test accounts file written."
+          else
+            echo "No E2E_TEST_ACCOUNTS_YAML secret: account-dependent tests will be skipped."
+          fi
       - run: pnpm --filter @desk/e2e exec playwright test --project=local --pass-with-no-tests
+        shell: bash
         env:
           CI: 'true'
           E2E_LOCAL_BASE_URL: ${{ vars.E2E_LOCAL_BASE_URL }}
+      - if: always()
+        shell: bash
+        run: rm -f tests/e2e/test-accounts.local.yaml
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -39,6 +62,7 @@ jobs:
           path: tests/e2e/playwright-report
           retention-days: 14
       - if: failure()
+        shell: bash
         run: >-
           gh issue create --title "e2e-local failed on $(date -u +%F)"
           --label "area:tests" --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"

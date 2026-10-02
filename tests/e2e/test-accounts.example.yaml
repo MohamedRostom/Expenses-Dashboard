@@ -1,0 +1,27 @@
+# Real test accounts for the e2e-local suite. Copy to test-accounts.local.yaml (gitignored) to
+# run locally; in the pipeline, paste the filled-in file into the E2E_TEST_ACCOUNTS_YAML secret
+# of the `local-secrets` environment. Never commit real values.
+#
+# Anything left out or left blank is treated as "not configured": the tests that need it are
+# skipped, not failed.
+
+google:
+  email: '' # a dedicated test Google account, never a personal one
+  refreshToken: '' # from connecting it once through Desk's panels OAuth client (testing mode)
+
+microsoft:
+  email: ''
+  refreshToken: ''
+
+standards:
+  - preset: fastmail # fastmail | icloud | yahoo, or leave out and set the hosts below
+    address: ''
+    appPassword: '' # an app-specific password, never the account password
+  - preset: yahoo # Yahoo needs two-step verification on before it issues app passwords
+    address: ''
+    appPassword: ''
+  # - address: ''
+  #   appPassword: ''
+  #   imapHost: imap.example.com
+  #   imapPort: 993
+  #   caldavUrl: https://caldav.example.com/

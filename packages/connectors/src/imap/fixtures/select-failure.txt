@@ -1,0 +1,11 @@
+# Login succeeds but INBOX can't be selected (e.g. no such mailbox) -> verify() throws
+# VerificationError { step: 'inbox' }.
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+S NO SELECT failed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

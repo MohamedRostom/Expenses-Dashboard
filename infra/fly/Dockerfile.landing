@@ -10,6 +10,6 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm --filter @desk/landing build
 
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 COPY --from=build /app/apps/landing/dist /usr/share/nginx/html
 EXPOSE 80

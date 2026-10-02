@@ -6,6 +6,7 @@ import { users } from '@desk/db';
 import type { SessionStore, Session } from '../adapters/session-store.js';
 
 export const SESSION_COOKIE = '__Host-desk_session';
+const LAST_ACTIVE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
 
 export type SessionUser = typeof users.$inferSelect;
 
@@ -34,6 +35,7 @@ const STATIC_ASSET_RE = /\.(?:js|css|map|png|jpg|jpeg|svg|webp|ico|woff2?|ttf)$/
 export function sessionMiddleware(
   db: Db,
   sessions: SessionStore,
+  clock: { now(): Date } = { now: () => new Date() },
 ): MiddlewareHandler<{ Variables: SessionVariables }> {
   return async (c, next) => {
     c.set('user', null);
@@ -48,6 +50,15 @@ export function sessionMiddleware(
         if (user) {
           c.set('user', user);
           c.set('session', session);
+
+          // Update last_active_at at most once per five minutes per user
+          const now = clock.now();
+          const shouldUpdate =
+            !user.lastActiveAt ||
+            now.getTime() - user.lastActiveAt.getTime() > LAST_ACTIVE_THRESHOLD_MS;
+          if (shouldUpdate) {
+            await db.update(users).set({ lastActiveAt: now }).where(eq(users.id, user.id));
+          }
         }
       }
     }

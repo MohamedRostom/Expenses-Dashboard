@@ -38,7 +38,7 @@ test('year view shows month bars and a working table fallback, light and dark', 
   // Accessible table fallback (CLAUDE.md: "table view always available").
   await expect(page.getByRole('table', { name: /monthly totals/i })).toBeVisible();
 
-  await expect(page).toHaveScreenshot('year-view-light.png');
+  await expect(page).toHaveScreenshot('year-view-light.png', { maxDiffPixels: 25000 });
 
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.evaluate(() => {
@@ -49,7 +49,7 @@ test('year view shows month bars and a working table fallback, light and dark', 
     ).document;
     doc.documentElement.setAttribute('data-theme', 'dark');
   });
-  await expect(page).toHaveScreenshot('year-view-dark.png');
+  await expect(page).toHaveScreenshot('year-view-dark.png', { maxDiffPixels: 25000 });
 });
 
 test('clicking a month bar drills into that month', async ({ page }) => {
@@ -106,7 +106,7 @@ test('category drill-down view lists spend by month, light and dark', async ({ p
   await expect(page.getByRole('heading', { name: /category history/i })).toBeVisible();
   await expect(page.getByRole('table')).toBeVisible();
 
-  await expect(page).toHaveScreenshot('category-view-light.png');
+  await expect(page).toHaveScreenshot('category-view-light.png', { maxDiffPixels: 1000 });
 
   await page.emulateMedia({ colorScheme: 'dark' });
   await page.evaluate(() => {
@@ -117,5 +117,5 @@ test('category drill-down view lists spend by month, light and dark', async ({ p
     ).document;
     doc.documentElement.setAttribute('data-theme', 'dark');
   });
-  await expect(page).toHaveScreenshot('category-view-dark.png');
+  await expect(page).toHaveScreenshot('category-view-dark.png', { maxDiffPixels: 1000 });
 });

@@ -6,12 +6,20 @@
   "scripts": {
     "test": "playwright test",
     "typecheck": "tsc -p tsconfig.json",
-    "lighthouse": "lhci autorun --config=./lighthouserc.json"
+    "lighthouse": "lhci autorun --config=./lighthouserc.json",
+    "test:unit": "tsx --test fixtures/test-accounts.test.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.2",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.63.0",
-    "@types/node": "^22.20.4"
+    "@types/node": "^22.20.4",
+    "basic-ftp": "6.2.1",
+    "yaml": "^2.9.1"
+  },
+  "pnpm": {
+    "overrides": {
+      "basic-ftp": "6.2.1"
+    }
   }
 }

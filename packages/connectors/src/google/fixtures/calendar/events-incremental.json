@@ -1,0 +1,35 @@
+{
+  "kind": "calendar#events",
+  "etag": "test-etag-incremental",
+  "summary": "Primary Calendar",
+  "updated": "2026-10-02T10:00:00Z",
+  "timeZone": "UTC",
+  "items": [
+    {
+      "kind": "calendar#event",
+      "etag": "evt-7-etag",
+      "id": "evt-new",
+      "created": "2026-10-02T09:00:00.000Z",
+      "updated": "2026-10-02T09:00:00.000Z",
+      "summary": "New Event",
+      "start": {
+        "dateTime": "2026-10-06T16:00:00Z",
+        "timeZone": "UTC"
+      },
+      "end": {
+        "dateTime": "2026-10-06T17:00:00Z",
+        "timeZone": "UTC"
+      },
+      "htmlLink": "https://calendar.google.com/calendar/u/0/r/eventedit/evt-new"
+    },
+    {
+      "kind": "calendar#event",
+      "etag": "evt-rec_20261001T090000Z",
+      "id": "evt-rec_20261001T090000Z",
+      "status": "cancelled",
+      "created": "2026-09-20T10:00:00.000Z",
+      "updated": "2026-10-02T09:00:00.000Z"
+    }
+  ],
+  "nextSyncToken": "sync-2"
+}

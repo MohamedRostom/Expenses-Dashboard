@@ -10,7 +10,9 @@ import { createSecretBox, type SecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import { KvSessionStore, type KVNamespace } from './adapters/session-store-kv.js';
 import { FrankfurterRates } from '@desk/connectors/rates';
+import { connect as cfConnect } from 'cloudflare:sockets';
 import { JobRunner } from './jobs/runner.js';
+import { createSocketWorkerConnect } from './adapters/socket-worker.js';
 import { registerAllJobs } from './jobs/register.js';
 import { createRatesService } from './services/rates.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
@@ -49,6 +51,8 @@ export function buildDeps(
     breachChecker: new HibpBreachChecker(),
     rates: new FrankfurterRates(),
     jobs: jobRunner,
+    runJobsNow: () => jobRunner.runDueJobs(),
+    socketConnect: createSocketWorkerConnect(cfConnect),
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: env.GIT_SHA },
     appOrigin: env.APP_ORIGIN,
@@ -56,6 +60,8 @@ export function buildDeps(
     // on Workers for now.
     google: undefined,
     notion: undefined,
+    googlePanels: undefined,
+    microsoft: undefined,
   };
 }
 

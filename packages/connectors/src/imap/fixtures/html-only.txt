@@ -1,0 +1,40 @@
+# Single-part text/html message (no text/plain alternative): the client falls back to the
+# text/html part, strips tags and collapses whitespace for the preview.
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 1 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 2]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 1
+S OK UID SEARCH completed
+
+C UID FETCH 1 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 1 FLAGS () INTERNALDATE "08-Jan-2026 14:00:00 +0000" BODYSTRUCTURE ("TEXT" "HTML" "UTF-8" "7BIT"))
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 1 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Hank <hank@example.com>
+Subject: HTML only
+Date: Thu, 8 Jan 2026 14:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 1 BODY[1]<0>
+<html><body><p>Hello world, this is HTML.</p></body></html>
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

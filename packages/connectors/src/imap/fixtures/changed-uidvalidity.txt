@@ -1,0 +1,40 @@
+# Cursor from a previous refresh carried UIDVALIDITY 1000001; the mailbox was rebuilt and now
+# reports 1000002 -> fetchInbox must report full: true even though a cursor was supplied.
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 1 EXISTS
+U * OK [UIDVALIDITY 1000002]
+U * OK [UIDNEXT 201]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 200
+S OK UID SEARCH completed
+
+C UID FETCH 200 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 200 FLAGS () INTERNALDATE "10-Jan-2026 10:00:00 +0000" BODYSTRUCTURE ("TEXT" "PLAIN" "UTF-8" "7BIT"))
+S OK UID FETCH completed
+
+C UID FETCH 200 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 200 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Dee <dee@example.com>
+Subject: Rebuilt mailbox
+Date: Sat, 10 Jan 2026 10:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 200 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 200 BODY[1]<0>
+This mailbox was rebuilt, so UIDVALIDITY changed.
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

@@ -1,6 +1,12 @@
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
+  resolve: {
+    // worker.ts imports the Workers-only module; Node tests get a stub that refuses to dial.
+    alias: {
+      'cloudflare:sockets': new URL('./test/stubs/cloudflare-sockets.ts', import.meta.url).pathname,
+    },
+  },
   test: {
     globals: true,
     testTimeout: 120_000,

@@ -23,6 +23,9 @@ describe('parseEnv', () => {
       ...required,
       PORT: 3000,
       GIT_SHA: 'unknown',
+      GOOGLE_API_BASE: 'https://www.googleapis.com',
+      GRAPH_API_BASE: 'https://graph.microsoft.com',
+      STANDARDS_ALLOW_PRIVATE_HOSTS: false,
     });
   });
 
@@ -62,5 +65,102 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ ...required, NOTION_CLIENT_SECRET: 'n-secret' })).toThrow(
       /NOTION_CLIENT_ID/,
     );
+  });
+
+  it('refuses GOOGLE_PANELS keys given without its pair', () => {
+    expect(() => parseEnv({ ...required, GOOGLE_PANELS_CLIENT_ID: 'gp-id' })).toThrow(
+      /GOOGLE_PANELS_CLIENT_ID/,
+    );
+    expect(() => parseEnv({ ...required, GOOGLE_PANELS_CLIENT_SECRET: 'gp-secret' })).toThrow(
+      /GOOGLE_PANELS_CLIENT_ID/,
+    );
+  });
+
+  it('accepts GOOGLE_PANELS pair given together', () => {
+    const env = parseEnv({
+      ...required,
+      GOOGLE_PANELS_CLIENT_ID: 'gp-id',
+      GOOGLE_PANELS_CLIENT_SECRET: 'gp-secret',
+    });
+    expect(env.GOOGLE_PANELS_CLIENT_ID).toBe('gp-id');
+    expect(env.GOOGLE_PANELS_CLIENT_SECRET).toBe('gp-secret');
+  });
+
+  it('refuses MICROSOFT keys given without its pair', () => {
+    expect(() => parseEnv({ ...required, MICROSOFT_CLIENT_ID: 'm-id' })).toThrow(
+      /MICROSOFT_CLIENT_ID/,
+    );
+    expect(() => parseEnv({ ...required, MICROSOFT_CLIENT_SECRET: 'm-secret' })).toThrow(
+      /MICROSOFT_CLIENT_ID/,
+    );
+  });
+
+  it('accepts MICROSOFT pair given together', () => {
+    const env = parseEnv({
+      ...required,
+      MICROSOFT_CLIENT_ID: 'm-id',
+      MICROSOFT_CLIENT_SECRET: 'm-secret',
+    });
+    expect(env.MICROSOFT_CLIENT_ID).toBe('m-id');
+    expect(env.MICROSOFT_CLIENT_SECRET).toBe('m-secret');
+  });
+
+  it('defaults GOOGLE_API_BASE and GRAPH_API_BASE when unset', () => {
+    const env = parseEnv(required);
+    expect(env.GOOGLE_API_BASE).toBe('https://www.googleapis.com');
+    expect(env.GRAPH_API_BASE).toBe('https://graph.microsoft.com');
+  });
+
+  it('allows GOOGLE_API_BASE and GRAPH_API_BASE to be overridden', () => {
+    const env = parseEnv({
+      ...required,
+      GOOGLE_API_BASE: 'https://custom.google.com',
+      GRAPH_API_BASE: 'https://custom.graph.com',
+    });
+    expect(env.GOOGLE_API_BASE).toBe('https://custom.google.com');
+    expect(env.GRAPH_API_BASE).toBe('https://custom.graph.com');
+  });
+
+  it('GOOGLE_OAUTH_BASE parses as optional URL', () => {
+    const env = parseEnv({ ...required, GOOGLE_OAUTH_BASE: 'http://mocks:4000/google' });
+    expect(env.GOOGLE_OAUTH_BASE).toBe('http://mocks:4000/google');
+  });
+
+  it('GOOGLE_OAUTH_BASE omitted defaults to undefined', () => {
+    const env = parseEnv(required);
+    expect(env.GOOGLE_OAUTH_BASE).toBeUndefined();
+  });
+
+  it('MICROSOFT_LOGIN_BASE parses as optional URL', () => {
+    const env = parseEnv({ ...required, MICROSOFT_LOGIN_BASE: 'http://mocks:4000/microsoft' });
+    expect(env.MICROSOFT_LOGIN_BASE).toBe('http://mocks:4000/microsoft');
+  });
+
+  it('MICROSOFT_LOGIN_BASE omitted defaults to undefined', () => {
+    const env = parseEnv(required);
+    expect(env.MICROSOFT_LOGIN_BASE).toBeUndefined();
+  });
+
+  it('STANDARDS_ALLOW_PRIVATE_HOSTS defaults off, is only true for the exact string "true", and is refused on a Fly deployment (T070/FR-017)', () => {
+    expect(parseEnv(required).STANDARDS_ALLOW_PRIVATE_HOSTS).toBe(false);
+    expect(
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'false' })
+        .STANDARDS_ALLOW_PRIVATE_HOSTS,
+    ).toBe(false);
+    expect(
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true' })
+        .STANDARDS_ALLOW_PRIVATE_HOSTS,
+    ).toBe(true);
+    expect(() =>
+      parseEnv({
+        ...required,
+        STANDARDS_ALLOW_PRIVATE_HOSTS: 'true',
+        FLY_APP_NAME: 'ros-desk-staging',
+      }),
+    ).toThrow(/STANDARDS_ALLOW_PRIVATE_HOSTS/);
+    // Compose (no FLY_APP_NAME there, NODE_ENV=production from the image) is unaffected.
+    expect(() =>
+      parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true', NODE_ENV: 'production' }),
+    ).not.toThrow();
   });
 });

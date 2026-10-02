@@ -4,6 +4,13 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ## [Unreleased]
 
+### Added
+
+- Mail and calendar panels, foundation (spec 002 Slice A, all behind `panels.*` flags that are off in production): connected-accounts schema with the five `panels.*` flag rows seeded by migration, Google and Microsoft OAuth connect flow (read-only scopes, address taken from the provider's id_token, ten-account limit), a refresh job and per-minute scheduler with backoff, `GET /panels/today` and rate-limited refresh routes, and dark Today and Connections pages with loading, error and empty states.
+- Mail and calendar panels, calendar (spec 002 Slice B, US1, behind `panels.google_calendar` and `panels.microsoft`): Google Calendar `events.list` and Microsoft Graph `calendarView` clients, the seven-day `CalendarPanel` with account chips, tentative marks and all-day/multi-day handling in the user's own time zone, refreshed within five minutes.
+- Mail and calendar panels, inbox and account management (spec 002 Slice C, US2 Microsoft, US3, US4, behind `panels.microsoft` and `panels.standards`): Microsoft Graph inbox delta and a from-scratch read-only IMAP client (one `Socket` interface, real adapters for Node `node:tls` and Cloudflare Workers `cloudflare:sockets`) feeding the `InboxPanel`; a CalDAV calendar source for standards-based accounts; account management (rename, recolour, pause/resume, per-calendar toggles, reconnect, disconnect that revokes then cascades, JSON export, ownership matrix) and a daily job that purges a 30-day-idle user's cached panels while keeping the connection and credentials.
+- Mail and calendar panels, Google mail (spec 002 Slice D, US2, behind `panels.google_mail`, dark in production until Google's CASA assessment passes per ADR-0004): Gmail `messages.list`/`messages.get` client with the same fifty-message cap and preview truncation as the other providers.
+
 ### Fixed
 
 - `deploy-fly`'s promote-production job deploys with `infra/fly/fly.toml` (it failed on the machineless production app) and rolls back by redeploying the previous image (`flyctl releases rollback` doesn't exist); `jobs-safety-net` runs the current release image instead of a nonexistent `:latest`.

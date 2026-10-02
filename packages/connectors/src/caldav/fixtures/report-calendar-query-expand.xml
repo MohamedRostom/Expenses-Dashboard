@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:response>
+    <D:href>/calendars/alice/personal/rec-meeting.ics</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:getetag>"etag-rec-1"</D:getetag>
+        <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//CalDAV Mock//EN
+BEGIN:VEVENT
+UID:rec-meeting@example.test
+DTSTAMP:20261001T090000Z
+DTSTART:20261001T090000Z
+DTEND:20261001T093000Z
+RECURRENCE-ID:20261001T090000Z
+SUMMARY:Recurring Meeting
+ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:alice@example.test
+END:VEVENT
+BEGIN:VEVENT
+UID:rec-meeting@example.test
+DTSTAMP:20261001T090000Z
+DTSTART:20261008T090000Z
+DTEND:20261008T093000Z
+RECURRENCE-ID:20261008T090000Z
+SUMMARY:Recurring Meeting
+ATTENDEE;PARTSTAT=TENTATIVE:mailto:alice@example.test
+END:VEVENT
+BEGIN:VEVENT
+UID:rec-meeting@example.test
+DTSTAMP:20261001T090000Z
+DTSTART:20261015T090000Z
+DTEND:20261015T093000Z
+RECURRENCE-ID:20261015T090000Z
+SUMMARY:Recurring Meeting
+ATTENDEE;PARTSTAT=DECLINED:mailto:alice@example.test
+END:VEVENT
+END:VCALENDAR
+</C:calendar-data>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/calendars/alice/personal/two-day-event.ics</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:getetag>"etag-2day"</D:getetag>
+        <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//CalDAV Mock//EN
+BEGIN:VEVENT
+UID:two-day-event@example.test
+DTSTAMP:20260930T000000Z
+DTSTART;VALUE=DATE:20261005
+DTEND;VALUE=DATE:20261007
+SUMMARY:Two Day Event
+END:VEVENT
+END:VCALENDAR
+</C:calendar-data>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/calendars/alice/personal/accepted.ics</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:getetag>"etag-accepted"</D:getetag>
+        <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//CalDAV Mock//EN
+BEGIN:VEVENT
+UID:evt-accepted@example.test
+DTSTAMP:20261001T000000Z
+DTSTART:20261010T100000Z
+DTEND:20261010T110000Z
+SUMMARY:Accepted Event
+LOCATION:Room 1
+ATTENDEE;PARTSTAT=ACCEPTED:mailto:alice@example.test
+END:VEVENT
+END:VCALENDAR
+</C:calendar-data>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/calendars/alice/personal/no-attendees.ics</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:getetag>"etag-no-attendees"</D:getetag>
+        <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//CalDAV Mock//EN
+BEGIN:VEVENT
+UID:evt-no-attendees@example.test
+DTSTAMP:20261001T000000Z
+DTSTART:20261012T140000Z
+DTEND:20261012T150000Z
+SUMMARY:No Attendees Event
+END:VEVENT
+END:VCALENDAR
+</C:calendar-data>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/calendars/alice/personal/tz-event.ics</D:href>
+    <D:propstat>
+      <D:prop>
+        <D:getetag>"etag-tz"</D:getetag>
+        <C:calendar-data>BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Fixture//CalDAV Mock//EN
+BEGIN:VTIMEZONE
+TZID:Europe/London
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0000
+TZOFFSETTO:+0100
+TZNAME:BST
+DTSTART:19700329T010000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0000
+TZNAME:GMT
+DTSTART:19701025T020000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+END:STANDARD
+END:VTIMEZONE
+BEGIN:VEVENT
+UID:evt-tz@example.test
+DTSTAMP:20261001T000000Z
+DTSTART;TZID=Europe/London:20261014T150000
+DTEND;TZID=Europe/London:20261014T160000
+SUMMARY:London Time Event
+END:VEVENT
+END:VCALENDAR
+</C:calendar-data>
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+</D:multistatus>

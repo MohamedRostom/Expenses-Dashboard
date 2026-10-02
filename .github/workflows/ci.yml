@@ -105,9 +105,16 @@ jobs:
       - run: docker compose -f infra/docker-compose.yml up --build --wait
         env:
           GIT_SHA: ${{ github.sha }}
+      # Migration 0009 seeds the panels.* flags off; e2e-ci runs with them on (spec 002 T004).
+      - run: for f in today google_calendar google_mail microsoft standards; do pnpm flags set "panels.$f" --global on; done
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
       - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'
+          # T082: global-setup.ts waits for Mailpit + the API before any test runs; docker
+          # compose --wait doesn't cover this since mailpit has no healthcheck.
+          E2E_WAIT_FOR_STACK: 'true'
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}

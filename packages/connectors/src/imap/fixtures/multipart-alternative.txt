@@ -1,0 +1,40 @@
+# multipart/alternative: text/plain and text/html children. The client walks BODYSTRUCTURE and
+# fetches the first text/plain part (part 1), ignoring the text/html part (part 2).
+C LOGIN "alice@example.com" "app-password"
+S OK LOGIN completed
+
+C SELECT INBOX
+U * 1 EXISTS
+U * OK [UIDVALIDITY 1000001]
+U * OK [UIDNEXT 2]
+S OK [READ-ONLY] SELECT completed
+
+C SEARCH UNSEEN
+U * SEARCH 1
+S OK SEARCH completed
+
+C UID SEARCH ALL
+U * SEARCH 1
+S OK UID SEARCH completed
+
+C UID FETCH 1 (FLAGS INTERNALDATE BODYSTRUCTURE)
+U * 1 FETCH (UID 1 FLAGS () INTERNALDATE "05-Jan-2026 11:00:00 +0000" BODYSTRUCTURE (("TEXT" "PLAIN" "UTF-8" "7BIT")("TEXT" "HTML" "UTF-8" "QUOTED-PRINTABLE") "ALTERNATIVE"))
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])
+L * 1 FETCH (UID 1 BODY[HEADER.FIELDS (FROM SUBJECT DATE)]
+From: Eve <eve@example.com>
+Subject: Multipart demo
+Date: Mon, 5 Jan 2026 11:00:00 +0000
+)
+S OK UID FETCH completed
+
+C UID FETCH 1 (BODY.PEEK[1]<0.200>)
+L * 1 FETCH (UID 1 BODY[1]<0>
+Plain text alternative wins over the HTML part.
+)
+S OK UID FETCH completed
+
+C LOGOUT
+U * BYE logging out
+S OK LOGOUT completed

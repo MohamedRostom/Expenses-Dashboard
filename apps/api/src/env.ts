@@ -11,8 +11,25 @@ const envObjectSchema = z.object({
   SESSION_SECRET: z.string().min(1),
   SECRET_BOX_KEY: z.string().min(1),
   APP_ORIGIN: z.string().min(1),
+  REGISTER_IP_LIMIT_PER_HOUR: z.coerce.number().int().positive().optional(),
   GOOGLE_CLIENT_ID: z.string().optional(),
   GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_PANELS_CLIENT_ID: z.string().optional(),
+  GOOGLE_PANELS_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_API_BASE: z.string().default('https://www.googleapis.com'),
+  GOOGLE_OAUTH_BASE: z.string().url().optional(),
+  // T029 fix: in compose, GOOGLE_OAUTH_BASE/MICROSOFT_LOGIN_BASE point at the `mocks` service
+  // name (e.g. http://mocks:4000/google), which the api container can resolve but a browser on
+  // the host cannot — the OAuth authorize redirect (302 sent to the browser) needs a
+  // host-reachable base, while the token/revoke calls (server-to-server, from inside the api
+  // container) keep using the base above. Optional and unused outside compose/e2e-ci; when unset
+  // the authorize URL falls back to GOOGLE_OAUTH_BASE/MICROSOFT_LOGIN_BASE as before.
+  GOOGLE_OAUTH_BROWSER_BASE: z.string().url().optional(),
+  MICROSOFT_CLIENT_ID: z.string().optional(),
+  MICROSOFT_CLIENT_SECRET: z.string().optional(),
+  GRAPH_API_BASE: z.string().default('https://graph.microsoft.com'),
+  MICROSOFT_LOGIN_BASE: z.string().url().optional(),
+  MICROSOFT_LOGIN_BROWSER_BASE: z.string().url().optional(),
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),
@@ -26,6 +43,20 @@ const envObjectSchema = z.object({
   SMTP_URL: z.string().optional(),
   RESEND_API_KEY: z.string().optional(),
   MAIL_FROM: z.string().optional(),
+  // Mail and calendar connectors: caldav and imap test endpoints (optional).
+  CALDAV_TEST_URL: z.string().optional(),
+  IMAP_TEST_HOST: z.string().optional(),
+  // T070/FR-017: bypasses createStandards's public-address check, so e2e-ci can reach the
+  // compose `mocks` service at its private Docker address. Only ever set (true) in
+  // infra/docker-compose.yml; refused below on any Fly deployment (FLY_APP_NAME is set there;
+  // NODE_ENV can't be the marker because the compose image is the production image).
+  // z.coerce.boolean() would treat any non-empty string (including "false") as true, so this
+  // reads the string exactly, the same way ROUTES/expenses.ts's showPending flag does.
+  STANDARDS_ALLOW_PRIVATE_HOSTS: z
+    .string()
+    .optional()
+    .transform((s) => s === 'true'),
+  FLY_APP_NAME: z.string().optional(),
 });
 
 export const envSchema = envObjectSchema
@@ -33,9 +64,25 @@ export const envSchema = envObjectSchema
     message: 'GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set together or not at all',
     path: ['GOOGLE_CLIENT_ID'],
   })
+  .refine(
+    (env) => Boolean(env.GOOGLE_PANELS_CLIENT_ID) === Boolean(env.GOOGLE_PANELS_CLIENT_SECRET),
+    {
+      message:
+        'GOOGLE_PANELS_CLIENT_ID and GOOGLE_PANELS_CLIENT_SECRET must be set together or not at all',
+      path: ['GOOGLE_PANELS_CLIENT_ID'],
+    },
+  )
+  .refine((env) => Boolean(env.MICROSOFT_CLIENT_ID) === Boolean(env.MICROSOFT_CLIENT_SECRET), {
+    message: 'MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET must be set together or not at all',
+    path: ['MICROSOFT_CLIENT_ID'],
+  })
   .refine((env) => Boolean(env.NOTION_CLIENT_ID) === Boolean(env.NOTION_CLIENT_SECRET), {
     message: 'NOTION_CLIENT_ID and NOTION_CLIENT_SECRET must be set together or not at all',
     path: ['NOTION_CLIENT_ID'],
+  })
+  .refine((env) => !(env.STANDARDS_ALLOW_PRIVATE_HOSTS && env.FLY_APP_NAME), {
+    message: 'STANDARDS_ALLOW_PRIVATE_HOSTS must not be set on a Fly deployment',
+    path: ['STANDARDS_ALLOW_PRIVATE_HOSTS'],
   });
 export type Env = z.infer<typeof envSchema>;
 

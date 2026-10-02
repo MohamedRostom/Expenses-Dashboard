@@ -1,4 +1,17 @@
+import { sql } from 'drizzle-orm';
+import { setGlobalFlag } from '@desk/db';
+import type { MailSource } from '@desk/connectors/panels';
 import { startHarness, type ApiClient, type Harness } from './harness.js';
+
+/** T070: connect a standards account with the correct password every time — ownership isolation
+ * is what this file tests, not verification failure paths (covered in connections.test.ts). */
+const fakeStandardsMail: MailSource = {
+  async fetchInbox() {
+    return { messages: [], full: true };
+  },
+  async verify() {},
+  async revoke() {},
+};
 
 /**
  * Ownership matrix (CLAUDE.md "Testing rules": every route x user A / user B must prove
@@ -124,6 +137,42 @@ const routes: Row[] = [
       return await createCategory(userB);
     },
   },
+  {
+    method: 'POST',
+    path: '/connections/:id/refresh',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'GET',
+    path: '/connections/:id/calendars',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/connections/:id',
+    body: { label: 'attempted takeover' },
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/connections/:id/reconnect',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/connections/:id',
+    async createForeignId(userB) {
+      return await createConnectedAccount(userB);
+    },
+  },
 ];
 
 const CSV_MAPPING = {
@@ -170,13 +219,37 @@ async function createExpense(userB: ApiClient): Promise<string> {
   return expense.id;
 }
 
+/** Set in beforeAll; panels fixtures insert rows directly because connecting an account needs a
+ * provider round-trip the ownership test has no reason to exercise. */
+let db: Harness['db'];
+
+async function createConnectedAccount(userB: ApiClient): Promise<string> {
+  const { userId } = userB as ApiClient & { userId: string };
+  const rows = await db.execute(sql`
+    INSERT INTO connected_accounts
+      (user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc,
+       status, next_refresh_at)
+    VALUES
+      (${userId}, 'google', ${`owner-b-${crypto.randomUUID()}@example.com`}, 'B', 'teal',
+       ARRAY['calendar'], ARRAY['calendar.readonly'], decode('00', 'hex'), 'connected', now())
+    RETURNING id`);
+  return (rows as unknown as { id: string }[])[0]!.id;
+}
+
 describe('ownership matrix', () => {
   let harness: Harness;
   let userA: ApiClient & { userId: string };
   let userB: ApiClient & { userId: string };
 
   beforeAll(async () => {
-    harness = await startHarness();
+    harness = await startHarness(undefined, {
+      withJobs: true,
+      mailSources: { standards: fakeStandardsMail },
+    });
+    db = harness.db;
+    await setGlobalFlag(db, 'panels.today', true);
+    await setGlobalFlag(db, 'panels.google_calendar', true);
+    await setGlobalFlag(db, 'panels.standards', true);
     userA = await harness.asUser('ownership-a@example.com');
     userB = await harness.asUser('ownership-b@example.com');
   }, 120_000);
@@ -186,6 +259,7 @@ describe('ownership matrix', () => {
   });
 
   it.each(routes)("$method $path as user A against user B's resource is isolated", async (row) => {
+    // T009: Standard :id routes — user A cannot access user B's resources
     const foreignId = await row.createForeignId(userB);
     const path = row.path.replace(':id', foreignId);
     const res =
@@ -200,5 +274,76 @@ describe('ownership matrix', () => {
     expect(res.status).toBe(404);
     const json = (await res.json()) as { error?: { code?: string } };
     expect(json.error?.code).toBe('not_found');
+  });
+
+  describe('panels (spec 002)', () => {
+    it("GET /panels/today, GET /connections and POST /panels/today/refresh never expose user B's accounts", async () => {
+      const bAccount = await createConnectedAccount(userB);
+
+      const today = await userA.get('/panels/today');
+      expect(today.status).toBe(200);
+      const todayJson = (await today.json()) as { accounts: { id: string }[] };
+      expect(todayJson.accounts.map((a) => a.id)).not.toContain(bAccount);
+
+      const list = await userA.get('/connections');
+      expect(list.status).toBe(200);
+      const listJson = (await list.json()) as { accounts: { id: string }[] };
+      expect(listJson.accounts.map((a) => a.id)).not.toContain(bAccount);
+
+      const refresh = await userA.post('/panels/today/refresh');
+      expect(refresh.status).toBe(202);
+      expect(((await refresh.json()) as { queued: string[] }).queued).not.toContain(bAccount);
+    });
+
+    it('GET /connections/providers is the same for both users (no per-user data)', async () => {
+      const a = await userA.get('/connections/providers');
+      const b = await userB.get('/connections/providers');
+      expect(a.status).toBe(200);
+      expect(await a.json()).toEqual(await b.json());
+    });
+
+    it("an OAuth state minted for user B is rejected in user A's session", async () => {
+      const start = await userB.get('/connections/google/start?capabilities=calendar');
+      expect(start.status).toBe(302);
+      const state = new URL(start.headers.get('location')!).searchParams.get('state');
+      expect(state).toBeTruthy();
+
+      const before = await db.execute(sql`SELECT count(*)::int AS n FROM connected_accounts`);
+      const cb = await userA.get(`/connections/google/callback?code=x&state=${state}`);
+      expect(cb.status).toBe(302);
+      expect(cb.headers.get('location')).toContain('error=');
+      const after = await db.execute(sql`SELECT count(*)::int AS n FROM connected_accounts`);
+      expect(JSON.stringify(after)).toBe(JSON.stringify(before));
+    });
+
+    it("POST /connections/standards is scoped per user: the same address for two users creates two separate rows, and neither user's list exposes the other's (T070)", async () => {
+      const address = `standards-ownership-${crypto.randomUUID()}@example.com`;
+      const requestBody = {
+        address,
+        password: 'correct-app-password',
+        imapHost: 'mail.example.com',
+        imapPort: 993,
+        capabilities: ['mail'] as const,
+      };
+
+      const resB = await userB.post('/connections/standards', requestBody);
+      expect(resB.status).toBe(201);
+      const bodyB = (await resB.json()) as { account: { id: string } };
+
+      const resA = await userA.post('/connections/standards', requestBody);
+      expect(resA.status).toBe(201);
+      const bodyA = (await resA.json()) as { account: { id: string } };
+
+      expect(bodyA.account.id).not.toBe(bodyB.account.id);
+
+      const listA = await userA.get('/connections');
+      const listAJson = (await listA.json()) as { accounts: { id: string }[] };
+      expect(listAJson.accounts.map((a) => a.id)).not.toContain(bodyB.account.id);
+      expect(listAJson.accounts.map((a) => a.id)).toContain(bodyA.account.id);
+
+      const listB = await userB.get('/connections');
+      const listBJson = (await listB.json()) as { accounts: { id: string }[] };
+      expect(listBJson.accounts.map((a) => a.id)).not.toContain(bodyA.account.id);
+    });
   });
 });

@@ -7,6 +7,9 @@
   "engines": {
     "node": ">=22 <23"
   },
+  "overrides": {
+    "basic-ftp": "6.2.1"
+  },
   "scripts": {
     "dev": "pnpm -r --parallel --filter @desk/api --filter @desk/web dev",
     "build": "pnpm -r build",

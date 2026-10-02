@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { content } from '../content';
+import { PROVIDER_PRIVACY_TEXT } from '@desk/contracts';
+
+const PROVIDER_LABEL: Record<keyof typeof PROVIDER_PRIVACY_TEXT, string> = {
+  google: 'Google',
+  microsoft: 'Microsoft',
+  standards: 'Standards-based (Yahoo, Apple, Fastmail, self-hosted)',
+};
+const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
+  keyof typeof PROVIDER_PRIVACY_TEXT,
+  (typeof PROVIDER_PRIVACY_TEXT)[keyof typeof PROVIDER_PRIVACY_TEXT],
+][];
 </script>
 
 <template>
@@ -28,6 +39,20 @@ import { content } from '../content';
       tracking is enabled by default.
     </p>
 
+    <h2>Mail and calendar panels, per provider</h2>
+    <p>
+      If you connect a mail or calendar account, Desk reads and stores only what is described below
+      for that provider, and the same text appears on the connect screen before you consent.
+    </p>
+    <section v-for="[id, text] in providers" :key="id" class="provider">
+      <h3>{{ PROVIDER_LABEL[id] }}</h3>
+      <p><strong>Reads:</strong> {{ text.reads }}</p>
+      <p><strong>Stores:</strong> {{ text.stores }}</p>
+      <p><strong>Retention:</strong> {{ text.retention }}</p>
+      <p><strong>Revoke:</strong> {{ text.revoke }}</p>
+      <p><strong>Scopes:</strong> {{ text.scopes.join(', ') }}</p>
+    </section>
+
     <h2>Your rights</h2>
     <p>Export or delete your account and data at any time from account settings.</p>
 
@@ -46,6 +71,11 @@ import { content } from '../content';
   font-family: var(--font-sans);
   color: var(--color-fg);
   background: var(--color-bg);
+}
+.provider {
+  border-left: 3px solid var(--color-accent);
+  padding-left: 0.75rem;
+  margin-bottom: 1rem;
 }
 .draft-notice {
   background: color-mix(in srgb, var(--color-warn) 15%, transparent);

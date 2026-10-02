@@ -1,0 +1,16 @@
+{
+  "value": [
+    {
+      "id": "primary-cal@example.test",
+      "name": "Primary Calendar",
+      "isDefaultCalendar": true,
+      "hexColor": "#0078D4"
+    },
+    {
+      "id": "cal-work",
+      "name": "Work Calendar",
+      "isDefaultCalendar": false,
+      "hexColor": "#50E6FF"
+    }
+  ]
+}

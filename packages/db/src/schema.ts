@@ -37,6 +37,7 @@ export const users = pgTable('users', {
   theme: text('theme').notNull().default('system'),
   timeZone: text('time_zone').notNull().default('UTC'),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
+  lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -414,4 +415,143 @@ export const feedback = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index('feedback_created_at_idx').on(t.createdAt)],
+);
+
+// T011: Mail and calendar panels (Phase 2, Slice A).
+export const connectedAccounts = pgTable(
+  'connected_accounts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    provider: text('provider').notNull(),
+    address: text('address').notNull(),
+    label: text('label').notNull(),
+    colour: text('colour'),
+    capabilities: text('capabilities')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    grantedScopes: text('granted_scopes')
+      .array()
+      .notNull()
+      .default(sql`'{}'::text[]`),
+    credentialEnc: bytea('credential_enc').notNull(),
+    status: text('status').notNull(),
+    pausedAt: timestamp('paused_at', { withTimezone: true }),
+    lastRefreshAt: timestamp('last_refresh_at', { withTimezone: true }),
+    lastError: text('last_error'),
+    consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+    nextRefreshAt: timestamp('next_refresh_at', { withTimezone: true }).notNull(),
+    mailCursor: text('mail_cursor'),
+    unreadTotal: integer('unread_total'),
+    cachePurgedAt: timestamp('cache_purged_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('connected_accounts_user_id_idx').on(t.userId),
+    uniqueIndex('connected_accounts_user_id_provider_address_unique').on(
+      t.userId,
+      t.provider,
+      t.address,
+    ),
+  ],
+);
+
+export const accountCalendars = pgTable(
+  'account_calendars',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => connectedAccounts.id, { onDelete: 'cascade' }),
+    providerCalendarId: text('provider_calendar_id').notNull(),
+    name: text('name').notNull(),
+    isPrimary: boolean('is_primary').notNull(),
+    enabled: boolean('enabled').notNull().default(false),
+    colour: text('colour'),
+    cursor: text('cursor'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('account_calendars_user_id_idx').on(t.userId),
+    uniqueIndex('account_calendars_account_id_provider_calendar_id_unique').on(
+      t.accountId,
+      t.providerCalendarId,
+    ),
+  ],
+);
+
+export const cachedEvents = pgTable(
+  'cached_events',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => connectedAccounts.id, { onDelete: 'cascade' }),
+    calendarId: uuid('calendar_id')
+      .notNull()
+      .references(() => accountCalendars.id, { onDelete: 'cascade' }),
+    providerEventId: text('provider_event_id').notNull(),
+    title: text('title').notNull(),
+    startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    allDay: boolean('all_day').notNull(),
+    timeZone: text('time_zone'),
+    location: text('location'),
+    tentative: boolean('tentative').notNull().default(false),
+    link: text('link'),
+    seenAt: timestamp('seen_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('cached_events_user_id_idx').on(t.userId),
+    uniqueIndex('cached_events_calendar_id_provider_event_id_unique').on(
+      t.calendarId,
+      t.providerEventId,
+    ),
+    index('cached_events_user_id_starts_at_idx').on(t.userId, t.startsAt),
+  ],
+);
+
+export const cachedMessages = pgTable(
+  'cached_messages',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    accountId: uuid('account_id')
+      .notNull()
+      .references(() => connectedAccounts.id, { onDelete: 'cascade' }),
+    providerMessageId: text('provider_message_id').notNull(),
+    fromName: text('from_name'),
+    fromAddress: text('from_address').notNull(),
+    subject: text('subject').notNull(),
+    preview: text('preview').notNull(),
+    receivedAt: timestamp('received_at', { withTimezone: true }).notNull(),
+    unread: boolean('unread').notNull(),
+    link: text('link'),
+    seenAt: timestamp('seen_at', { withTimezone: true }).notNull().defaultNow(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index('cached_messages_user_id_idx').on(t.userId),
+    uniqueIndex('cached_messages_account_id_provider_message_id_unique').on(
+      t.accountId,
+      t.providerMessageId,
+    ),
+    index('cached_messages_user_id_received_at_idx').on(t.userId, t.receivedAt),
+  ],
 );

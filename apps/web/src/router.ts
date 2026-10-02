@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useSessionStore } from './stores/session.js';
+import { useFlagsStore } from './stores/flags.js';
 import MonthView from './views/MonthView.vue';
 import LoginView from './views/LoginView.vue';
 import RegisterView from './views/RegisterView.vue';
@@ -9,6 +10,8 @@ import ResetView from './views/ResetView.vue';
 import SettingsView from './views/SettingsView.vue';
 import CaptureView from './views/CaptureView.vue';
 import ConnectorsView from './views/ConnectorsView.vue';
+import TodayView from './views/TodayView.vue';
+import ConnectionsView from './views/ConnectionsView.vue';
 import YearView from './views/YearView.vue';
 import ImportView from './views/ImportView.vue';
 import BinView from './views/BinView.vue';
@@ -35,6 +38,18 @@ const routes: RouteRecordRaw[] = [
     name: 'settings-connectors',
     component: ConnectorsView,
     meta: { requiresAuth: true },
+  },
+  {
+    path: '/today',
+    name: 'today',
+    component: TodayView,
+    meta: { requiresAuth: true, panelsTodayRequired: true },
+  },
+  {
+    path: '/settings/connections',
+    name: 'settings-connections',
+    component: ConnectionsView,
+    meta: { requiresAuth: true, panelsTodayRequired: true },
   },
   { path: '/', name: 'home', component: MonthView, meta: { requiresAuth: true } },
   { path: '/add', name: 'add', component: AddView, meta: { requiresAuth: true } },
@@ -69,15 +84,33 @@ export const router = createRouter({
 });
 
 let sessionLoaded = false;
+let flagsLoaded = false;
 
 router.beforeEach(async (to) => {
   if (!to.meta.requiresAuth) return true;
+
   const session = useSessionStore();
   if (!sessionLoaded && session.user === null) {
     sessionLoaded = true;
     await session.load();
   }
   if (!session.user) return { name: 'login', query: { redirect: to.fullPath } };
+
+  // Load flags once after auth, required for panelsTodayRequired routes
+  if (!flagsLoaded) {
+    flagsLoaded = true;
+    const flags = useFlagsStore();
+    await flags.load();
+  }
+
+  // Check if route requires panels.today flag
+  if (to.meta.panelsTodayRequired) {
+    const flags = useFlagsStore();
+    if (!flags.isOn('panels.today')) {
+      return { name: 'home' };
+    }
+  }
+
   if (!session.user.onboardingCompletedAt && to.name !== 'onboarding') {
     return { name: 'onboarding' };
   }

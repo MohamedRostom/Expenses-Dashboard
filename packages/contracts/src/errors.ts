@@ -11,8 +11,23 @@ export const ErrorCode = z.enum([
   'rate_unavailable',
   'internal',
   'email_unverified',
+  'limit_reached',
+  'verification_failed',
+  'host_not_allowed',
+  'scope_denied',
+  'account_mismatch',
 ]);
 export type ErrorCodeT = z.infer<typeof ErrorCode>;
+
+/** Error codes stored in account.lastError (panel-specific per-account errors). */
+export const AccountErrorCode = z.enum([
+  'provider_unreachable',
+  'access_revoked',
+  'rate_limited',
+  'login_failed',
+  'host_not_allowed',
+]);
+export type AccountErrorCodeT = z.infer<typeof AccountErrorCode>;
 
 /** Shape of every non-2xx JSON response across the API. */
 export const ErrorEnvelope = z.object({

@@ -16,10 +16,13 @@ function windowStart(now: Date, windowMs: number): Date {
 }
 
 export class PgRateLimiter implements RateLimiter {
-  constructor(private readonly db: Db) {}
+  constructor(
+    private readonly db: Db,
+    private readonly clock: { now(): Date } = { now: () => new Date() },
+  ) {}
 
   async hit(key: string, limit: number, windowMs: number): Promise<boolean> {
-    const start = windowStart(new Date(), windowMs);
+    const start = windowStart(this.clock.now(), windowMs);
     const { rows } = await this.db.query<{ count: number }>(
       `INSERT INTO rate_limits (key, window_start, count) VALUES ($1, $2, 1)
        ON CONFLICT (key, window_start) DO UPDATE SET count = rate_limits.count + 1

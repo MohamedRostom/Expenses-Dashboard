@@ -17,6 +17,8 @@ const fakeUser = {
   timeZone: 'UTC',
   onboardingCompletedAt: null,
   createdAt: new Date(),
+  // Recent, so the middleware skips the last_active_at write (FakeDb has no update()).
+  lastActiveAt: new Date(),
 };
 
 const fakeSession: Session = {

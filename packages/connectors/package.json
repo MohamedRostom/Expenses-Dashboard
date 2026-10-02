@@ -6,10 +6,31 @@
   "exports": {
     ".": "./src/index.ts",
     "./rates": "./src/rates/index.ts",
-    "./notion": "./src/notion/index.ts"
+    "./notion": "./src/notion/index.ts",
+    "./panels": "./src/panels/index.ts",
+    "./panels/presets": "./src/panels/presets.ts",
+    "./imap/socket": "./src/imap/socket.ts",
+    "./imap/client": "./src/imap/client.ts",
+    "./imap/fake-server": "./src/imap/fake-server.ts",
+    "./google/oauth": "./src/google/oauth.ts",
+    "./google/calendar": "./src/google/calendar.ts",
+    "./google/gmail": "./src/google/gmail.ts",
+    "./google/fake": "./src/google/fake.ts",
+    "./microsoft/oauth": "./src/microsoft/oauth.ts",
+    "./microsoft/calendar": "./src/microsoft/calendar.ts",
+    "./microsoft/mail": "./src/microsoft/mail.ts",
+    "./microsoft/fake": "./src/microsoft/fake.ts",
+    "./caldav/client": "./src/caldav/client.ts",
+    "./caldav/fake": "./src/caldav/fake.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run"
+  },
+  "dependencies": {
+    "ical.js": "^2.2.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4"
   }
 }

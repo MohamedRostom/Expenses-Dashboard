@@ -7,10 +7,13 @@ import { FakeRates } from '@desk/connectors/rates';
 import type { RatesProvider } from '@desk/connectors/rates';
 import { FakeNotion } from '@desk/connectors/notion';
 import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
+import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
+import type { HostResolver } from '../src/lib/host-policy.js';
 import { passwordHasher } from '../src/adapters/password.js';
 import { PgSessionStore } from '../src/adapters/session-store.js';
 import { PgRateLimiter } from '../src/adapters/rate-limiter.js';
+import { JobRunner } from '../src/jobs/runner.js';
 import { CapturingMailer } from '../src/adapters/mailer.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
@@ -19,7 +22,13 @@ import { SESSION_COOKIE } from '../src/middleware/session.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_HEADER = 'x-csrf-token';
-const TEST_SECRET_BOX_KEY = Buffer.alloc(32, 7).toString('base64');
+export const TEST_SECRET_BOX_KEY = Buffer.alloc(32, 7).toString('base64');
+
+/** createStandards's (T070) default host resolver for tests that don't care about FR-017's
+ * host-privacy check — every hostname "resolves" to a documented public test address (RFC 5737
+ * TEST-NET-3), never a private/loopback/link-local one, so the check never blocks a normal
+ * connections test. Tests exercising the check itself pass their own via opts.hostResolver. */
+const DEFAULT_TEST_HOST_RESOLVER: HostResolver = async () => ['203.0.113.10'];
 
 /** SHA-256 of the raw token, hex — must match middleware/session.ts's hashToken exactly. */
 async function hashToken(token: string): Promise<string> {
@@ -82,7 +91,25 @@ function client(app: ReturnType<typeof createApp>, sessionToken: string): ApiCli
  * to exercise edge cases (anomalous/stale rate dates) the fixtures don't cover. */
 export async function startHarness(
   ratesProvider: RatesProvider = new FakeRates(),
+  /** withJobs wires a real JobRunner so enqueued jobs land in the jobs table (off by default). */
+  opts: {
+    withJobs?: boolean;
+    /** T086: wires AppDeps.runJobsNow to the same JobRunner as `jobs`, so a user-triggered
+     * refresh runs its job immediately instead of waiting for a tick. Requires withJobs. */
+    runJobsNow?: boolean;
+    calendarSources?: Partial<Record<'google' | 'microsoft' | 'standards', CalendarSource>>;
+    mailSources?: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>>;
+    registerIpLimitPerHour?: number;
+    /** T070/FR-017: fake DNS resolver for createStandards's host-privacy check. Defaults to one
+     * that resolves every hostname to a public test address (TEST-NET-3, RFC 5737) — tests that
+     * care about the host-privacy check pass their own. */
+    hostResolver?: HostResolver;
+    standardsAllowPrivateHosts?: boolean;
+  } = {},
 ): Promise<Harness> {
+  if (opts.runJobsNow && !opts.withJobs) {
+    throw new Error('startHarness: runJobsNow requires withJobs');
+  }
   const container: StartedPostgreSqlContainer = await new PostgreSqlContainer(
     'postgres:16-alpine',
   ).start();
@@ -113,19 +140,23 @@ export async function startHarness(
     return notionMockApp.request(path, init);
   };
 
+  const jobRunner = opts.withJobs ? new JobRunner(queryDb) : undefined;
+
   const app = createApp({
     db,
     hasher: passwordHasher,
     sessions,
-    limiter: new PgRateLimiter(queryDb),
+    limiter: new PgRateLimiter(queryDb, clock),
     mailer,
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
     breachChecker: new FakeBreachChecker(),
     rates: ratesProvider,
-    jobs: undefined,
+    jobs: jobRunner,
+    runJobsNow: opts.runJobsNow ? () => jobRunner!.runDueJobs() : undefined,
     clock,
     build: { version: '0.0.0-test', sha: 'testsha' },
     appOrigin: 'https://app.test',
+    registerIpLimitPerHour: opts.registerIpLimitPerHour,
     google: {
       clientId: 'test-client-id',
       clientSecret: 'test-client-secret',
@@ -138,6 +169,20 @@ export async function startHarness(
       apiBase: 'https://notion.mock',
       fetchImpl: notionFetch,
     },
+    googlePanels: {
+      clientId: 'test-google-panels-client-id',
+      clientSecret: 'test-google-panels-client-secret',
+    },
+    microsoft: {
+      clientId: 'test-microsoft-client-id',
+      clientSecret: 'test-microsoft-client-secret',
+    },
+    ...(opts.calendarSources && { calendarSources: opts.calendarSources }),
+    ...(opts.mailSources && { mailSources: opts.mailSources }),
+    hostResolver: opts.hostResolver ?? DEFAULT_TEST_HOST_RESOLVER,
+    ...(opts.standardsAllowPrivateHosts !== undefined && {
+      standardsAllowPrivateHosts: opts.standardsAllowPrivateHosts,
+    }),
   } satisfies AppDeps);
 
   async function asUser(email: string) {

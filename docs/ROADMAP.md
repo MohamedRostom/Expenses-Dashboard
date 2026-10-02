@@ -123,6 +123,7 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 ## Phase 6 — Stage 2 cut-over (Cloudflare)
 **Goal:** move to paid, global infrastructure with zero data loss and no rewrite.
 **Duration:** ~1 week plus a week of parallel running.
+**Scheduled (2026-09-26):** executed last, as the final stage of `specs/005-fix-found-bugs` (T044), after specs 002–004 and the registered bug fixes. v2 features no longer wait for it.
 
 **Build**
 - `worker.ts` entry wired to Hyperdrive (Neon Postgres), sessions on Cloudflare KV via the existing `SessionStore` interface, jobs on Cron Triggers, static assets on Cloudflare Pages, custom domain with free TLS.
@@ -135,9 +136,14 @@ Phase numbering is what branch names, milestones and issues will use: `phase-0/�
 
 ---
 
-## v2 (after Phase 6) — Calendar and beyond
+## v2 (built before the Phase 6 cut-over since 2026-09-26) — Calendar and beyond
 Not scheduled; captured so Phase 1's OAuth design leaves room for it.
-- Mail and calendar panels (ADR-0004, spec `specs/002-mail-calendar-panels/`): per-connection refresh-token storage, Google OAuth verification, the "next 7 days" calendar panel and a read-only inbox panel across Google, Microsoft and standards-based providers; Google mail last, after the restricted-scope CASA assessment.
+- Mail and calendar panels (ADR-0004, spec `specs/002-mail-calendar-panels/`): per-connection refresh-token storage, Google OAuth verification, the "next 7 days" calendar panel and a read-only inbox panel across Google, Microsoft and standards-based providers; Google mail last, after the restricted-scope CASA assessment. Built as four slices (plan.md), each behind its own production flag (all off in production today; `flags` table):
+  - **Slice A — Connections and Today shell.** Tables, OAuth connect routes, the Connections list and the Today page's empty states, the refresh scheduler. Gate: `panels.today` (the page-level flag; every `/panels/*` and `/connections/*` route 404s while it is off).
+  - **Slice B — Calendar (US1).** Google Calendar and Microsoft Graph `calendarView` clients feeding the seven-day calendar panel. Gates: `panels.google_calendar` (needs the Google OAuth consent screen verified in production mode for `calendar.readonly`, demo video and privacy URL) and `panels.microsoft` (needs Microsoft publisher verification once the app registration goes multi-tenant).
+  - **Slice C — Inbox, account management and standards (US2 Microsoft, US3, US4).** Microsoft Graph inbox delta, the IMAP client (Node and Workers socket adapters) and CalDAV client for standards-based accounts, account management (edit, pause, reconnect, disconnect, the 30-day idle purge job). Gates: `panels.microsoft` (same publisher verification as Slice B — one flag covers both Microsoft capabilities) and `panels.standards` (no external verification; gated on the `local-secrets` test accounts and the e2e-local nightly proving each preset).
+  - **Slice D — Google mail (US2 Google).** Gmail client behind its own flag so it can stay dark while the rest of the feature ships. Gate: `panels.google_mail`, off until Google's CASA assessment (ADR-0004 cost/timeline) passes.
+  - **`needs-rostom`:** SC-001 (a new user connects a first account in under two minutes) and SC-007 (three outsiders connect at least two providers each without support) need real people and cannot be run by an agent. Not yet run — no date, no pass/fail recorded. Run before this spec's production flags are flipped on and record the date and result per `specs/002-mail-calendar-panels/tasks.md` T076.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.
 - Receipt attachments (R2 storage) and OCR of amounts.
 - Bank feeds via Open Banking (provider to be chosen; no bank integration in v1 per ADR-0003).

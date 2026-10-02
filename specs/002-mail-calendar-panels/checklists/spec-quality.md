@@ -11,74 +11,74 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Is the transition into and out of the `error` status defined as a requirement, given FR-004 lists it but only the Assumptions mention "twenty consecutive failures"? [Gap, Spec §FR-004]
-- [ ] CHK002 Are the status transitions (connected, reconnect needed, paused, error) and who or what triggers each one specified in the spec rather than only in data-model.md? [Completeness, Spec §FR-004, data-model §connected_accounts]
-- [ ] CHK003 Is behaviour for a declined calendar invitation specified, given the provider contract carries a `declined` field but the spec only defines a "tentative" mark? [Gap, Spec §Edge Cases, contracts/providers.md]
-- [ ] CHK004 Is the rate limit on user-triggered refresh (contracts: one call per user per minute, 429 otherwise) and what the user sees when it is hit stated as a requirement? [Gap, contracts/api.md §POST /today/refresh]
-- [ ] CHK005 Are audit requirements for connector actions (connect, reconnect, pause, disconnect, revoke failure, purge) stated in the spec, as the constitution requires and data-model.md assumes? [Gap, Constitution §IV, data-model §audit_log]
-- [ ] CHK006 Does the spec state what the user's data export contains for this feature (connections without credentials or cached items, per contracts), given the constitution requires export of all user data? [Gap, Constitution §IV, contracts/api.md §GET /me/export]
-- [ ] CHK007 Is the staged rollout of each provider behind a feature flag (four `panels.*` flags in plan and data-model) expressed as a requirement, or does the spec only gate Google mail? [Completeness, Spec §FR-002, plan §Constraints]
-- [ ] CHK008 Are date and time display formats (12h/24h, day naming, relative vs absolute received time) specified for events and messages? [Gap, Spec §FR-006, §FR-009]
-- [ ] CHK009 Is the account colour requirement complete: a fixed palette or free choice, and the contrast rule that keeps the colour readable in both themes? [Gap, Spec §FR-004]
+- [x] CHK001 Is the transition into and out of the `error` status defined as a requirement, given FR-004 lists it but only the Assumptions mention "twenty consecutive failures"? [Gap, Spec §FR-004]
+- [x] CHK002 Are the status transitions (connected, reconnect needed, paused, error) and who or what triggers each one specified in the spec rather than only in data-model.md? [Completeness, Spec §FR-004, data-model §connected_accounts]
+- [x] CHK003 Is behaviour for a declined calendar invitation specified, given the provider contract carries a `declined` field but the spec only defines a "tentative" mark? [Gap, Spec §Edge Cases, contracts/providers.md]
+- [x] CHK004 Is the rate limit on user-triggered refresh (contracts: one call per user per minute, 429 otherwise) and what the user sees when it is hit stated as a requirement? [Gap, contracts/api.md §POST /today/refresh]
+- [x] CHK005 Are audit requirements for connector actions (connect, reconnect, pause, disconnect, revoke failure, purge) stated in the spec, as the constitution requires and data-model.md assumes? [Gap, Constitution §IV, data-model §audit_log]
+- [x] CHK006 Does the spec state what the user's data export contains for this feature (connections without credentials or cached items, per contracts), given the constitution requires export of all user data? [Gap, Constitution §IV, contracts/api.md §GET /me/export]
+- [x] CHK007 Is the staged rollout of each provider behind a feature flag (four `panels.*` flags in plan and data-model) expressed as a requirement, or does the spec only gate Google mail? [Completeness, Spec §FR-002, plan §Constraints]
+- [x] CHK008 Are date and time display formats (12h/24h, day naming, relative vs absolute received time) specified for events and messages? [Gap, Spec §FR-006, §FR-009]
+- [x] CHK009 Is the account colour requirement complete: a fixed palette or free choice, and the contrast rule that keeps the colour readable in both themes? [Gap, Spec §FR-004]
 
 ## Requirement Clarity
 
-- [ ] CHK010 Is "active in the last 24 hours" defined (data-model uses `max(sessions.last_seen_at)`; the spec never says what counts as activity)? [Clarity, Spec §FR-008]
-- [ ] CHK011 Is "a visit" in the 30-day purge rule defined (any request, a session, or opening the Today page)? [Clarity, Spec §FR-012]
-- [ ] CHK012 Is the "stale" panel state quantified with the threshold that triggers it (contracts: older than the tier interval), rather than left implicit in FR-014/FR-015? [Clarity, Spec §FR-014, §FR-015, contracts/api.md §accounts.stale]
-- [ ] CHK013 Is "one-line preview" quantified (data-model and providers contract fix 200 characters; the spec does not)? [Clarity, Spec §FR-009]
-- [ ] CHK014 Is it unambiguous whether the inbox panel lists all recent inbox messages (read and unread) or unread messages only? The clarification wording "which messages count as unread and appear" reads both ways. [Ambiguity, Spec §Clarifications, §FR-009]
-- [ ] CHK015 Is the unread count defined as the provider's whole-inbox unread total or the count within the fifty cached messages? data-model.md chooses the larger of the two; the spec is silent. [Ambiguity, Spec §FR-009, data-model §cached_messages]
-- [ ] CHK016 Is "provider-sorted promotional or social mail" defined per provider, including what it means for Microsoft (Focused/Other is ignored per research R2) and for IMAP where no such sorting exists? [Clarity, Spec §FR-009, research §R2]
-- [ ] CHK017 Is "mainstream" in SC-001 defined so it is clear whether Yahoo and other standards-based providers must meet the two-minute connect target? [Clarity, Spec §SC-001]
-- [ ] CHK018 Is the dedicated-provider list in FR-002 exhaustive ("MUST include" leaves room for more) so that scope is bounded for the first release? [Clarity, Spec §FR-002]
-- [ ] CHK019 Is "no error is shown for a single missed refresh" complemented by a stated number of missed refreshes after which an error is shown? [Ambiguity, Spec §Edge Cases]
+- [x] CHK010 Is "active in the last 24 hours" defined (data-model uses `max(sessions.last_seen_at)`; the spec never says what counts as activity)? [Clarity, Spec §FR-008]
+- [x] CHK011 Is "a visit" in the 30-day purge rule defined (any request, a session, or opening the Today page)? [Clarity, Spec §FR-012]
+- [x] CHK012 Is the "stale" panel state quantified with the threshold that triggers it (contracts: older than the tier interval), rather than left implicit in FR-014/FR-015? [Clarity, Spec §FR-014, §FR-015, contracts/api.md §accounts.stale]
+- [x] CHK013 Is "one-line preview" quantified (data-model and providers contract fix 200 characters; the spec does not)? [Clarity, Spec §FR-009]
+- [x] CHK014 Is it unambiguous whether the inbox panel lists all recent inbox messages (read and unread) or unread messages only? The clarification wording "which messages count as unread and appear" reads both ways. [Ambiguity, Spec §Clarifications, §FR-009]
+- [x] CHK015 Is the unread count defined as the provider's whole-inbox unread total or the count within the fifty cached messages? data-model.md chooses the larger of the two; the spec is silent. [Ambiguity, Spec §FR-009, data-model §cached_messages]
+- [x] CHK016 Is "provider-sorted promotional or social mail" defined per provider, including what it means for Microsoft (Focused/Other is ignored per research R2) and for IMAP where no such sorting exists? [Clarity, Spec §FR-009, research §R2]
+- [x] CHK017 Is "mainstream" in SC-001 defined so it is clear whether Yahoo and other standards-based providers must meet the two-minute connect target? [Clarity, Spec §SC-001]
+- [x] CHK018 Is the dedicated-provider list in FR-002 exhaustive ("MUST include" leaves room for more) so that scope is bounded for the first release? [Clarity, Spec §FR-002]
+- [x] CHK019 Is "no error is shown for a single missed refresh" complemented by a stated number of missed refreshes after which an error is shown? [Ambiguity, Spec §Edge Cases]
 
 ## Requirement Consistency
 
-- [ ] CHK020 Do the event window definitions agree: FR-006 "starting within the next seven days", contracts "seven days from today", data-model "today to today plus six" for display and "yesterday to today plus seven" for storage, Assumptions "seven days ahead plus one day behind"? [Conflict, Spec §FR-006, §Assumptions, data-model §cached_events, contracts/api.md §GET /today]
-- [ ] CHK021 Does FR-006 ("every event starting within the next seven days") agree with the edge case that multi-day events are "shown on each day they cover", which includes events that started before today? [Conflict, Spec §FR-006, §Edge Cases]
-- [ ] CHK022 Do the Assumptions ("paused after twenty consecutive failures until the user reconnects") and data-model.md ("error" status, cleared by reconnect or a successful manual refresh) describe the same rule, given FR-004 reserves "paused" for a user action? [Conflict, Spec §Assumptions, §FR-004, data-model §connected_accounts]
-- [ ] CHK023 Does FR-003's absolute "MUST be revoked at the provider on disconnect" agree with the providers contract, where Microsoft exposes no revoke endpoint and standards-based accounts only delete the credential, and with data-model.md, where a failed revoke is audited and the delete proceeds? [Conflict, Spec §FR-003, §US3 scenario 3, contracts/providers.md, data-model §Cascade]
-- [ ] CHK024 Does the ordering rule agree between the spec ("ordered by start time") and data-model.md ("all-day first" within a day), and is a tie-break for equal start times stated? [Consistency, Spec §FR-006, data-model §Derived payload]
-- [ ] CHK025 Does the ten-account limit apply the same way everywhere: spec (eleventh refused), contracts (409 `limit_reached` on start), edge case (connect button disabled), and does a paused account count toward it? [Consistency, Spec §FR-004, §Edge Cases, contracts/api.md §GET /connections/:provider/start]
-- [ ] CHK026 Does the "same address connected twice is one account" edge case agree with the data-model uniqueness on `(user_id, provider, address)`, i.e. is the same address via two different providers one account or two? [Consistency, Spec §Edge Cases, data-model §connected_accounts]
-- [ ] CHK027 Is the separation between sign-in scopes (`openid email profile`) and per-connection connector scopes stated as a requirement in the spec, rather than only in the constitution and research R6? [Consistency, Constitution §IV, Spec §FR-001, research §R6]
+- [x] CHK020 Do the event window definitions agree: FR-006 "starting within the next seven days", contracts "seven days from today", data-model "today to today plus six" for display and "yesterday to today plus seven" for storage, Assumptions "seven days ahead plus one day behind"? [Conflict, Spec §FR-006, §Assumptions, data-model §cached_events, contracts/api.md §GET /today]
+- [x] CHK021 Does FR-006 ("every event starting within the next seven days") agree with the edge case that multi-day events are "shown on each day they cover", which includes events that started before today? [Conflict, Spec §FR-006, §Edge Cases]
+- [x] CHK022 Do the Assumptions ("paused after twenty consecutive failures until the user reconnects") and data-model.md ("error" status, cleared by reconnect or a successful manual refresh) describe the same rule, given FR-004 reserves "paused" for a user action? [Conflict, Spec §Assumptions, §FR-004, data-model §connected_accounts]
+- [x] CHK023 Does FR-003's absolute "MUST be revoked at the provider on disconnect" agree with the providers contract, where Microsoft exposes no revoke endpoint and standards-based accounts only delete the credential, and with data-model.md, where a failed revoke is audited and the delete proceeds? [Conflict, Spec §FR-003, §US3 scenario 3, contracts/providers.md, data-model §Cascade]
+- [x] CHK024 Does the ordering rule agree between the spec ("ordered by start time") and data-model.md ("all-day first" within a day), and is a tie-break for equal start times stated? [Consistency, Spec §FR-006, data-model §Derived payload]
+- [x] CHK025 Does the ten-account limit apply the same way everywhere: spec (eleventh refused), contracts (409 `limit_reached` on start), edge case (connect button disabled), and does a paused account count toward it? [Consistency, Spec §FR-004, §Edge Cases, contracts/api.md §GET /connections/:provider/start]
+- [x] CHK026 Does the "same address connected twice is one account" edge case agree with the data-model uniqueness on `(user_id, provider, address)`, i.e. is the same address via two different providers one account or two? [Consistency, Spec §Edge Cases, data-model §connected_accounts]
+- [x] CHK027 Is the separation between sign-in scopes (`openid email profile`) and per-connection connector scopes stated as a requirement in the spec, rather than only in the constitution and research R6? [Consistency, Constitution §IV, Spec §FR-001, research §R6]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK028 Does SC-002 define the number of trials per nightly run so "95 % of trials" is computable? [Measurability, Spec §SC-002]
-- [ ] CHK029 Does SC-005 define the device and network profile ("mid-range phone over a mobile connection") in terms a Lighthouse or Playwright configuration can reproduce? [Measurability, Spec §SC-005]
-- [ ] CHK030 Does SC-007 state the pass condition (all three succeed? a time limit? which providers count as "different")? [Measurability, Spec §SC-007]
-- [ ] CHK031 Does SC-001 state where the two minutes start and end precisely enough to time it (consent screen time included or excluded)? [Measurability, Spec §SC-001]
-- [ ] CHK032 Do FR-007 (calendar selection) and FR-011 (account filter) have acceptance scenarios, given no user story exercises calendar selection and US3 does not list it among the Settings actions? [Coverage, Spec §FR-007, §FR-011, §US3]
+- [x] CHK028 Does SC-002 define the number of trials per nightly run so "95 % of trials" is computable? [Measurability, Spec §SC-002]
+- [x] CHK029 Does SC-005 define the device and network profile ("mid-range phone over a mobile connection") in terms a Lighthouse or Playwright configuration can reproduce? [Measurability, Spec §SC-005]
+- [x] CHK030 Does SC-007 state the pass condition (all three succeed? a time limit? which providers count as "different")? [Measurability, Spec §SC-007]
+- [x] CHK031 Does SC-001 state where the two minutes start and end precisely enough to time it (consent screen time included or excluded)? [Measurability, Spec §SC-001]
+- [x] CHK032 Do FR-007 (calendar selection) and FR-011 (account filter) have acceptance scenarios, given no user story exercises calendar selection and US3 does not list it among the Settings actions? [Coverage, Spec §FR-007, §FR-011, §US3]
 
 ## Scenario Coverage
 
-- [ ] CHK033 Are requirements defined for a consent screen where the user denies, or grants only some of the requested scopes (e.g. calendar but not mail), given FR-001 says the user "MUST see exactly what was granted"? [Coverage, Exception Flow, Spec §FR-001]
-- [ ] CHK034 Are reconnect requirements defined for standards-based accounts (password change or app-password revocation), given US3 describes reconnect in OAuth terms and contracts return `needsPassword` for standards? [Coverage, Spec §US3, contracts/api.md §POST /connections/:id/reconnect]
-- [ ] CHK035 Are the two empty states distinguished (no accounts connected vs accounts connected but nothing in the window or inbox) for both panels, given only the calendar "no accounts" case has a scenario? [Coverage, Spec §US1 scenario 1, §FR-014]
-- [ ] CHK036 Are requirements defined for a refresh interrupted mid-way (partial fetch), specifically whether cached rows may be deleted on a partial result, given the providers contract introduces a `full` flag for exactly this? [Coverage, Recovery, Spec §FR-015, contracts/providers.md §fetchWindow]
-- [ ] CHK037 Are requirements defined for a provider invalidating a cursor (410 / changed UIDVALIDITY / sync-state lost), i.e. whether the user sees anything during the forced full refetch? [Coverage, Recovery, contracts/providers.md §Cursor]
-- [ ] CHK038 Is behaviour specified for opening Today while a refresh is already running for the same account (on-open refresh overlapping a scheduled refresh)? [Coverage, Spec §FR-008]
+- [x] CHK033 Are requirements defined for a consent screen where the user denies, or grants only some of the requested scopes (e.g. calendar but not mail), given FR-001 says the user "MUST see exactly what was granted"? [Coverage, Exception Flow, Spec §FR-001]
+- [x] CHK034 Are reconnect requirements defined for standards-based accounts (password change or app-password revocation), given US3 describes reconnect in OAuth terms and contracts return `needsPassword` for standards? [Coverage, Spec §US3, contracts/api.md §POST /connections/:id/reconnect]
+- [x] CHK035 Are the two empty states distinguished (no accounts connected vs accounts connected but nothing in the window or inbox) for both panels, given only the calendar "no accounts" case has a scenario? [Coverage, Spec §US1 scenario 1, §FR-014]
+- [x] CHK036 Are requirements defined for a refresh interrupted mid-way (partial fetch), specifically whether cached rows may be deleted on a partial result, given the providers contract introduces a `full` flag for exactly this? [Coverage, Recovery, Spec §FR-015, contracts/providers.md §fetchWindow]
+- [x] CHK037 Are requirements defined for a provider invalidating a cursor (410 / changed UIDVALIDITY / sync-state lost), i.e. whether the user sees anything during the forced full refetch? [Coverage, Recovery, contracts/providers.md §Cursor]
+- [x] CHK038 Is behaviour specified for opening Today while a refresh is already running for the same account (on-open refresh overlapping a scheduled refresh)? [Coverage, Spec §FR-008]
 
 ## Edge Case Coverage
 
-- [ ] CHK039 Are all-day events from a calendar in a different time zone addressed, i.e. is it stated that they keep their calendar date rather than shifting into the user's zone? [Edge Case, Spec §Edge Cases, §FR-006]
-- [ ] CHK040 Is the unread count for a "reconnect needed" account defined (shown stale, hidden, or excluded from the total)? [Edge Case, Spec §US3 scenario 1, §FR-009]
-- [ ] CHK041 Are edge cases for the standards form addressed: server presets for known hosts, port and TLS choices, IMAP-only or CalDAV-only providers, and a verified login whose inbox is empty? [Edge Case, Spec §US4, contracts/api.md §POST /connections/standards]
+- [x] CHK039 Are all-day events from a calendar in a different time zone addressed, i.e. is it stated that they keep their calendar date rather than shifting into the user's zone? [Edge Case, Spec §Edge Cases, §FR-006]
+- [x] CHK040 Is the unread count for a "reconnect needed" account defined (shown stale, hidden, or excluded from the total)? [Edge Case, Spec §US3 scenario 1, §FR-009]
+- [x] CHK041 Are edge cases for the standards form addressed: server presets for known hosts, port and TLS choices, IMAP-only or CalDAV-only providers, and a verified login whose inbox is empty? [Edge Case, Spec §US4, contracts/api.md §POST /connections/standards]
 
 ## Non-Functional Requirements
 
-- [ ] CHK042 Are keyboard and screen-reader requirements defined for the account filter, colour picker and panel links beyond the axe audit in SC-006? [Gap, Spec §SC-006]
-- [ ] CHK043 Does FR-003 "stored encrypted" need to reference the constitution's AES-GCM-via-`SecretBox` baseline so the requirement is specific, or is the constitution reference sufficient? [Clarity, Spec §FR-003, Constitution §Platform and Security]
-- [ ] CHK044 Are provider quota requirements stated (requests per refresh at the ten-account cap, backoff ceiling), or do they live only in research R7 and the Assumptions? [Completeness, Spec §Assumptions, research §R7]
+- [x] CHK042 Are keyboard and screen-reader requirements defined for the account filter, colour picker and panel links beyond the axe audit in SC-006? [Gap, Spec §SC-006]
+- [x] CHK043 Does FR-003 "stored encrypted" need to reference the constitution's AES-GCM-via-`SecretBox` baseline so the requirement is specific, or is the constitution reference sufficient? [Clarity, Spec §FR-003, Constitution §Platform and Security]
+- [x] CHK044 Are provider quota requirements stated (requests per refresh at the ten-account cap, backoff ceiling), or do they live only in research R7 and the Assumptions? [Completeness, Spec §Assumptions, research §R7]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK045 Are the ADR-0002 prerequisites (product name, privacy page, domain) recorded as blocking dependencies with an owner and a "ships without" fallback, given both Google verification and the CASA assessment depend on them? [Dependency, Spec §Assumptions]
-- [ ] CHK046 Is the assumption that Yahoo works through IMAP and CalDAV with an app password validated (Yahoo calendar CalDAV availability, app-password prerequisite in Yahoo account settings) or marked as needing a spike? [Assumption, Spec §Assumptions, §FR-002]
-- [ ] CHK047 Is the dependency on Phase 3 time-zone setting, the jobs runner, `SecretBox` and the `flags` table stated with what happens if this feature starts before those foundations are final? [Dependency, Spec §Assumptions, plan §Technical Context]
+- [x] CHK045 Are the ADR-0002 prerequisites (product name, privacy page, domain) recorded as blocking dependencies with an owner and a "ships without" fallback, given both Google verification and the CASA assessment depend on them? [Dependency, Spec §Assumptions]
+- [x] CHK046 Is the assumption that Yahoo works through IMAP and CalDAV with an app password validated (Yahoo calendar CalDAV availability, app-password prerequisite in Yahoo account settings) or marked as needing a spike? [Assumption, Spec §Assumptions, §FR-002]
+- [x] CHK047 Is the dependency on Phase 3 time-zone setting, the jobs runner, `SecretBox` and the `flags` table stated with what happens if this feature starts before those foundations are final? [Dependency, Spec §Assumptions, plan §Technical Context]
 
 ## Notes
 
@@ -89,3 +89,47 @@
 - Add comments or findings inline
 - Items marked [Conflict] (CHK020–CHK023) are the ones most likely to produce divergent tasks if left unresolved; resolve them in spec.md first, then revisit the plan sections that depend on them
 - Items are numbered sequentially for easy reference
+
+## Review (2026-09-26)
+
+Reviewed against spec.md, plan.md, data-model.md, contracts/ and tasks.md after the two `/speckit-analyze` remediation passes. Each item is satisfied where shown.
+
+| Item | Covered in |
+|---|---|
+| CHK001, CHK002, CHK022 | FR-004: statuses, triggers, pause as an overlay, `error` after twenty failures; data-model transitions; Assumptions say "error", not "paused" |
+| CHK003 | FR-006: declined invitations are not shown; providers.md mapping |
+| CHK004 | FR-008: one user-triggered refresh per minute, not shown as an error; contracts 429 `retryAfterSeconds` |
+| CHK005 | FR-019: audit entries |
+| CHK006 | FR-020: export contents |
+| CHK007 | FR-021: five `panels.*` flags |
+| CHK008 | FR-023: date and time formats |
+| CHK009 | FR-004: palette of eight, 3:1 contrast in both themes, label always shown; T062 |
+| CHK010, CHK011 | FR-008 and FR-012: activity and visits = any authenticated request (`users.last_active_at`) |
+| CHK012 | FR-014: stale = older than the tier interval |
+| CHK013 | FR-009: preview at most 200 characters, one line |
+| CHK014, CHK015, CHK040 | FR-009: read and unread listed; unread count source; reconnect-needed count kept, marked possibly out of date |
+| CHK016 | FR-009: promotional and social sorting per provider |
+| CHK017, CHK031 | SC-001: Google and Microsoft only; timing starts at "Connect" and includes the consent screen |
+| CHK018 | FR-002: dedicated providers are exactly Google and Microsoft |
+| CHK019 | Edge Cases and FR-004: stale until twenty failures set `error` |
+| CHK020, CHK021 | FR-006 and Assumptions: display today..today+6, cache yesterday..today+7, overlap rule |
+| CHK023 | FR-003, SC-004, US3 AS-3/AS-4: revoke where supported, otherwise instructions |
+| CHK024, CHK039 | FR-006: all-day first, then start time, then account label, then title; all-day events keep their calendar date |
+| CHK025 | FR-004: paused accounts count, every connect route, buttons disabled; contracts 409 |
+| CHK026 | Edge Cases: same provider = one account; different providers = two |
+| CHK027 | FR-001: sign-in grant stays `openid email profile` |
+| CHK028 | SC-002: every trial, three per provider per night, three nights |
+| CHK029 | SC-005: Lighthouse mobile profile and Playwright `Pixel 5` |
+| CHK030 | SC-007: all three succeed within five minutes, covering two or more providers |
+| CHK032 | US3 AS-5 (calendar selection); US2 AS-4 (account filter) |
+| CHK033 | FR-001: declined and partial consent; contracts callback `scope_denied` |
+| CHK034, CHK041 | FR-018 and US3 AS-6: presets, IMAP-only or CalDAV-only, empty inbox, standards reconnect |
+| CHK035 | FR-014: two empty states per panel |
+| CHK036, CHK037 | FR-015: delete only on a complete result; forced full refetch is invisible to the user |
+| CHK038 | FR-008: no second refresh while one is queued or running |
+| CHK042 | FR-024: keyboard and screen-reader requirements |
+| CHK043 | FR-003: AES-256-GCM via `SecretBox` |
+| CHK044 | FR-022: at most three requests per refresh, backoff to one hour, `Retry-After` honoured |
+| CHK045 | Assumptions: ADR-0002 is a blocking dependency, owner Rostom, with a testing-mode fallback |
+| CHK046 | Assumptions and T079: Yahoo spike, mail-only fallback |
+| CHK047 | Assumptions: foundations shipped and checked; only Stage 2 scheduling isn't final |

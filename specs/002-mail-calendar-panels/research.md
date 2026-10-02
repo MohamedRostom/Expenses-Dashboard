@@ -34,7 +34,9 @@ provider programmes change.
   &$top=50`, keeping the `@odata.deltaLink` as the cursor; the "Focused/Other" split is ignored
   (both are the inbox). Calendar via `/me/calendarView?startDateTime&endDateTime` with
   `Prefer: outlook.timezone="UTC"`, which expands recurrences; calendar list via
-  `/me/calendars`.
+  `/me/calendars`. Microsoft returns a new refresh token on every exchange; the refresh job
+  re-seals it each time (providers.md `rotatedCredential`), otherwise the grant lapses once the
+  original token ages out.
 - **Rationale**: delta queries give incremental inbox refresh for free; `calendarView` expands
   series; `$select` keeps bodies out of the response. Publisher verification is required for
   multi-tenant consent prompts to look trustworthy and is a documentation step, not a code one.
@@ -50,8 +52,11 @@ provider programmes change.
   `ical.js` to parse the returned VEVENTs; `getctag`/`sync-token` as the cursor. IMAP client
   written in-repo as a minimal read-only subset over a `Socket` interface (`connect(host, port,
   tls)`, `write`, `readLine`, `close`): `LOGIN`, `SELECT INBOX`, `SEARCH UNSEEN` (count),
-  `UID SEARCH` for the newest fifty, `UID FETCH ... (FLAGS INTERNALDATE BODY.PEEK[HEADER.FIELDS
-  (FROM SUBJECT DATE)] BODY.PEEK[TEXT]<0.200>)` for the preview, `UIDNEXT`/`UIDVALIDITY` as the
+  `UID SEARCH` for the newest fifty, `UID FETCH ... (FLAGS INTERNALDATE BODYSTRUCTURE
+  BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])`, then `BODY.PEEK[<n>]<0.200>` for the first
+  `text/plain` part (else `text/html`, tags stripped), decoded from quoted-printable or base64
+  and its charset, for the preview; `From` and `Subject` decoded per RFC 2047. (`BODY.PEEK[TEXT]`
+  alone returns MIME boundaries or base64 for most real mail.) `UIDNEXT`/`UIDVALIDITY` as the
   cursor. `Socket` has a Node implementation on `node:tls` and a Workers implementation on
   `cloudflare:sockets` `connect()`. Credentials are the user's app password, sealed with
   `SecretBox`. Connection is verified (login plus `SELECT INBOX`, or `PROPFIND`) before the row
@@ -70,11 +75,16 @@ provider programmes change.
 - **Decision**: one `panels.refresh` job per connected account, enqueued by a
   `panels.scheduler` tick every minute that selects accounts whose `next_refresh_at` has
   passed. `next_refresh_at` is computed by `packages/core/panels/refresh-policy.ts`: five
-  minutes after the last refresh if the owner has a session seen in the last 24 hours, one hour
-  otherwise; doubled per consecutive failure up to one hour; paused after twenty failures.
-  `POST /today/refresh` sets `next_refresh_at = now` for every unpaused account of the user
-  whose last refresh is older than two minutes and returns immediately; the Today page polls
-  `GET /today` every ten seconds for thirty seconds after triggering, then every sixty seconds
+  minutes after the last refresh if the owner's `users.last_active_at` is within the last 24
+  hours, one hour otherwise; doubled per consecutive failure up to one hour; status `error`
+  after twenty failures, which the scheduler then skips. Activity is read from
+  `users.last_active_at` (written by the session middleware at most every five minutes), not
+  from `sessions`, because Stage 2 keeps sessions in KV.
+  `POST /panels/today/refresh` sets `next_refresh_at = now` for every unpaused account of the user
+  whose last refresh is older than two minutes and returns immediately;
+  `POST /connections/:id/refresh` enqueues that account's refresh directly, so a manual refresh
+  can clear `error` (FR-004); the Today page polls
+  `GET /panels/today` every ten seconds for thirty seconds after triggering, then every sixty seconds
   while visible. Each refresh uses the provider cursor (Google `syncToken`/`historyId`, Graph
   `deltaLink`, IMAP `UIDVALIDITY`+`UIDNEXT`, CalDAV `sync-token`/`ctag`) and falls back to a
   full window fetch when the provider reports the cursor invalid. Cached rows not seen in a
@@ -91,14 +101,15 @@ provider programmes change.
 - **Decision**: four tables (data-model.md). `cached_messages` keeps sender name and address,
   subject, a preview truncated to 200 characters, received time, unread flag, provider id and
   open link; after each refresh rows beyond the newest fifty per account are deleted.
-  `cached_events` keeps only occurrences between yesterday and seven days ahead. A daily
-  `panels.purge` job deletes all cached rows of users with no session seen in 30 days and marks
+  `cached_events` keeps only occurrences that overlap yesterday to seven days ahead. A daily
+  `panels.purge` job deletes all cached rows of users whose `last_active_at` is older than 30
+  days and marks
   their accounts `cache_purged_at` so the next visit triggers a full refresh with a loading
   state. Disconnect deletes the account row (cascading its cache) after revoking at the
   provider; `DELETE /me` gains a step that revokes every connection before the user cascade.
 - **Rationale**: matches FR-012 and the retention clarification exactly; the purge is a
   single delete per user, not per row; revoking before deleting means a failed revoke is
-  visible (the account shows an error) rather than silently leaving a live grant behind.
+  recorded in the audit log (FR-003) rather than silently leaving a live grant behind.
 - **Alternatives considered**: keeping bodies for search (out of scope, and it changes the
   privacy statement); per-row TTLs (more churn for no benefit).
 
@@ -147,12 +158,13 @@ provider programmes change.
 
 ## R9. Today page behaviour
 
-- **Decision**: `GET /today` returns both panels in one payload (events grouped by day, messages
-  newest first with per-account unread counts, per-account status, `refreshedAt` per account,
+- **Decision**: `GET /panels/today` returns both panels in one payload (events grouped by day, messages
+  newest first with per-account unread counts, per-account status, `lastRefreshAt` per account,
   a `stale` flag when older than the tier's interval). The page renders cached data immediately,
-  calls `POST /today/refresh` on open when any account's data is older than two minutes, and
+  calls `POST /panels/today/refresh` on open when any account's data is older than two minutes, and
   polls as in R4. Each panel has loading, empty, stale, reconnect-needed and error states from
-  the baseline `PanelState` component; account chips carry label and colour; filtering by
+  `PanelFrame` in `packages/ui` (spec 004), or the baseline
+  `apps/web/src/components/PanelState.vue` if spec 004 has not landed when Slice A starts; account chips carry label and colour; filtering by
   account is client-side. The month view does not import the today store.
 - **Rationale**: one request keeps SC-005 achievable; cached-first rendering makes the on-open
   refresh invisible unless something changed.
@@ -168,7 +180,8 @@ provider programmes change.
   server implementing the same transcript; API suite covers every connection route with the
   ownership matrix and the revoke-before-delete rule; `infra/mocks` gains fake Google, Graph,
   CalDAV and IMAP servers used by compose and e2e-ci; e2e-local nightly runs against real test
-  accounts (one Google, one Microsoft, one Fastmail or iCloud) with three trials per provider
+  accounts (one Google, one Microsoft, one Fastmail or iCloud, one Yahoo for its preset) with
+  three trials per provider
   for SC-002; axe and Lighthouse on the Today page and Connections settings.
 - **Rationale**: the constitution's pyramid; real accounts cannot run in CI, so the recorded
   fixtures are the contract and the nightly run proves them against reality.
@@ -184,4 +197,6 @@ provider programmes change.
 | Google OAuth consent screen verified for `calendar.readonly` | Pending | Slice B production flag |
 | Microsoft app registration and publisher verification | Pending | Slice B and C production flags |
 | CASA assessment for `gmail.readonly` | Pending, budgeted in ADR-0004 | Slice D production flag |
-| Test accounts for e2e-local (Google, Microsoft, Fastmail or iCloud) | Pending | Slice B nightly |
+| Self-hosted runner `desk-local` | Done (registered and online, 2026-09-26) | Slice B nightly |
+| Required reviewers on the `local-secrets` environment | Pending (environment exists, no reviewers) | Slice B nightly |
+| Test accounts for e2e-local (Google, Microsoft, Fastmail or iCloud, Yahoo) | Pending | Slice B nightly |

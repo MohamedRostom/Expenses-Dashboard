@@ -16,6 +16,8 @@ Each time a phase ships and a deploy turns up a defect, the defect is added here
 
 A bug belongs here when it was found on a deployed environment (preview, staging or production) or in a post-deploy check, and it is not already covered by an open task in another spec. A bug fixed on the spot during a deploy (as the promote-production and jobs safety-net failures of 2026-09-26 were) does not need an entry.
 
+**Final stage.** The Stage 2 cut-over to Cloudflare (moved here from spec 001 T119 on 2026-09-26) is the last task of this spec, `tasks.md` T044. It runs after specs 002–004 and the registered fixes, so everything before it is built and deployed on Stage 1 (Fly.io).
+
 ## Bug Register
 
 | ID | Title | Found | Where | Severity | Status |

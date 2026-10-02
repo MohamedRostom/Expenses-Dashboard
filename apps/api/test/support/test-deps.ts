@@ -74,6 +74,8 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     breachChecker: { check: async () => false },
     google: undefined,
     notion: undefined,
+    googlePanels: undefined,
+    microsoft: undefined,
     rates: new FakeRates(),
     jobs: undefined,
     clock: { now: () => new Date('2026-09-18T00:00:00Z') },

@@ -4,7 +4,14 @@ export {
   FeedbackRequest,
   type FeedbackRequestT,
 } from './health.js';
-export { ErrorCode, type ErrorCodeT, ErrorEnvelope, type ErrorEnvelopeT } from './errors.js';
+export {
+  ErrorCode,
+  type ErrorCodeT,
+  ErrorEnvelope,
+  type ErrorEnvelopeT,
+  AccountErrorCode,
+  type AccountErrorCodeT,
+} from './errors.js';
 export {
   UserResponse,
   type UserResponseT,
@@ -177,3 +184,46 @@ export {
   ListExpenseVersionsResponse,
   type ListExpenseVersionsResponseT,
 } from './notion.js';
+export {
+  TodayEvent,
+  type TodayEventT,
+  TodayMessage,
+  type TodayMessageT,
+  TodayAccount,
+  type TodayAccountT,
+  TodayDay,
+  type TodayDayT,
+  TodayResponse,
+  type TodayResponseT,
+  RefreshResponse,
+  type RefreshResponseT,
+} from './today.js';
+export {
+  Capability,
+  type CapabilityT,
+  ProviderId,
+  type ProviderIdT,
+  Provider,
+  type ProviderT,
+  ProviderPreset,
+  type ProviderPresetT,
+  Calendar,
+  type CalendarT,
+  Account,
+  type AccountT,
+  ConnectionsResponse,
+  type ConnectionsResponseT,
+  ProvidersResponse,
+  type ProvidersResponseT,
+  StandardsCreate,
+  type StandardsCreateT,
+  StandardsCreateResponse,
+  type StandardsCreateResponseT,
+  AccountPatch,
+  type AccountPatchT,
+  CalendarsResponse,
+  type CalendarsResponseT,
+  ReconnectResponse,
+  type ReconnectResponseT,
+} from './connections.js';
+export { PROVIDER_PRIVACY_TEXT, type ProviderPrivacyText } from './privacy-text.js';

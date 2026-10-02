@@ -323,7 +323,7 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 - [x] T116 [US10] Tag `v0.1.0` per roadmap Phase 5 — tagged; `v0.1.3` (2026-09-26) is the first release to pass staging deploy, smoke and promote to `ros-desk-production` end to end (deploy-fly run 36241427428)
 - [x] T117 [US10] Implement Stage 2 bindings in `apps/api/src/worker.ts` (Hyperdrive connection string, `KvSessionStore` in `apps/api/src/adapters/session-store-kv.ts`, cron `scheduled` handler calling `runDueJobs`) and `infra/cloudflare/wrangler.toml` (Hyperdrive, KV, cron triggers, Pages assets)
 - [x] T118 [US10] Add `.github/workflows/deploy-cf.yml` (tag `v1.*`: `wrangler deploy`, Pages upload of `apps/web/dist`, full e2e-ci against the Cloudflare preview, smoke on the custom domain)
-- [ ] T119 [US10] Write `docs/runbooks/cutover.md` (read-only window on Fly, optional pg_dump to Neon, DNS flip, per-user totals before and after, one-hour rollback path, 30-day read-only fallback, Fly scale-to-zero) and execute it to tag `v1.0.0` — runbook written and revised 2026-09-26 for the shared Neon database (no dump, no read-only window; sessions don't carry over KV↔Postgres); **execution remains open, owner-only, post-beta**
+- [x] T119 [US10] **Moved 2026-09-26 (Rostom) to `specs/005-fix-found-bugs/tasks.md` T044, the final stage of spec 005; not executed here.** Write `docs/runbooks/cutover.md` (read-only window on Fly, optional pg_dump to Neon, DNS flip, per-user totals before and after, one-hour rollback path, 30-day read-only fallback, Fly scale-to-zero) and execute it to tag `v1.0.0` — runbook written and revised 2026-09-26 for the shared Neon database (no dump, no read-only window; sessions don't carry over KV↔Postgres); **execution remains open, owner-only, post-beta**
 
 **Checkpoint**: SC-007 and SC-008 met.
 
@@ -350,7 +350,7 @@ Monorepo per plan.md: `apps/web`, `apps/api`, `apps/landing`, `packages/{core,co
 - **US3 (Phase 5)** and **US4 (Phase 6)**: depend on US2 (expenses, categories seed); US3 and US4 can run in parallel
 - **US5 (Phase 7)** and **US6 (Phase 8)**: depend on US2; can run in parallel with each other
 - **US7 (Phase 9)**, **US8 (Phase 10)**, **US9 (Phase 11)**: depend on US2 to US4; can run in parallel with each other; US9 publication waits for ADR-0002
-- **US10 (Phase 12)**: depends on all stories for the beta; T117 to T119 depend on T115/T116 (beta first)
+- **US10 (Phase 12)**: depends on all stories for the beta; T117 to T119 depend on T115/T116 (beta first); T119 now runs as 005 T044
 - **Polish (Phase 13)**: T120 and T123 run continuously; T121/T122 any time after Foundational; T124 when the owner decides
 
 ### User Story Dependencies
@@ -405,7 +405,7 @@ T044 apps/web/src/views/{Register,Login,Verify,Forgot,Reset}View.vue
 2. US3 + US4 → Phase 2 complete
 3. US5 + US6 → Phase 3, first e2e-local nightly
 4. US7 + US8 + US9 → Phase 4, installable app and landing (name pending)
-5. US10 → beta tag `v0.1.0`, then cut-over tag `v1.0.0`
+5. US10 → beta tag `v0.1.0`, then cut-over tag `v1.0.0` (executed as the final stage of spec 005)
 
 ### Notes
 

@@ -16,3 +16,5 @@ export { default as TrendSparkline } from './charts/TrendSparkline.vue';
 export type { TrendPoint } from './charts/TrendSparkline.vue';
 export { default as YearBars } from './charts/YearBars.vue';
 export type { YearBarData } from './charts/YearBars.vue';
+export { PALETTE_COLOURS } from './palette.js';
+export { contrastRatio } from './contrast.js';

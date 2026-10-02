@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import { createDb } from './index.js';
 import { setGlobalFlag, setUserFlag } from './flags.js';
 
@@ -26,7 +27,8 @@ export async function runFlagsCli(argv: string[], databaseUrl: string | undefine
   }
 }
 
-const isMain = process.argv[1] && import.meta.url === new URL(process.argv[1], 'file:').href;
+const isMain =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
   await runFlagsCli(process.argv.slice(2), process.env['DATABASE_URL']);
   console.log('flag updated');

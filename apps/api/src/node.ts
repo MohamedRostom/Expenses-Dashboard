@@ -17,10 +17,13 @@ import type { Db as QueryDb } from './adapters/rate-limiter.js';
 import { FrankfurterRates, FakeRates } from '@desk/connectors/rates';
 import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
+import { socketNodeConnect } from './adapters/socket-node.js';
+import { resolveHostNode } from './adapters/host-resolver-node.js';
 import { registerAllJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
 import { createRatesService } from './services/rates.js';
+import { googleOAuthEndpoints, microsoftOAuthEndpoints } from './lib/credential.js';
 
 // Stage 1 entry point (Fly.io container). Migrations run on start; the built web app is
 // served from ./public next to the bundle so one process serves both.
@@ -91,9 +94,14 @@ const app = createApp({
   breachChecker: new HibpBreachChecker(),
   rates: ratesProvider,
   jobs: jobRunner,
+  runJobsNow: () => jobRunner.runDueJobs(),
+  socketConnect: socketNodeConnect,
+  hostResolver: resolveHostNode,
+  standardsAllowPrivateHosts: env.STANDARDS_ALLOW_PRIVATE_HOSTS,
   clock,
   build: { version: pkg.version, sha: env.GIT_SHA },
   appOrigin: env.APP_ORIGIN,
+  registerIpLimitPerHour: env.REGISTER_IP_LIMIT_PER_HOUR,
   logger: createNodeLogger(env.SENTRY_DSN),
   google:
     env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
@@ -112,6 +120,27 @@ const app = createApp({
           apiBase: env.NOTION_API_BASE,
         }
       : undefined,
+  googlePanels:
+    env.GOOGLE_PANELS_CLIENT_ID && env.GOOGLE_PANELS_CLIENT_SECRET
+      ? {
+          clientId: env.GOOGLE_PANELS_CLIENT_ID,
+          clientSecret: env.GOOGLE_PANELS_CLIENT_SECRET,
+        }
+      : undefined,
+  microsoft:
+    env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
+      ? {
+          clientId: env.MICROSOFT_CLIENT_ID,
+          clientSecret: env.MICROSOFT_CLIENT_SECRET,
+        }
+      : undefined,
+  googleOAuthEndpoints: googleOAuthEndpoints(env.GOOGLE_OAUTH_BASE, env.GOOGLE_OAUTH_BROWSER_BASE),
+  microsoftOAuthEndpoints: microsoftOAuthEndpoints(
+    env.MICROSOFT_LOGIN_BASE,
+    env.MICROSOFT_LOGIN_BROWSER_BASE,
+  ),
+  googleApiBase: env.GOOGLE_API_BASE,
+  graphApiBase: env.GRAPH_API_BASE,
 });
 
 app.use('/*', serveStatic({ root: './public' }));

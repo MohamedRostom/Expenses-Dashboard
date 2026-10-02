@@ -10,6 +10,7 @@ import {
   categories as categoriesTable,
   expenses as expensesTable,
   importBatches as importBatchesTable,
+  connectedAccounts as connectedAccountsTable,
   notionConnections,
   type Db,
 } from '@desk/db';
@@ -25,7 +26,7 @@ import {
   type ExportDocumentT,
   type ConfirmEmailResponseT,
 } from '@desk/contracts';
-import type { AppVariables } from '../app.js';
+import type { AppVariables, JobsDep } from '../app.js';
 import type { SessionUser } from '../middleware/session.js';
 import type { PasswordHasher } from '../adapters/password.js';
 import type { Mailer } from '../adapters/mailer.js';
@@ -34,6 +35,7 @@ import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
 import { emailChangeMail } from '../mail/email-change.js';
+import type { ConnectionsService } from '../services/connections.js';
 
 export type MeRoutesDeps = {
   db: Db;
@@ -43,6 +45,9 @@ export type MeRoutesDeps = {
   sessionStore: SessionStore;
   clock: { now(): Date };
   appOrigin: string;
+  /** Revokes every connected account at its provider before the DELETE /me cascade. */
+  connections: ConnectionsService;
+  jobs?: JobsDep;
 };
 
 function toUserResponse(u: SessionUser): MeResponseT['user'] {
@@ -67,7 +72,7 @@ const EMAIL_CHANGE_PREFIX = 'email_change:';
 
 /** GET/PATCH /me, /me/sessions, /me/export, DELETE /me, /me/email(/confirm), password/oauth removal. */
 export function createMeRoutes(deps: MeRoutesDeps) {
-  const { db, hasher, mailer, sessionStore, clock, appOrigin, limiter } = deps;
+  const { db, hasher, mailer, sessionStore, clock, appOrigin, limiter, connections, jobs } = deps;
   const app = new Hono<{ Variables: AppVariables }>();
 
   app.get('/me', (c) => {
@@ -180,12 +185,25 @@ export function createMeRoutes(deps: MeRoutesDeps) {
   app.get('/me/export', async (c) => {
     const user = requireAuth(c);
 
-    const [categories, expenses, importBatches, [notion]] = await Promise.all([
-      db.select().from(categoriesTable).where(eq(categoriesTable.userId, user.id)),
-      db.select().from(expensesTable).where(eq(expensesTable.userId, user.id)),
-      db.select().from(importBatchesTable).where(eq(importBatchesTable.userId, user.id)),
-      db.select().from(notionConnections).where(eq(notionConnections.userId, user.id)).limit(1),
-    ]);
+    const [categories, expenses, importBatches, [notion], connectedAccountRows] = await Promise.all(
+      [
+        db.select().from(categoriesTable).where(eq(categoriesTable.userId, user.id)),
+        db.select().from(expensesTable).where(eq(expensesTable.userId, user.id)),
+        db.select().from(importBatchesTable).where(eq(importBatchesTable.userId, user.id)),
+        db.select().from(notionConnections).where(eq(notionConnections.userId, user.id)).limit(1),
+        db
+          .select({
+            provider: connectedAccountsTable.provider,
+            address: connectedAccountsTable.address,
+            label: connectedAccountsTable.label,
+            capabilities: connectedAccountsTable.capabilities,
+            status: connectedAccountsTable.status,
+            pausedAt: connectedAccountsTable.pausedAt,
+          })
+          .from(connectedAccountsTable)
+          .where(eq(connectedAccountsTable.userId, user.id)),
+      ],
+    );
 
     const doc: ExportDocumentT = {
       exportedAt: clock.now().toISOString(),
@@ -196,6 +214,15 @@ export function createMeRoutes(deps: MeRoutesDeps) {
       notion: notion
         ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
         : { connected: false, direction: null, databaseId: null },
+      connections: connectedAccountRows.map((row) => ({
+        provider: row.provider as 'google' | 'microsoft' | 'standards',
+        address: row.address,
+        label: row.label,
+        capabilities: row.capabilities as ('mail' | 'calendar')[],
+        status: row.pausedAt
+          ? 'paused'
+          : (row.status as 'connected' | 'reconnect_needed' | 'error'),
+      })),
       version: 1,
     };
 
@@ -223,6 +250,12 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     // deletion) — pseudonymise with a one-way hash into `details` before the user row goes,
     // since the FK itself only nulls the column and knows nothing about pseudonymisation.
     const pseudonym = await sha256Hex(user.id);
+
+    // contracts/api.md: DELETE /me revokes every connected account at its provider (best
+    // effort, audited) before the cascade; a running/queued panels.refresh is cancelled first
+    // so it can't race a revoked/soon-to-be-deleted account.
+    await jobs?.cancelForUser?.(user.id);
+    await connections.revokeAllForUser(user.id);
 
     await db.transaction(async (tx) => {
       await tx

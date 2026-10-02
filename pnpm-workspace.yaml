@@ -17,6 +17,7 @@ allowBuilds:
 # has two high advisories (GHSA-jmr9-qjv8-65gv, GHSA-7pqw-9j4j-h8q3) with no patched version as of
 # 2026-09-20 — `pnpm audit --fix` can't override it either; see ci.yml's `lint` job comment.
 overrides:
+  basic-ftp@<=6.2.0: ^6.2.1
   esbuild@<=0.24.2: ^0.25.0
   tmp@<0.2.6: ^0.2.6
   tmp@<=0.2.3: ^0.2.4

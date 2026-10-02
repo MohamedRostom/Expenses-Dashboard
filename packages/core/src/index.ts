@@ -44,3 +44,18 @@ export {
   type Skipped,
   type DiffResult,
 } from './sync/diff.js';
+export {
+  tierFor,
+  nextDueAt,
+  statusAfterFailures,
+  shouldRefreshOnOpen,
+  ERROR_AFTER_FAILURES,
+  type Tier,
+} from './panels/refresh-policy.js';
+export { expandToDays, type Occurrence, type DayBucket } from './panels/window.js';
+export {
+  mergeMessages,
+  unreadCountFor,
+  type MessageRow,
+  type MergedMessageRow,
+} from './panels/merge.js';

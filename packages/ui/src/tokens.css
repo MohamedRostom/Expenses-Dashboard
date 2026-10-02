@@ -11,6 +11,19 @@
      this token directly, not just a light background tint of it. Darkened to restore AA. */
   --color-warn: #8f5810;
   --color-critical: #a83a2e;
+  /* T062: fixed eight-colour connected-account palette (FR-004, FR-024). Each value is checked
+     by packages/ui/src/palette.test.ts to be >= 3:1 (WCAG 1.4.11 non-text contrast) against
+     --color-bg in both themes. Names match the server's COLOUR_PALETTE ids
+     (apps/api/src/services/connections.ts) so an account's stored colour id maps straight to
+     a token. */
+  --palette-teal: #0f6b56;
+  --palette-blue: #1a5fb4;
+  --palette-violet: #6a3fa0;
+  --palette-pink: #a02a5e;
+  --palette-orange: #a2450a;
+  --palette-amber: #8a5a05;
+  --palette-green: #2d6b2f;
+  --palette-slate: #41505f;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
@@ -20,6 +33,14 @@
     /* The light-mode value darkened above would fail even worse here (~3.8:1 already, before
        darkening) against this dark background — needs a lighter, not darker, variant. */
     --color-warn: #d99a4e;
+    --palette-teal: #5fd6b8;
+    --palette-blue: #7fb2ff;
+    --palette-violet: #c9a6ff;
+    --palette-pink: #ff9bc4;
+    --palette-orange: #ffb066;
+    --palette-amber: #e8c25a;
+    --palette-green: #8fdc8f;
+    --palette-slate: #b9c6d4;
   }
 }
 :root[data-theme='dark'] {
@@ -27,4 +48,12 @@
   --color-fg: #f2f4f7;
   --color-accent: #5fbf9f;
   --color-warn: #d99a4e;
+  --palette-teal: #5fd6b8;
+  --palette-blue: #7fb2ff;
+  --palette-violet: #c9a6ff;
+  --palette-pink: #ff9bc4;
+  --palette-orange: #ffb066;
+  --palette-amber: #e8c25a;
+  --palette-green: #8fdc8f;
+  --palette-slate: #b9c6d4;
 }
