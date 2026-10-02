@@ -112,15 +112,38 @@ export function createGoogleMockApp(fake: GoogleFake = defaultFake()): Hono {
     return c.json({ items: account.fake.rawCalendars() });
   });
 
-  // ponytail: no timeMin/timeMax filtering on a full fetch — e2e seeds only events near "today",
-  // and cached_events trims out-of-window rows downstream anyway. A syncToken query does get
-  // honoured (T085): only items changed since it (tombstones included) come back.
+  // A syncToken query does get honoured (T085): only items changed since it (tombstones
+  // included) come back. A full fetch (no syncToken) is windowed by timeMin/timeMax — the
+  // real API does this and the calendar source expects it; the fake's fetchWindow does the
+  // same, so mirror that here for the HTTP mock.
   app.get('/calendar/v3/calendars/:calendarId/events', (c) => {
     const account = accountFor(keyFromAuth(c));
     if (account.revoked) return c.json({ error: { message: 'invalid credentials' } }, 401);
     const calendarId = decodeURIComponent(c.req.param('calendarId'));
     const syncToken = c.req.query('syncToken') ?? undefined;
-    const { items, nextSyncToken } = account.fake.rawEventsPage(calendarId, syncToken);
+    const timeMin = c.req.query('timeMin') ?? undefined;
+    const timeMax = c.req.query('timeMax') ?? undefined;
+    let items = account.fake.rawEventsPage(calendarId, syncToken).items;
+    if (!syncToken && (timeMin || timeMax)) {
+      const minMs = timeMin ? new Date(timeMin).getTime() : -Infinity;
+      const maxMs = timeMax ? new Date(timeMax).getTime() : Infinity;
+      items = items.filter((item) => {
+        // Parse start/end from raw GoogleEventItem (same logic as toOccurrence in calendar.ts)
+        let startMs: number;
+        let endMs: number;
+        if (item.start?.date) {
+          startMs = new Date(item.start.date + 'T00:00:00Z').getTime();
+          endMs = new Date((item.end?.date || item.start.date) + 'T00:00:00Z').getTime();
+        } else if (item.start?.dateTime) {
+          startMs = new Date(item.start.dateTime).getTime();
+          endMs = new Date(item.end?.dateTime || item.start.dateTime).getTime();
+        } else {
+          return false;
+        }
+        return startMs < maxMs && endMs > minMs;
+      });
+    }
+    const { nextSyncToken } = account.fake.rawEventsPage(calendarId);
     return c.json({ items, nextSyncToken });
   });
 
