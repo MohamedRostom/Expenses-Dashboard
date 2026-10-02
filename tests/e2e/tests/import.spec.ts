@@ -46,7 +46,7 @@ test('import: map columns, preview, commit, re-import reports duplicates, undo',
   await expect(summary).toContainText('errors 0');
 
   // The imported expenses now show up on the month view for their dates (September 2026).
-  await page.goto('/');
+  await page.goto('/?month=2026-09');
   await expect(page.getByText('Coffee and pastry')).toBeVisible();
 
   // Re-importing the same file reports every row as a duplicate.
