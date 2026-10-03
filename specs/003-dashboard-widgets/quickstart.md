@@ -27,7 +27,12 @@ pnpm test:e2e -- --project=ci
    add currency widget with EUR; rate, date and both changes visible; weekend (frozen clock)
    names the Friday; axe on empty, loading, ready, stale and error states at 360 px and
    desktop; Lighthouse on `/` with and without eight widgets, delta ≤ 100 ms (SC-003).
-5. Expected outcome: US1 independent test passes; strip on the month view only.
+5. Clarify 2026-10-03 (API suite): change the default currency to a code already in the widget
+   → that row returns `isDefault: true`, settings unchanged, and changing the default back
+   restores its figures; make the fake range call fail on add → widget created, today's rate
+   shown, `changesPending: true`, and the next daily rate fetch enqueues the backfill;
+   `GET /healthz/widgets` reports the range call in `frankfurter.range` counts.
+6. Expected outcome: US1 independent test passes; strip on the month view only.
 
 ## Slice B: weather widget and places (US2)
 
@@ -41,7 +46,12 @@ pnpm test:e2e -- --project=ci
    `widgets.weather_paused_until` is set; `resolve` never persists coordinates (assert `places`
    and `audit_log` rows); `apps/api/test/widgets-weather.test.ts`: reading shared between two
    users with the same rounded place, refresh job fetches only active places, 429 from the fake
-   sets the pause value, stale after one hour, `temperatureUnit` round-trips through `/me`.
+   sets the pause value, stale after one hour, `temperatureUnit` round-trips through `/me`;
+   only places of users with `last_active_at` within 24 hours are refreshed;
+   `apps/api/test/health-widgets.test.ts`: 200 when healthy, 503 while paused, 200 after two
+   failed calls and 503 after the third, still 503 a day later with no calls, 200 after one
+   success, counts increment per call, body is `{ status }` only; the daily summary log line
+   carries the counts and names the source and cause (SC-008).
 4. Playwright (ci): add weather widget by typing "Manch" → choose Manchester, UK; temperature
    and outlook appear; switch to °F; mock pause → stale with "source limit reached"; "use my
    current location" with Playwright geolocation granted → confirmation of the nearest place;
@@ -69,15 +79,25 @@ pnpm test:e2e -- --project=ci
    first-of-month with no expenses yields zero spent and no division error.
 2. API suite: with a seeded month (budget, Rent recorded, Internet not), spend pace equals the
    month view's totals; fixed costs lists Internet only; sunrise widget reuses the weather
-   widget's place and reports `showZone` only when zones differ.
+   widget's place and reports `showZone` only when zones differ; with two weather widgets the
+   sunrise widget takes the top one's place, and changing either place afterwards leaves the
+   other unchanged; a polar fixture returns `polar: 'day'`; with the user's zone at UTC+13 and
+   UTC-10 near midnight, days left and the month window equal the month view's.
 3. Playwright (ci): all three widgets render from seeded data with no Open-Meteo call for the
    first two (mock call count).
 4. Expected outcome: US4 independent test passes.
 
-## Slice E: Today page strip (after spec 002 Slice A)
+## Slice E: Today page strip (spec 002 shipped)
 
-1. Playwright (ci): the same arrangement appears on `/today` and `/`; a reorder on one is
-   visible on the other after reload.
+1. Playwright (ci, `panels.today` on): the same arrangement appears on `/today` and `/`; a
+   reorder on one is visible on the other after reload; the strip renders after the calendar
+   and inbox panels and still renders when the mocked Today endpoint errors.
+2. Playwright (ci, `panels.today` off): `/today` redirects as before, the strip shows on `/`
+   with the same widgets and order.
+3. Unit (`stores/widgets.test.ts`): polling stops while the document is hidden and refreshes on
+   return when a reading is past its window.
+4. Lighthouse/Playwright timing on `/today` with mocked panels, with and without eight
+   widgets: the calendar and inbox panels appear no more than 100 ms later (SC-003).
 
 ## Cross-slice gates
 

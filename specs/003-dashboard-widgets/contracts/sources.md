@@ -36,7 +36,7 @@ RatesProvider (existing)
   range(from: Date, to: Date, base: string, quotes: string[]): { date, rates: { [quote]: string } }[]   // new
 ```
 
-- `range` calls `api.frankfurter.app/<from>..<to>?from=<base>&to=<quotes>`; rates are decimal
+- `range` calls `api.frankfurter.dev/v1/<from>..<to>?from=<base>&to=<quotes>`; rates are decimal
   strings, never parsed to floats; missing dates (weekends, holidays) are simply absent and the
   backfill job stores only published dates.
 - `FakeRates` gains `range` seeded from `fixtures/range-*.json`.

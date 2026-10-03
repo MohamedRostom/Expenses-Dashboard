@@ -82,6 +82,81 @@
 - [ ] CHK049 Is the dependency of the Today page strip on spec 002 Slice A stated with what ships if 002 is delayed (month view strip alone)? [Dependency, Spec §FR-001, §Assumptions, Plan §Slice E]
 - [ ] CHK050 Is the assumption that a free public product counts as "non-commercial" for the weather source resolved and referenced (ADR-0005) rather than left as "part of the source ADR"? [Assumption, Spec §Assumptions]
 
+## Revision 2026-10-03: Requirement Completeness
+
+Items CHK051 onward review the text added on 2026-10-03 (reconciliation with spec 002 as built, five clarifications, FR-019).
+
+- [ ] CHK051 Does FR-019 name, or point to a document that names, the "existing operator monitoring" the signals go through, so a reviewer can tell whether it exists today? [Clarity, Spec §FR-019]
+- [ ] CHK052 Is a retention period for the operator signal data stated in the spec, or is the plan's 90 days only a plan choice? [Gap, Spec §FR-019]
+- [ ] CHK053 Does the spec state who may read the operator signals and whether they may be exposed without sign-in, given they describe usage of the product? [Gap, Security, Spec §FR-019]
+- [ ] CHK054 Is there a requirement for what the user sees on the sunrise and sunset widget when the place has no sunrise or sunset that day (polar day or night)? The plan adds `polar`; the spec does not. [Gap, Spec §FR-018]
+- [ ] CHK055 Is it specified whether a currency row showing "your default currency" counts toward the six-currency cap in FR-008? [Gap, Spec §FR-008, §FR-010]
+- [ ] CHK056 Is an upper bound defined for how long changes may read "not available yet" before the widget reports a cause (e.g. the rate source never returns the history)? [Edge Case, Gap, Spec §FR-008]
+- [ ] CHK057 Is the effect of the user changing their time zone setting mid-month on spend pace and upcoming fixed costs specified? [Edge Case, Gap, Spec §FR-015]
+
+## Revision 2026-10-03: Requirement Clarity
+
+- [ ] CHK058 Is "users who can see the Today page" (FR-001) defined in terms a tester can set up: per user, per deployment, or both? [Clarity, Spec §FR-001]
+- [ ] CHK059 Is "catches up when the page is shown again" (FR-003) as precise as the clarification it came from ("if its figures are past their refresh window")? [Clarity, Spec §FR-003, Clarifications 2026-10-03]
+- [ ] CHK060 Is "failed continuously for an hour" (FR-019) defined for an hour in which the source was not called at all? [Ambiguity, Spec §FR-019]
+- [ ] CHK061 Is "a source's limit is reached" defined for the rates source as well as the weather source, or is it weather-only? [Ambiguity, Spec §FR-019]
+- [ ] CHK062 Is "topmost weather widget" unambiguous given the arrangement is shared by two pages and a user can have up to eight widgets? [Clarity, Spec §FR-018]
+
+## Revision 2026-10-03: Requirement Consistency
+
+- [ ] CHK063 Is the edge case "the user removes the weather widget but keeps sunrise and sunset: the place stays with the remaining widget" consistent with FR-018's "independent of any weather widget afterwards"? [Consistency, Spec §Edge Cases, §FR-018]
+- [ ] CHK064 Does FR-003's statement "these four come from the server" still hold after the expired-session sentence was added, and does its cause list match the plan's extended error kinds (`source_unreachable`, `source_limit_reached`, `place_not_found`, `rate_unavailable`)? [Consistency, Spec §FR-003, Plan research R14]
+- [ ] CHK065 Is "active" defined once and reused: FR-013 ("any signed-in request"), the Assumptions bullet ("active in the last 24 hours") and SC-004 ("while the user is active")? [Consistency, Spec §FR-013, §SC-004, §Assumptions]
+- [ ] CHK066 Does the user-time-zone rule in FR-015 agree with SC-001's "an expense entered the same day", i.e. is that day also the user's zone day? [Consistency, Spec §FR-015, §SC-001]
+- [ ] CHK067 Is the Today page strip's ordering rule (after the calendar and inbox panels) stated with the same strength (MUST) as the month view's ordering? [Consistency, Spec §FR-001]
+- [ ] CHK068 With place rows shared between widgets, does the export rule in FR-006 and FR-014 say whether a place appears once per widget or once per user? [Clarity, Spec §FR-006, §FR-014]
+
+## Revision 2026-10-03: Acceptance Criteria Quality
+
+- [ ] CHK069 Does FR-019 have a measurable success criterion (e.g. time from a source limit or outage to the operator alert)? [Acceptance Criteria, Gap, Spec §FR-019]
+- [ ] CHK070 Is there a Today-page counterpart to SC-003 (the strip must not lengthen the Today page's load), or is SC-003 deliberately month-view only? [Gap, Spec §SC-003, §FR-001]
+
+## Revision 2026-10-03: Scenario Coverage
+
+- [ ] CHK071 Is the reverse of the new edge case stated: a widget strip in an error state must not affect the Today page's calendar and inbox panels? [Coverage, Spec §Edge Cases]
+- [ ] CHK072 Do the user stories carry an acceptance scenario for the Today page surface (strip present when the Today page is on, month view only when off), or is it covered only by FR-001 and the edge cases? [Coverage, Spec §FR-001, §US3]
+
+## Revision 2026-10-03: Dependencies & Assumptions
+
+- [ ] CHK073 Are the 2026-10-03 clarification answers given by the agent flagged for owner confirmation, so they are not read as owner decisions under the constitution's "providers and product choices are the owner's call"? [Assumption, Spec §Clarifications 2026-10-03]
+- [ ] CHK074 Is FR-019's dependency on the uptime monitor's alert routing (still an open owner to-do in `docs/runbooks/uptime.md`) recorded in the spec's Assumptions, not only in the plan? [Dependency, Gap, Spec §FR-019]
+- [ ] CHK075 Does the spec state that the Today page strip cannot be observed by production users until the Today page's operator switch is on, so SC-002 and SC-007 are measured on the month view? [Dependency, Spec §Assumptions, §SC-002, §SC-007]
+
+## Second clarify pass 2026-10-03: Requirement Clarity
+
+Items CHK076 onward review the text changed by the second clarify pass (FR-008, FR-018, FR-019, SC-003, SC-008, new edge cases).
+
+- [ ] CHK076 Does the "within 20 minutes" alert bound in FR-019 state where the clock starts: at the first failed call, or once the 60-minute all-failed window is satisfied (which could put the alert up to 80 minutes after the first failure)? [Ambiguity, Spec §FR-019]
+- [ ] CHK077 With one public status that says only "healthy" or "degraded", is it specified how the operator tells which source (weather or rates) and which condition (limit or failure) caused it? [Clarity, Spec §FR-019]
+- [ ] CHK078 Is "visible only in the operator's logs" specific enough to satisfy "the operator MUST be able to see, per day ..." — is the frequency (e.g. one summary a day) and how long those logs are kept stated? [Clarity, Spec §FR-019]
+- [ ] CHK079 Does SC-003's "within one second of the page appearing" now apply to the Today page as well as the month view, or only the new 100 ms clause? [Clarity, Spec §SC-003]
+
+## Second clarify pass 2026-10-03: Requirement Consistency
+
+- [ ] CHK080 Is FR-019 the single statement of the failure rule, given the first 2026-10-03 session still records "failed continuously for an hour"? Is it clear the later session supersedes it? [Consistency, Spec §Clarifications, §FR-019]
+- [ ] CHK081 Is the "Sun up all day" / "Sun down all day" state placed within FR-003's state list (ready, not empty or error), so the two requirements cannot be read as conflicting? [Consistency, Spec §FR-003, §FR-018]
+- [ ] CHK082 Do FR-008 ("no time limit") and FR-019 agree on what makes a lasting rate-history failure visible to the operator, given rate-history calls happen at most once a day per pair and FR-019's failure rule looks at a 60-minute window? [Conflict, Spec §FR-008, §FR-019]
+
+## Second clarify pass 2026-10-03: Acceptance Criteria Quality
+
+- [ ] CHK083 Does SC-008 say where the rehearsal runs (staging or production), who runs it, and how often, so it can be signed off? [Measurability, Spec §SC-008]
+- [ ] CHK084 Does SC-008 cover the rates source as well as the weather source, since FR-019 applies to both? [Coverage, Spec §SC-008, §FR-019]
+- [ ] CHK085 Is the Today page baseline for SC-003's 100 ms comparison defined (connected accounts or none, panels from cache or fresh)? [Measurability, Spec §SC-003]
+
+## Second clarify pass 2026-10-03: Edge Case Coverage
+
+- [ ] CHK086 Is the near-polar case covered where a sunrise happens but the sunset falls after local midnight (or the reverse), so "today's sunrise and sunset" spans two dates? [Edge Case, Gap, Spec §FR-018]
+- [ ] CHK087 Is the user told anything when changes have read "not available yet" for many days, or is indefinite silence intended? [Edge Case, Spec §FR-008, §Edge Cases]
+
+## Second clarify pass 2026-10-03: Non-Functional Requirements
+
+- [ ] CHK088 Is the extra load on the rate source from daily history retries bounded (e.g. at most one retry per currency pair per day across all users) so it cannot grow with the number of users? [Gap, Spec §FR-008, §Assumptions]
+
 ## Notes
 
 - Mark items `[x]` only after review confirms the requirement-quality criterion is satisfied
@@ -90,3 +165,5 @@
 - `checklists/requirements.md` has a separate built-in lifecycle maintained by `/speckit-specify` and `/speckit-clarify`
 - Conflicts worth resolving before `/speckit-tasks`: CHK023 (shared caches vs FR-006), CHK024 (nearest vs approximate place), CHK025 (error cause vocabulary), CHK026 (entity settings list), CHK031 (plan still mentions reverse lookup)
 - Items are numbered sequentially for easy reference
+- Several pre-2026-10-03 items are now addressed in the text (CHK006 time zone source, CHK008 default currency in a widget, CHK036 failed backfill, CHK049 Today page dependency, CHK050 ADR-0005 reference); the reviewer decides whether to tick them
+- Worth resolving before `/speckit-tasks` from the revision items: CHK063 (shared place vs independence), CHK064 (error cause list), CHK073 (agent-answered clarifications need owner confirmation)

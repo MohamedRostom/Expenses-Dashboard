@@ -3,8 +3,30 @@
   "specName": "003-dashboard-widgets",
   "branch": "003-dashboard-widgets",
   "selectedAt": "2026-10-02T08:21:53.927Z",
-  "currentStep": "specify",
-  "status": "draft",
-  "history": [],
+  "currentStep": "tasks",
+  "status": "ready-to-implement",
+  "history": [
+    {
+      "step": "specify",
+      "substep": null,
+      "kind": "start",
+      "by": "extension",
+      "at": "2026-10-03T13:03:28.157Z"
+    },
+    {
+      "step": "plan",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-03T13:22:35.454Z"
+    },
+    {
+      "step": "tasks",
+      "substep": null,
+      "kind": "complete",
+      "by": "extension",
+      "at": "2026-10-03T13:43:55.322Z"
+    }
+  ],
   "telemetryInstanceId": "f998266d-2d6a-46af-a280-720d85f24b0a"
 }

@@ -1,9 +1,10 @@
 # Feature Specification: Dashboard Widgets
 
-**Feature Branch**: `003-dashboard-widgets` (spec directory; delivery branch to be named when the
-feature is scheduled)
+**Feature Branch**: `feature/003-dashboard-widgets`
 
 **Created**: 2026-09-17
+
+**Updated**: 2026-10-03 (reconciled with spec 002 as built and merged, and with ADR-0005)
 
 **Status**: Draft
 
@@ -48,6 +49,77 @@ expenses, so what the user sees in the widget is what they get in the ledger.
   reading per place (coordinates rounded to two decimals, about 1 km), refreshed hourly only
   for places with an active user; place search needs three characters and a typing pause, at
   most ten searches per user per minute, results cached for a day.
+
+### Session 2026-10-03 (reconciled with spec 002 as built)
+
+- Q: The Today page now exists but only for users who have it switched on (it is off in
+  production). Where does the strip show for a user without it? → A: On the month view only,
+  with the same arrangement; the strip appears on the Today page wherever the Today page itself
+  is available, and switching the Today page off never removes or changes anyone's widgets.
+- Q: On the Today page, which loads first, the calendar and inbox panels or the strip? → A: The
+  page's own panels; the strip loads after them and never delays or shifts them, exactly as on
+  the month view.
+- Q: What counts as an "active" user for the hourly weather refresh? → A: The same definition
+  spec 002 uses: the user made any signed-in request in the last 24 hours.
+- Q: Should widgets keep refreshing while the page is in a background tab? → A: No; like the
+  Today panels, a widget asks for fresh figures only while its page is visible, and catches up
+  on return if its figures are past their refresh window.
+- Q: Which weather source? → A: Decided in ADR-0005 (accepted): one keyless service for the
+  forecast, sunrise and sunset and place search, with its attribution shown on the weather and
+  sunrise widgets; no reverse geocoder, so "use my current location" resolves approximately and
+  is confirmed by the user (already reflected in FR-012).
+
+### Session 2026-10-03 (pre-planning clarify, answered by the agent at the owner's request; confirmed by the owner 2026-10-03)
+
+- Q: With two weather widgets, which place does the sunrise and sunset widget use? → A: Its
+  own place, pre-filled when added from the topmost weather widget's place and independent
+  afterwards.
+- Q: What happens to a widget currency when the user makes it their default currency? → A: It
+  stays in the widget's settings, shows "your default currency" with no figures, and returns
+  to normal when the default changes again.
+- Q: Which time zone decides "today" for rates and "this month" for spend pace and fixed costs?
+  → A: The user's time zone setting, the same one the month view uses; sunrise and sunset stay
+  in the place's local time.
+- Q: What happens when the thirty-one-day rate history request fails as a currency is added?
+  → A: The currency is still added and shows today's rate; both changes read "not available
+  yet" and Desk retries with the next daily rate fetch.
+- Q: What must the operator be able to see about the widgets' external sources? → A: Daily
+  call counts per source and the number of cached places, plus an alert when a source limit is
+  reached or a source has failed continuously for an hour; no user identifiers or places in
+  these signals. *(Failure rule superseded by the conflict-resolution session below.)*
+
+### Session 2026-10-03 (second clarify pass, answered by the agent at the owner's request; confirmed by the owner 2026-10-03)
+
+- Q: Who can read the operator signals? → A: A status check reachable without sign-in reports
+  only healthy or degraded; call counts and cached-place numbers go to the operator's logs only.
+- Q: When is a source "failing", and how fast must the operator hear? → A: Failing means at least
+  one call in the last 60 minutes and every such call failed (no calls is not failing); "limit
+  reached" applies to the weather and rate sources alike; the operator is alerted within 20
+  minutes of either condition. *(Failure rule superseded by the conflict-resolution session
+  below.)*
+- Q: What does sunrise and sunset show on a day with no sunrise or no sunset? → A: "Sun up all
+  day" or "Sun down all day", day length 24 h or 0 h, no times; not an error.
+- Q: Does the 100 ms load budget also cover the Today page? → A: Yes; adding the strip must not
+  delay the Today page's calendar and inbox panels by more than 100 ms.
+- Q: How long may rate changes read "not available yet"? → A: No limit for the user, since
+  today's rate is correct and shown; Desk retries daily, and a lasting failure reaches the
+  operator through FR-019.
+
+### Session 2026-10-03 (conflict resolution after the requirements-quality review, recommended options applied at the owner's request; confirmed by the owner 2026-10-03)
+
+- Q: The rate-history source is called at most once a day per currency pair, so a 60-minute
+  window rarely sees its calls; what makes a source "failing"? (checklist CHK082, CHK076) → A:
+  A source is failing when its last three calls all failed; it stays failing until a call
+  succeeds, and a source that is not being called keeps its last state. The 20-minute alert
+  clock starts at the third failed call. This replaces the 60-minute rule in both earlier
+  sessions.
+- Q: With a public status of only "healthy" or "degraded", how does the operator tell which
+  source and which condition? (CHK077) → A: From the operator's logs, which name the source and
+  the cause (limit reached or failing) for every call and in the daily summary.
+- Q: Does SC-008 cover the rate source too? (CHK084) → A: Yes; the rehearsal also makes the rate
+  source refuse every call.
+- Q: Does a "your default currency" row count toward the six-currency cap? (CHK055) → A: Yes; it
+  is still a stored choice and can be removed like any other.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -192,7 +264,9 @@ weather widget's place; confirm the first two made no external request.
 4. **Given** every fixed category already recorded this month, **When** the widget loads,
    **Then** it says all fixed costs are in and shows their total.
 5. **Given** a weather widget with a place, **When** the sunrise and sunset widget is added,
-   **Then** it uses that place without asking again and shows today's sunrise, sunset and day
+   **Then** it takes the topmost weather widget's place without asking again (the user can
+   change it in the widget's settings, and later changes to either widget's place do not
+   affect the other) and shows today's sunrise, sunset and day
    length in the place's local time, naming the zone only when it differs from the user's;
    with no weather widget it asks for a place the same way.
 6. **Given** a widget built on the user's own expense data, **When** the user adds an expense,
@@ -222,10 +296,23 @@ weather widget's place; confirm the first two made no external request.
   "temporarily unavailable" state with its last value, not an error, and can be removed.
 - The user deletes their account: every widget, its settings and its chosen place are removed
   with the rest of their data.
-- The user removes the weather widget but keeps sunrise and sunset: the place stays with the
-  remaining widget; removing that too removes the place.
+- The user removes the weather widget but keeps sunrise and sunset: the sunrise widget keeps
+  its own place (FR-018); removing that widget too removes the place.
 - Spend pace on the first day of the month with no expenses: shows zero spent, the full
   budget and the daily amount; never a division error or a blank.
+- The user makes a selected widget currency their default: that row reads "your default
+  currency" with no figures; nothing is removed from the widget.
+- The rate history request fails when a currency is added: today's rate shows, the changes
+  read "not available yet", and the next daily rate fetch fills them in.
+- A user with two weather widgets for different places adds sunrise and sunset: it takes the
+  topmost weather widget's place.
+- The user's time zone is past midnight while the server's is not (or the reverse): "today"
+  and "this month" follow the user's setting, so spend pace never counts a day twice or skips
+  one.
+- A place inside the polar circles on a day without sunrise or sunset: the widget says "Sun up
+  all day" or "Sun down all day" with the day length; it is not an error.
+- The rate history for a widget currency never arrives: the changes keep reading "not available
+  yet" while today's rate stays correct; the operator, not the user, is told.
 - A fixed category with no history at all: listed with "no usual amount yet" rather than a
   guess.
 - The month view and the Today page are open in two tabs: a reorder in one is reflected in the
@@ -237,6 +324,11 @@ weather widget's place; confirm the first two made no external request.
   again later"; refreshes resume the next day without user action.
 - Two users choose places that round to the same coordinates: they share one cached reading
   and neither can tell the other exists.
+- The operator switches the Today page off after users arranged widgets there: the strip
+  disappears from the Today page only; the same widgets in the same order stay on the month
+  view, and switching the Today page back on restores the strip there unchanged.
+- The Today page's calendar or inbox panel is in an error state: the strip still loads and
+  shows its own figures; one surface's failure never blanks the other.
 - Screen at 360 px wide: widgets stack in one column; nothing scrolls sideways.
 
 ## Requirements *(mandatory)*
@@ -247,9 +339,11 @@ Widget area
 
 - **FR-001**: Widgets live in a widget area shown as a strip at the top of both the "Today"
   page and the expenses month view, with one arrangement shared by both. On the month view the
-  strip MUST render after the expenses data and MUST NOT delay it; on either page a widget
-  that has no figures yet shows its loading state without shifting the content below it once
-  loaded.
+  strip MUST render after the expenses data, and on the Today page after the calendar and inbox
+  panels, and MUST NOT delay either; on either page a widget that has no figures yet shows its
+  loading state without shifting the content below it once loaded. The strip appears on the
+  Today page only for users who can see the Today page; for everyone else it appears on the
+  month view alone, and switching the Today page on or off never changes the arrangement.
 - **FR-002**: Users MUST be able to add, remove, reorder and duplicate widgets; the
   arrangement is per user, saved on the server, and identical on every device the user signs in
   on. A user MAY have at most eight widgets; the ninth add is refused with the limit shown.
@@ -257,7 +351,9 @@ Widget area
   show the time its figures are from, and MUST keep its last figures visible when a refresh
   fails; error copy MUST name the cause: source unreachable, source limit reached, place not
   found, rate not published (these four come from the server), or offline (decided on the
-  device, never reported as a server error).
+  device, never reported as a server error). An expired session is handled the way every other
+  panel in the app handles it, not as a widget error. A widget asks for fresh figures only while
+  its page is visible and catches up when the page is shown again.
 - **FR-004**: Every widget MUST be usable by keyboard and screen reader: adding, removing,
   reordering and changing settings MUST work without a pointer, and reorder MUST be announced.
 - **FR-005**: Widgets MUST be read-only. No widget creates, edits, suggests or links expenses,
@@ -280,12 +376,18 @@ Currency widget
   change with its direction and percentage to one decimal place. When a currency is added,
   Desk MUST obtain the previous thirty-one days of published rates for it in one request so
   both changes are available immediately; when the source holds less history the widget
-  labels the change "since <first date>" instead of thirty days.
+  labels the change "since <first date>" instead of thirty days. If that request fails, the
+  currency is still added and shows today's rate, both changes read "not available yet", and
+  Desk retries with the next daily rate fetch, with no time limit; a lasting failure is an
+  operator signal (FR-019), never a user-facing error.
 - **FR-009**: The rate and rate date shown MUST be the same rate and date Desk would record on
   an expense in that currency dated today; on weekends and holidays the widget MUST show the
   last published rate and its date.
 - **FR-010**: The currency picker MUST offer only currencies Desk can convert, MUST refuse the
-  user's default currency, and MUST re-base every figure when the default currency changes.
+  user's default currency, and MUST re-base every figure when the default currency changes. A
+  selected currency that becomes the default stays in the widget's settings and shows "your
+  default currency" with no figures; it shows figures again once the default changes away
+  from it. Such a row still counts toward the six-currency cap.
 
 Weather widget
 
@@ -307,7 +409,8 @@ Weather widget
   the source is reachable; readings are fetched and cached on the server once per place
   (coordinates rounded to two decimal places, about one kilometre) and shared by every user
   with that place, refreshed hourly only while a user with that place has been active in the
-  last 24 hours, so the source is called neither per device nor per user. Place search MUST
+  last 24 hours (active means any signed-in request, the same definition spec 002 uses), so the
+  source is called neither per device nor per user. Place search MUST
   run only for three or more characters after the user pauses typing, at most ten searches
   per user per minute (the eleventh shows "wait a moment"), with results cached for a day.
 - **FR-014**: The chosen place MUST be stored only with the widgets that use it (weather,
@@ -321,7 +424,9 @@ Other widgets
 
 - **FR-015**: Widgets built on the user's own expense data (spend pace, upcoming fixed costs)
   MUST compute from Desk's own records with no external request and MUST match the figures
-  shown elsewhere in the app for the same month, category and currency.
+  shown elsewhere in the app for the same month, category and currency. "Today" (for rates)
+  and "this month" (for spend pace and upcoming fixed costs) follow the user's time zone
+  setting, the same one the month view uses; only sunrise and sunset use the place's time.
 - **FR-016**: The spend pace widget MUST show the current month's spend so far, the month's
   budget (the sum of the category budgets for the month, identical to the month view's
   "budgeted" tile; spend in categories without a budget counts toward spend but not budget),
@@ -335,9 +440,24 @@ Other widgets
   otherwise "no usual amount yet"; when all fixed categories are recorded it says so with the
   total.
 - **FR-018**: The sunrise and sunset widget MUST show today's sunrise, sunset and day length
-  for the place of the user's weather widget, or for a place chosen the same way when there
-  is no weather widget, in the place's local time, showing the place's time zone only when it
-  differs from the user's; it MUST use the same source as the weather widget and no other.
+  for its own place: pre-filled when the widget is added from the topmost weather widget's
+  place (or chosen the same way as for weather when there is no weather widget), changeable
+  in its settings, and independent of any weather widget afterwards; in the place's local time, showing the place's time zone only when it
+  differs from the user's; it MUST use the same source as the weather widget and no other. On
+  a day with no sunrise or no sunset at the place it MUST show "Sun up all day" or "Sun down
+  all day" with a day length of 24 h or 0 h and no times, as a normal (not error) state.
+
+Operations
+
+- **FR-019**: The operator MUST be able to see, per day and per external widget source (weather
+  and rates), the number of calls made and the number of cached places, and MUST be alerted
+  within 20 minutes when a source's limit is reached or a source is failing, through the app's
+  existing operator monitoring (the external uptime monitor and the app's logs). A source is
+  failing when the last three calls to it all failed; it stays failing until a call succeeds, and a source that is not being called keeps its last state; the 20 minutes run from the third failed call (or from
+  the limit being reached). The status check the monitor reads MUST be reachable without
+  sign-in and MUST reveal only "healthy" or "degraded"; call counts, cached-place numbers and
+  which source and cause made the status degraded are visible only in the operator's logs.
+  These signals MUST carry no user identifier and no place.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -365,8 +485,9 @@ Other widgets
 - **SC-002**: A user adds and configures a currency or weather widget in under one minute from
   opening "add widget" to seeing figures.
 - **SC-003**: The widget area shows cached figures within one second of the page appearing on
-  a mid-range phone, and adding the widget area does not lengthen the month view's measured
-  load time by more than 100 ms.
+  a mid-range phone, and adding the widget area lengthens neither the month view's measured
+  load time nor the time until the Today page's calendar and inbox panels appear by more than
+  100 ms.
 - **SC-004**: While the user is active and the weather source is reachable, the weather reading
   is never more than one hour old in 99 % of samples over a week.
 - **SC-005**: With eight widgets, every widget state (loading, empty, stale, error,
@@ -375,6 +496,10 @@ Other widgets
 - **SC-006**: The isolation test across every widget request with two users finds zero leaks.
 - **SC-007**: Three people outside the project add a weather widget for their own town unaided,
   and each describes correctly, without prompting, what Desk stores about their location.
+- **SC-008**: In a rehearsal where the weather source is made to refuse every call, again
+  where it hits its limit, and again where the rate source refuses every call, the operator is
+  alerted within 20 minutes of the third failed call (or of the limit) each time, the logs name
+  the source and cause, and the public status check shows nothing beyond "degraded".
 
 ## Assumptions
 
@@ -382,9 +507,9 @@ Other widgets
   conversion; the widget adds no new rate source and no new rate logic, only the previous and
   thirty-day comparison, which reads the cache history.
 - The weather source is a keyless, free service with a usage policy that permits this use, is
-  reachable from both hosting stages, and returns forecasts by coordinates; which service is an
-  owner decision to be recorded in an ADR before planning (constitution Principle V: providers
-  are the owner's call). Place search uses the same service's geocoding if it offers one.
+  reachable from both hosting stages, and returns forecasts by coordinates. The owner chose it
+  in ADR-0005 (accepted 2026-09-17), which also covers place search and sunrise and sunset from
+  the same service, its attribution requirement, and a revisit before any monetisation.
 - Weather readings are fetched and cached on the server per distinct place, not per user, and
   refreshed hourly while any user with that place has been active in the last 24 hours;
   readings older than seven days for places no active user has are discarded.
@@ -395,9 +520,12 @@ Other widgets
 - Widget arrangement is stored per user, not per device; a per-device arrangement is out of
   scope.
 - The unit for temperature defaults to °C; it is a per-user preference, not per widget.
-- The month view strip can ship in v1's later phases on its own; the Today page strip follows
-  the mail and calendar feature (spec 002) and reuses the same arrangement, so the feature is
-  delivered in two steps without a second design.
+- The mail and calendar feature (spec 002) has shipped: the Today page exists, gated by its own
+  operator switch that is off in production, with calendar and inbox panels, refresh that
+  pauses while the page is hidden, and error copy chosen by cause. Widgets reuse those
+  conventions (the same panel states and cause wording, the same "active user" definition) and
+  add no second design. The Today strip therefore no longer waits on another feature, but it
+  reaches production users only when the Today page is switched on for them.
 - "Usual amount" for a fixed category follows the baseline forecast: the category budget when
   set, else the previous month's amount, else none. Day length and sunrise and sunset come from
   the weather source's daily data, and the place's time zone from its geocoding result, so no
