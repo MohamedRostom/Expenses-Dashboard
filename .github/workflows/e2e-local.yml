@@ -33,28 +33,28 @@ jobs:
         run: Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\Git\bin'
       - uses: ./.github/actions/setup
       - run: pnpm --filter @desk/e2e exec playwright install chromium
-        shell: bash
+        shell: pwsh
       # Real accounts come from one secret holding the whole YAML file; without it every
       # account-dependent spec skips (tests/e2e/fixtures/test-accounts.ts).
       - name: Write test accounts file
-        shell: bash
+        shell: pwsh
         env:
           E2E_TEST_ACCOUNTS_YAML: ${{ secrets.E2E_TEST_ACCOUNTS_YAML }}
         run: |
-          if [ -n "$E2E_TEST_ACCOUNTS_YAML" ]; then
-            printf '%s\n' "$E2E_TEST_ACCOUNTS_YAML" > tests/e2e/test-accounts.local.yaml
-            echo "Test accounts file written."
-          else
-            echo "No E2E_TEST_ACCOUNTS_YAML secret: account-dependent tests will be skipped."
-          fi
+          if ($env:E2E_TEST_ACCOUNTS_YAML) {
+            Set-Content -Path "tests/e2e/test-accounts.local.yaml" -Value $env:E2E_TEST_ACCOUNTS_YAML -NoNewline
+            Write-Host "Test accounts file written."
+          } else {
+            Write-Host "No E2E_TEST_ACCOUNTS_YAML secret: account-dependent tests will be skipped."
+          }
       - run: pnpm --filter @desk/e2e exec playwright test --project=local --pass-with-no-tests
-        shell: bash
+        shell: pwsh
         env:
           CI: 'true'
           E2E_LOCAL_BASE_URL: ${{ vars.E2E_LOCAL_BASE_URL }}
       - if: always()
-        shell: bash
-        run: rm -f tests/e2e/test-accounts.local.yaml
+        shell: pwsh
+        run: Remove-Item -Path "tests/e2e/test-accounts.local.yaml" -Force -ErrorAction SilentlyContinue
       - if: failure()
         uses: actions/upload-artifact@v7
         with:
@@ -62,9 +62,9 @@ jobs:
           path: tests/e2e/playwright-report
           retention-days: 14
       - if: failure()
-        shell: bash
-        run: >-
-          gh issue create --title "e2e-local failed on $(date -u +%F)"
-          --label "area:tests" --body "Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        shell: pwsh
+        run: |
+          $date = Get-Date -Format "yyyy-MM-dd"
+          gh issue create --title "e2e-local failed on $date" --label "area:tests" --body "Run: $env:GITHUB_SERVER_URL/$env:GITHUB_REPOSITORY/actions/runs/$env:GITHUB_RUN_ID"
         env:
           GH_TOKEN: ${{ github.token }}
