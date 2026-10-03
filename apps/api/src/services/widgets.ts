@@ -16,6 +16,8 @@ import {
 } from '@desk/core';
 import { ApiError } from '../lib/api-error.js';
 import type { SessionUser } from '../middleware/session.js';
+import { enqueueIfShort } from '../jobs/widgets-rates-backfill.js';
+import { todayInTimeZone } from './capture.js';
 
 type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 type Q = Db | Tx;
@@ -165,7 +167,16 @@ const codesOf = (settings: unknown): string[] => {
   return Array.isArray(c) ? c.filter((x): x is string => typeof x === 'string') : [];
 };
 
-export function createWidgetsService(db: Db) {
+export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () => new Date() }) {
+  /** T029: queue a rates backfill for each code whose fx_rates history is short. */
+  const backfill = (user: SessionUser, settings: unknown) =>
+    enqueueIfShort(
+      db,
+      codesOf(settings),
+      user.defaultCurrency,
+      todayInTimeZone(user.timeZone, clock.now()),
+    );
+
   const base = (q: Q) =>
     q
       .select({ w: widgetsTable, p: placesTable })
@@ -217,7 +228,7 @@ export function createWidgetsService(db: Db) {
       }
       // ponytail: count-then-insert can race two concurrent adds past the cap; the deferred
       // unique (user_id, position) catches a position clash. Lock the user row if it matters.
-      return db.transaction(async (tx) => {
+      const row = await db.transaction(async (tx) => {
         const rows = await select(tx, user.id);
         if (rows.length >= WIDGET_LIMIT) {
           throw new ApiError('limit_reached', `At most ${WIDGET_LIMIT} widgets`, 409);
@@ -247,10 +258,12 @@ export function createWidgetsService(db: Db) {
         const r = await load(tx, user.id, w!.id);
         return toRow(r.w, r.p);
       });
+      await backfill(user, row.settings);
+      return row;
     },
 
     async patch(user: SessionUser, id: string, body: WidgetPatchT): Promise<WidgetRow> {
-      return db.transaction(async (tx) => {
+      const row = await db.transaction(async (tx) => {
         const { w } = await load(tx, user.id, id);
         const kind = w.kind as WidgetKindT;
         let placeId = w.placeId;
@@ -268,6 +281,8 @@ export function createWidgetsService(db: Db) {
         const r = await load(tx, user.id, id);
         return toRow(r.w, r.p);
       });
+      await backfill(user, row.settings);
+      return row;
     },
 
     async remove(user: SessionUser, id: string): Promise<void> {

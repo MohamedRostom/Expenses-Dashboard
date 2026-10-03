@@ -17,10 +17,10 @@ import { figuresFor } from '../services/widget-figures.js';
 /** GET/POST /widgets, GET /widgets/types, PATCH/DELETE /widgets/:id. */
 export function createWidgetsRoutes(db: Db, clock: { now(): Date }) {
   const app = new Hono<{ Variables: AppVariables }>();
-  const service = createWidgetsService(db);
+  const service = createWidgetsService(db, clock);
 
   async function present(user: SessionUser, rows: WidgetRow[], flags: Record<string, boolean>) {
-    const figures = await figuresFor(user, rows, flags, clock.now());
+    const figures = await figuresFor(db, user, rows, flags, clock.now());
     return rows.map((r) => ({ ...r, ...figures.get(r.id)! })) as WidgetsResponseT['widgets'];
   }
 

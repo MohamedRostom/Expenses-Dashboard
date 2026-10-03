@@ -173,3 +173,142 @@ for (const [name, size] of [
     await axeCheck(page);
   });
 }
+
+/**
+ * T026 (ci, currency, US1). Every answer is route-mocked (/widgets, /widgets/types, /currencies),
+ * so these prove what the strip renders for the payloads the API contract allows, not the live
+ * rates: rate maths, the Friday fallback, default-currency re-derivation and the failing range
+ * endpoint are asserted against the real routes in apps/api/test/widgets.test.ts. There is no
+ * freezeClock fixture yet, so the Saturday case mocks the Friday rateDate the server would send.
+ * Written, not run, in the session that wrote it.
+ */
+const CODES = ['GBP', 'EUR', 'USD', 'JPY', 'CHF', 'CAD', 'AUD', 'NZD'];
+const CURRENCIES = {
+  currencies: CODES.map((code) => ({ code, name: `${code} name`, exponent: 2 })),
+};
+
+const eurRow = {
+  code: 'EUR',
+  rate: 1.1634,
+  rateDate: '2026-10-02',
+  prevChange: { pct: 0.4, direction: 'up' },
+  monthChange: { pct: 1.2, direction: 'down', since: '2026-09-02' },
+};
+
+const currencyWidget = (rows: unknown[], over: Record<string, unknown> = {}) =>
+  widget('ready', {
+    kind: 'currency',
+    settings: { currencies: rows.map((r) => (r as { code: string }).code) },
+    figures: { rows },
+    ...over,
+  });
+
+async function openCurrencyScene(
+  page: Page,
+  tag: string,
+  widgets: () => unknown[],
+  size = { width: 1280, height: 800 },
+): Promise<void> {
+  await page.setViewportSize(size);
+  await page.route('**/currencies', (route) => route.fulfill({ json: CURRENCIES }));
+  await mockWidgets(page, (route) => route.fulfill({ json: list(widgets()) }));
+  await signUpAndVerify(page, uniqueEmail(tag), PASSWORD);
+  await addExpense(page, `Currency ${tag}`);
+}
+
+test('adding a currency widget shows rate, date and both changes with direction', async ({
+  page,
+}) => {
+  let widgets: unknown[] = [];
+  await page.route('**/widgets', async (route) => {
+    if (route.request().method() !== 'POST') return route.fallback();
+    widgets = [currencyWidget([eurRow])];
+    return route.fulfill({ status: 201, json: { widget: widgets[0] } });
+  });
+  await openCurrencyScene(page, 'cur-add', () => widgets);
+
+  await page.getByTestId('add-widget').click();
+  await page
+    .getByRole('dialog', { name: /add widget/i })
+    .getByRole('listitem')
+    .filter({ hasText: 'Currency' })
+    .getByRole('button', { name: 'Add' })
+    .click();
+
+  const frame = page.getByTestId('widget-frame');
+  await expect(frame).toContainText('EUR', { timeout: 1000 });
+  await expect(frame).toContainText('1.1634');
+  await expect(frame).toContainText('2026-10-02');
+  await expect(frame).toContainText('up 0.4%');
+  await expect(frame).toContainText('down 1.2%');
+  await expect(frame).toContainText('since 2026-09-02');
+});
+
+test('on a weekend the widget names the Friday the rate is from', async ({ page }) => {
+  await openCurrencyScene(page, 'cur-sat', () => [
+    currencyWidget([{ ...eurRow, rateDate: '2026-10-02' }]), // 2 Oct 2026 is a Friday
+  ]);
+  await expect(page.getByTestId('widget-frame')).toContainText('2026-10-02');
+});
+
+test('the default currency row has no figures', async ({ page }) => {
+  await openCurrencyScene(page, 'cur-default', () => [
+    currencyWidget([
+      { code: 'EUR', isDefault: true },
+      { ...eurRow, code: 'USD' },
+    ]),
+  ]);
+  const frame = page.getByTestId('widget-frame');
+  await expect(frame.getByText('your default currency')).toBeVisible();
+  await expect(frame.getByText('EUR').locator('..')).not.toContainText(/\d\.\d/);
+});
+
+test('a failing range endpoint reads "not available yet" with no error banner', async ({
+  page,
+}) => {
+  await openCurrencyScene(page, 'cur-pending', () => [
+    currencyWidget([{ ...eurRow, prevChange: null, monthChange: null, changesPending: true }]),
+  ]);
+  const frame = page.getByTestId('widget-frame');
+  await expect(frame.getByText('not available yet')).toHaveCount(2);
+  await expect(frame.getByRole('alert')).toHaveCount(0);
+  await expect(frame).toHaveAttribute('data-state', 'ready');
+});
+
+test('settings refuse the default currency and a seventh code with a message', async ({ page }) => {
+  const six = ['EUR', 'USD', 'JPY', 'CHF', 'CAD', 'AUD'];
+  await page.route(/\/widgets\/w1$/, (route) => route.fulfill({ json: { widget: {} } }));
+  await openCurrencyScene(page, 'cur-cap', () => [
+    currencyWidget(six.map((code) => ({ ...eurRow, code }))),
+  ]);
+  await page.getByRole('button', { name: /currency menu/i }).click();
+  await page.getByRole('button', { name: 'Settings' }).click();
+
+  const dialog = page.getByRole('dialog', { name: /widget settings/i });
+  await expect(dialog.getByLabel(/^GBP/)).toBeDisabled();
+  await expect(dialog.getByLabel(/^NZD/)).toBeDisabled();
+  await expect(dialog.getByText(/up to six currencies/i)).toBeVisible();
+  await expect(dialog.getByRole('button', { name: /add a second currency widget/i })).toBeVisible();
+});
+
+for (const [name, size] of [
+  ['mobile', { width: 360, height: 740 }],
+  ['desktop', { width: 1280, height: 800 }],
+] as const) {
+  for (const [state, over] of [
+    ['ready', {}],
+    ['stale', { state: 'stale', cause: 'source_unreachable' }],
+    ['error', { state: 'error', cause: 'rate_unavailable', figures: undefined }],
+  ] as const) {
+    test(`axe: currency ${state} at ${name} width`, async ({ page }) => {
+      await openCurrencyScene(
+        page,
+        `cur-axe-${state}-${name}`,
+        () => [currencyWidget([eurRow], over)],
+        size,
+      );
+      await expect(page.getByTestId('widget-frame')).toHaveAttribute('data-state', state);
+      await axeCheck(page);
+    });
+  }
+}

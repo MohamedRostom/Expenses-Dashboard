@@ -12,6 +12,7 @@ import {
   type RateLookup,
 } from './currency-change.js';
 import { ratesWarmJob, ratesRetryJob } from './rates.js';
+import { widgetsRatesBackfillJob } from './widgets-rates-backfill.js';
 import { housekeepingJob } from './housekeeping.js';
 import { notionSyncJob, type NotionSyncDeps } from './notion-sync.js';
 import { feedbackDigestJob, type FeedbackDigestDeps } from './feedback-digest.js';
@@ -32,9 +33,14 @@ export function registerAllJobs(deps: {
     currencyChangeJob(
       deps.getRate,
       combinedRowSource(categoriesRowSource(deps.db), expensesRowSource(deps.db)),
+      deps.db,
     ),
   );
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
+  registerJob(
+    'widgets.rates_backfill',
+    widgetsRatesBackfillJob(deps.db, deps.ratesProvider, { now: () => new Date() }),
+  );
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));
   if (deps.notionSync) registerJob('notion.sync', notionSyncJob(deps.notionSync));

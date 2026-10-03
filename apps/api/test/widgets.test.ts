@@ -96,7 +96,8 @@ describe('widgets', () => {
     expect(b.position).toBe(1);
     const list = (await j(await u.get('/widgets'))).widgets;
     expect(list.map((w: { id: string }) => w.id)).toEqual([wa.id, b.id]);
-    expect(list[0].state).toBe('empty');
+    expect(list[0]).toMatchObject({ state: 'error', cause: 'rate_unavailable' }); // no fx_rates row yet
+    expect(list[1].state).toBe('empty');
   });
 
   it('the ninth widget answers 409 limit_reached', async () => {

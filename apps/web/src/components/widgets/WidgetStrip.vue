@@ -4,6 +4,7 @@ import { Button, EmptyState, useToast } from '@desk/ui';
 import type { WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
+import CurrencyWidget from './CurrencyWidget.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -90,7 +91,7 @@ async function onRemove(id: string, name: string) {
         @remove="onRemove(w.id, w.kind.replace('_', ' '))"
       >
         <!-- One branch per kind; US1, US2 and US4 replace these placeholders. -->
-        <p v-if="w.kind === 'currency'" class="desk-widget-placeholder">Currency figures</p>
+        <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
         <p v-else-if="w.kind === 'weather'" class="desk-widget-placeholder">Weather figures</p>
         <p v-else-if="w.kind === 'sunrise'" class="desk-widget-placeholder">Sunrise figures</p>
         <p v-else-if="w.kind === 'spend_pace'" class="desk-widget-placeholder">
