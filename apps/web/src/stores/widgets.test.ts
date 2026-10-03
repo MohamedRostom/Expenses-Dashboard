@@ -1,11 +1,12 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type * as ClientModule from '../api/widgets.js';
+import type * as WidgetsApiModule from '../api/widgets.js';
+import type * as ClientModule from '../api/client.js';
 import type { WidgetsResponseT, WidgetT } from '@desk/contracts';
 import { ApiError } from '../api/client.js';
 
 vi.mock('../api/widgets.js', async () => {
-  const actual = await vi.importActual<typeof ClientModule>('../api/widgets.js');
+  const actual = await vi.importActual<typeof WidgetsApiModule>('../api/widgets.js');
   return {
     ...actual,
     getWidgets: vi.fn(),
@@ -15,6 +16,11 @@ vi.mock('../api/widgets.js', async () => {
     deleteWidget: vi.fn(),
     postWidgetsRefresh: vi.fn(),
   };
+});
+
+vi.mock('../api/client.js', async () => {
+  const actual = await vi.importActual<typeof ClientModule>('../api/client.js');
+  return { ...actual, apiFetch: vi.fn() };
 });
 
 const NOW = new Date('2026-10-03T12:00:00Z');
@@ -68,6 +74,18 @@ describe('Widgets store', () => {
     expect(store.limit).toBe(8);
     expect(store.temperatureUnit).toBe('C');
     expect(store.loading).toBe(false);
+  });
+
+  it('setTemperatureUnit sends PATCH /me and updates state', async () => {
+    const { store } = await setup();
+    const { apiFetch } = await import('../api/client.js');
+    vi.mocked(apiFetch).mockResolvedValue({ user: {} });
+    await store.setTemperatureUnit('F');
+    expect(apiFetch).toHaveBeenCalledWith('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ temperatureUnit: 'F' }),
+    });
+    expect(store.temperatureUnit).toBe('F');
   });
 
   it('types() fetches the catalogue', async () => {

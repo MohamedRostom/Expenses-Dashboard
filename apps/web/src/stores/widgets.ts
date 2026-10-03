@@ -14,7 +14,7 @@ import {
   patchWidget,
   postWidgetsRefresh,
 } from '../api/widgets.js';
-import { ApiError } from '../api/client.js';
+import { ApiError, apiFetch } from '../api/client.js';
 import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
 
 const POLL_MS = 5 * 60 * 1000;
@@ -80,6 +80,11 @@ export const useWidgetsStore = defineStore('widgets', {
       const { widget } = await patchWidget(id, body);
       this.widgets = this.widgets.map((w) => (w.id === id ? widget : w));
       return widget;
+    },
+
+    async setTemperatureUnit(unit: TemperatureUnitT) {
+      await apiFetch('/me', { method: 'PATCH', body: JSON.stringify({ temperatureUnit: unit }) });
+      this.temperatureUnit = unit;
     },
 
     async remove(id: string) {

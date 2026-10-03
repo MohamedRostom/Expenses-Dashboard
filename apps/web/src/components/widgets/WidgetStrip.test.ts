@@ -85,6 +85,58 @@ describe('WidgetStrip', () => {
     app.unmount();
   });
 
+  it('renders a real branch for each kind once figures exist', async () => {
+    const attribution = 'Weather data by Open-Meteo.com' as const;
+    const { el, app } = await mount([
+      widget('w', {
+        kind: 'weather',
+        figures: {
+          place: 'Manchester',
+          temperatureC: 20,
+          condition: 'Clear sky',
+          icon: 'sun',
+          todayMaxC: 22,
+          todayMinC: 10,
+          outlook: [],
+          observedAt: '2026-10-03T11:00:00Z',
+          attribution,
+        },
+      } as Partial<WidgetT>),
+      widget('s', {
+        kind: 'sunrise',
+        figures: {
+          place: 'Manchester',
+          sunrise: '07:00',
+          sunset: '18:00',
+          daylightSeconds: 39600,
+          placeTimeZone: 'Europe/London',
+          showZone: false,
+          attribution,
+        },
+      } as Partial<WidgetT>),
+      widget('p', {
+        kind: 'spend_pace',
+        figures: {
+          spentMinor: 1,
+          budgetMinor: 2,
+          pct: 50,
+          daysLeft: 3,
+          dailyToBudgetMinor: 1,
+          overBudget: false,
+        },
+      } as Partial<WidgetT>),
+      widget('f', {
+        kind: 'fixed_costs',
+        figures: { remaining: [], totalExpectedMinor: 0, allRecorded: true },
+      } as Partial<WidgetT>),
+    ]);
+    expect(el.querySelector('.desk-weather')?.textContent).toContain('20°C');
+    expect(el.textContent).toContain('Sunrise and sunset figures');
+    expect(el.textContent).toContain('Spend pace figures');
+    expect(el.textContent).toContain('Fixed costs figures');
+    app.unmount();
+  });
+
   it('shows a fixed-height loading frame for a widget with no figures yet', async () => {
     const { el, app } = await mount([widget('a', { state: 'empty' })]);
     expect(el.querySelector('[data-testid="widget-frame"]')).not.toBeNull();

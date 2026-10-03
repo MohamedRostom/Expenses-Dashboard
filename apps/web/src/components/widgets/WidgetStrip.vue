@@ -5,6 +5,10 @@ import type { WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import CurrencyWidget from './CurrencyWidget.vue';
+import WeatherWidget from './WeatherWidget.vue';
+import SunriseWidget from './SunriseWidget.vue';
+import SpendPaceWidget from './SpendPaceWidget.vue';
+import FixedCostsWidget from './FixedCostsWidget.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -90,14 +94,16 @@ async function onRemove(id: string, name: string) {
         @settings="settingsId = w.id"
         @remove="onRemove(w.id, w.kind.replace('_', ' '))"
       >
-        <!-- One branch per kind; US1, US2 and US4 replace these placeholders. -->
+        <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
         <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
-        <p v-else-if="w.kind === 'weather'" class="desk-widget-placeholder">Weather figures</p>
-        <p v-else-if="w.kind === 'sunrise'" class="desk-widget-placeholder">Sunrise figures</p>
-        <p v-else-if="w.kind === 'spend_pace'" class="desk-widget-placeholder">
-          Spend pace figures
-        </p>
-        <p v-else class="desk-widget-placeholder">Fixed costs figures</p>
+        <WeatherWidget
+          v-else-if="w.kind === 'weather' && w.figures"
+          :figures="w.figures"
+          :unit="store.temperatureUnit"
+        />
+        <SunriseWidget v-else-if="w.kind === 'sunrise' && w.figures" :figures="w.figures" />
+        <SpendPaceWidget v-else-if="w.kind === 'spend_pace' && w.figures" :figures="w.figures" />
+        <FixedCostsWidget v-else-if="w.kind === 'fixed_costs' && w.figures" :figures="w.figures" />
       </WidgetFrame>
     </div>
 
