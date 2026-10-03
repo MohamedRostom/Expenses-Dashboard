@@ -1,5 +1,5 @@
 name: Setup
-description: Checkout is done by the caller; this installs pnpm, Node 22, dependencies, and Playwright browsers.
+description: Checkout is done by the caller; this installs pnpm, Node 22 and dependencies.
 runs:
   using: composite
   steps:
@@ -10,17 +10,3 @@ runs:
         cache: pnpm
     - run: pnpm install --frozen-lockfile
       shell: pwsh
-    - name: Cache Playwright browsers
-      id: playwright-cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-        restore-keys: |
-          playwright-${{ runner.os }}-
-    - name: Install Playwright Chromium
-      if: steps.playwright-cache.outputs.cache-hit != 'true'
-      run: pnpm --filter @desk/e2e exec playwright install chromium --with-deps
-      shell: pwsh
-      env:
-        PLAYWRIGHT_DOWNLOAD_TIMEOUT: 120000
