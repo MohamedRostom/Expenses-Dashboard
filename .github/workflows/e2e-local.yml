@@ -26,14 +26,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       # On the Windows runner `bash` otherwise resolves to C:\Windows\System32\bash.exe (the WSL
       # launcher, which has no Node or pnpm) and the setup action's install step fails.
       - if: runner.os == 'Windows'
         shell: pwsh
         run: Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\Git\bin'
       - uses: ./.github/actions/setup
-      - run: pnpm --filter @desk/e2e exec playwright install chromium
-        shell: pwsh
       # Real accounts come from one secret holding the whole YAML file; without it every
       # account-dependent spec skips (tests/e2e/fixtures/test-accounts.ts).
       - name: Write test accounts file
