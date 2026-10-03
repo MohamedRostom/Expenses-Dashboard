@@ -264,6 +264,20 @@ One developer working evenings (constitution rationale), with the main session d
 
 ---
 
+## Review findings (code review, 2026-10-03)
+
+**Purpose**: fixes for defects found in a line-by-line review of this branch's diff against `main`, each verified against `contracts/api.md` and/or the existing test suites before being logged here. Not tied to a single US slice; file against whichever slice owns the touched code before closing.
+
+- [ ] T067 [BUG] Implement `POST /widgets/refresh` in `apps/api/src/routes/widgets.ts`. The web client (`apps/web/src/api/widgets.ts` `postWidgetsRefresh`, called from `apps/web/src/stores/widgets.ts` `refreshIfStale()`) already calls this endpoint expecting `{ queued }` (`WidgetsRefreshResponseT`), but no such route is registered in `createWidgetsRoutes`, so every refresh attempt 404s silently in production and stale widgets never actually refresh. Add the route, scope it to the caller's own stale widgets, queue the appropriate backfill/refresh jobs, and add the matching ownership-matrix case in `apps/api/test/ownership.test.ts` (resolves the existing `it.todo("POST /widgets/refresh marks only the caller's places due (T043)")`)
+- [ ] T068 [BUG] Implement the sunrise-widget place auto-fallback on create in `apps/api/src/services/widgets.ts` (`create()`). Per `contracts/api.md`'s `POST /widgets` row, a `sunrise` widget created with neither `placeId` nor `place` must take the lowest-position `weather` widget's place; only 422 `validation_failed` (`place_required`) when the user has no weather widget. The current `check()` call always requires an explicit place for `sunrise`, contradicting the documented contract
+- [ ] T069 [BUG] Stop one missing currency's history from blanking an entire currency widget in the `currency` builder in `apps/api/src/services/widget-figures.ts` (around the `missing` flag, ~line 87). When one configured code has no `fx_rates` row yet (e.g. backfill still pending) while other configured codes already have ready rows, return the ready rows plus a per-row or widget-level pending/degraded indicator for the missing code(s) instead of discarding every row via a single top-level `state: 'error'`
+- [ ] T070 [BUG] Fix `duplicateOf` settings validation in `apps/api/src/services/widgets.ts` (`create()`, the `check(user, body.kind, settings, [], placeId)` call). When `body.duplicateOf` is set, pass the source widget's own currency codes (`codesOf(src.w.settings)`) as `previous` instead of a hardcoded `[]`, so a currency code already grandfathered against the user's default currency on the source widget does not fail validation when duplicated
+- [ ] T071 [BUG] Move the widgets store's polling/visibility-listener state out of module scope in `apps/web/src/stores/widgets.ts` (the module-level `pollHandle` and `onVisibility` variables). Keep this state per store instance (e.g. in the store's own state or a closure owned by `start()`/`stop()`) so one `WidgetStrip` instance's `onUnmounted` → `store.stop()` cannot clear a different, still-mounted instance's timer and `visibilitychange` listener (observable on fast unmount/remount: route navigation away and back, or HMR)
+- [ ] T072 [PERF] Batch the per-currency-code `fx_rates` history lookups in the `currency` builder in `apps/api/src/services/widget-figures.ts` (the `for (const code of codes)` loop, ~line 56) into a single query keyed on `base IN (...) AND quote = user.defaultCurrency` instead of one sequential round-trip per code (up to 6 codes per widget × up to 8 widgets per user, on every `GET /widgets`)
+- [ ] T073 [CLEANUP] Wire up or remove `emitSourceSummary` in `apps/api/src/services/source-usage.ts` (~line 62): it is exported but never called by any route or job, so the intended daily per-source `widget_source_summary` operator log never fires. Either call it from a daily job (e.g. alongside `ratesWarmJob`/`rates.warm`) or delete it if it has been superseded
+
+---
+
 ## Notes
 
 - [P] tasks touch different files and depend on nothing incomplete
