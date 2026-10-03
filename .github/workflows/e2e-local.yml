@@ -25,14 +25,14 @@ jobs:
     environment: local-secrets
     timeout-minutes: 60
     steps:
+      # Ensure Git for Windows is in PATH before checkout so it uses git clone (not REST API)
+      # This must run before checkout to affect the checkout action's git detection
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: echo "C:\Program Files\Git\bin" >> $env:GITHUB_PATH
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0
-      # On the Windows runner `bash` otherwise resolves to C:\Windows\System32\bash.exe (the WSL
-      # launcher, which has no Node or pnpm) and the setup action's install step fails.
-      - if: runner.os == 'Windows'
-        shell: pwsh
-        run: Add-Content -Path $env:GITHUB_PATH -Value 'C:\Program Files\Git\bin'
       - uses: ./.github/actions/setup
       # Real accounts come from one secret holding the whole YAML file; without it every
       # account-dependent spec skips (tests/e2e/fixtures/test-accounts.ts).

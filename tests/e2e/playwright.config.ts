@@ -17,16 +17,18 @@ export default defineConfig({
       name: 'ci',
       grepInvert: /@local/,
       use: {
-        ...devices['Desktop Chrome'],
-        baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:5173',
+        ...devices['Desktop Edge'],
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+        channel: 'msedge',
       },
     },
     {
       name: 'local',
       grep: /@local/,
       use: {
-        ...devices['Desktop Chrome'],
-        baseURL: process.env['E2E_LOCAL_BASE_URL'] ?? 'https://ros-desk-staging.fly.dev',
+        ...devices['Desktop Edge'],
+        baseURL: process.env['E2E_LOCAL_BASE_URL'] || 'https://ros-desk-staging.fly.dev',
+        channel: 'msedge',
       },
     },
     // T092: mobile device projects for the responsive/PWA/onboarding specs (@mobile-tagged).
@@ -36,7 +38,8 @@ export default defineConfig({
       grep: /@mobile/,
       use: {
         ...devices['Pixel 7'],
-        baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:5173',
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+        channel: 'msedge',
       },
     },
     {
@@ -45,7 +48,8 @@ export default defineConfig({
       grep: /@mobile/,
       use: {
         ...devices['iPhone 14'],
-        baseURL: process.env['E2E_BASE_URL'] ?? 'http://localhost:5173',
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+        channel: 'msedge',
       },
     },
   ],
