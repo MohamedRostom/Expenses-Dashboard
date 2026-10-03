@@ -196,6 +196,34 @@ export async function nextMockAccount(provider: 'google' | 'microsoft'): Promise
   return key;
 }
 
+/**
+ * Spec 003 T045: drives the Open-Meteo mock (infra/mocks/src/open-meteo.ts), mounted at /open-meteo.
+ * Process-wide state, so call `pauseSource(0)`, `failAll(false)` and `usePolar(null)` to reset.
+ */
+export function mockOpenMeteo() {
+  const base = `${MOCKS_URL}/open-meteo/__control/open-meteo`;
+  return {
+    setTemperature: (lat: number, lon: number, c: number) =>
+      postControl(`${base}/temperature`, { lat, lon, c }),
+    pauseSource: (ms: number) => postControl(`${base}/pause`, { ms }),
+    failAll: (on: boolean) => postControl(`${base}/fail`, { on }),
+    usePolar: (mode: 'day' | 'night' | null) => postControl(`${base}/polar`, { mode }),
+    addPlace: (candidate: {
+      name: string;
+      admin1?: string;
+      country: string;
+      lat: number;
+      lon: number;
+      timeZone: string;
+    }) => postControl(`${base}/place`, { candidate }),
+    async calls(): Promise<{ search: number; forecast: number }> {
+      const res = await fetch(`${base}/calls`);
+      if (!res.ok) throw new Error(`mockOpenMeteo: GET calls failed: ${res.status}`);
+      return (await res.json()) as { search: number; forecast: number };
+    },
+  };
+}
+
 async function postControl(url: string, body: unknown): Promise<void> {
   const res = await fetch(url, {
     method: 'POST',
