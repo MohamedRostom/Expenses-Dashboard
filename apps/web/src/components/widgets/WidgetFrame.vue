@@ -3,8 +3,27 @@ import { computed } from 'vue';
 import type { WidgetT, WidgetCauseT } from '@desk/contracts';
 import PanelState from '../PanelState.vue';
 
-const props = defineProps<{ widget: WidgetT }>();
-defineEmits<{ settings: []; remove: [] }>();
+const props = defineProps<{
+  widget: WidgetT;
+  index: number;
+  count: number;
+  atLimit: boolean;
+  offline: boolean;
+}>();
+const emit = defineEmits<{
+  settings: [];
+  remove: [];
+  move: [dir: -1 | 1];
+  duplicate: [];
+  dragStart: [e: PointerEvent];
+  dragMove: [e: PointerEvent];
+  dragEnd: [e: PointerEvent];
+}>();
+
+function onGripDown(e: PointerEvent) {
+  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  emit('dragStart', e);
+}
 
 const TITLES: Record<WidgetT['kind'], string> = {
   currency: 'Currency',
@@ -29,6 +48,7 @@ const asOf = computed(() =>
 const hasFigures = computed(() => props.widget.figures !== undefined);
 const banner = computed(() => {
   const { state, cause } = props.widget;
+  if (props.offline && hasFigures.value) return "You're offline — showing the last reading";
   if (state === 'unavailable') return 'This widget is unavailable right now.';
   if (state === 'stale') return (cause && CAUSE_COPY[cause]) || 'Showing the last reading.';
   if (state === 'error' && hasFigures.value) {
@@ -48,14 +68,30 @@ const body = computed<'figures' | 'loading' | 'error'>(() => {
     class="desk-widget-frame"
     data-testid="widget-frame"
     :data-state="widget.state"
+    :data-widget-id="widget.id"
     :aria-label="title"
   >
     <header class="desk-widget-head">
+      <span
+        class="desk-widget-grip"
+        data-testid="widget-grip"
+        aria-hidden="true"
+        @pointerdown="onGripDown"
+        @pointermove="$emit('dragMove', $event)"
+        @pointerup="$emit('dragEnd', $event)"
+        @pointercancel="$emit('dragEnd', $event)"
+        >&#8942;&#8942;</span
+      >
       <h3 class="desk-widget-title" data-testid="widget-title">{{ title }}</h3>
       <span class="desk-widget-asof">as of {{ asOf }}</span>
       <details class="desk-widget-menu">
         <summary :aria-label="`${title} menu`">&#8943;</summary>
         <div class="desk-widget-menu-items">
+          <button type="button" :disabled="index === 0" @click="$emit('move', -1)">Move up</button>
+          <button type="button" :disabled="index === count - 1" @click="$emit('move', 1)">
+            Move down
+          </button>
+          <button type="button" :disabled="atLimit" @click="$emit('duplicate')">Duplicate</button>
           <button type="button" @click="$emit('settings')">Settings</button>
           <button type="button" @click="$emit('remove')">Remove</button>
         </div>
@@ -88,6 +124,17 @@ const body = computed<'figures' | 'loading' | 'error'>(() => {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+}
+.desk-widget-grip {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  opacity: 0.5;
+  letter-spacing: -0.2em;
+}
+.desk-widget-menu-items button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .desk-widget-title {
   margin: 0;

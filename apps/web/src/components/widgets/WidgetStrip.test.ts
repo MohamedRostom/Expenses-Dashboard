@@ -10,6 +10,7 @@ vi.mock('../../api/widgets.js', () => ({
   patchWidget: vi.fn(),
   deleteWidget: vi.fn(),
   postWidgetsRefresh: vi.fn(),
+  putWidgetsOrder: vi.fn(),
 }));
 
 const widget = (id: string, over: Partial<WidgetT> = {}): WidgetT =>
@@ -131,9 +132,9 @@ describe('WidgetStrip', () => {
       } as Partial<WidgetT>),
     ]);
     expect(el.querySelector('.desk-weather')?.textContent).toContain('20°C');
-    expect(el.textContent).toContain('Sunrise and sunset figures');
-    expect(el.textContent).toContain('Spend pace figures');
-    expect(el.textContent).toContain('Fixed costs figures');
+    expect(el.textContent).toContain('Day length');
+    expect(el.textContent).toContain('50%');
+    expect(el.textContent).toContain('All fixed costs are in');
     app.unmount();
   });
 
@@ -142,5 +143,101 @@ describe('WidgetStrip', () => {
     expect(el.querySelector('[data-testid="widget-frame"]')).not.toBeNull();
     expect(el.querySelector('.desk-skeleton, [class*="skeleton"]')).not.toBeNull();
     app.unmount();
+  });
+
+  describe('arrange (T052)', () => {
+    const three = () => [
+      widget('a', { kind: 'fixed_costs' }),
+      widget('b', { kind: 'spend_pace' }),
+      widget('c', { kind: 'currency', figures: { rows: [] } } as Partial<WidgetT>),
+    ];
+    const ids = (el: HTMLElement) =>
+      [...el.querySelectorAll('[data-testid="widget-frame"]')].map((n) =>
+        n.getAttribute('data-widget-id'),
+      );
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await nextTick();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+
+    it('Move down saves the full order and announces the new position', async () => {
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.putWidgetsOrder).mockImplementation(async (order) => ({
+        widgets: order.map((id) => widget(id)),
+        limit: 8,
+        temperatureUnit: 'C',
+      }));
+      const { el, app } = await mount(three());
+      const down = [...el.querySelectorAll<HTMLButtonElement>('button')].filter(
+        (b) => b.textContent?.trim() === 'Move down',
+      );
+      down[0]?.click();
+      await flush();
+      expect(api.putWidgetsOrder).toHaveBeenCalledWith(['b', 'a', 'c']);
+      expect(ids(el)).toEqual(['b', 'a', 'c']);
+      const live = el.querySelector('[aria-live="polite"]');
+      expect(live?.textContent).toBe('Fixed costs moved to position 2 of 3');
+      app.unmount();
+    });
+
+    it('Duplicate posts duplicateOf', async () => {
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.createWidget).mockResolvedValue({ widget: widget('d') });
+      const { el, app } = await mount(three());
+      [...el.querySelectorAll<HTMLButtonElement>('button')]
+        .find((b) => b.textContent?.trim() === 'Duplicate')
+        ?.click();
+      await flush();
+      expect(api.createWidget).toHaveBeenCalledWith({ kind: 'fixed_costs', duplicateOf: 'a' });
+      app.unmount();
+    });
+
+    it('pointer drag reorders locally and saves once on pointerup', async () => {
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.putWidgetsOrder).mockImplementation(async (order) => ({
+        widgets: order.map((id) => widget(id)),
+        limit: 8,
+        temperatureUnit: 'C',
+      }));
+      const { el, app } = await mount(three());
+      const frames = [...el.querySelectorAll<HTMLElement>('[data-testid="widget-frame"]')];
+      // jsdom has no layout: three stacked 100px-high frames.
+      frames.forEach((f, i) => {
+        f.getBoundingClientRect = () =>
+          ({ top: i * 100, bottom: i * 100 + 100, left: 0, right: 100 }) as DOMRect;
+      });
+      const grip = frames[0]!.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+      grip.setPointerCapture = vi.fn();
+      const ev = (type: string, y: number) => {
+        const e = new Event(type, { bubbles: true });
+        Object.assign(e, { pointerId: 1, clientX: 50, clientY: y });
+        grip.dispatchEvent(e);
+      };
+      ev('pointerdown', 10);
+      ev('pointermove', 150);
+      await nextTick();
+      expect(ids(el)).toEqual(['b', 'a', 'c']);
+      expect(api.putWidgetsOrder).not.toHaveBeenCalled();
+      ev('pointerup', 150);
+      await flush();
+      expect(api.putWidgetsOrder).toHaveBeenCalledOnce();
+      expect(api.putWidgetsOrder).toHaveBeenCalledWith(['b', 'a', 'c']);
+      app.unmount();
+    });
+
+    it('a drop with no change sends nothing', async () => {
+      const api = await import('../../api/widgets.js');
+      const { el, app } = await mount(three());
+      const grip = el.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+      grip.setPointerCapture = vi.fn();
+      for (const type of ['pointerdown', 'pointerup']) {
+        const e = new Event(type, { bubbles: true });
+        Object.assign(e, { pointerId: 1, clientX: 0, clientY: 0 });
+        grip.dispatchEvent(e);
+      }
+      await flush();
+      expect(api.putWidgetsOrder).not.toHaveBeenCalled();
+      app.unmount();
+    });
   });
 });

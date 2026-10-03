@@ -13,6 +13,7 @@ import {
   getWidgetTypes,
   patchWidget,
   postWidgetsRefresh,
+  putWidgetsOrder,
 } from '../api/widgets.js';
 import { ApiError, apiFetch } from '../api/client.js';
 import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
@@ -74,6 +75,25 @@ export const useWidgetsStore = defineStore('widgets', {
       const { widget } = await createWidget(body);
       this.widgets.push(widget);
       return widget;
+    },
+
+    async duplicate(id: string) {
+      const src = this.widgets.find((w) => w.id === id);
+      if (!src) return;
+      return this.add({ kind: src.kind, duplicateOf: id });
+    },
+
+    /** Optimistic: the new order shows at once; a failed save puts the old one back and rethrows. */
+    async reorder(ids: string[]) {
+      const previous = this.widgets;
+      const byId = new Map(previous.map((w) => [w.id, w]));
+      this.widgets = ids.flatMap((id) => byId.get(id) ?? []);
+      try {
+        this.widgets = (await putWidgetsOrder(ids)).widgets;
+      } catch (err) {
+        this.widgets = previous;
+        throw err;
+      }
     },
 
     async patch(id: string, body: WidgetPatchT) {

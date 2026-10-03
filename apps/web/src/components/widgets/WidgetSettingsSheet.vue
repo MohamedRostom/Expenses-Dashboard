@@ -6,6 +6,7 @@ import { apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import WeatherSettings from './WeatherSettings.vue';
+import SunriseSettings from './SunriseSettings.vue';
 import type { Currency } from '../currencyFilter.js';
 
 const CAP = 6;
@@ -92,6 +93,7 @@ async function addSecond() {
         <p v-if="error" role="alert">{{ error }}</p>
       </fieldset>
       <WeatherSettings v-else-if="widget.kind === 'weather'" :widget="widget" :patch="patch" />
+      <SunriseSettings v-else-if="widget.kind === 'sunrise'" :widget="widget" :patch="patch" />
       <p v-else>This widget has no options.</p>
     </slot>
   </Dialog>

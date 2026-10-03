@@ -20,5 +20,8 @@ export const patchWidget = (id: string, body: WidgetPatchT) =>
 
 export const deleteWidget = (id: string) => apiFetch<void>(`/widgets/${id}`, { method: 'DELETE' });
 
+export const putWidgetsOrder = (ids: string[]) =>
+  apiFetch<WidgetsResponseT>('/widgets/order', { method: 'PUT', body: JSON.stringify({ ids }) });
+
 export const postWidgetsRefresh = () =>
   apiFetch<WidgetsRefreshResponseT>('/widgets/refresh', { method: 'POST' });

@@ -15,6 +15,7 @@ vi.mock('../api/widgets.js', async () => {
     patchWidget: vi.fn(),
     deleteWidget: vi.fn(),
     postWidgetsRefresh: vi.fn(),
+    putWidgetsOrder: vi.fn(),
   };
 });
 
@@ -109,6 +110,36 @@ describe('Widgets store', () => {
     vi.mocked(api.deleteWidget).mockResolvedValue(undefined);
     await store.remove('w1');
     expect(store.widgets.map((w) => w.id)).toEqual(['w2']);
+  });
+
+  it('reorder() sends the full id list and applies the returned order', async () => {
+    const { api, store } = await setup();
+    store.widgets = [widget({ id: 'a' }), widget({ id: 'b' }), widget({ id: 'c' })];
+    vi.mocked(api.putWidgetsOrder).mockResolvedValue(
+      response([widget({ id: 'c' }), widget({ id: 'a' }), widget({ id: 'b' })]),
+    );
+    await store.reorder(['c', 'a', 'b']);
+    expect(api.putWidgetsOrder).toHaveBeenCalledWith(['c', 'a', 'b']);
+    expect(store.widgets.map((w) => w.id)).toEqual(['c', 'a', 'b']);
+  });
+
+  it('reorder() restores the previous order and rethrows on failure', async () => {
+    const { api, store } = await setup();
+    store.widgets = [widget({ id: 'a' }), widget({ id: 'b' })];
+    vi.mocked(api.putWidgetsOrder).mockRejectedValue(new ApiError('internal', 'x', 500));
+    await expect(store.reorder(['b', 'a'])).rejects.toThrow();
+    expect(store.widgets.map((w) => w.id)).toEqual(['a', 'b']);
+  });
+
+  it('duplicate() posts kind and duplicateOf and appends', async () => {
+    const { api, store } = await setup();
+    store.widgets = [widget({ id: 'a', kind: 'currency' })];
+    vi.mocked(api.createWidget).mockResolvedValue({
+      widget: widget({ id: 'a2', kind: 'currency', position: 1 }),
+    });
+    await store.duplicate('a');
+    expect(api.createWidget).toHaveBeenCalledWith({ kind: 'currency', duplicateOf: 'a' });
+    expect(store.widgets.map((w) => w.id)).toEqual(['a', 'a2']);
   });
 
   it('maps a 401 to session_expired and never stores it as a widget cause', async () => {
