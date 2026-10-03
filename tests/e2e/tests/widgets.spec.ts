@@ -54,7 +54,7 @@ async function mockWidgets(
 ): Promise<void> {
   await page.route('**/widgets/types', (route) => route.fulfill({ json: TYPES }));
   await page.route(/\/widgets$/, (route) =>
-    route.request().method() === 'GET' ? handler(route) : route.continue(),
+    route.request().method() === 'GET' ? handler(route) : route.fallback(),
   );
 }
 
@@ -140,6 +140,7 @@ test('a widget with no figures holds a fixed-height frame and nothing below move
   const frame = page.getByTestId('widget-frame');
   await expect(frame).toBeVisible();
   const table = page.locator('.desk-entries-table');
+  await expect(table).toBeVisible();
   const before = { frame: await frame.boundingBox(), table: await table.boundingBox() };
 
   // The store reloads when the tab becomes visible again.
@@ -281,12 +282,12 @@ test('settings refuse the default currency and a seventh code with a message', a
   await openCurrencyScene(page, 'cur-cap', () => [
     currencyWidget(six.map((code) => ({ ...eurRow, code }))),
   ]);
-  await page.getByRole('button', { name: /currency menu/i }).click();
+  await page.getByLabel(/currency menu/i).click();
   await page.getByRole('button', { name: 'Settings' }).click();
 
   const dialog = page.getByRole('dialog', { name: /widget settings/i });
-  await expect(dialog.getByLabel(/^GBP/)).toBeDisabled();
-  await expect(dialog.getByLabel(/^NZD/)).toBeDisabled();
+  await expect(dialog.getByRole('checkbox', { name: /^GBP/ })).toBeDisabled();
+  await expect(dialog.getByRole('checkbox', { name: /^NZD/ })).toBeDisabled();
   await expect(dialog.getByText(/up to six currencies/i)).toBeVisible();
   await expect(dialog.getByRole('button', { name: /add a second currency widget/i })).toBeVisible();
 });
