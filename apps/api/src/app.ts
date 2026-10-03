@@ -27,6 +27,7 @@ import { createHooksRoutes } from './routes/hooks.js';
 import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
 import { createFeedbackRoutes } from './routes/feedback.js';
+import { createHealthWidgetsRoutes } from './routes/health-widgets.js';
 import { createConnectionsRoutes } from './routes/connections.js';
 import { createTodayRoutes } from './routes/today.js';
 import { createRatesService } from './services/rates.js';
@@ -401,6 +402,8 @@ export function createApp(deps: AppDeps) {
   app.route('/panels/today', todayRouter);
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
+
+  app.route('/', createHealthWidgetsRoutes(deps.db, deps.clock));
 
   app.get('/healthz', async (c) => {
     // T109: trivial query with a short timeout — never lets a slow/broken DB fail the whole
