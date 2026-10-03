@@ -1,9 +1,12 @@
-import { and, asc, eq, inArray, lte, max, sql } from 'drizzle-orm';
-import { fxRates, type Db } from '@desk/db';
+import { and, asc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
+import { categories, expenses, fxRates, weatherReadings, type Db } from '@desk/db';
 import type { CurrencyRowT, WidgetCauseT, WidgetStateT } from '@desk/contracts';
-import { rateChanges, type RateChange } from '@desk/core';
+import { fixedCosts, monthSummary, rateChanges, spendPace, type RateChange } from '@desk/core';
+import { wmo } from '@desk/connectors/open-meteo/wmo';
 import type { SessionUser } from '../middleware/session.js';
+import { toCategoryRow, toExpenseRow } from '../routes/summary.js';
 import { todayInTimeZone } from './capture.js';
+import { weatherPausedUntil } from './source-usage.js';
 
 export type FigureKind = 'currency' | 'weather' | 'sunrise' | 'spend_pace' | 'fixed_costs';
 
@@ -29,11 +32,11 @@ type Built = { state: WidgetStateT; figures?: unknown; cause?: WidgetCauseT; asO
 type Builder = (
   db: Db,
   user: SessionUser,
-  widget: { id: string; settings: unknown },
+  widget: { id: string; settings: unknown; place?: WidgetPlace },
   ctx: FigureContext,
 ) => Promise<Built>;
 
-const empty: Builder = async () => ({ state: 'empty' });
+type WidgetPlace = { name: string; timeZone: string; lat: number; lon: number };
 
 const toChange = (c: RateChange | null) =>
   c && { pct: Number(c.pct), direction: c.direction, ...(c.since && { since: c.since }) };
@@ -106,13 +109,174 @@ const currency: Builder = async (db, user, widget, ctx) => {
   return { state: stale ? 'stale' : 'ready', figures: { rows }, ...(newest && { asOf: newest }) };
 };
 
-/** Per-kind builders; US2 and US4 replace the `empty` entries. */
+const ATTRIBUTION = 'Weather data by Open-Meteo.com' as const;
+const STALE_AFTER_MS = 3600_000;
+
+type Daily = {
+  date: string;
+  maxC: number;
+  minC: number;
+  weatherCode: number;
+  sunrise: string | null;
+  sunset: string | null;
+  daylightSeconds: number;
+};
+type Current = { temperatureC: number; weatherCode: number; observedAt: string };
+
+/** T044/T059: the shared reading for the widget's rounded place plus its state and cause. */
+async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContext) {
+  if (!place) return { fail: { state: 'error', cause: 'place_not_found' } as Built };
+  const [r] = await db
+    .select()
+    .from(weatherReadings)
+    .where(
+      and(
+        eq(weatherReadings.lat, place.lat.toFixed(2)),
+        eq(weatherReadings.lon, place.lon.toFixed(2)),
+      ),
+    );
+  const paused = await weatherPausedUntil(db, ctx.now);
+  const cause: WidgetCauseT | undefined = paused
+    ? 'source_limit_reached'
+    : r?.error
+      ? 'source_unreachable'
+      : undefined;
+  if (!r?.current || !r.daily) {
+    return { fail: (cause ? { state: 'error', cause } : { state: 'empty' }) as Built };
+  }
+  const stale = ctx.now.getTime() - r.fetchedAt.getTime() > STALE_AFTER_MS;
+  return {
+    current: r.current as Current,
+    daily: r.daily as Daily[],
+    state: (stale || cause ? 'stale' : 'ready') as WidgetStateT,
+    ...(cause && { cause }),
+    ...(stale && { staleSince: r.fetchedAt.toISOString() }),
+  };
+}
+
+const weather: Builder = async (db, _user, widget, ctx) => {
+  const r = await reading(db, widget.place, ctx);
+  if ('fail' in r) return r.fail;
+  const { current, daily } = r;
+  const today = daily[0]!;
+  return {
+    state: r.state,
+    ...(r.cause && { cause: r.cause }),
+    asOf: current.observedAt,
+    figures: {
+      place: widget.place!.name,
+      temperatureC: current.temperatureC,
+      condition: wmo(current.weatherCode).condition,
+      icon: wmo(current.weatherCode).icon,
+      todayMaxC: today.maxC,
+      todayMinC: today.minC,
+      outlook: daily.slice(1, 4).map((d) => ({
+        date: d.date,
+        maxC: d.maxC,
+        minC: d.minC,
+        icon: wmo(d.weatherCode).icon,
+      })),
+      observedAt: current.observedAt,
+      ...(r.staleSince && { staleSince: r.staleSince }),
+      attribution: ATTRIBUTION,
+    },
+  };
+};
+
+const sunrise: Builder = async (db, user, widget, ctx) => {
+  const r = await reading(db, widget.place, ctx);
+  if ('fail' in r) return r.fail;
+  const today = r.daily[0]!;
+  const noTimes = today.sunrise === null || today.sunset === null;
+  const polar = !noTimes
+    ? undefined
+    : today.daylightSeconds >= 86400
+      ? 'day'
+      : today.daylightSeconds === 0
+        ? 'night'
+        : undefined;
+  return {
+    state: r.state,
+    ...(r.cause && { cause: r.cause }),
+    asOf: r.current.observedAt,
+    figures: {
+      place: widget.place!.name,
+      sunrise: today.sunrise,
+      sunset: today.sunset,
+      daylightSeconds: today.daylightSeconds,
+      placeTimeZone: widget.place!.timeZone,
+      showZone: widget.place!.timeZone !== user.timeZone,
+      ...(polar && { polar }),
+      attribution: ATTRIBUTION,
+    },
+  };
+};
+
+/** T059: the month rollups `/summary/month` serves, for the user's current and previous month. */
+async function monthRollups(db: Db, user: SessionUser, ctx: FigureContext) {
+  const prevDay = new Date(Date.parse(`${ctx.monthStart}T00:00:00Z`) - 86400_000)
+    .toISOString()
+    .slice(0, 10);
+  const prev = monthWindow(prevDay);
+  const [expenseRows, categoryRows] = await Promise.all([
+    db
+      .select()
+      .from(expenses)
+      .where(
+        and(
+          eq(expenses.userId, user.id),
+          gte(expenses.expenseDate, prev.monthStart),
+          lte(expenses.expenseDate, ctx.monthEnd),
+        ),
+      ),
+    db.select().from(categories).where(eq(categories.userId, user.id)),
+  ]);
+  const rows = expenseRows.map(toExpenseRow);
+  const cats = categoryRows.map(toCategoryRow);
+  return {
+    categoryRows,
+    cats,
+    thisMonth: monthSummary(rows, cats, ctx.monthStart.slice(0, 7)),
+    previousMonth: monthSummary(rows, cats, prev.monthStart.slice(0, 7)),
+  };
+}
+
+const totals = (s: ReturnType<typeof monthSummary>) =>
+  new Map(s.categories.filter((c) => c.spent > 0).map((c) => [c.id, c.spent]));
+
+const spend_pace: Builder = async (db, user, _widget, ctx) => {
+  const { cats, thisMonth } = await monthRollups(db, user, ctx);
+  if (cats.every((c) => c.budgetMinor === null)) return { state: 'empty' };
+  const figures = spendPace(
+    thisMonth,
+    cats.map((c) => c.budgetMinor),
+    user.timeZone,
+    ctx.now,
+  );
+  return { state: 'ready', asOf: ctx.now.toISOString(), figures };
+};
+
+const fixed_costs: Builder = async (db, user, _widget, ctx) => {
+  const { categoryRows, thisMonth, previousMonth } = await monthRollups(db, user, ctx);
+  if (!categoryRows.some((c) => c.defaultKind === 'fixed')) return { state: 'empty' };
+  const { remaining, totalExpectedMinor, allRecorded } = fixedCosts(
+    categoryRows.map((c) => ({ ...c, defaultKind: c.defaultKind ?? '' })),
+    totals(thisMonth),
+    totals(previousMonth),
+  );
+  return {
+    state: 'ready',
+    asOf: ctx.now.toISOString(),
+    figures: { remaining, totalExpectedMinor, allRecorded },
+  };
+};
+
 const builders: Record<FigureKind, Builder> = {
   currency,
-  weather: empty,
-  sunrise: empty,
-  spend_pace: empty,
-  fixed_costs: empty,
+  weather,
+  sunrise,
+  spend_pace,
+  fixed_costs,
 };
 
 export function monthWindow(day: string): { monthStart: string; monthEnd: string } {
@@ -127,7 +291,7 @@ export function monthWindow(day: string): { monthStart: string; monthEnd: string
 export async function figuresFor(
   db: Db,
   user: SessionUser,
-  widgets: { id: string; kind: string; settings: unknown }[],
+  widgets: { id: string; kind: string; settings: unknown; place?: WidgetPlace }[],
   flags: Record<string, boolean>,
   now: Date,
 ): Promise<Map<string, WidgetFigures>> {

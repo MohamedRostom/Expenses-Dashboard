@@ -10,18 +10,35 @@ import {
   type WidgetTypesResponseT,
 } from '@desk/contracts';
 import { WIDGET_LIMIT } from '@desk/core';
+import type { WeatherSource } from '@desk/connectors/open-meteo';
 import type { AppVariables } from '../app.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
 import { requireAuth } from '../lib/require-auth.js';
 import type { SessionUser } from '../middleware/session.js';
 import { createWidgetsService, type WidgetRow } from '../services/widgets.js';
+import { refreshReadings } from '../services/weather.js';
 import { figuresFor } from '../services/widget-figures.js';
 
 /** GET/POST /widgets, GET /widgets/types, PUT /widgets/order, POST /widgets/refresh, PATCH/DELETE /widgets/:id. */
-export function createWidgetsRoutes(db: Db, clock: { now(): Date }, limiter: RateLimiter) {
+export function createWidgetsRoutes(
+  db: Db,
+  clock: { now(): Date },
+  limiter: RateLimiter,
+  weather: WeatherSource,
+) {
   const app = new Hono<{ Variables: AppVariables }>();
   const service = createWidgetsService(db, clock);
+
+  /** Best-effort first reading for a new/changed place; the job and refresh cover the rest. */
+  async function firstReading(user: SessionUser, row: WidgetRow) {
+    if (!row.place || (row.kind !== 'weather' && row.kind !== 'sunrise')) return;
+    try {
+      await refreshReadings({ db, source: weather, clock }, { userId: user.id });
+    } catch {
+      // never fail the widget request over weather
+    }
+  }
 
   async function present(user: SessionUser, rows: WidgetRow[], flags: Record<string, boolean>) {
     const figures = await figuresFor(db, user, rows, flags, clock.now());
@@ -52,6 +69,7 @@ export function createWidgetsRoutes(db: Db, clock: { now(): Date }, limiter: Rat
     const input = WidgetCreate.parse(await c.req.json());
     const flags = await resolveAllFlags(db, user.id);
     const row = await service.create(user, input, flags);
+    await firstReading(user, row);
     const [widget] = await present(user, [row], flags);
     return c.json({ widget } as WidgetResponseT, 201);
   });
@@ -81,6 +99,7 @@ export function createWidgetsRoutes(db: Db, clock: { now(): Date }, limiter: Rat
     const user = requireAuth(c);
     const input = WidgetPatch.parse(await c.req.json());
     const row = await service.patch(user, c.req.param('id'), input);
+    await firstReading(user, row);
     const [widget] = await present(user, [row], await resolveAllFlags(db, user.id));
     return c.json({ widget } as WidgetResponseT);
   });

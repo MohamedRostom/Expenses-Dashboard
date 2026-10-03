@@ -39,7 +39,7 @@ describe('POST /widgets/refresh', () => {
     h.db.execute(sql`
       INSERT INTO weather_readings (lat, lon, time_zone, fetched_at)
       VALUES (${lat}, ${lon}, 'UTC', now() - interval '10 minutes')
-      ON CONFLICT DO NOTHING`);
+      ON CONFLICT (lat, lon) DO UPDATE SET fetched_at = excluded.fetched_at`);
   const fetchedAgo = async (lat: string, lon: string) =>
     Number(
       (

@@ -20,7 +20,7 @@ import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
 import { socketNodeConnect } from './adapters/socket-node.js';
 import { resolveHostNode } from './adapters/host-resolver-node.js';
-import { registerAllJobs } from './jobs/register.js';
+import { registerAllJobs, ensureWidgetJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
 import { createRatesService } from './services/rates.js';
@@ -64,12 +64,22 @@ const limiter = new PgRateLimiter(queryDb);
 // Stage 2 (worker.ts) does the same registration on its own cron trigger; C13's Fly machine
 // schedule is the safety net if this interval ever stalls (e.g. a deploy restart racing a job).
 const jobRunner = new JobRunner(queryDb);
+const weather = new OpenMeteoClient(
+  env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {},
+);
 registerAllJobs({
   db,
   getRate: createRatesService(db, ratesProvider).getRate,
   ratesProvider,
   limiter,
+  weather,
+  enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
 });
+void ensureWidgetJobs(
+  db,
+  (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
+  new Date(),
+).catch((err) => console.error('widgets jobs: could not enqueue', err));
 registerJob(
   'feedback.digest',
   feedbackDigestJob({
@@ -94,7 +104,7 @@ const app = createApp({
   secretBox: createSecretBox(env.SECRET_BOX_KEY),
   breachChecker: new HibpBreachChecker(),
   rates: ratesProvider,
-  weather: new OpenMeteoClient(env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {}),
+  weather,
   jobs: jobRunner,
   runJobsNow: () => jobRunner.runDueJobs(),
   socketConnect: socketNodeConnect,

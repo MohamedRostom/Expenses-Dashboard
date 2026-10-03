@@ -468,8 +468,20 @@ describe('ownership matrix', () => {
       expect(await age('48.86', '2.35')).toBeLessThan(3600);
     });
 
-    it.todo(
-      'GET /places/search and POST /places/resolve create no places row and audit only A (T051)',
-    );
+    it('GET /places/search and POST /places/resolve create no places row and audit only A (T051)', async () => {
+      const count = async (q: ReturnType<typeof sql>) =>
+        Number(((await db.execute(q)) as unknown as { n: number }[])[0]!.n);
+      const places = () => count(sql`SELECT count(*)::int AS n FROM places`);
+      const before = await places();
+      expect((await userA.get('/places/search?q=Manch')).status).toBe(200);
+      expect((await userA.post('/places/resolve', { lat: 53.48, lon: -2.24 })).status).toBe(200);
+      expect(await places()).toBe(before);
+      const audit = (id: string) =>
+        count(
+          sql`SELECT count(*)::int AS n FROM audit_log WHERE action = 'place.device_location_used' AND user_id = ${id}`,
+        );
+      expect(await audit(userA.userId)).toBe(1);
+      expect(await audit(userB.userId)).toBe(0);
+    });
   });
 });

@@ -220,7 +220,7 @@ export function createSummaryRoutes(db: Db, clock: Clock) {
   return app;
 }
 
-function toExpenseRow(row: typeof expenses.$inferSelect): ExpenseRow {
+export function toExpenseRow(row: typeof expenses.$inferSelect): ExpenseRow {
   return {
     categoryId: row.categoryId,
     expenseDate: row.expenseDate,
@@ -229,7 +229,7 @@ function toExpenseRow(row: typeof expenses.$inferSelect): ExpenseRow {
   };
 }
 
-function toCategoryRow(row: typeof categories.$inferSelect): CategoryRow {
+export function toCategoryRow(row: typeof categories.$inferSelect): CategoryRow {
   return { id: row.id, budgetMinor: row.budgetMinor };
 }
 

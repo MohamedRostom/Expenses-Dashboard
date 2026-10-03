@@ -14,7 +14,7 @@ import { OpenMeteoClient } from '@desk/connectors/open-meteo/client';
 import { connect as cfConnect } from 'cloudflare:sockets';
 import { JobRunner } from './jobs/runner.js';
 import { createSocketWorkerConnect } from './adapters/socket-worker.js';
-import { registerAllJobs } from './jobs/register.js';
+import { registerAllJobs, ensureWidgetJobs } from './jobs/register.js';
 import { createRatesService } from './services/rates.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 
@@ -94,6 +94,8 @@ export default {
         getRate: createRatesService(db, deps.rates).getRate,
         ratesProvider: deps.rates,
         limiter: deps.limiter,
+        weather: deps.weather,
+        enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
       });
       app = createApp(deps);
     }
@@ -113,7 +115,14 @@ export default {
       getRate: createRatesService(db, deps.rates).getRate,
       ratesProvider: deps.rates,
       limiter: deps.limiter,
+      weather: deps.weather,
+      enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
     });
+    await ensureWidgetJobs(
+      db,
+      (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
+      new Date(),
+    );
     await jobRunner.runDueJobs();
   },
 };
