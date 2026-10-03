@@ -14,6 +14,7 @@ WeatherSource
 
 PlaceCandidate: { name, admin1?, country, lat, lon, timeZone }   // lat/lon rounded to 2 dp by the client
 Forecast: {
+  timeZone,   // the source's resolved zone (top-level `timezone`); used by POST /places/resolve with 'auto'
   current: { temperatureC, weatherCode, observedAt },
   daily: [{ date, maxC, minC, weatherCode, sunrise, sunset, daylightSeconds }]  // 4 entries, place-local
 }

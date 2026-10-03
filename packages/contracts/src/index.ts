@@ -226,7 +226,12 @@ export {
   ReconnectResponse,
   type ReconnectResponseT,
 } from './connections.js';
-export { PROVIDER_PRIVACY_TEXT, type ProviderPrivacyText } from './privacy-text.js';
+export {
+  PROVIDER_PRIVACY_TEXT,
+  WEATHER_PRIVACY_TEXT,
+  type ProviderPrivacyText,
+  type WeatherPrivacyText,
+} from './privacy-text.js';
 export {
   WidgetKind,
   type WidgetKindT,

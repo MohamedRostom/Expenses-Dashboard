@@ -71,3 +71,14 @@ export {
   type SettingsDescriptor,
 } from './widgets/index.js';
 export { rateChanges, type RatePoint, type RateChange, type RateChanges } from './widgets/index.js';
+export {
+  roundCoord,
+  cacheKey,
+  normaliseQuery,
+  nearest,
+  spendPace,
+  fixedCosts,
+  type SpendPace,
+  type FixedCostRow,
+  type FixedCosts,
+} from './widgets/index.js';

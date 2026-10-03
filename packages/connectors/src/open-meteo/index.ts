@@ -10,6 +10,8 @@ export interface PlaceCandidate {
 }
 
 export interface Forecast {
+  /** IANA zone Open-Meteo resolved (its top-level `timezone`). */
+  timeZone: string;
   current: { temperatureC: number; weatherCode: number; observedAt: string };
   /** 4 entries, place-local dates. */
   daily: {
