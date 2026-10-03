@@ -1337,13 +1337,25 @@
               "type": "object",
               "properties": {
                 "name": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
                 },
                 "admin1": {
-                  "type": ["string", "null"]
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 },
                 "country": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
                 },
                 "lat": {
                   "type": "number",
@@ -1356,7 +1368,8 @@
                   "maximum": 180
                 },
                 "timeZone": {
-                  "type": "string"
+                  "type": "string",
+                  "maxLength": 64
                 }
               },
               "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -4280,13 +4293,25 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           },
           "admin1": {
-            "type": ["string", "null"]
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "country": {
-            "type": "string"
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
           },
           "lat": {
             "type": "number",
@@ -4299,7 +4324,8 @@
             "maximum": 180
           },
           "timeZone": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 64
           }
         },
         "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -5786,13 +5812,25 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "admin1": {
-                    "type": ["string", "null"]
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "country": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "lat": {
                     "type": "number",
@@ -5805,7 +5843,8 @@
                     "maximum": 180
                   },
                   "timeZone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -5963,13 +6002,25 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "admin1": {
-                    "type": ["string", "null"]
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "country": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "lat": {
                     "type": "number",
@@ -5982,7 +6033,8 @@
                     "maximum": 180
                   },
                   "timeZone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6101,13 +6153,25 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "admin1": {
-                    "type": ["string", "null"]
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "country": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "lat": {
                     "type": "number",
@@ -6120,7 +6184,8 @@
                     "maximum": 180
                   },
                   "timeZone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6213,13 +6278,25 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "admin1": {
-                    "type": ["string", "null"]
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "country": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "lat": {
                     "type": "number",
@@ -6232,7 +6309,8 @@
                     "maximum": 180
                   },
                   "timeZone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6338,13 +6416,25 @@
                 "type": "object",
                 "properties": {
                   "name": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "admin1": {
-                    "type": ["string", "null"]
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   },
                   "country": {
-                    "type": "string"
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
                   },
                   "lat": {
                     "type": "number",
@@ -6357,7 +6447,8 @@
                     "maximum": 180
                   },
                   "timeZone": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 64
                   }
                 },
                 "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6468,13 +6559,25 @@
             "type": "object",
             "properties": {
               "name": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
               },
               "admin1": {
-                "type": ["string", "null"]
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "country": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
               },
               "lat": {
                 "type": "number",
@@ -6487,7 +6590,8 @@
                 "maximum": 180
               },
               "timeZone": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               }
             },
             "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6523,13 +6627,25 @@
             "type": "object",
             "properties": {
               "name": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
               },
               "admin1": {
-                "type": ["string", "null"]
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               },
               "country": {
-                "type": "string"
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
               },
               "lat": {
                 "type": "number",
@@ -6542,7 +6658,8 @@
                 "maximum": 180
               },
               "timeZone": {
-                "type": "string"
+                "type": "string",
+                "maxLength": 64
               }
             },
             "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6579,13 +6696,25 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "admin1": {
-                        "type": ["string", "null"]
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "country": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "lat": {
                         "type": "number",
@@ -6598,7 +6727,8 @@
                         "maximum": 180
                       },
                       "timeZone": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6756,13 +6886,25 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "admin1": {
-                        "type": ["string", "null"]
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "country": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "lat": {
                         "type": "number",
@@ -6775,7 +6917,8 @@
                         "maximum": 180
                       },
                       "timeZone": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -6894,13 +7037,25 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "admin1": {
-                        "type": ["string", "null"]
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "country": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "lat": {
                         "type": "number",
@@ -6913,7 +7068,8 @@
                         "maximum": 180
                       },
                       "timeZone": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7006,13 +7162,25 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "admin1": {
-                        "type": ["string", "null"]
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "country": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "lat": {
                         "type": "number",
@@ -7025,7 +7193,8 @@
                         "maximum": 180
                       },
                       "timeZone": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7131,13 +7300,25 @@
                     "type": "object",
                     "properties": {
                       "name": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "admin1": {
-                        "type": ["string", "null"]
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
                       "country": {
-                        "type": "string"
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
                       },
                       "lat": {
                         "type": "number",
@@ -7150,7 +7331,8 @@
                         "maximum": 180
                       },
                       "timeZone": {
-                        "type": "string"
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7360,13 +7542,25 @@
                       "type": "object",
                       "properties": {
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "admin1": {
-                          "type": ["string", "null"]
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "country": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "lat": {
                           "type": "number",
@@ -7379,7 +7573,8 @@
                           "maximum": 180
                         },
                         "timeZone": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7543,13 +7738,25 @@
                       "type": "object",
                       "properties": {
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "admin1": {
-                          "type": ["string", "null"]
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "country": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "lat": {
                           "type": "number",
@@ -7562,7 +7769,8 @@
                           "maximum": 180
                         },
                         "timeZone": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7681,13 +7889,25 @@
                       "type": "object",
                       "properties": {
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "admin1": {
-                          "type": ["string", "null"]
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "country": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "lat": {
                           "type": "number",
@@ -7700,7 +7920,8 @@
                           "maximum": 180
                         },
                         "timeZone": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7793,13 +8014,25 @@
                       "type": "object",
                       "properties": {
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "admin1": {
-                          "type": ["string", "null"]
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "country": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "lat": {
                           "type": "number",
@@ -7812,7 +8045,8 @@
                           "maximum": 180
                         },
                         "timeZone": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
@@ -7918,13 +8152,25 @@
                       "type": "object",
                       "properties": {
                         "name": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "admin1": {
-                          "type": ["string", "null"]
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
                         },
                         "country": {
-                          "type": "string"
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
                         },
                         "lat": {
                           "type": "number",
@@ -7937,7 +8183,8 @@
                           "maximum": 180
                         },
                         "timeZone": {
-                          "type": "string"
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],

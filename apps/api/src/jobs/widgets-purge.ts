@@ -29,6 +29,9 @@ export function widgetsPurgeJob(deps: {
         sql`DELETE FROM widget_source_usage WHERE day < ${ago(90).slice(0, 10)}::date`,
       );
       await emitSourceSummary(deps.db, deps.logger ?? defaultLogger, now);
+    } catch (e) {
+      // never rethrow: the runner would retry this row next to the successor queued below
+      console.error('widgets.purge pass failed', e instanceof Error ? e.message : e);
     } finally {
       await deps.enqueue('widgets.purge', {}, { runAfter: new Date(now.getTime() + DAY_MS) });
     }

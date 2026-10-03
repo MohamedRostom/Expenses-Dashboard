@@ -229,6 +229,101 @@ describe('widgets weather jobs', () => {
     });
   });
 
+  describe('job chain stays single', () => {
+    const NAMES = ['widgets.weather_refresh', 'widgets.purge'];
+    const queued = async () =>
+      rows(
+        sql`SELECT name FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge') AND status = 'queued'`,
+      );
+    const realEnqueue = async (name: string) => {
+      await h.db.execute(
+        sql`INSERT INTO jobs (name, payload, run_after) VALUES (${name}, '{}'::jsonb, now())`,
+      );
+      return 'id';
+    };
+    beforeEach(async () => {
+      await h.db.execute(sql`DELETE FROM jobs WHERE name IN (${NAMES[0]}, ${NAMES[1]})`);
+    });
+
+    it('a pass that throws does not rethrow and still leaves exactly one queued job', async () => {
+      const boom = {
+        ...h.weatherFake,
+        forecast: async () => {
+          throw new Error('boom');
+        },
+      } as unknown as typeof h.weatherFake;
+      const a = await user('wj-throw@test', 1);
+      await place(a.userId, '51.51', '-0.13');
+      // a DB failure inside the pass (not a source failure) must not escape either
+      const badDb = new Proxy(h.db, {
+        get: (t, k, r) =>
+          k === 'execute'
+            ? async () => {
+                throw new Error('db down');
+              }
+            : Reflect.get(t, k, r),
+      });
+      await widgetsWeatherRefreshJob({
+        db: badDb,
+        source: boom,
+        clock: h.clock,
+        enqueue: realEnqueue,
+      })({}, ctx);
+      await widgetsPurgeJob({ db: badDb, clock: h.clock, enqueue: realEnqueue })({}, ctx);
+      expect((await queued()).map((r) => r['name']).sort()).toEqual([
+        'widgets.purge',
+        'widgets.weather_refresh',
+      ]);
+    });
+
+    it('two concurrent ensures leave exactly one queued row per name', async () => {
+      await Promise.all([
+        ensureWidgetJobs(h.db, realEnqueue, t0),
+        ensureWidgetJobs(h.db, realEnqueue, t0),
+      ]);
+      expect((await queued()).map((r) => r['name']).sort()).toEqual([
+        'widgets.purge',
+        'widgets.weather_refresh',
+      ]);
+    });
+
+    it('a running row older than 10 minutes counts as absent; a recent one does not', async () => {
+      const running = (ageMin: number) =>
+        h.db.execute(sql`
+          INSERT INTO jobs (name, payload, status, started_at)
+          VALUES ('widgets.purge', '{}'::jsonb, 'running', ${new Date(t0.getTime() - ageMin * 60_000).toISOString()}::timestamptz)`);
+      await running(2);
+      await ensureWidgetJobs(h.db, realEnqueue, t0);
+      expect((await queued()).filter((r) => r['name'] === 'widgets.purge')).toHaveLength(0);
+      await h.db.execute(sql`DELETE FROM jobs WHERE name = 'widgets.purge'`);
+      await running(30);
+      await ensureWidgetJobs(h.db, realEnqueue, t0);
+      expect((await queued()).filter((r) => r['name'] === 'widgets.purge')).toHaveLength(1);
+    });
+  });
+
+  describe('outage backoff', () => {
+    const failures = (agoMin: number) =>
+      h.db.execute(sql`
+        INSERT INTO widget_source_state (source, consecutive_failures, last_failure_at)
+        VALUES ('open_meteo.forecast', 3, ${new Date(t0.getTime() - agoMin * 60_000).toISOString()}::timestamptz)
+        ON CONFLICT (source) DO UPDATE SET consecutive_failures = 3, last_failure_at = EXCLUDED.last_failure_at`);
+    afterAll(async () => {
+      await h.db.execute(sql`DELETE FROM widget_source_state WHERE source = 'open_meteo.forecast'`);
+    });
+
+    it('job pass makes no forecast calls 2 minutes after 3 failures, but does after 11', async () => {
+      const a = await user('wj-backoff@test', 1);
+      await place(a.userId, '51.51', '-0.13');
+      await failures(2);
+      await run();
+      expect(h.weatherFake.calls.forecast).toBe(0);
+      await failures(11);
+      await run();
+      expect(h.weatherFake.calls.forecast).toBe(1);
+    });
+  });
+
   describe('inline first reading', () => {
     it('POST /widgets with a place gets a reading straight away; PATCH to a new place too', async () => {
       const a = await h.asUser('wj-inline@test');

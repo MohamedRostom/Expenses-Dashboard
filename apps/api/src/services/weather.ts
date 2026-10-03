@@ -14,6 +14,18 @@ export type WeatherDeps = {
   logger?: Logger;
 };
 
+const DEGRADED_FAILURES = 3;
+const DEGRADED_WINDOW_MS = 10 * 60_000;
+
+async function sourceDegraded(db: Db, now: Date): Promise<boolean> {
+  const since = new Date(now.getTime() - DEGRADED_WINDOW_MS).toISOString();
+  const rows = (await db.execute(sql`
+    SELECT 1 FROM widget_source_state
+    WHERE source = 'open_meteo.forecast' AND consecutive_failures >= ${DEGRADED_FAILURES}
+      AND last_failure_at > ${since}::timestamptz`)) as unknown as unknown[];
+  return rows.length > 0;
+}
+
 type Due = { lat: string; lon: string; tz: string; active: string | null };
 
 /**
@@ -26,6 +38,9 @@ export async function refreshReadings(deps: WeatherDeps, opts: { userId?: string
   const { db, source, clock, logger } = deps;
   const now = clock.now();
   if (await weatherPausedUntil(db, now)) return;
+  // ponytail: global backoff while the source is degraded; per-row next_attempt_at if needed.
+  // Job path only: a single user's new place (inline) still gets its one try.
+  if (!opts.userId && (await sourceDegraded(db, now))) return;
   const iso = now.toISOString();
   const staleBefore = new Date(now.getTime() - STALE_MS).toISOString();
   const activeSince = new Date(now.getTime() - ACTIVE_MS).toISOString();

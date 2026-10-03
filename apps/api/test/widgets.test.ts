@@ -315,4 +315,29 @@ describe('widgets', () => {
       expect(list.find((x: { id: string }) => x.id === sun.id).place.name).toBe('London');
     });
   });
+
+  describe('input validation is 422', () => {
+    it('rejects a bogus time zone and an over-long name in place', async () => {
+      const u = await h.asUser('w-badplace@example.com');
+      for (const place of [
+        { ...LONDON, timeZone: 'bogus' },
+        { ...LONDON, name: 'x'.repeat(101) },
+      ]) {
+        const res = await u.post('/widgets', { kind: 'weather', place });
+        expect(res.status).toBe(422);
+        expect((await j(res)).error.code).toBe('validation_failed');
+      }
+    });
+
+    it('PUT /widgets/order {} and POST /widgets {kind:"nope"} are 422, not 400', async () => {
+      const u = await h.asUser('w-422@example.com');
+      for (const res of [
+        await u.put('/widgets/order', {}),
+        await u.post('/widgets', { kind: 'nope' }),
+      ]) {
+        expect(res.status).toBe(422);
+        expect((await j(res)).error.code).toBe('validation_failed');
+      }
+    });
+  });
 });

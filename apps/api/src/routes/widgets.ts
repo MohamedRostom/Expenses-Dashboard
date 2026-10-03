@@ -14,6 +14,7 @@ import type { WeatherSource } from '@desk/connectors/open-meteo';
 import type { AppVariables } from '../app.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
+import { parse } from '../lib/parse.js';
 import { requireAuth } from '../lib/require-auth.js';
 import type { SessionUser } from '../middleware/session.js';
 import { createWidgetsService, type WidgetRow } from '../services/widgets.js';
@@ -66,7 +67,7 @@ export function createWidgetsRoutes(
 
   app.post('/widgets', async (c) => {
     const user = requireAuth(c);
-    const input = WidgetCreate.parse(await c.req.json());
+    const input = parse(WidgetCreate, await c.req.json());
     const flags = await resolveAllFlags(db, user.id);
     const row = await service.create(user, input, flags);
     await firstReading(user, row);
@@ -76,7 +77,7 @@ export function createWidgetsRoutes(
 
   app.put('/widgets/order', async (c) => {
     const user = requireAuth(c);
-    const { ids } = OrderBody.parse(await c.req.json());
+    const { ids } = parse(OrderBody, await c.req.json());
     const rows = await service.reorder(user, ids);
     const body: WidgetsResponseT = {
       widgets: await present(user, rows, await resolveAllFlags(db, user.id)),
@@ -97,7 +98,7 @@ export function createWidgetsRoutes(
 
   app.patch('/widgets/:id', async (c) => {
     const user = requireAuth(c);
-    const input = WidgetPatch.parse(await c.req.json());
+    const input = parse(WidgetPatch, await c.req.json());
     const row = await service.patch(user, c.req.param('id'), input);
     await firstReading(user, row);
     const [widget] = await present(user, [row], await resolveAllFlags(db, user.id));
