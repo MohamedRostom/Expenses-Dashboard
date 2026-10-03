@@ -5,6 +5,7 @@ import { createNotionMockApp } from './notion-fake-routes.js';
 import { createGoogleMockApp } from './google.js';
 import { createGraphMockApp } from './graph.js';
 import { createCalDavMockApp } from './caldav.js';
+import { createOpenMeteoMockApp } from './open-meteo.js';
 import { createImapMockApp, createImapStore, startImapMockServer } from './imap.js';
 
 const app = new Hono();
@@ -16,6 +17,8 @@ app.route('/notion', createNotionMockApp());
 app.route('/google', createGoogleMockApp());
 app.route('/graph', createGraphMockApp());
 app.route('/caldav', createCalDavMockApp('/caldav'));
+// Spec 003: OPEN_METEO_API_BASE points here at /open-meteo.
+app.route('/open-meteo', createOpenMeteoMockApp());
 
 // T052: the IMAP control route lives at the mocks app's root (POST /__control/imap/messages),
 // sharing an ImapStore with the real TCP server below so an added message is visible immediately.

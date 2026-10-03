@@ -7,6 +7,7 @@
     ".": "./src/index.ts",
     "./rates": "./src/rates/index.ts",
     "./notion": "./src/notion/index.ts",
+    "./open-meteo": "./src/open-meteo/index.ts",
     "./panels": "./src/panels/index.ts",
     "./panels/presets": "./src/panels/presets.ts",
     "./imap/socket": "./src/imap/socket.ts",

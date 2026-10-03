@@ -33,6 +33,7 @@ const envObjectSchema = z.object({
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),
+  OPEN_METEO_API_BASE: z.string().url().optional(),
   // T113: optional Sentry DSN — logger-node.ts/logger-worker.ts are no-ops without it.
   SENTRY_DSN: z.string().optional(),
   // T112: owner inbox for the daily feedback digest; the job skips sending when unset.
