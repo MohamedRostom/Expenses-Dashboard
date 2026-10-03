@@ -2364,6 +2364,20 @@
                   },
                   "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
                   "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["code", "pending"],
+                  "additionalProperties": false
                 }
               ]
             }
@@ -2451,6 +2465,20 @@
               }
             },
             "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "pending": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": ["code", "pending"],
             "additionalProperties": false
           }
         ]
@@ -5887,6 +5915,20 @@
                           },
                           "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
                           "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "pending": {
+                              "type": "boolean",
+                              "const": true
+                            }
+                          },
+                          "required": ["code", "pending"],
+                          "additionalProperties": false
                         }
                       ]
                     }
@@ -6666,6 +6708,20 @@
                               },
                               "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
                               "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                },
+                                "pending": {
+                                  "type": "boolean",
+                                  "const": true
+                                }
+                              },
+                              "required": ["code", "pending"],
+                              "additionalProperties": false
                             }
                           ]
                         }
@@ -7438,6 +7494,20 @@
                                   "prevChange",
                                   "monthChange"
                                 ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "pending": {
+                                    "type": "boolean",
+                                    "const": true
+                                  }
+                                },
+                                "required": ["code", "pending"],
                                 "additionalProperties": false
                               }
                             ]

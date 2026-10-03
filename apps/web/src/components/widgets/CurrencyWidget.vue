@@ -12,6 +12,7 @@ type Change = { pct: number; direction: keyof typeof GLYPH; since?: string };
     <li v-for="r in rows" :key="r.code" class="desk-currency-row">
       <strong class="desk-currency-code">{{ r.code }}</strong>
       <span v-if="'isDefault' in r" class="desk-currency-default">your default currency</span>
+      <span v-else-if="'pending' in r" class="desk-currency-date">rate not available yet</span>
       <template v-else>
         <span class="desk-currency-rate">{{ r.rate }}</span>
         <span class="desk-currency-date">{{ r.rateDate }}</span>

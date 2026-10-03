@@ -30,6 +30,8 @@ export const CurrencyRow = z.union([
     monthChange: CurrencyChange.extend({ since: z.string().optional() }).nullable(),
     changesPending: z.boolean().optional(),
   }),
+  /** The pair has no stored history yet (backfill pending or failed). */
+  z.object({ code: z.string(), pending: z.literal(true) }),
 ]);
 export type CurrencyRowT = z.infer<typeof CurrencyRow>;
 

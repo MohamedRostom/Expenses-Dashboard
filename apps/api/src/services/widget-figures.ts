@@ -1,4 +1,4 @@
-import { and, desc, eq, lte, max } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, max, sql } from 'drizzle-orm';
 import { fxRates, type Db } from '@desk/db';
 import type { CurrencyRowT, WidgetCauseT, WidgetStateT } from '@desk/contracts';
 import { rateChanges, type RateChange } from '@desk/core';
@@ -48,29 +48,46 @@ const currency: Builder = async (db, user, widget, ctx) => {
     .where(lte(fxRates.rateDate, ctx.day));
   const rows: CurrencyRowT[] = [];
   let newest = '';
-  let missing = false;
+  // T072: one query for every non-default code, newest 31 rows per code.
+  const others = codes.filter((c) => c !== user.defaultCurrency);
+  const ranked = others.length
+    ? db
+        .select({
+          base: fxRates.base,
+          date: fxRates.rateDate,
+          rate: fxRates.rate,
+          rn: sql<number>`row_number() over (partition by ${fxRates.base} order by ${fxRates.rateDate} desc)`.as(
+            'rn',
+          ),
+        })
+        .from(fxRates)
+        .where(
+          and(
+            inArray(fxRates.base, others),
+            eq(fxRates.quote, user.defaultCurrency),
+            lte(fxRates.rateDate, ctx.day),
+          ),
+        )
+        .as('ranked')
+    : null;
+  const byCode = new Map<string, { date: string; rate: string }[]>();
+  if (ranked) {
+    const found = await db
+      .select({ base: ranked.base, date: ranked.date, rate: ranked.rate })
+      .from(ranked)
+      .where(lte(ranked.rn, 31))
+      .orderBy(ranked.base, asc(ranked.date));
+    for (const r of found) byCode.set(r.base, [...(byCode.get(r.base) ?? []), r]);
+  }
   for (const code of codes) {
     if (code === user.defaultCurrency) {
       rows.push({ code, isDefault: true });
       continue;
     }
-    const history = (
-      await db
-        .select({ date: fxRates.rateDate, rate: fxRates.rate })
-        .from(fxRates)
-        .where(
-          and(
-            eq(fxRates.base, code),
-            eq(fxRates.quote, user.defaultCurrency),
-            lte(fxRates.rateDate, ctx.day),
-          ),
-        )
-        .orderBy(desc(fxRates.rateDate))
-        .limit(31)
-    ).reverse();
+    const history = byCode.get(code) ?? [];
     const last = history[history.length - 1];
     if (!last) {
-      missing = true;
+      rows.push({ code, pending: true });
       continue;
     }
     const { prevChange, monthChange } = rateChanges(history);
@@ -84,7 +101,7 @@ const currency: Builder = async (db, user, widget, ctx) => {
       ...(history.length < 2 && { changesPending: true }),
     });
   }
-  if (missing) return { state: 'error', cause: 'rate_unavailable' };
+  if (rows.every((r) => 'pending' in r)) return { state: 'error', cause: 'rate_unavailable' };
   const stale = rows.some((r) => 'rateDate' in r && r.rateDate < (latest?.d ?? ''));
   return { state: stale ? 'stale' : 'ready', figures: { rows }, ...(newest && { asOf: newest }) };
 };

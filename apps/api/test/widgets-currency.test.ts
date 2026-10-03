@@ -246,6 +246,52 @@ describe('currency widget', () => {
     expect(w.figures).toBeUndefined();
   });
 
+  it('a code without history is a pending row; ready rows survive (T069)', async () => {
+    await seedEurGbp();
+    const u = await h.asUser('wc-pending@example.com');
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR', 'CAD'] } });
+    const w = await figures(u);
+    expect(w.state).toBe('ready');
+    expect(w.cause).toBeUndefined();
+    expect(w.figures.rows).toHaveLength(2);
+    expect(w.figures.rows[0]).toMatchObject({ code: 'EUR', rateDate: '2026-09-30' });
+    expect(w.figures.rows[1]).toEqual({ code: 'CAD', pending: true });
+    expect(w.asOf).toBe('2026-09-30');
+  });
+
+  it('a default-currency row plus a pending code is ready, not an error (T069)', async () => {
+    h.clock.set(WED);
+    const u = await setUser('wc-defpend@example.com', { defaultCurrency: 'CHF' });
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['GBP', 'CAD'] } });
+    await setUser('wc-defpend@example.com', { defaultCurrency: 'GBP' });
+    const w = await figures(u);
+    expect(w.state).toBe('ready');
+    expect(w.figures.rows).toEqual([
+      { code: 'GBP', isDefault: true },
+      { code: 'CAD', pending: true },
+    ]);
+  });
+
+  it('batched history gives per-code rows for 1, 2 and 31 dates (T072)', async () => {
+    h.clock.set(WED);
+    const u = await setUser('wc-batch@example.com', { defaultCurrency: 'SEK' });
+    const day = (n: number) => new Date(Date.UTC(2026, 8, 30 - n)).toISOString().slice(0, 10);
+    await seed(day(0), 'USD', 'SEK', '10.0000000000');
+    await seed(day(1), 'EUR', 'SEK', '11.0000000000');
+    await seed(day(0), 'EUR', 'SEK', '11.5000000000');
+    for (let i = 0; i < 40; i++) await seed(day(i), 'CHF', 'SEK', (12 + i / 10).toFixed(10));
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['USD', 'EUR', 'CHF'] } });
+    const rows = (await figures(u)).figures.rows;
+    expect(rows.map((r: { code: string }) => r.code)).toEqual(['USD', 'EUR', 'CHF']);
+    expect(rows[0]).toMatchObject({ rate: 10, changesPending: true });
+    expect(rows[1].changesPending).toBeUndefined();
+    expect(rows[1].prevChange).toMatchObject({ pct: expect.any(Number) });
+    expect(rows[2]).toMatchObject({ rate: 12, rateDate: day(0) });
+    expect(rows[2].changesPending).toBeUndefined();
+    // 31 newest dates only: the month change reaches back to day(30), not day(39)
+    expect(rows[2].monthChange.since).toBeUndefined();
+  });
+
   it('a rate older than the newest published date is stale', async () => {
     await seedEurGbp(); // newest published date in the table is 2026-09-30
     const u = await h.asUser('wc-stale@example.com');

@@ -63,6 +63,13 @@ describe('CurrencyWidget', () => {
     app.unmount();
   });
 
+  it('shows a pending row as its code with "rate not available yet"', async () => {
+    const { el, app } = await mountRows([{ code: 'CAD', pending: true }]);
+    expect(el.textContent).toContain('CAD');
+    expect(el.textContent).toContain('rate not available yet');
+    app.unmount();
+  });
+
   it('shows the default currency row without figures', async () => {
     const { el, app } = await mountRows([{ code: 'GBP', isDefault: true }]);
     expect(el.textContent).toContain('your default currency');
