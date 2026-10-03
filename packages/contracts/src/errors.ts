@@ -16,6 +16,11 @@ export const ErrorCode = z.enum([
   'host_not_allowed',
   'scope_denied',
   'account_mismatch',
+  'source_unreachable',
+  'source_limit_reached',
+  'place_not_found',
+  'source_paused',
+  'place_required',
 ]);
 export type ErrorCodeT = z.infer<typeof ErrorCode>;
 

@@ -1,6 +1,10 @@
 import { z } from 'zod';
-import { UserResponse } from './auth.js';
+import { UserResponse as BaseUser } from './auth.js';
 import { Capability, ProviderId } from './connections.js';
+import { TemperatureUnit } from './widgets.js';
+
+/** The `/me` user: the auth user plus the weather unit (spec 003). */
+const UserResponse = BaseUser.extend({ temperatureUnit: TemperatureUnit });
 
 export const MeResponse = z.object({ user: UserResponse });
 export type MeResponseT = z.infer<typeof MeResponse>;
@@ -10,6 +14,7 @@ export const PatchMeRequest = z.object({
   defaultCurrency: z.string().length(3).optional(),
   timeZone: z.string().optional(),
   onboardingCompletedAt: z.string().nullable().optional(),
+  temperatureUnit: TemperatureUnit.optional(),
 });
 export type PatchMeRequestT = z.infer<typeof PatchMeRequest>;
 
