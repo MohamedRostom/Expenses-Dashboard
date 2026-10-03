@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExpenseResponseT, YearSummaryT } from '@desk/contracts';
 import {
@@ -28,6 +28,8 @@ import {
   retry as retryQueued,
   type QueuedExpense,
 } from '../offline/queue.js';
+
+const WidgetStrip = defineAsyncComponent(() => import('../components/widgets/WidgetStrip.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -220,6 +222,9 @@ async function onUndoDelete(id: string) {
             store.summary.pendingRates === 1 ? '' : 's'
           }}
         </p>
+
+        <!-- Mounted only once the month data has resolved (R7): the strip never delays expenses. -->
+        <WidgetStrip />
 
         <section class="desk-month-view-tiles">
           <div class="desk-tile">

@@ -21,10 +21,12 @@ const apiProxy = Object.fromEntries(
     '/healthz',
     '/imports',
     '/jobs',
+    '/places',
     '/me',
     '/notion',
     '/panels',
     '/summary',
+    '/widgets',
   ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
 );
 
