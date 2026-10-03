@@ -111,3 +111,27 @@ Typography: IBM Plex Sans (body) + IBM Plex Mono (numbers, `tabular-nums`). Acce
 **Model routing (decided 2026-09-26).** The main session runs on Opus 5.5 and owns all thinking, planning and decisions. Any agent it spawns runs on Sonnet 5 by default (`CLAUDE_CODE_SUBAGENT_MODEL` in `.claude/settings.local.json`). Implementation runs on Sonnet through the `implementer` agent (switched from Haiku 2026-09-26: Haiku output needed too much rework), working from briefs produced and reviewed by the Sonnet `coordinator` agent (`.claude/agents/`). Subagents cannot spawn subagents, so the main session dispatches both: coordinator brief → implementer runs, in parallel where the briefs don't overlap → coordinator review → main-session decision. Design questions always come back to the main session.
 
 He reviews as a test engineer: show the test that proves a change before the change itself. Ask before adding a dependency that isn't Workers-compatible. When a decision is genuinely his (naming, providers, spending money), stop and ask rather than guess; everything else, decide and document.
+
+<!-- cerebrofy:start -->
+## Codebase Navigation — Cerebrofy Index
+
+This project's codebase is indexed by [Cerebrofy](https://github.com/mm0rsy/Cerebrofy).
+The semantic index lives at `.cerebrofy/db/cerebrofy.db`.
+
+**Navigation rules (enforced):**
+
+1. **NEVER glob-read or recursively open source files** to understand the codebase.
+   The index already contains every function, class, and module with embeddings.
+
+2. **ALWAYS start with an MCP tool call** when asked about code structure or behaviour:
+   - `search_code` — find code by meaning (semantic + graph search)
+   - `get_neuron` — fetch a specific function or class by name or file:line
+   - `list_lobes` — get the list of all modules with summary file paths
+
+3. Use the pre-built summaries for orientation — no parsing needed:
+   - `.cerebrofy/cerebrofy_map.md` — full codebase map
+   - `.cerebrofy/lobes/<name>_lobe.md` — per-module summaries
+
+4. **Only open a specific source file** after cerebrofy has returned its file path and
+   line number — and only to read or edit *that exact location*.
+<!-- cerebrofy:end -->
