@@ -11,9 +11,8 @@ const uniqueEmail = (tag: string) =>
 /**
  * T063 (ci, slice E): the widget strip on the Today view. The widgets API is route-mocked with a
  * small stateful list (GET /widgets, PUT /widgets/order) so the strip is deterministic and
- * independent of the widgets.* flags; the real routes are covered by apps/api tests. Not run in
- * the session that wrote it (compose stack down). panels.today is on by default in ci and turned
- * off per user with the flags CLI, as connections.spec.ts does.
+ * independent of the widgets.* flags; the real routes are covered by apps/api tests. panels.today is set per user
+ * with the flags CLI, as connections.spec.ts does.
  */
 
 const TYPES = {
@@ -61,14 +60,27 @@ async function mockWidgets(page: Page): Promise<void> {
   );
 }
 
+/** panels.today is dark unless the stack enabled it globally (ci.yml does); force it per user. */
+function setTodayFlag(email: string, state: 'on' | 'off'): void {
+  execSync(`pnpm --filter @desk/db flags set panels.today --user "${email}" ${state}`, {
+    env: {
+      ...process.env,
+      DATABASE_URL: process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:5432/desk',
+    },
+    stdio: 'pipe',
+  });
+}
+
 /** The figure text of each widget in strip order. */
 const order = (page: Page) => page.getByTestId('widget-strip').locator('article').allInnerTexts();
 
 test('with panels.today on, /today and / show the same strip, and a reorder on / survives to /today', async ({
   page,
 }) => {
+  const email = uniqueEmail('widgets-today');
   await mockWidgets(page);
-  await signUpAndVerify(page, uniqueEmail('widgets-today'), PASSWORD);
+  await signUpAndVerify(page, email, PASSWORD);
+  setTodayFlag(email, 'on');
 
   await page.goto('/today');
   const strip = page.getByTestId('widget-strip');
@@ -88,10 +100,7 @@ test('with panels.today on, /today and / show the same strip, and a reorder on /
   expect(await order(page)).toEqual(todayOrder);
 
   // Reorder on / (move the first widget down), then reload /today.
-  await strip
-    .getByRole('button', { name: /spend pace menu/i })
-    .first()
-    .click();
+  await strip.getByLabel('Spend pace menu').first().click();
   await strip.getByRole('button', { name: 'Move down' }).first().click();
   await expect(strip.locator('article').first()).toContainText('34.00');
 
@@ -112,7 +121,9 @@ test('a failing /panels/today leaves the strip rendering figures while the panel
       ? route.fulfill({ status: 500, json: { error: { code: 'server_error' } } })
       : route.fallback(),
   );
-  await signUpAndVerify(page, uniqueEmail('widgets-today-500'), PASSWORD);
+  const email = uniqueEmail('widgets-today-500');
+  await signUpAndVerify(page, email, PASSWORD);
+  setTodayFlag(email, 'on');
 
   await page.goto('/today');
   const strip = page.getByTestId('widget-strip');
@@ -129,12 +140,7 @@ test('with panels.today off, /today redirects to / and the strip on / keeps its 
   const email = uniqueEmail('widgets-today-off');
   await mockWidgets(page);
   await signUpAndVerify(page, email, PASSWORD);
-  execSync(`pnpm --filter @desk/db flags set panels.today --user "${email}" off`, {
-    env: {
-      ...process.env,
-      DATABASE_URL: process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:5432/desk',
-    },
-  });
+  setTodayFlag(email, 'off');
 
   await page.goto('/today');
   await expect(page).toHaveURL('/');
