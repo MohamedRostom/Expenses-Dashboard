@@ -57,6 +57,7 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     defaultCurrency: u.defaultCurrency,
     theme: u.theme,
     timeZone: u.timeZone,
+    temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
     emailVerified: u.emailVerifiedAt !== null,
     createdAt: u.createdAt.toISOString(),

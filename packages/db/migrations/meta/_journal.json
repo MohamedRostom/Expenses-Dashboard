@@ -71,6 +71,13 @@
       "when": 1790435020957,
       "tag": "0009_panels",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791037538351,
+      "tag": "0010_widgets",
+      "breakpoints": true
     }
   ]
 }

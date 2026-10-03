@@ -28,6 +28,11 @@ const DEFAULT_FLAGS: { key: string; description: string }[] = [
   { key: 'panels.google_mail', description: 'Google Mail panel (gated on CASA assessment)' },
   { key: 'panels.microsoft', description: 'Microsoft Outlook Calendar and Mail panels' },
   { key: 'panels.standards', description: 'IMAP and CalDAV standards-based panels' },
+  { key: 'widgets.currency', description: 'Currency dashboard widget' },
+  { key: 'widgets.weather', description: 'Weather dashboard widget' },
+  { key: 'widgets.sunrise', description: 'Sunrise and sunset dashboard widget' },
+  { key: 'widgets.spend_pace', description: 'Spend pace dashboard widget' },
+  { key: 'widgets.fixed_costs', description: 'Fixed costs remaining dashboard widget' },
 ];
 
 const E2E_USER_ID = '00000000-0000-0000-0000-000000000001';
@@ -51,6 +56,16 @@ export async function seed(databaseUrl: string, opts: { load?: boolean; flagsOn?
         })
         .onConflictDoNothing();
     }
+
+    // Value row (data in flags.value, not a boolean flag): always off, never switched on by flagsOn.
+    await db
+      .insert(flags)
+      .values({
+        key: 'widgets.weather_paused_until',
+        description: 'Weather source paused until this time after a 429 (value row, not a flag)',
+        defaultOn: false,
+      })
+      .onConflictDoNothing();
 
     // Was onConflictDoNothing() with no passwordHash at all — smoke.spec.ts (@local) logs in as
     // this user with a password, which login() always 401'd since there was no credential row

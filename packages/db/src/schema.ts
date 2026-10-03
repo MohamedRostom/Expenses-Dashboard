@@ -36,6 +36,7 @@ export const users = pgTable('users', {
   defaultCurrency: text('default_currency').notNull(),
   theme: text('theme').notNull().default('system'),
   timeZone: text('time_zone').notNull().default('UTC'),
+  temperatureUnit: text('temperature_unit').notNull().default('C'),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
   lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
@@ -143,6 +144,8 @@ export const flags = pgTable('flags', {
   key: text('key').primaryKey(),
   description: text('description').notNull(),
   defaultOn: boolean('default_on').notNull().default(false),
+  // Value rows (e.g. widgets.weather_paused_until) carry data here; resolveAllFlags skips them.
+  value: jsonb('value'),
 });
 
 export const userFlags = pgTable(
@@ -555,3 +558,80 @@ export const cachedMessages = pgTable(
     index('cached_messages_user_id_received_at_idx').on(t.userId, t.receivedAt),
   ],
 );
+
+export const places = pgTable(
+  'places',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    admin1: text('admin1'),
+    country: text('country').notNull(),
+    timeZone: text('time_zone').notNull(),
+    lat: numeric('lat', { precision: 5, scale: 2 }).notNull(),
+    lon: numeric('lon', { precision: 5, scale: 2 }).notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [uniqueIndex('places_user_id_lat_lon_unique').on(t.userId, t.lat, t.lon)],
+);
+
+export const widgets = pgTable(
+  'widgets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    kind: text('kind').notNull(),
+    position: integer('position').notNull(),
+    settings: jsonb('settings').notNull().default({}),
+    placeId: uuid('place_id').references(() => places.id, { onDelete: 'set null' }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  // UNIQUE (user_id, position) is DEFERRABLE INITIALLY DEFERRED so a reorder is one transaction;
+  // drizzle can't express that, so it is hand-edited into the migration (0010_widgets.sql).
+  // It also serves as the index starting on user_id.
+  (t) => [index('widgets_user_id_position_idx').on(t.userId, t.position)],
+);
+
+export const weatherReadings = pgTable(
+  'weather_readings',
+  {
+    lat: numeric('lat', { precision: 5, scale: 2 }).notNull(),
+    lon: numeric('lon', { precision: 5, scale: 2 }).notNull(),
+    timeZone: text('time_zone').notNull(),
+    current: jsonb('current'),
+    daily: jsonb('daily'),
+    fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }).notNull().defaultNow(),
+    error: text('error'),
+  },
+  (t) => [primaryKey({ columns: [t.lat, t.lon] })],
+);
+
+export const geocodeCache = pgTable('geocode_cache', {
+  query: text('query').primaryKey(),
+  results: jsonb('results').notNull(),
+  fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const widgetSourceUsage = pgTable(
+  'widget_source_usage',
+  {
+    day: date('day').notNull(),
+    source: text('source').notNull(),
+    calls: integer('calls').notNull().default(0),
+    failures: integer('failures').notNull().default(0),
+  },
+  (t) => [primaryKey({ columns: [t.day, t.source] })],
+);
+
+export const widgetSourceState = pgTable('widget_source_state', {
+  source: text('source').primaryKey(),
+  consecutiveFailures: integer('consecutive_failures').notNull().default(0),
+  lastSuccessAt: timestamp('last_success_at', { withTimezone: true }),
+  lastFailureAt: timestamp('last_failure_at', { withTimezone: true }),
+});
