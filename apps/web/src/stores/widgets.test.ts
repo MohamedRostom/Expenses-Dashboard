@@ -208,6 +208,79 @@ describe('Widgets store', () => {
     });
   });
 
+  describe('polling ownership (T071)', () => {
+    const POLL = 300_000;
+
+    it('start(); start(); stop() keeps the timer and the visibility listener alive', async () => {
+      const { api, store } = await setup();
+      vi.mocked(api.getWidgets).mockResolvedValue(response([]));
+      vi.mocked(api.postWidgetsRefresh).mockResolvedValue({ queued: 1 });
+      store.widgets = [widget({ state: 'stale' })];
+      store.start();
+      store.start();
+      store.stop();
+
+      await vi.advanceTimersByTimeAsync(POLL);
+      expect(api.getWidgets).toHaveBeenCalledTimes(1);
+
+      vi.mocked(api.getWidgets).mockClear();
+      store.widgets = [widget({ state: 'stale' })]; // the poll's load() replaced them
+      setVisibility('hidden');
+      setVisibility('visible');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.postWidgetsRefresh).toHaveBeenCalledOnce();
+      expect(api.getWidgets).toHaveBeenCalledOnce();
+
+      store.stop();
+      vi.mocked(api.getWidgets).mockClear();
+      vi.mocked(api.postWidgetsRefresh).mockClear();
+      await vi.advanceTimersByTimeAsync(POLL * 2);
+      setVisibility('hidden');
+      setVisibility('visible');
+      await vi.advanceTimersByTimeAsync(0);
+      expect(api.getWidgets).not.toHaveBeenCalled();
+      expect(api.postWidgetsRefresh).not.toHaveBeenCalled();
+    });
+
+    it('a remount (new start() before the old stop()) leaves polling running', async () => {
+      const { api, store } = await setup();
+      vi.mocked(api.getWidgets).mockResolvedValue(response([]));
+      store.start(); // old strip
+      store.start(); // new strip
+      store.stop(); // old strip unmounts late
+      await vi.advanceTimersByTimeAsync(POLL);
+      expect(api.getWidgets).toHaveBeenCalledTimes(1);
+      store.stop();
+    });
+
+    it('two pinias do not interfere', async () => {
+      const { api, store: a } = await setup();
+      vi.mocked(api.getWidgets).mockResolvedValue(response([]));
+      setActivePinia(createPinia());
+      const { useWidgetsStore } = await import('./widgets.js');
+      const b = useWidgetsStore();
+      a.start();
+      b.start();
+      a.stop();
+      await vi.advanceTimersByTimeAsync(POLL);
+      expect(api.getWidgets).toHaveBeenCalledTimes(1); // b's timer only
+      b.stop();
+      await vi.advanceTimersByTimeAsync(POLL * 2);
+      expect(api.getWidgets).toHaveBeenCalledTimes(1);
+    });
+
+    it('extra stop() calls never throw or go negative', async () => {
+      const { api, store } = await setup();
+      vi.mocked(api.getWidgets).mockResolvedValue(response([]));
+      store.stop();
+      store.stop();
+      store.start();
+      await vi.advanceTimersByTimeAsync(POLL);
+      expect(api.getWidgets).toHaveBeenCalledTimes(1);
+      store.stop();
+    });
+  });
+
   it('is not imported by the month or Today stores', async () => {
     const fs = await import('node:fs');
     for (const f of ['expenses.ts', 'today.ts']) {

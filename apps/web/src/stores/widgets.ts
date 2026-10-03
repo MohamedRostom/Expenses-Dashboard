@@ -21,8 +21,14 @@ const POLL_MS = 5 * 60 * 1000;
 /** research R7: a reading older than an hour is past its window. */
 const WINDOW_MS = 60 * 60 * 1000;
 
-let pollHandle: ReturnType<typeof setTimeout> | null = null;
-let onVisibility: (() => void) | null = null;
+/** Polling state per store instance, counted by owner: a remounted strip calls start() before the
+ * old one's stop(), so only the last stop() may tear the timer down. */
+interface Poll {
+  handle: ReturnType<typeof setTimeout> | null;
+  onVisibility: (() => void) | null;
+  users: number;
+}
+const polls = new WeakMap<object, Poll>();
 
 export const useWidgetsStore = defineStore('widgets', {
   state: () => ({
@@ -97,27 +103,34 @@ export const useWidgetsStore = defineStore('widgets', {
 
     /** Five-minute poll, paused while the tab is hidden; on return, refresh then reload. */
     start() {
-      this.stop();
+      let p = polls.get(this);
+      if (!p) polls.set(this, (p = { handle: null, onVisibility: null, users: 0 }));
+      p.users++;
+      if (p.handle) return;
+      const poll = p;
       const tick = () => {
         if (document.visibilityState !== 'hidden') this.load().catch(() => {});
-        pollHandle = setTimeout(tick, POLL_MS);
+        poll.handle = setTimeout(tick, POLL_MS);
       };
-      pollHandle = setTimeout(tick, POLL_MS);
-      onVisibility = () => {
+      poll.handle = setTimeout(tick, POLL_MS);
+      poll.onVisibility = () => {
         if (document.visibilityState !== 'visible') return;
         void this.refreshIfStale(new Date())
           .catch(() => {})
           .then(() => this.load())
           .catch(() => {});
       };
-      document.addEventListener('visibilitychange', onVisibility);
+      document.addEventListener('visibilitychange', poll.onVisibility);
     },
 
     stop() {
-      if (pollHandle) clearTimeout(pollHandle);
-      pollHandle = null;
-      if (onVisibility) document.removeEventListener('visibilitychange', onVisibility);
-      onVisibility = null;
+      const p = polls.get(this);
+      if (!p || p.users === 0) return;
+      if (--p.users > 0) return;
+      if (p.handle) clearTimeout(p.handle);
+      p.handle = null;
+      if (p.onVisibility) document.removeEventListener('visibilitychange', p.onVisibility);
+      p.onVisibility = null;
     },
   },
 });
