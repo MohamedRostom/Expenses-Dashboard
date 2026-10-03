@@ -260,6 +260,9 @@ Branches `phase-N/short-description` (feature specs use `feature/NNN-slug`), one
 - `docs/adr/ADR-0003-no-bank-integration-in-v1.md`
 - `docs/adr/ADR-0004-mail-and-calendar-panels.md` — v2 read-only mail and calendar
 - `docs/adr/ADR-0005-weather-source.md` — Open-Meteo, CC-BY attribution, revisit before monetisation
+
+Weather data by [Open-Meteo.com](https://open-meteo.com/) (licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
+
 - `docs/ROADMAP.md` — phases 0–6 with exit criteria
 - `SECURITY.md` — private vulnerability reporting
 - `LOCAL_DEVELOPMENT.md` — full local setup and troubleshooting

@@ -29,6 +29,16 @@ T111), so a monitor watching only the HTTP status code will miss a degraded-but-
 Prefer a monitor that can assert on the JSON body's `status` field over one that only checks the
 HTTP status code, for that reason.
 
+## Second monitor: `/healthz/widgets`
+
+A separate monitor watches the widget data sources (docs/runbooks/widgets-weather-quota.md). `GET /healthz/widgets` needs no session and its body is only `{ "status": "ok" | "degraded" }`. It answers HTTP 200 when ok and 503 when degraded, so a plain status-code check is enough here, unlike `/healthz`, which stays 200 with a degraded DB and needs the body assertion.
+
+1. Add an HTTP(S) monitor on `https://ros-desk-production.fly.dev/healthz/widgets` (swap for the custom domain after the cut-over), method GET, expected HTTP 200.
+2. Interval: **5 minutes**. Alert after: **3 consecutive failures**, roughly 15 minutes of degraded sources before paging.
+3. Alert routing: **[Rostom to fill in — same contact as the `/healthz` monitor]**.
+
+Degraded means the weather pause is active (a 429 from Open-Meteo) or any source has failed three calls in a row. It is a data-freshness problem, not an outage: the app still serves cached readings, which is why this monitor is slower and separate from `/healthz`.
+
 ## Out of scope here
 
 Deploy-time smoke testing (`smoke.spec.ts` via `.github/workflows/deploy-fly.yml`) and this
