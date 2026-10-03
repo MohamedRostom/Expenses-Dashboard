@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { auditLog, places as placesTable, setGlobalFlag } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 
@@ -220,5 +220,99 @@ describe('widgets', () => {
       { kind: 'currency', position: 2, settings: { currencies: ['USD'] } },
     ]);
     expect(JSON.stringify(doc)).not.toContain('weather_readings');
+  });
+
+  describe('arrange (T049, T068, T070)', () => {
+    type U = Awaited<ReturnType<Harness['asUser']>>;
+    const seed = async (u: U, n: number) => {
+      const ids: string[] = [];
+      for (let i = 0; i < n; i++) {
+        ids.push((await j(await u.post('/widgets', { kind: 'spend_pace' }))).widget.id);
+      }
+      return ids;
+    };
+    const order = async (u: U) =>
+      (await j(await u.get('/widgets'))).widgets.map((w: { id: string }) => w.id);
+
+    it('PUT /widgets/order persists the new order, returns the list and audits widget.reorder', async () => {
+      const u = await h.asUser('w-reorder@example.com');
+      const [a, b, c] = await seed(u, 3);
+      const res = await u.put('/widgets/order', { ids: [c, a, b] });
+      expect(res.status).toBe(200);
+      expect((await j(res)).widgets.map((w: { id: string }) => w.id)).toEqual([c, a, b]);
+      expect(await order(u)).toEqual([c, a, b]);
+      const audit = await h.db.select().from(auditLog).where(eq(auditLog.userId, u.userId));
+      expect(audit.map((r) => r.action)).toContain('widget.reorder');
+      expect((await u.put('/widgets/order', { ids: [b, c, a] })).status).toBe(200);
+      expect(await order(u)).toEqual([b, c, a]);
+    });
+
+    it('PUT /widgets/order: foreign or unknown id is 404, missing or repeated id is 422', async () => {
+      const u = await h.asUser('w-reorder-bad@example.com');
+      const other = await h.asUser('w-reorder-other@example.com');
+      const [a, b] = await seed(u, 2);
+      const [foreign] = await seed(other, 1);
+      const code = async (ids: string[]) => {
+        const r = await u.put('/widgets/order', { ids });
+        return [r.status, (await j(r)).error.code];
+      };
+      expect(await code([a!, foreign!])).toEqual([404, 'not_found']);
+      expect(await code([a!, b!, foreign!])).toEqual([404, 'not_found']);
+      expect(await code([a!, crypto.randomUUID()])).toEqual([404, 'not_found']);
+      expect(await code([a!])).toEqual([422, 'validation_failed']);
+      expect(await code([a!, a!, b!])).toEqual([422, 'validation_failed']);
+      expect(await order(u)).toEqual([a, b]);
+    });
+
+    it('duplicateOf copies kind, settings and place at the last position and counts toward the limit', async () => {
+      const u = await h.asUser('w-dup@example.com');
+      const w = (await j(await u.post('/widgets', { kind: 'weather', place: LONDON }))).widget;
+      const res = await u.post('/widgets', { kind: 'weather', duplicateOf: w.id });
+      expect(res.status).toBe(201);
+      const d = (await j(res)).widget;
+      expect(d.id).not.toBe(w.id);
+      expect(d.position).toBe(1);
+      expect(d.place).toEqual(w.place);
+      expect(
+        await h.db.select().from(placesTable).where(eq(placesTable.userId, u.userId)),
+      ).toHaveLength(1);
+      const audit = await h.db.select().from(auditLog).where(eq(auditLog.userId, u.userId));
+      expect(audit.find((r) => r.action === 'widget.add' && r.subject === d.id)?.details).toEqual({
+        kind: 'weather',
+        duplicateOf: w.id,
+      });
+      await seed(u, 6);
+      expect((await u.post('/widgets', { kind: 'weather', duplicateOf: w.id })).status).toBe(409);
+    });
+
+    it('duplicating a currency widget whose code became the default succeeds (T070)', async () => {
+      const u = await h.asUser('w-dup-cur@example.com');
+      const w = (
+        await j(await u.post('/widgets', { kind: 'currency', settings: { currencies: ['USD'] } }))
+      ).widget;
+      await h.db.execute(
+        sql`UPDATE widgets SET settings = '{"currencies":["GBP"]}'::jsonb WHERE id = ${w.id}`,
+      );
+      const res = await u.post('/widgets', { kind: 'currency', duplicateOf: w.id });
+      expect(res.status).toBe(201);
+      expect((await j(res)).widget.settings).toEqual({ currencies: ['GBP'] });
+    });
+
+    it('a sunrise widget without a place takes the first weather widget place and keeps it (T068)', async () => {
+      const u = await h.asUser('w-sun-fallback@example.com');
+      const none = await u.post('/widgets', { kind: 'sunrise' });
+      expect(none.status).toBe(422);
+      const err = (await j(none)).error;
+      expect(err.code).toBe('validation_failed');
+      expect(JSON.stringify(err.details)).toContain('place_required');
+
+      const wx = (await j(await u.post('/widgets', { kind: 'weather', place: LONDON }))).widget;
+      await u.post('/widgets', { kind: 'weather', place: PARIS });
+      const sun = (await j(await u.post('/widgets', { kind: 'sunrise' }))).widget;
+      expect(sun.place.name).toBe('London');
+      await u.patch(`/widgets/${wx.id}`, { place: PARIS });
+      const list = (await j(await u.get('/widgets'))).widgets;
+      expect(list.find((x: { id: string }) => x.id === sun.id).place.name).toBe('London');
+    });
   });
 });

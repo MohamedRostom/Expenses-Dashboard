@@ -28,6 +28,9 @@ import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
 import { createFeedbackRoutes } from './routes/feedback.js';
 import { createWidgetsRoutes } from './routes/widgets.js';
+import { createPlacesRoutes } from './routes/places.js';
+import { createPlacesService } from './services/places.js';
+import type { WeatherSource } from '@desk/connectors/open-meteo';
 import { createHealthWidgetsRoutes } from './routes/health-widgets.js';
 import { createConnectionsRoutes } from './routes/connections.js';
 import { createTodayRoutes } from './routes/today.js';
@@ -79,6 +82,7 @@ export type AppDeps = {
   secretBox: SecretBox;
   breachChecker: BreachChecker;
   rates: RatesDep;
+  weather: WeatherSource;
   jobs: JobsDep;
   clock: Clock;
   build: BuildInfo;
@@ -404,7 +408,18 @@ export function createApp(deps: AppDeps) {
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
 
-  app.route('/', createWidgetsRoutes(deps.db, deps.clock));
+  app.route('/', createWidgetsRoutes(deps.db, deps.clock, deps.limiter));
+  app.route(
+    '/',
+    createPlacesRoutes(
+      createPlacesService({
+        db: deps.db,
+        source: deps.weather,
+        limiter: deps.limiter,
+        clock: deps.clock,
+      }),
+    ),
+  );
   app.route('/', createHealthWidgetsRoutes(deps.db, deps.clock));
 
   app.get('/healthz', async (c) => {

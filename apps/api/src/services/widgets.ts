@@ -1,5 +1,11 @@
-import { and, asc, eq } from 'drizzle-orm';
-import { auditLog, places as placesTable, widgets as widgetsTable, type Db } from '@desk/db';
+import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import {
+  auditLog,
+  places as placesTable,
+  weatherReadings,
+  widgets as widgetsTable,
+  type Db,
+} from '@desk/db';
 import type {
   PlaceCandidateT,
   WidgetCreateT,
@@ -235,6 +241,7 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
         }
         let settings = body.settings;
         let placeId: string | null = null;
+        let previous: string[] = [];
         if (body.duplicateOf) {
           const src = await load(tx, user.id, body.duplicateOf);
           if (src.w.kind !== body.kind) {
@@ -242,19 +249,32 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
           }
           settings ??= src.w.settings as Record<string, unknown>;
           placeId = src.w.placeId;
+          previous = codesOf(src.w.settings);
         }
         if (body.place) placeId = await ensurePlace(tx, user.id, body.place);
         else if (body.placeId) placeId = await ownedPlaceId(tx, user.id, body.placeId);
+        if (body.kind === 'sunrise' && !placeId) {
+          // contracts/api.md: a sunrise widget with no place takes the first weather widget's.
+          placeId = rows.find((r) => r.w.kind === 'weather' && r.w.placeId)?.w.placeId ?? null;
+          if (!placeId) {
+            throw new ApiError('validation_failed', 'Invalid widget settings', 422, {
+              place_id: 'place_required',
+            });
+          }
+        }
 
         settings ??= {};
-        check(user, body.kind, settings, [], placeId);
+        check(user, body.kind, settings, previous, placeId);
 
         const position = rows.reduce((m, r) => Math.max(m, r.w.position + 1), 0);
         const [w] = await tx
           .insert(widgetsTable)
           .values({ userId: user.id, kind: body.kind, position, settings, placeId })
           .returning();
-        await audit(tx, user.id, 'widget.add', w!.id, { kind: body.kind });
+        await audit(tx, user.id, 'widget.add', w!.id, {
+          kind: body.kind,
+          ...(body.duplicateOf && { duplicateOf: body.duplicateOf }),
+        });
         const r = await load(tx, user.id, w!.id);
         return toRow(r.w, r.p);
       });
@@ -292,6 +312,41 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
         await audit(tx, user.id, 'widget.remove', w.id, { kind: w.kind });
         await dropIfUnreferenced(tx, user.id, w.placeId);
       });
+    },
+
+    /** The caller's widgets in `ids` order. A foreign id is 404, checked before the set check. */
+    async reorder(user: SessionUser, ids: string[]): Promise<WidgetRow[]> {
+      await db.transaction(async (tx) => {
+        const owned = (await select(tx, user.id)).map((r) => r.w.id);
+        const set = new Set(owned);
+        if (ids.some((id) => !set.has(id))) {
+          throw new ApiError('not_found', 'Widget not found', 404);
+        }
+        if (new Set(ids).size !== ids.length || ids.length !== owned.length) {
+          throw new ApiError('validation_failed', 'ids must list every widget exactly once', 422);
+        }
+        // the (user_id, position) unique is deferred, so intermediate clashes are fine
+        for (const [position, id] of ids.entries()) {
+          await tx.update(widgetsTable).set({ position }).where(eq(widgetsTable.id, id));
+        }
+        await audit(tx, user.id, 'widget.reorder', user.id);
+      });
+      return (await select(db, user.id)).map((r) => toRow(r.w, r.p));
+    },
+
+    /** T067: make the readings behind the caller's places due for the next refresh job. */
+    async markDue(user: SessionUser): Promise<number> {
+      const due = new Date(clock.now().getTime() - 3_600_000 - 1000).toISOString();
+      const mine = db
+        .select({ lat: placesTable.lat, lon: placesTable.lon })
+        .from(placesTable)
+        .where(eq(placesTable.userId, user.id));
+      const rows = await db
+        .update(weatherReadings)
+        .set({ fetchedAt: sql`least(${weatherReadings.fetchedAt}, ${due}::timestamptz)` })
+        .where(inArray(sql`(${weatherReadings.lat}, ${weatherReadings.lon})`, mine))
+        .returning({ lat: weatherReadings.lat });
+      return rows.length;
     },
 
     /** GET /me/export: place details repeated per widget, never cached readings. */

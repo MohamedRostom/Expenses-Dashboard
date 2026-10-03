@@ -15,6 +15,7 @@ import { createSecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 import { FrankfurterRates, FakeRates } from '@desk/connectors/rates';
+import { OpenMeteoClient } from '@desk/connectors/open-meteo/client';
 import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
 import { socketNodeConnect } from './adapters/socket-node.js';
@@ -93,6 +94,7 @@ const app = createApp({
   secretBox: createSecretBox(env.SECRET_BOX_KEY),
   breachChecker: new HibpBreachChecker(),
   rates: ratesProvider,
+  weather: new OpenMeteoClient(env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {}),
   jobs: jobRunner,
   runJobsNow: () => jobRunner.runDueJobs(),
   socketConnect: socketNodeConnect,

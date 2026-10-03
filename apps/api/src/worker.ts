@@ -10,6 +10,7 @@ import { createSecretBox, type SecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import { KvSessionStore, type KVNamespace } from './adapters/session-store-kv.js';
 import { FrankfurterRates } from '@desk/connectors/rates';
+import { OpenMeteoClient } from '@desk/connectors/open-meteo/client';
 import { connect as cfConnect } from 'cloudflare:sockets';
 import { JobRunner } from './jobs/runner.js';
 import { createSocketWorkerConnect } from './adapters/socket-worker.js';
@@ -50,6 +51,7 @@ export function buildDeps(
     secretBox,
     breachChecker: new HibpBreachChecker(),
     rates: new FrankfurterRates(),
+    weather: new OpenMeteoClient(),
     jobs: jobRunner,
     runJobsNow: () => jobRunner.runDueJobs(),
     socketConnect: createSocketWorkerConnect(cfConnect),

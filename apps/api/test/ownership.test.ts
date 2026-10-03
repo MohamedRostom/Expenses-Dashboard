@@ -433,8 +433,41 @@ describe('ownership matrix', () => {
       expect(rows.length).toBe(2);
     });
 
-    it.todo("PUT /widgets/order with user B's id in the list answers not_found (T042)");
-    it.todo("POST /widgets/refresh marks only the caller's places due (T043)");
+    it("PUT /widgets/order with user B's id in the list answers not_found and changes nothing", async () => {
+      const bWidget = await createWidget(userB, { kind: 'spend_pace' });
+      const aWidget = await createWidget(userA, { kind: 'spend_pace' });
+      const before = (await (await userA.get('/widgets')).json()) as { widgets: { id: string }[] };
+      const ids = [...before.widgets.map((w) => w.id), bWidget.id];
+      const res = await userA.put('/widgets/order', { ids });
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe('not_found');
+      const after = (await (await userA.get('/widgets')).json()) as { widgets: { id: string }[] };
+      expect(after.widgets.map((w) => w.id)).toEqual(before.widgets.map((w) => w.id));
+      expect(after.widgets.map((w) => w.id)).toContain(aWidget.id);
+    });
+
+    it("POST /widgets/refresh marks only the caller's places due", async () => {
+      await createWidget(userA, { kind: 'weather', place: LONDON });
+      await createWidget(userB, { kind: 'weather', place: { ...LONDON, lat: 48.86, lon: 2.35 } });
+      await db.execute(sql`
+        INSERT INTO weather_readings (lat, lon, time_zone, fetched_at)
+        VALUES ('51.51', '-0.13', 'UTC', now() - interval '5 minutes'),
+               ('48.86', '2.35', 'UTC', now() - interval '5 minutes')
+        ON CONFLICT (lat, lon) DO UPDATE SET fetched_at = excluded.fetched_at`);
+      const res = await userA.post('/widgets/refresh');
+      expect(res.status).toBe(202);
+      const age = async (lat: string, lon: string) =>
+        Number(
+          (
+            (await db.execute(
+              sql`SELECT extract(epoch FROM now() - fetched_at) AS s FROM weather_readings WHERE lat = ${lat} AND lon = ${lon}`,
+            )) as unknown as { s: string }[]
+          )[0]!.s,
+        );
+      expect(await age('51.51', '-0.13')).toBeGreaterThan(3600);
+      expect(await age('48.86', '2.35')).toBeLessThan(3600);
+    });
+
     it.todo(
       'GET /places/search and POST /places/resolve create no places row and audit only A (T051)',
     );

@@ -45,6 +45,24 @@ export async function recordSourceCall(
   });
 }
 
+/** The pause deadline, only while it is still in the future. */
+export async function weatherPausedUntil(db: Db, now: Date): Promise<Date | null> {
+  const rows = (await db.execute(sql`
+    SELECT value #>> '{}' AS until FROM flags
+    WHERE key = ${PAUSE_KEY} AND value IS NOT NULL
+      AND (value #>> '{}')::timestamptz > ${now.toISOString()}::timestamptz`)) as unknown as {
+    until: string;
+  }[];
+  return rows[0] ? new Date(rows[0].until) : null;
+}
+
+export async function pauseWeatherUntil(db: Db, until: Date): Promise<void> {
+  await db.execute(sql`
+    INSERT INTO flags (key, description, default_on, value)
+    VALUES (${PAUSE_KEY}, 'Weather source paused until', false, ${JSON.stringify(until.toISOString())}::jsonb)
+    ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`);
+}
+
 /** 'degraded' while the weather pause is in the future or any source is failing. */
 export async function sourceStatus(db: Db, now: Date): Promise<'ok' | 'degraded'> {
   const rows = (await db.execute(sql`
