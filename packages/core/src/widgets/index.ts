@@ -9,3 +9,4 @@ export {
   type SettingsIssue,
   type SettingsDescriptor,
 } from './settings.js';
+export { rateChanges, type RatePoint, type RateChange, type RateChanges } from './rate-change.js';

@@ -7,8 +7,16 @@ export type RateOutcome = RateResult | { unsupported: true };
  * (frankfurter itself walks back to the closest prior published date) or `unsupported`. */
 export interface RatesProvider {
   rate(date: string, from: CurrencyCode, to: CurrencyCode): Promise<RateOutcome>;
+  /** research.md R2: published dates in [from, to] (weekends/holidays absent), rates as decimal
+   * strings. `unsupported` for an unknown currency; throws on 5xx or network failure. */
+  range(from: Date, to: Date, base: CurrencyCode, quotes: CurrencyCode[]): Promise<RangeOutcome>;
 }
 
-export function isUnsupported(outcome: RateOutcome): outcome is { unsupported: true } {
-  return 'unsupported' in outcome;
+export type RangeRow = { date: string; rates: Record<string, string> };
+export type RangeOutcome = RangeRow[] | { unsupported: true };
+
+export function isUnsupported(
+  outcome: RateOutcome | RangeOutcome,
+): outcome is { unsupported: true } {
+  return !Array.isArray(outcome) && 'unsupported' in outcome;
 }

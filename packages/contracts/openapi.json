@@ -915,6 +915,210 @@
           }
         }
       }
+    },
+    "/widgets": {
+      "get": {
+        "summary": "List dashboard widgets with figures",
+        "responses": {
+          "200": {
+            "description": "List dashboard widgets with figures",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a widget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Add a widget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/types": {
+      "get": {
+        "summary": "Widget kinds the user can add",
+        "responses": {
+          "200": {
+            "description": "Widget kinds the user can add",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetTypesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/{id}": {
+      "patch": {
+        "summary": "Change a widget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Change a widget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a widget",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/widgets/order": {
+      "put": {
+        "summary": "Reorder widgets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reorder widgets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/refresh": {
+      "post": {
+        "summary": "Mark places due for refresh",
+        "responses": {
+          "200": {
+            "description": "Mark places due for refresh",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsRefreshResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/places/search": {
+      "get": {
+        "summary": "Search places",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search places",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/places/resolve": {
+      "post": {
+        "summary": "Resolve device coordinates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolve device coordinates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz/widgets": {
+      "get": {
+        "summary": "Widget source health probe",
+        "responses": {
+          "200": {
+            "description": "Widget source health probe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthWidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {

@@ -14,7 +14,7 @@ pnpm test:e2e -- --project=ci
 ## Slice A: strip and currency widget (US1, US3 add/remove/settings)
 
 1. Property tests `packages/core/src/widgets/rate-change.test.ts`: previous-day and 30-day
-   changes from a date-ordered list; fewer than 31 dates yields `since`; direction and
+   changes from a date-ordered list; history not reaching back 30 calendar days yields `since`; direction and
    one-decimal percentages; no floats.
 2. Contract test `packages/connectors/src/rates/range.test.ts` against `range-*.json` for the
    real client and `FakeRates`.

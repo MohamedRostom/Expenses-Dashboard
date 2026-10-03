@@ -173,6 +173,22 @@ const routes: Row[] = [
       return await createConnectedAccount(userB);
     },
   },
+  {
+    method: 'PATCH',
+    path: '/widgets/:id',
+    body: { settings: { currencies: ['USD'] } },
+    async createForeignId(userB) {
+      return (await createWidget(userB, { kind: 'currency', settings: { currencies: ['EUR'] } }))
+        .id;
+    },
+  },
+  {
+    method: 'DELETE',
+    path: '/widgets/:id',
+    async createForeignId(userB) {
+      return (await createWidget(userB, { kind: 'spend_pace' })).id;
+    },
+  },
 ];
 
 const CSV_MAPPING = {
@@ -219,6 +235,16 @@ async function createExpense(userB: ApiClient): Promise<string> {
   return expense.id;
 }
 
+async function createWidget(
+  user: ApiClient,
+  body: unknown,
+): Promise<{ id: string; place?: { name: string } }> {
+  const res = await user.post('/widgets', body);
+  const { widget } = (await res.json()) as { widget?: { id: string } };
+  if (!widget) throw new Error('expected the user to create a widget');
+  return widget;
+}
+
 /** Set in beforeAll; panels fixtures insert rows directly because connecting an account needs a
  * provider round-trip the ownership test has no reason to exercise. */
 let db: Harness['db'];
@@ -250,6 +276,9 @@ describe('ownership matrix', () => {
     await setGlobalFlag(db, 'panels.today', true);
     await setGlobalFlag(db, 'panels.google_calendar', true);
     await setGlobalFlag(db, 'panels.standards', true);
+    for (const k of ['currency', 'weather', 'sunrise', 'spend_pace', 'fixed_costs']) {
+      await setGlobalFlag(db, `widgets.${k}`, true);
+    }
     userA = await harness.asUser('ownership-a@example.com');
     userB = await harness.asUser('ownership-b@example.com');
   }, 120_000);
@@ -345,5 +374,69 @@ describe('ownership matrix', () => {
       const listBJson = (await listB.json()) as { accounts: { id: string }[] };
       expect(listBJson.accounts.map((a) => a.id)).not.toContain(bodyA.account.id);
     });
+  });
+
+  describe('widgets (spec 003)', () => {
+    const LONDON = {
+      name: 'London',
+      admin1: 'England',
+      country: 'United Kingdom',
+      lat: 51.51,
+      lon: -0.13,
+      timeZone: 'Europe/London',
+    };
+
+    it("GET /widgets and GET /widgets/types never expose user B's widgets or kinds in use", async () => {
+      const bWidget = await createWidget(userB, { kind: 'weather', place: LONDON });
+      const bFixed = await createWidget(userB, { kind: 'fixed_costs' });
+      await setGlobalFlag(db, 'widgets.fixed_costs', false);
+      try {
+        const list = await userA.get('/widgets');
+        expect(list.status).toBe(200);
+        const ids = ((await list.json()) as { widgets: { id: string }[] }).widgets.map((w) => w.id);
+        expect(ids).not.toContain(bWidget.id);
+        expect(ids).not.toContain(bFixed.id);
+
+        const types = await userA.get('/widgets/types');
+        const kinds = ((await types.json()) as { types: { kind: string }[] }).types.map(
+          (t) => t.kind,
+        );
+        expect(kinds).not.toContain('fixed_costs');
+      } finally {
+        await setGlobalFlag(db, 'widgets.fixed_costs', true);
+      }
+    });
+
+    it("POST /widgets with user B's placeId answers not_found and creates nothing", async () => {
+      await createWidget(userB, { kind: 'weather', place: LONDON });
+      const rows = await db.execute(
+        sql`SELECT id FROM places WHERE user_id = ${userB.userId} LIMIT 1`,
+      );
+      const bPlace = (rows as unknown as { id: string }[])[0]!.id;
+      const before = (await (await userA.get('/widgets')).json()) as { widgets: unknown[] };
+
+      const res = await userA.post('/widgets', { kind: 'weather', placeId: bPlace });
+      expect(res.status).toBe(404);
+      expect(((await res.json()) as { error: { code: string } }).error.code).toBe('not_found');
+      const after = (await (await userA.get('/widgets')).json()) as { widgets: unknown[] };
+      expect(after.widgets.length).toBe(before.widgets.length);
+    });
+
+    it('a place chosen by user A creates a row for A only, even at the same coordinates as B', async () => {
+      await createWidget(userB, { kind: 'weather', place: LONDON });
+      await createWidget(userA, { kind: 'weather', place: LONDON });
+      const rows = (await db.execute(
+        sql`SELECT user_id FROM places WHERE name = 'London'`,
+      )) as unknown as { user_id: string }[];
+      const owners = new Set(rows.map((r) => r.user_id));
+      expect(owners).toEqual(new Set([userA.userId, userB.userId]));
+      expect(rows.length).toBe(2);
+    });
+
+    it.todo("PUT /widgets/order with user B's id in the list answers not_found (T042)");
+    it.todo("POST /widgets/refresh marks only the caller's places due (T043)");
+    it.todo(
+      'GET /places/search and POST /places/resolve create no places row and audit only A (T051)',
+    );
   });
 });

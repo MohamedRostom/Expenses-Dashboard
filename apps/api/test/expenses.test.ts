@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { users } from '@desk/db';
-import type { RatesProvider, RateOutcome } from '@desk/connectors/rates';
+import type { RatesProvider, RateOutcome, RangeOutcome } from '@desk/connectors/rates';
 import { createRatesService } from '../src/services/rates.js';
 import { createExpensesService } from '../src/services/expenses.js';
 import { startHarness, type Harness } from './harness.js';
@@ -28,6 +28,9 @@ class StubRates implements RatesProvider {
   constructor(private readonly outcome: RateOutcome) {}
   async rate(): Promise<RateOutcome> {
     return this.outcome;
+  }
+  async range(): Promise<RangeOutcome> {
+    return [];
   }
 }
 

@@ -1,0 +1,15 @@
+{
+  "_comment": "Hand-authored: frankfurter 404s for a currency it does not publish.",
+  "request": {
+    "from": "2026-08-31",
+    "to": "2026-09-30",
+    "base": "EUR",
+    "quotes": ["XYZ"]
+  },
+  "response": {
+    "status": 404,
+    "body": {
+      "message": "not found"
+    }
+  }
+}

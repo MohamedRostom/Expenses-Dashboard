@@ -128,6 +128,17 @@ const routes: [string, string, string, string | null, string | null][] = [
     'GenericWebhookBody',
     'GenericWebhookResponse',
   ],
+  // spec 003 (specs/003-dashboard-widgets/contracts/api.md)
+  ['GET', '/widgets', 'List dashboard widgets with figures', null, 'WidgetsResponse'],
+  ['GET', '/widgets/types', 'Widget kinds the user can add', null, 'WidgetTypesResponse'],
+  ['POST', '/widgets', 'Add a widget', 'WidgetCreate', 'WidgetResponse'],
+  ['PATCH', '/widgets/:id', 'Change a widget', 'WidgetPatch', 'WidgetResponse'],
+  ['PUT', '/widgets/order', 'Reorder widgets', 'OrderBody', 'WidgetsResponse'],
+  ['DELETE', '/widgets/:id', 'Remove a widget', null, null],
+  ['POST', '/widgets/refresh', 'Mark places due for refresh', null, 'WidgetsRefreshResponse'],
+  ['GET', '/places/search', 'Search places', 'SearchQuery', 'CandidatesResponse'],
+  ['POST', '/places/resolve', 'Resolve device coordinates', 'ResolveBody', 'CandidatesResponse'],
+  ['GET', '/healthz/widgets', 'Widget source health probe', null, 'HealthWidgetsResponse'],
 ];
 
 const paths: Record<string, Record<string, object>> = {};

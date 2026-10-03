@@ -70,3 +70,4 @@ export {
   type SettingsIssue,
   type SettingsDescriptor,
 } from './widgets/index.js';
+export { rateChanges, type RatePoint, type RateChange, type RateChanges } from './widgets/index.js';

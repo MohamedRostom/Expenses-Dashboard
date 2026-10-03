@@ -27,6 +27,7 @@ import { createHooksRoutes } from './routes/hooks.js';
 import { createCaptureRoutes } from './routes/capture.js';
 import { createNotionRoutes } from './routes/notion.js';
 import { createFeedbackRoutes } from './routes/feedback.js';
+import { createWidgetsRoutes } from './routes/widgets.js';
 import { createHealthWidgetsRoutes } from './routes/health-widgets.js';
 import { createConnectionsRoutes } from './routes/connections.js';
 import { createTodayRoutes } from './routes/today.js';
@@ -403,6 +404,7 @@ export function createApp(deps: AppDeps) {
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
 
+  app.route('/', createWidgetsRoutes(deps.db, deps.clock));
   app.route('/', createHealthWidgetsRoutes(deps.db, deps.clock));
 
   app.get('/healthz', async (c) => {

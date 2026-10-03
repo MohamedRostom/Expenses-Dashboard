@@ -115,7 +115,7 @@ there are no open NEEDS CLARIFICATION items. Sources and licence terms are recor
 
 - **Decision**: fast-check properties for R6 (spend so far plus remaining budget never differs
   from the month total; usual amount equals budget whenever a budget exists; a rate list of
-  fewer than 31 dates yields "since <first date>"); recorded Open-Meteo fixtures (search with
+  history not reaching back 30 calendar days yields "since <first date>"); recorded Open-Meteo fixtures (search with
   two homonyms, forecast with sunrise and sunset, 429, empty result) and Frankfurter range
   fixtures (31 days, weekend gap, short history) with fakes validated against them; API suite
   with the ownership matrix for all nine routes, the eight-widget and six-currency caps, the
@@ -157,7 +157,7 @@ there are no open NEEDS CLARIFICATION items. Sources and licence terms are recor
   returns `{ code, isDefault: true }` with no figures for such a code. When
   `widgets.rates_backfill` fails, the job records nothing extra: the builder sees fewer than two
   dates and returns `prevChange`/`monthChange` as `null` with `changesPending: true`; the daily
-  rate fetch enqueues a backfill for every widget pair with fewer than 31 dates, so it retries
+  rate fetch enqueues a backfill for every widget pair whose history does not reach back 30 calendar days, so it retries
   once a day without a new table.
 - **Rationale**: no data loss, no extra state; the retry is derived from what is missing.
 - **Alternatives considered**: rewriting settings on default change (loses the user's choice);

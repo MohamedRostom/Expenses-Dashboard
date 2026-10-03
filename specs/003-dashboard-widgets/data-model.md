@@ -88,7 +88,7 @@ exported, never cascaded.
 
 - `currency`: per code `{ code, rate, rateDate, prevChange: { pct, direction } | null,
   monthChange: { pct, direction, since } | null, changesPending? }`; `since` is set only when
-  fewer than 31 dates exist; both changes are `null` with `changesPending: true` while the
+  the history does not reach back 30 calendar days; both changes are `null` with `changesPending: true` while the
   history backfill has not landed. A code equal to the current default returns
   `{ code, isDefault: true }` only.
 - `weather`: `{ place, temperatureC, condition, icon, todayMaxC, todayMinC, outlook: [3 days],

@@ -36,6 +36,7 @@ import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
 import { emailChangeMail } from '../mail/email-change.js';
 import type { ConnectionsService } from '../services/connections.js';
+import { createWidgetsService } from '../services/widgets.js';
 
 export type MeRoutesDeps = {
   db: Db;
@@ -75,6 +76,7 @@ const EMAIL_CHANGE_PREFIX = 'email_change:';
 export function createMeRoutes(deps: MeRoutesDeps) {
   const { db, hasher, mailer, sessionStore, clock, appOrigin, limiter, connections, jobs } = deps;
   const app = new Hono<{ Variables: AppVariables }>();
+  const widgetsService = createWidgetsService(db);
 
   app.get('/me', (c) => {
     const user = requireAuth(c);
@@ -89,6 +91,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     const patch: Partial<typeof usersTable.$inferInsert> = {};
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.timeZone !== undefined) patch.timeZone = patchBody.timeZone;
+    if (patchBody.temperatureUnit !== undefined) patch.temperatureUnit = patchBody.temperatureUnit;
     if (patchBody.onboardingCompletedAt !== undefined) {
       patch.onboardingCompletedAt = patchBody.onboardingCompletedAt
         ? new Date(patchBody.onboardingCompletedAt)
@@ -206,26 +209,29 @@ export function createMeRoutes(deps: MeRoutesDeps) {
       ],
     );
 
-    const doc: ExportDocumentT = {
-      exportedAt: clock.now().toISOString(),
-      user: toUserResponse(user),
-      categories,
-      expenses,
-      importBatches,
-      notion: notion
-        ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
-        : { connected: false, direction: null, databaseId: null },
-      connections: connectedAccountRows.map((row) => ({
-        provider: row.provider as 'google' | 'microsoft' | 'standards',
-        address: row.address,
-        label: row.label,
-        capabilities: row.capabilities as ('mail' | 'calendar')[],
-        status: row.pausedAt
-          ? 'paused'
-          : (row.status as 'connected' | 'reconnect_needed' | 'error'),
-      })),
-      version: 1,
-    };
+    // ExportDocument (contracts) has no widgets field yet; the document is not re-parsed.
+    const doc: ExportDocumentT & { widgets: Awaited<ReturnType<typeof widgetsService.exportFor>> } =
+      {
+        exportedAt: clock.now().toISOString(),
+        user: toUserResponse(user),
+        categories,
+        expenses,
+        importBatches,
+        notion: notion
+          ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
+          : { connected: false, direction: null, databaseId: null },
+        connections: connectedAccountRows.map((row) => ({
+          provider: row.provider as 'google' | 'microsoft' | 'standards',
+          address: row.address,
+          label: row.label,
+          capabilities: row.capabilities as ('mail' | 'calendar')[],
+          status: row.pausedAt
+            ? 'paused'
+            : (row.status as 'connected' | 'reconnect_needed' | 'error'),
+        })),
+        widgets: await widgetsService.exportFor(user),
+        version: 1,
+      };
 
     const stream = new ReadableStream({
       start(controller) {
