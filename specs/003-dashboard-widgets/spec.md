@@ -121,6 +121,28 @@ expenses, so what the user sees in the widget is what they get in the ledger.
 - Q: Does a "your default currency" row count toward the six-currency cap? (CHK055) → A: Yes; it
   is still a stored choice and can be removed like any other.
 
+### Session 2026-10-04 (answered by the agent at the owner's request, matching what is built)
+
+- Q: How is "a mid-range phone" in SC-003 measured? → A: Lighthouse's default mobile profile
+  (emulated mid-tier phone, 4× CPU slowdown, simulated slow 4G), the profile CI already uses.
+- Q: Is postcode search a requirement or only an example? → A: Best effort through the same
+  search box: the source matches postal codes for the countries it holds them for; an unknown
+  postcode behaves like an unknown place. No second source is added.
+- Q: How does spend pace count days left, and what is the daily amount when over budget? → A:
+  Days left counts today; the daily amount is the remaining budget divided by days left,
+  rounded down to the minor unit, and is hidden once spend is over budget, where the critical
+  colour marks the overspend instead.
+- Q: What makes a category fixed-kind, and what is "the previous month's amount"? → A: A
+  category whose default kind is Fixed (seeded for Rent, Council tax, Utilities, Internet,
+  Phone, Subscriptions, Gym & health; the user can change it); the previous month's amount is
+  that category's expense total for the previous calendar month in the user's time zone, in
+  the default currency.
+- Q: How are SC-001, SC-002, SC-004 and SC-008 verified? → A: SC-001 by the API suite over a
+  simulated month of dates (weekends and holidays included) on every CI run; SC-004 by the
+  nightly real-source sampling run on the owner's runner, read over a week; SC-002 in an
+  owner-run timed session; SC-008 in an owner-run rehearsal on staging before any weather or
+  currency widget flag is switched on in production.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Watch the currencies I care about (Priority: P1)
@@ -299,7 +321,8 @@ weather widget's place; confirm the first two made no external request.
 - The user removes the weather widget but keeps sunrise and sunset: the sunrise widget keeps
   its own place (FR-018); removing that widget too removes the place.
 - Spend pace on the first day of the month with no expenses: shows zero spent, the full
-  budget and the daily amount; never a division error or a blank.
+  budget and the daily amount; never a division error or a blank. On the last day, days left
+  is 1 and the daily amount is the whole remaining budget; over budget, no daily amount shows.
 - The user makes a selected widget currency their default: that row reads "your default
   currency" with no figures; nothing is removed from the widget.
 - The rate history request fails when a currency is added: today's rate shows, the changes
@@ -399,7 +422,9 @@ Weather widget
   country, or by a "use my current location" button that states before the tap that it will
   ask the device once; nothing is stored until the user confirms a named place. Desk MUST NOT
   request the device's location except on that tap, MUST discard the coordinates once a place
-  is resolved, and MUST NOT store a location more precise than the chosen place. The resolved
+  is resolved, and MUST NOT store a location more precise than the chosen place. Typed search
+  matches place names and, best effort, postal codes for the countries the source holds them
+  for; an unknown postcode is handled like an unknown place. The resolved
   place is approximate (the nearest place Desk already knows, else the main city of the
   device's time zone, shown as "near <city>") and MUST be confirmed or replaced by the user
   before anything is stored.
@@ -430,13 +455,15 @@ Other widgets
 - **FR-016**: The spend pace widget MUST show the current month's spend so far, the month's
   budget (the sum of the category budgets for the month, identical to the month view's
   "budgeted" tile; spend in categories without a budget counts toward spend but not budget),
-  the percentage used, the days left and the daily amount that would end exactly on budget,
-  in the default currency; with no category budget at all it shows spend so far and an offer
+  the percentage used, the days left (counting today) and the daily amount that would end
+  exactly on budget (the remaining budget divided by the days left, rounded down to the minor
+  unit, hidden once spend is over budget), in the default currency; with no category budget at all it shows spend so far and an offer
   to set one; over budget uses the critical status colour and never a chart-series colour.
-- **FR-017**: The upcoming fixed costs widget MUST list every fixed-kind category with no
-  expense in the current month, each with its usual amount and the total still expected;
+- **FR-017**: The upcoming fixed costs widget MUST list every fixed-kind category (a category
+  whose default kind is Fixed) with no expense in the current month, each with its usual amount and the total still expected;
   the usual amount is the category's budget when one is set (the same figure the month
-  forecast uses), otherwise the previous month's amount in that category shown as "about",
+  forecast uses), otherwise the previous month's amount in that category (its expense total for
+  the previous calendar month in the user's time zone, in the default currency) shown as "about",
   otherwise "no usual amount yet"; when all fixed categories are recorded it says so with the
   total.
 - **FR-018**: The sunrise and sunset widget MUST show today's sunrise, sunset and day length
@@ -481,15 +508,19 @@ Operations
 
 - **SC-001**: In every trial across a month of daily checks, the rate shown in the currency
   widget equals the rate recorded on an expense entered the same day in that currency: zero
-  mismatches.
+  mismatches. Verified by an automated check over a simulated month of dates, weekends and
+  holidays included, on every change.
 - **SC-002**: A user adds and configures a currency or weather widget in under one minute from
-  opening "add widget" to seeing figures.
+  opening "add widget" to seeing figures, timed by the owner in a session with rates already
+  cached.
 - **SC-003**: The widget area shows cached figures within one second of the page appearing on
-  a mid-range phone, and adding the widget area lengthens neither the month view's measured
+  a mid-range phone (a standard emulated mid-range mobile profile: 4× CPU slowdown, simulated slow 4G),
+  and adding the widget area lengthens neither the month view's measured
   load time nor the time until the Today page's calendar and inbox panels appear by more than
   100 ms.
 - **SC-004**: While the user is active and the weather source is reachable, the weather reading
-  is never more than one hour old in 99 % of samples over a week.
+  is never more than one hour old in 99 % of samples over a week, sampled by a nightly
+  check against the real source.
 - **SC-005**: With eight widgets, every widget state (loading, empty, stale, error,
   unavailable) passes the accessibility audit with no serious or critical violations at 360 px
   and desktop width, and reorder is completed by keyboard alone in a test with a screen reader.
@@ -499,7 +530,8 @@ Operations
 - **SC-008**: In a rehearsal where the weather source is made to refuse every call, again
   where it hits its limit, and again where the rate source refuses every call, the operator is
   alerted within 20 minutes of the third failed call (or of the limit) each time, the logs name
-  the source and cause, and the public status check shows nothing beyond "degraded".
+  the source and cause, and the public status check shows nothing beyond "degraded". The owner
+  runs it on staging before any weather or currency widget flag is switched on in production.
 
 ## Assumptions
 

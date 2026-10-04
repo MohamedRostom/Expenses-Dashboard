@@ -28,13 +28,13 @@
 - [ ] CHK013 Is the typing "pause" before a place search given a duration? Research R5 uses 400 ms; the spec says only "after the user pauses typing". [Clarity, Spec §FR-013]
 - [ ] CHK014 Is "three-day outlook" defined as excluding today (today's high and low are shown separately) so that the four daily entries in `data-model.md` map unambiguously? [Clarity, Spec §FR-011, Data-model §weather_readings]
 - [ ] CHK015 Is "today" for weather high/low and for sunrise and sunset defined as today in the place's zone rather than the user's? [Ambiguity, Spec §FR-011, §FR-018]
-- [ ] CHK016 Does "days left" state whether today is included? Research R6 says "including today"; the spec does not. [Clarity, Spec §FR-016]
-- [ ] CHK017 Is "the previous month's amount" for a fixed category defined as the sum of that category's expenses in the previous calendar month in the default currency? [Clarity, Spec §FR-017]
-- [ ] CHK018 Is "fixed-kind category" defined? The baseline seeds Kind per expense (Fixed, Variable, One-off) and a default list of fixed categories; the spec does not say which attribute makes a category "fixed". [Ambiguity, Spec §FR-017, §US4]
+- [x] CHK016 Does "days left" state whether today is included? Research R6 says "including today"; the spec does not. [Clarity, Spec §FR-016]
+- [x] CHK017 Is "the previous month's amount" for a fixed category defined as the sum of that category's expenses in the previous calendar month in the default currency? [Clarity, Spec §FR-017]
+- [x] CHK018 Is "fixed-kind category" defined? The baseline seeds Kind per expense (Fixed, Variable, One-off) and a default list of fixed categories; the spec does not say which attribute makes a category "fixed". [Ambiguity, Spec §FR-017, §US4]
 - [ ] CHK019 Are the percentage rounding rule (to one decimal: half-up or banker's) and the direction shown for a zero change specified? [Clarity, Spec §FR-008]
-- [ ] CHK020 Is "mid-range phone" in SC-003 pinned to a device class or Lighthouse throttling profile so the one-second and 100 ms figures can be measured the same way twice? [Clarity, Spec §SC-003]
+- [x] CHK020 Is "mid-range phone" in SC-003 pinned to a device class or Lighthouse throttling profile so the one-second and 100 ms figures can be measured the same way twice? [Clarity, Spec §SC-003]
 - [ ] CHK021 Is "region" defined as the first-level administrative area (contract: `admin1`) for every country, including those where it is empty? [Clarity, Spec §FR-012, Contracts §Places]
-- [ ] CHK022 Is "postcode" search a requirement with its own acceptance scenario, or only an example? US2 says "a city or postcode"; FR-012 says "typed search" only. [Ambiguity, Spec §US2, §FR-012]
+- [x] CHK022 Is "postcode" search a requirement with its own acceptance scenario, or only an example? US2 says "a city or postcode"; FR-012 says "typed search" only. [Ambiguity, Spec §US2, §FR-012]
 
 ## Requirement Consistency
 
@@ -50,9 +50,9 @@
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK032 Can SC-001 ("zero mismatches across a month of daily checks") be verified in CI, or is it defined as an e2e-local/nightly outcome? Is the check that proves it named? [Measurability, Spec §SC-001]
-- [ ] CHK033 Is SC-002 ("under one minute") tied to a method (usability session, scripted timing) and a starting state (rates already cached or not)? [Measurability, Spec §SC-002]
-- [ ] CHK034 Is SC-004's sampling defined (who samples, how often, which place) so "99 % over a week" is reproducible? [Measurability, Spec §SC-004]
+- [x] CHK032 Can SC-001 ("zero mismatches across a month of daily checks") be verified in CI, or is it defined as an e2e-local/nightly outcome? Is the check that proves it named? [Measurability, Spec §SC-001]
+- [x] CHK033 Is SC-002 ("under one minute") tied to a method (usability session, scripted timing) and a starting state (rates already cached or not)? [Measurability, Spec §SC-002]
+- [x] CHK034 Is SC-004's sampling defined (who samples, how often, which place) so "99 % over a week" is reproducible? [Measurability, Spec §SC-004]
 - [ ] CHK035 Does every FR with a MUST have at least one acceptance scenario or edge case that exercises it? FR-007 (operator switch) and FR-014 (privacy page text) have edge-case or assumption coverage only. [Traceability, Spec §FR-007, §FR-014]
 
 ## Scenario Coverage
@@ -65,7 +65,7 @@
 
 ## Edge Case Coverage
 
-- [ ] CHK041 Is the spend pace "daily amount that would end exactly on budget" defined when the budget is already exceeded (zero, negative, or hidden) and on the last day of the month? [Edge Case, Spec §FR-016]
+- [x] CHK041 Is the spend pace "daily amount that would end exactly on budget" defined when the budget is already exceeded (zero, negative, or hidden) and on the last day of the month? [Edge Case, Spec §FR-016]
 - [ ] CHK042 Are requirements stated for a currency whose rate the source stops publishing after it was added (widget refuses on add only, per FR-010)? [Edge Case, Spec §FR-008, §FR-010]
 - [ ] CHK043 Is the case of a place with no `admin1` (region) or a country-level result covered in the "region and country" display rule? [Edge Case, Spec §FR-012]
 - [ ] CHK044 Are the edge cases for a place near the date line or in a zone without daylight-saving handled by the "place's local time" rule, and is polar day/night (no sunrise or sunset) covered for the sunrise widget? [Edge Case, Spec §FR-018]
@@ -144,7 +144,7 @@ Items CHK076 onward review the text changed by the second clarify pass (FR-008, 
 
 ## Second clarify pass 2026-10-03: Acceptance Criteria Quality
 
-- [ ] CHK083 Does SC-008 say where the rehearsal runs (staging or production), who runs it, and how often, so it can be signed off? [Measurability, Spec §SC-008]
+- [x] CHK083 Does SC-008 say where the rehearsal runs (staging or production), who runs it, and how often, so it can be signed off? [Measurability, Spec §SC-008]
 - [x] CHK084 Does SC-008 cover the rates source as well as the weather source, since FR-019 applies to both? [Coverage, Spec §SC-008, §FR-019]
 - [ ] CHK085 Is the Today page baseline for SC-003's 100 ms comparison defined (connected accounts or none, panels from cache or fresh)? [Measurability, Spec §SC-003]
 
