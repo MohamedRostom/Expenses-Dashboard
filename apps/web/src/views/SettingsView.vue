@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Button, Dialog, Input, Select, useToast } from '@desk/ui';
-import type { JobResponseT, PatchMeResponseT, SessionSummaryT } from '@desk/contracts';
+import type {
+  JobResponseT,
+  PatchMeResponseT,
+  SessionSummaryT,
+  TemperatureUnitT,
+} from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
 import { describeDevice, formatDateTime } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
+import { useWidgetsStore } from '../stores/widgets.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
 import { applyTheme } from './theme.js';
 
@@ -62,7 +68,27 @@ async function loadSessions() {
   }
 }
 
-onMounted(loadSessions);
+const widgetsStore = useWidgetsStore();
+const widgetPlaces = computed(() => {
+  const seen = new Map<string, string>();
+  for (const w of widgetsStore.widgets) {
+    if (w.place) seen.set(`${w.place.lat},${w.place.lon}`, w.place.name);
+  }
+  return [...seen.values()];
+});
+
+async function changeUnit(unit: TemperatureUnitT) {
+  try {
+    await widgetsStore.setTemperatureUnit(unit);
+  } catch (err) {
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  }
+}
+
+onMounted(() => {
+  void loadSessions();
+  widgetsStore.load().catch(() => {});
+});
 onBeforeUnmount(() => {
   if (jobTimer) clearTimeout(jobTimer);
 });
@@ -307,6 +333,30 @@ async function confirmDelete() {
     </section>
 
     <section>
+      <h2>Widgets</h2>
+      <p v-if="widgetPlaces.length === 0">No places in use by your widgets.</p>
+      <template v-else>
+        <p>Places used by your widgets:</p>
+        <ul>
+          <li v-for="p in widgetPlaces" :key="p" data-testid="widget-place">{{ p }}</li>
+        </ul>
+      </template>
+      <fieldset class="unit-fieldset">
+        <legend>Temperature unit</legend>
+        <label v-for="u in ['C', 'F'] as const" :key="u">
+          <input
+            type="radio"
+            name="settings-temperature-unit"
+            :value="u"
+            :checked="widgetsStore.temperatureUnit === u"
+            @change="changeUnit(u)"
+          />
+          °{{ u }}
+        </label>
+      </fieldset>
+    </section>
+
+    <section>
       <h2>Sessions</h2>
       <p v-if="sessionsLoading">Loading sessions…</p>
       <p v-else-if="sessionsError" role="alert" class="error-text">{{ sessionsError }}</p>
@@ -388,6 +438,11 @@ ul {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+}
+.unit-fieldset {
+  border: 0;
+  margin: 0;
+  padding: 0;
 }
 .error-text {
   color: var(--color-critical);

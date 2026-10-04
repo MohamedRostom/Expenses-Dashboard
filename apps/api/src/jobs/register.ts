@@ -12,9 +12,14 @@ import {
   type RateLookup,
 } from './currency-change.js';
 import { ratesWarmJob, ratesRetryJob } from './rates.js';
+import { BACKFILL_JOB, widgetsRatesBackfillJob } from './widgets-rates-backfill.js';
 import { housekeepingJob } from './housekeeping.js';
 import { notionSyncJob, type NotionSyncDeps } from './notion-sync.js';
 import { feedbackDigestJob, type FeedbackDigestDeps } from './feedback-digest.js';
+import type { WeatherSource } from '@desk/connectors/open-meteo';
+import { widgetsWeatherRefreshJob, type Enqueue } from './widgets-weather-refresh.js';
+import { widgetsPurgeJob } from './widgets-purge.js';
+import { logger } from '../adapters/logger.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 
 export function registerAllJobs(deps: {
@@ -26,17 +31,36 @@ export function registerAllJobs(deps: {
   notionSync?: NotionSyncDeps;
   /** T112: always registered — feedbackDigestJob itself no-ops the send when digestEmail is unset. */
   feedbackDigest?: FeedbackDigestDeps;
+  /** T043/T073: the weather jobs register only when both are given. */
+  weather?: WeatherSource;
+  enqueue?: Enqueue;
 }): void {
   registerJob(
     'currency.change',
     currencyChangeJob(
       deps.getRate,
       combinedRowSource(categoriesRowSource(deps.db), expensesRowSource(deps.db)),
+      deps.db,
     ),
   );
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
+  registerJob(
+    BACKFILL_JOB,
+    widgetsRatesBackfillJob(deps.db, deps.ratesProvider, { now: () => new Date() }, logger),
+  );
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));
   if (deps.notionSync) registerJob('notion.sync', notionSyncJob(deps.notionSync));
+  if (deps.weather && deps.enqueue) {
+    const clock = { now: () => new Date() };
+    const { db, weather: source, enqueue } = deps;
+    registerJob(
+      'widgets.weather_refresh',
+      widgetsWeatherRefreshJob({ db, source, clock, enqueue, logger }),
+    );
+    registerJob('widgets.purge', widgetsPurgeJob({ db, clock, enqueue }));
+  }
   if (deps.feedbackDigest) registerJob('feedback.digest', feedbackDigestJob(deps.feedbackDigest));
 }
+
+export { ensureWidgetJobs } from './widgets-weather-refresh.js';

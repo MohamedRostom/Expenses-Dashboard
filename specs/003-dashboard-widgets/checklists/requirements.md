@@ -35,7 +35,12 @@
   month view with one shared arrangement; first release widgets are currency, weather, spend
   pace, upcoming fixed costs, sunrise and sunset; "use my current location" exists as an
   explicit one-tap control that discards coordinates. All items pass.
-- The weather source is an owner decision (constitution Principle V); the spec deliberately
-  names none. It must be recorded in an ADR before `/speckit-plan`.
-- The Today page strip depends on spec 002 shipping; the month view strip does not.
+- The weather source was decided in ADR-0005 (accepted 2026-09-17); the spec refers to the ADR
+  rather than naming the service in requirements.
+- 2026-10-03 re-validation after reconciling with spec 002 as built: the Today page exists behind
+  its own operator switch (off in production), so FR-001 now says where the strip shows when
+  that switch is off and orders the strip after the Today panels; FR-003 adds the expired
+  session and visible-page-only refresh; FR-013 adopts spec 002's "active" definition; two edge
+  cases cover the Today switch and a failing Today panel. No [NEEDS CLARIFICATION] markers were
+  added; all items still pass.
 - Items marked incomplete require spec updates before `/speckit-clarify` or `/speckit-plan`

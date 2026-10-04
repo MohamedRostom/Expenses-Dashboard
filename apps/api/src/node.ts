@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { readFile } from 'node:fs/promises';
 import postgres from 'postgres';
-import { createDb } from '@desk/db';
+import { createDb, setGlobalFlag } from '@desk/db';
 import { runMigrations } from '@desk/db/migrate';
 import pkg from '../package.json' with { type: 'json' };
 import { createApp, type Clock } from './app.js';
@@ -15,11 +15,12 @@ import { createSecretBox } from './adapters/secret-box.js';
 import { HibpBreachChecker } from './adapters/breach-checker.js';
 import type { Db as QueryDb } from './adapters/rate-limiter.js';
 import { FrankfurterRates, FakeRates } from '@desk/connectors/rates';
+import { OpenMeteoClient } from '@desk/connectors/open-meteo/client';
 import { createNodeLogger } from './adapters/logger-node.js';
 import { JobRunner } from './jobs/runner.js';
 import { socketNodeConnect } from './adapters/socket-node.js';
 import { resolveHostNode } from './adapters/host-resolver-node.js';
-import { registerAllJobs } from './jobs/register.js';
+import { registerAllJobs, ensureWidgetJobs } from './jobs/register.js';
 import { registerJob } from './jobs/index.js';
 import { feedbackDigestJob } from './jobs/feedback-digest.js';
 import { createRatesService } from './services/rates.js';
@@ -31,6 +32,7 @@ const env = parseEnv(process.env);
 await runMigrations(env.DATABASE_URL);
 
 const { db } = createDb(env.DATABASE_URL);
+for (const key of env.FLAGS_ON ?? []) await setGlobalFlag(db, key, true);
 
 // Bridges postgres-js to the small `.query(sql, params)` port PgSessionStore/PgRateLimiter want
 // (ponytail: one client, two call shapes — cheaper than a second connection pool).
@@ -63,12 +65,20 @@ const limiter = new PgRateLimiter(queryDb);
 // Stage 2 (worker.ts) does the same registration on its own cron trigger; C13's Fly machine
 // schedule is the safety net if this interval ever stalls (e.g. a deploy restart racing a job).
 const jobRunner = new JobRunner(queryDb);
+const weather = new OpenMeteoClient(
+  env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {},
+);
 registerAllJobs({
   db,
   getRate: createRatesService(db, ratesProvider).getRate,
   ratesProvider,
   limiter,
+  weather,
+  enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
 });
+void ensureWidgetJobs(db, new Date()).catch((err) =>
+  console.error('widgets jobs: could not enqueue', err),
+);
 registerJob(
   'feedback.digest',
   feedbackDigestJob({
@@ -93,6 +103,7 @@ const app = createApp({
   secretBox: createSecretBox(env.SECRET_BOX_KEY),
   breachChecker: new HibpBreachChecker(),
   rates: ratesProvider,
+  weather,
   jobs: jobRunner,
   runJobsNow: () => jobRunner.runDueJobs(),
   socketConnect: socketNodeConnect,

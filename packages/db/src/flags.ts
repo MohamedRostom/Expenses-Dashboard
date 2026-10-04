@@ -22,7 +22,9 @@ export async function resolveAllFlags(db: Db, userId: string): Promise<Record<st
   const overrideByKey = new Map(overrides.map((o) => [o.key, o.enabled]));
 
   const result: Record<string, boolean> = {};
-  for (const f of allFlags) result[f.key] = overrideByKey.get(f.key) ?? f.defaultOn;
+  // Value rows (key ends `_until`, data in flags.value) are not booleans: keep them out of /flags.
+  for (const f of allFlags.filter((f) => !f.key.endsWith('_until')))
+    result[f.key] = overrideByKey.get(f.key) ?? f.defaultOn;
   return result;
 }
 

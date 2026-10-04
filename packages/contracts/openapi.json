@@ -915,6 +915,210 @@
           }
         }
       }
+    },
+    "/widgets": {
+      "get": {
+        "summary": "List dashboard widgets with figures",
+        "responses": {
+          "200": {
+            "description": "List dashboard widgets with figures",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a widget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Add a widget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/types": {
+      "get": {
+        "summary": "Widget kinds the user can add",
+        "responses": {
+          "200": {
+            "description": "Widget kinds the user can add",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetTypesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/{id}": {
+      "patch": {
+        "summary": "Change a widget",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WidgetPatch"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Change a widget",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Remove a widget",
+        "responses": {
+          "default": {
+            "description": "See specs/001-phased-product-baseline/contracts/api.md"
+          }
+        }
+      }
+    },
+    "/widgets/order": {
+      "put": {
+        "summary": "Reorder widgets",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OrderBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Reorder widgets",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/widgets/refresh": {
+      "post": {
+        "summary": "Mark places due for refresh",
+        "responses": {
+          "200": {
+            "description": "Mark places due for refresh",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetsRefreshResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/places/search": {
+      "get": {
+        "summary": "Search places",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SearchQuery"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Search places",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/places/resolve": {
+      "post": {
+        "summary": "Resolve device coordinates",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResolveBody"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolve device coordinates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/healthz/widgets": {
+      "get": {
+        "summary": "Widget source health probe",
+        "responses": {
+          "200": {
+            "description": "Widget source health probe",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthWidgetsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -1120,6 +1324,63 @@
           }
         },
         "required": ["calendars"],
+        "additionalProperties": false
+      },
+      "CandidatesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "candidates": {
+            "maxItems": 5,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "admin1": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "country": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "lat": {
+                  "type": "number",
+                  "minimum": -90,
+                  "maximum": 90
+                },
+                "lon": {
+                  "type": "number",
+                  "minimum": -180,
+                  "maximum": 180
+                },
+                "timeZone": {
+                  "type": "string",
+                  "maxLength": 64
+                }
+              },
+              "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+              "additionalProperties": false
+            }
+          },
+          "approximate": {
+            "type": "boolean"
+          }
+        },
+        "required": ["candidates"],
         "additionalProperties": false
       },
       "Capability": {
@@ -1636,6 +1897,10 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "temperatureUnit": {
+                "type": "string",
+                "enum": ["C", "F"]
               }
             },
             "required": [
@@ -1646,7 +1911,8 @@
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
-              "createdAt"
+              "createdAt",
+              "temperatureUnit"
             ],
             "additionalProperties": false
           }
@@ -2026,6 +2292,210 @@
         "required": ["code", "name", "exponent"],
         "additionalProperties": false
       },
+      "CurrencyFigures": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "rows": {
+            "type": "array",
+            "items": {
+              "anyOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "isDefault": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["code", "isDefault"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "rate": {
+                      "type": "number"
+                    },
+                    "rateDate": {
+                      "type": "string"
+                    },
+                    "prevChange": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "pct": {
+                              "type": "number"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": ["up", "down", "flat"]
+                            }
+                          },
+                          "required": ["pct", "direction"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "monthChange": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "pct": {
+                              "type": "number"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": ["up", "down", "flat"]
+                            },
+                            "since": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["pct", "direction"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "changesPending": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "code": {
+                      "type": "string"
+                    },
+                    "pending": {
+                      "type": "boolean",
+                      "const": true
+                    }
+                  },
+                  "required": ["code", "pending"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "required": ["rows"],
+        "additionalProperties": false
+      },
+      "CurrencyRow": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "anyOf": [
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "isDefault": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": ["code", "isDefault"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "rate": {
+                "type": "number"
+              },
+              "rateDate": {
+                "type": "string"
+              },
+              "prevChange": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "pct": {
+                        "type": "number"
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": ["up", "down", "flat"]
+                      }
+                    },
+                    "required": ["pct", "direction"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "monthChange": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "pct": {
+                        "type": "number"
+                      },
+                      "direction": {
+                        "type": "string",
+                        "enum": ["up", "down", "flat"]
+                      },
+                      "since": {
+                        "type": "string"
+                      }
+                    },
+                    "required": ["pct", "direction"],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "changesPending": {
+                "type": "boolean"
+              }
+            },
+            "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string"
+              },
+              "pending": {
+                "type": "boolean",
+                "const": true
+              }
+            },
+            "required": ["code", "pending"],
+            "additionalProperties": false
+          }
+        ]
+      },
       "DateFormat": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "string",
@@ -2062,7 +2532,12 @@
           "verification_failed",
           "host_not_allowed",
           "scope_denied",
-          "account_mismatch"
+          "account_mismatch",
+          "source_unreachable",
+          "source_limit_reached",
+          "place_not_found",
+          "source_paused",
+          "place_required"
         ]
       },
       "ErrorEnvelope": {
@@ -2087,7 +2562,12 @@
                   "verification_failed",
                   "host_not_allowed",
                   "scope_denied",
-                  "account_mismatch"
+                  "account_mismatch",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found",
+                  "source_paused",
+                  "place_required"
                 ]
               },
               "message": {
@@ -2272,6 +2752,10 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "temperatureUnit": {
+                "type": "string",
+                "enum": ["C", "F"]
               }
             },
             "required": [
@@ -2282,7 +2766,8 @@
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
-              "createdAt"
+              "createdAt",
+              "temperatureUnit"
             ],
             "additionalProperties": false
           },
@@ -2399,6 +2884,54 @@
           }
         },
         "required": ["page", "message", "contactOk"],
+        "additionalProperties": false
+      },
+      "FixedCostsFigures": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "remaining": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "categoryId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "usualMinor": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "usualBasis": {
+                  "type": "string",
+                  "enum": ["budget", "previous", "none"]
+                }
+              },
+              "required": ["categoryId", "name", "usualMinor", "usualBasis"],
+              "additionalProperties": false
+            }
+          },
+          "totalExpectedMinor": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "allRecorded": {
+            "type": "boolean"
+          }
+        },
+        "required": ["remaining", "totalExpectedMinor", "allRecorded"],
         "additionalProperties": false
       },
       "FlagsResponse": {
@@ -2536,6 +3069,18 @@
           }
         },
         "required": ["status", "version", "sha", "db"],
+        "additionalProperties": false
+      },
+      "HealthWidgetsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": ["ok", "degraded"]
+          }
+        },
+        "required": ["status"],
         "additionalProperties": false
       },
       "ImportBatchResponse": {
@@ -3358,6 +3903,10 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "temperatureUnit": {
+                "type": "string",
+                "enum": ["C", "F"]
               }
             },
             "required": [
@@ -3368,7 +3917,8 @@
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
-              "createdAt"
+              "createdAt",
+              "temperatureUnit"
             ],
             "additionalProperties": false
           }
@@ -3520,6 +4070,20 @@
         "type": "string",
         "enum": ["to_notion", "from_notion", "both"]
       },
+      "OrderBody": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["ids"],
+        "additionalProperties": false
+      },
       "PaidWith": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "string",
@@ -3653,6 +4217,10 @@
           },
           "onboardingCompletedAt": {
             "type": ["string", "null"]
+          },
+          "temperatureUnit": {
+            "type": "string",
+            "enum": ["C", "F"]
           }
         },
         "additionalProperties": false
@@ -3687,6 +4255,10 @@
               },
               "createdAt": {
                 "type": "string"
+              },
+              "temperatureUnit": {
+                "type": "string",
+                "enum": ["C", "F"]
               }
             },
             "required": [
@@ -3697,7 +4269,8 @@
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
-              "createdAt"
+              "createdAt",
+              "temperatureUnit"
             ],
             "additionalProperties": false
           },
@@ -3713,6 +4286,49 @@
           }
         },
         "required": ["user"],
+        "additionalProperties": false
+      },
+      "PlaceCandidate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "admin1": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 100
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "country": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lon": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "timeZone": {
+            "type": "string",
+            "maxLength": 64
+          }
+        },
+        "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
         "additionalProperties": false
       },
       "Provider": {
@@ -3974,6 +4590,24 @@
         "required": ["token", "password"],
         "additionalProperties": false
       },
+      "ResolveBody": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lon": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          }
+        },
+        "required": ["lat", "lon"],
+        "additionalProperties": false
+      },
       "RotateCaptureTokenResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -4056,6 +4690,19 @@
           }
         },
         "required": ["mapping"],
+        "additionalProperties": false
+      },
+      "SearchQuery": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "q": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 80
+          }
+        },
+        "required": ["q"],
         "additionalProperties": false
       },
       "SessionSummary": {
@@ -4151,6 +4798,61 @@
           }
         },
         "required": ["databaseId", "dataSourceId", "direction"],
+        "additionalProperties": false
+      },
+      "SpendPaceFigures": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "spentMinor": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "budgetMinor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pct": {
+            "type": ["number", "null"]
+          },
+          "daysLeft": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dailyToBudgetMinor": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "overBudget": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "spentMinor",
+          "budgetMinor",
+          "pct",
+          "daysLeft",
+          "dailyToBudgetMinor",
+          "overBudget"
+        ],
         "additionalProperties": false
       },
       "StandardsCreate": {
@@ -4281,6 +4983,48 @@
         "required": ["account"],
         "additionalProperties": false
       },
+      "SunriseFigures": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "place": {
+            "type": "string"
+          },
+          "sunrise": {
+            "type": ["string", "null"]
+          },
+          "sunset": {
+            "type": ["string", "null"]
+          },
+          "daylightSeconds": {
+            "type": "number"
+          },
+          "placeTimeZone": {
+            "type": "string"
+          },
+          "showZone": {
+            "type": "boolean"
+          },
+          "polar": {
+            "type": "string",
+            "enum": ["day", "night"]
+          },
+          "attribution": {
+            "type": "string",
+            "const": "Weather data by Open-Meteo.com"
+          }
+        },
+        "required": [
+          "place",
+          "sunrise",
+          "sunset",
+          "daylightSeconds",
+          "placeTimeZone",
+          "showZone",
+          "attribution"
+        ],
+        "additionalProperties": false
+      },
       "SyncNotionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -4313,6 +5057,11 @@
         },
         "required": ["status", "lastSyncAt", "lastError", "applied", "skipped", "conflicts"],
         "additionalProperties": false
+      },
+      "TemperatureUnit": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["C", "F"]
       },
       "TodayAccount": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -4968,6 +5717,2576 @@
           }
         },
         "required": ["user"],
+        "additionalProperties": false
+      },
+      "WeatherFigures": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "place": {
+            "type": "string"
+          },
+          "temperatureC": {
+            "type": "number"
+          },
+          "condition": {
+            "type": "string"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "todayMaxC": {
+            "type": "number"
+          },
+          "todayMinC": {
+            "type": "number"
+          },
+          "outlook": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "maxC": {
+                  "type": "number"
+                },
+                "minC": {
+                  "type": "number"
+                },
+                "icon": {
+                  "type": "string"
+                },
+                "condition": {
+                  "type": "string"
+                }
+              },
+              "required": ["date", "maxC", "minC", "icon", "condition"],
+              "additionalProperties": false
+            }
+          },
+          "observedAt": {
+            "type": "string"
+          },
+          "staleSince": {
+            "type": "string"
+          },
+          "attribution": {
+            "type": "string",
+            "const": "Weather data by Open-Meteo.com"
+          }
+        },
+        "required": [
+          "place",
+          "temperatureC",
+          "condition",
+          "icon",
+          "todayMaxC",
+          "todayMinC",
+          "outlook",
+          "observedAt",
+          "attribution"
+        ],
+        "additionalProperties": false
+      },
+      "Widget": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "settings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "admin1": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "string",
+                "enum": ["ready", "empty", "stale", "error", "unavailable"]
+              },
+              "asOf": {
+                "type": "string"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "rate_unavailable",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "const": "currency"
+              },
+              "figures": {
+                "type": "object",
+                "properties": {
+                  "rows": {
+                    "type": "array",
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "isDefault": {
+                              "type": "boolean",
+                              "const": true
+                            }
+                          },
+                          "required": ["code", "isDefault"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "rate": {
+                              "type": "number"
+                            },
+                            "rateDate": {
+                              "type": "string"
+                            },
+                            "prevChange": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "pct": {
+                                      "type": "number"
+                                    },
+                                    "direction": {
+                                      "type": "string",
+                                      "enum": ["up", "down", "flat"]
+                                    }
+                                  },
+                                  "required": ["pct", "direction"],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "monthChange": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "pct": {
+                                      "type": "number"
+                                    },
+                                    "direction": {
+                                      "type": "string",
+                                      "enum": ["up", "down", "flat"]
+                                    },
+                                    "since": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": ["pct", "direction"],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "changesPending": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "code": {
+                              "type": "string"
+                            },
+                            "pending": {
+                              "type": "boolean",
+                              "const": true
+                            }
+                          },
+                          "required": ["code", "pending"],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": ["rows"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "position", "settings", "state", "asOf", "kind"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "settings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "admin1": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "string",
+                "enum": ["ready", "empty", "stale", "error", "unavailable"]
+              },
+              "asOf": {
+                "type": "string"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "rate_unavailable",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "const": "weather"
+              },
+              "figures": {
+                "type": "object",
+                "properties": {
+                  "place": {
+                    "type": "string"
+                  },
+                  "temperatureC": {
+                    "type": "number"
+                  },
+                  "condition": {
+                    "type": "string"
+                  },
+                  "icon": {
+                    "type": "string"
+                  },
+                  "todayMaxC": {
+                    "type": "number"
+                  },
+                  "todayMinC": {
+                    "type": "number"
+                  },
+                  "outlook": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "date": {
+                          "type": "string"
+                        },
+                        "maxC": {
+                          "type": "number"
+                        },
+                        "minC": {
+                          "type": "number"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "condition": {
+                          "type": "string"
+                        }
+                      },
+                      "required": ["date", "maxC", "minC", "icon", "condition"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "observedAt": {
+                    "type": "string"
+                  },
+                  "staleSince": {
+                    "type": "string"
+                  },
+                  "attribution": {
+                    "type": "string",
+                    "const": "Weather data by Open-Meteo.com"
+                  }
+                },
+                "required": [
+                  "place",
+                  "temperatureC",
+                  "condition",
+                  "icon",
+                  "todayMaxC",
+                  "todayMinC",
+                  "outlook",
+                  "observedAt",
+                  "attribution"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "position", "settings", "state", "asOf", "kind"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "settings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "admin1": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "string",
+                "enum": ["ready", "empty", "stale", "error", "unavailable"]
+              },
+              "asOf": {
+                "type": "string"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "rate_unavailable",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "const": "sunrise"
+              },
+              "figures": {
+                "type": "object",
+                "properties": {
+                  "place": {
+                    "type": "string"
+                  },
+                  "sunrise": {
+                    "type": ["string", "null"]
+                  },
+                  "sunset": {
+                    "type": ["string", "null"]
+                  },
+                  "daylightSeconds": {
+                    "type": "number"
+                  },
+                  "placeTimeZone": {
+                    "type": "string"
+                  },
+                  "showZone": {
+                    "type": "boolean"
+                  },
+                  "polar": {
+                    "type": "string",
+                    "enum": ["day", "night"]
+                  },
+                  "attribution": {
+                    "type": "string",
+                    "const": "Weather data by Open-Meteo.com"
+                  }
+                },
+                "required": [
+                  "place",
+                  "sunrise",
+                  "sunset",
+                  "daylightSeconds",
+                  "placeTimeZone",
+                  "showZone",
+                  "attribution"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "position", "settings", "state", "asOf", "kind"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "settings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "admin1": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "string",
+                "enum": ["ready", "empty", "stale", "error", "unavailable"]
+              },
+              "asOf": {
+                "type": "string"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "rate_unavailable",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "const": "spend_pace"
+              },
+              "figures": {
+                "type": "object",
+                "properties": {
+                  "spentMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "budgetMinor": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "pct": {
+                    "type": ["number", "null"]
+                  },
+                  "daysLeft": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "dailyToBudgetMinor": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "overBudget": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "spentMinor",
+                  "budgetMinor",
+                  "pct",
+                  "daysLeft",
+                  "dailyToBudgetMinor",
+                  "overBudget"
+                ],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "position", "settings", "state", "asOf", "kind"],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "position": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "settings": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {}
+              },
+              "place": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "admin1": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 100
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90
+                  },
+                  "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180
+                  },
+                  "timeZone": {
+                    "type": "string",
+                    "maxLength": 64
+                  }
+                },
+                "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                "additionalProperties": false
+              },
+              "state": {
+                "type": "string",
+                "enum": ["ready", "empty", "stale", "error", "unavailable"]
+              },
+              "asOf": {
+                "type": "string"
+              },
+              "cause": {
+                "type": "string",
+                "enum": [
+                  "rate_unavailable",
+                  "source_unreachable",
+                  "source_limit_reached",
+                  "place_not_found"
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "const": "fixed_costs"
+              },
+              "figures": {
+                "type": "object",
+                "properties": {
+                  "remaining": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "categoryId": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "usualMinor": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "usualBasis": {
+                          "type": "string",
+                          "enum": ["budget", "previous", "none"]
+                        }
+                      },
+                      "required": ["categoryId", "name", "usualMinor", "usualBasis"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "totalExpectedMinor": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "allRecorded": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["remaining", "totalExpectedMinor", "allRecorded"],
+                "additionalProperties": false
+              }
+            },
+            "required": ["id", "position", "settings", "state", "asOf", "kind"],
+            "additionalProperties": false
+          }
+        ]
+      },
+      "WidgetCause": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "rate_unavailable",
+          "source_unreachable",
+          "source_limit_reached",
+          "place_not_found"
+        ]
+      },
+      "WidgetCreate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["currency", "weather", "sunrise", "spend_pace", "fixed_costs"]
+          },
+          "settings": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "placeId": {
+            "type": "string"
+          },
+          "place": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "admin1": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "country": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lon": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "timeZone": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+            "additionalProperties": false
+          },
+          "duplicateOf": {
+            "type": "string"
+          }
+        },
+        "required": ["kind"],
+        "additionalProperties": false
+      },
+      "WidgetKind": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["currency", "weather", "sunrise", "spend_pace", "fixed_costs"]
+      },
+      "WidgetPatch": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "settings": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          },
+          "placeId": {
+            "type": "string"
+          },
+          "place": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "admin1": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "country": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 100
+              },
+              "lat": {
+                "type": "number",
+                "minimum": -90,
+                "maximum": 90
+              },
+              "lon": {
+                "type": "number",
+                "minimum": -180,
+                "maximum": 180
+              },
+              "timeZone": {
+                "type": "string",
+                "maxLength": 64
+              }
+            },
+            "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      },
+      "WidgetResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "widget": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "settings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "admin1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                    "additionalProperties": false
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                  },
+                  "asOf": {
+                    "type": "string"
+                  },
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "rate_unavailable",
+                      "source_unreachable",
+                      "source_limit_reached",
+                      "place_not_found"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "currency"
+                  },
+                  "figures": {
+                    "type": "object",
+                    "properties": {
+                      "rows": {
+                        "type": "array",
+                        "items": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                },
+                                "isDefault": {
+                                  "type": "boolean",
+                                  "const": true
+                                }
+                              },
+                              "required": ["code", "isDefault"],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                },
+                                "rate": {
+                                  "type": "number"
+                                },
+                                "rateDate": {
+                                  "type": "string"
+                                },
+                                "prevChange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "pct": {
+                                          "type": "number"
+                                        },
+                                        "direction": {
+                                          "type": "string",
+                                          "enum": ["up", "down", "flat"]
+                                        }
+                                      },
+                                      "required": ["pct", "direction"],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "monthChange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "pct": {
+                                          "type": "number"
+                                        },
+                                        "direction": {
+                                          "type": "string",
+                                          "enum": ["up", "down", "flat"]
+                                        },
+                                        "since": {
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": ["pct", "direction"],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "changesPending": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": ["code", "rate", "rateDate", "prevChange", "monthChange"],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "code": {
+                                  "type": "string"
+                                },
+                                "pending": {
+                                  "type": "boolean",
+                                  "const": true
+                                }
+                              },
+                              "required": ["code", "pending"],
+                              "additionalProperties": false
+                            }
+                          ]
+                        }
+                      }
+                    },
+                    "required": ["rows"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "settings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "admin1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                    "additionalProperties": false
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                  },
+                  "asOf": {
+                    "type": "string"
+                  },
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "rate_unavailable",
+                      "source_unreachable",
+                      "source_limit_reached",
+                      "place_not_found"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "weather"
+                  },
+                  "figures": {
+                    "type": "object",
+                    "properties": {
+                      "place": {
+                        "type": "string"
+                      },
+                      "temperatureC": {
+                        "type": "number"
+                      },
+                      "condition": {
+                        "type": "string"
+                      },
+                      "icon": {
+                        "type": "string"
+                      },
+                      "todayMaxC": {
+                        "type": "number"
+                      },
+                      "todayMinC": {
+                        "type": "number"
+                      },
+                      "outlook": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "date": {
+                              "type": "string"
+                            },
+                            "maxC": {
+                              "type": "number"
+                            },
+                            "minC": {
+                              "type": "number"
+                            },
+                            "icon": {
+                              "type": "string"
+                            },
+                            "condition": {
+                              "type": "string"
+                            }
+                          },
+                          "required": ["date", "maxC", "minC", "icon", "condition"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "observedAt": {
+                        "type": "string"
+                      },
+                      "staleSince": {
+                        "type": "string"
+                      },
+                      "attribution": {
+                        "type": "string",
+                        "const": "Weather data by Open-Meteo.com"
+                      }
+                    },
+                    "required": [
+                      "place",
+                      "temperatureC",
+                      "condition",
+                      "icon",
+                      "todayMaxC",
+                      "todayMinC",
+                      "outlook",
+                      "observedAt",
+                      "attribution"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "settings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "admin1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                    "additionalProperties": false
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                  },
+                  "asOf": {
+                    "type": "string"
+                  },
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "rate_unavailable",
+                      "source_unreachable",
+                      "source_limit_reached",
+                      "place_not_found"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "sunrise"
+                  },
+                  "figures": {
+                    "type": "object",
+                    "properties": {
+                      "place": {
+                        "type": "string"
+                      },
+                      "sunrise": {
+                        "type": ["string", "null"]
+                      },
+                      "sunset": {
+                        "type": ["string", "null"]
+                      },
+                      "daylightSeconds": {
+                        "type": "number"
+                      },
+                      "placeTimeZone": {
+                        "type": "string"
+                      },
+                      "showZone": {
+                        "type": "boolean"
+                      },
+                      "polar": {
+                        "type": "string",
+                        "enum": ["day", "night"]
+                      },
+                      "attribution": {
+                        "type": "string",
+                        "const": "Weather data by Open-Meteo.com"
+                      }
+                    },
+                    "required": [
+                      "place",
+                      "sunrise",
+                      "sunset",
+                      "daylightSeconds",
+                      "placeTimeZone",
+                      "showZone",
+                      "attribution"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "settings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "admin1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                    "additionalProperties": false
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                  },
+                  "asOf": {
+                    "type": "string"
+                  },
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "rate_unavailable",
+                      "source_unreachable",
+                      "source_limit_reached",
+                      "place_not_found"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "spend_pace"
+                  },
+                  "figures": {
+                    "type": "object",
+                    "properties": {
+                      "spentMinor": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "budgetMinor": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "pct": {
+                        "type": ["number", "null"]
+                      },
+                      "daysLeft": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "dailyToBudgetMinor": {
+                        "anyOf": [
+                          {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "overBudget": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "spentMinor",
+                      "budgetMinor",
+                      "pct",
+                      "daysLeft",
+                      "dailyToBudgetMinor",
+                      "overBudget"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                "additionalProperties": false
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "position": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  },
+                  "settings": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  },
+                  "place": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "admin1": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "lat": {
+                        "type": "number",
+                        "minimum": -90,
+                        "maximum": 90
+                      },
+                      "lon": {
+                        "type": "number",
+                        "minimum": -180,
+                        "maximum": 180
+                      },
+                      "timeZone": {
+                        "type": "string",
+                        "maxLength": 64
+                      }
+                    },
+                    "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                    "additionalProperties": false
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                  },
+                  "asOf": {
+                    "type": "string"
+                  },
+                  "cause": {
+                    "type": "string",
+                    "enum": [
+                      "rate_unavailable",
+                      "source_unreachable",
+                      "source_limit_reached",
+                      "place_not_found"
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "const": "fixed_costs"
+                  },
+                  "figures": {
+                    "type": "object",
+                    "properties": {
+                      "remaining": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "categoryId": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            },
+                            "usualMinor": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "usualBasis": {
+                              "type": "string",
+                              "enum": ["budget", "previous", "none"]
+                            }
+                          },
+                          "required": ["categoryId", "name", "usualMinor", "usualBasis"],
+                          "additionalProperties": false
+                        }
+                      },
+                      "totalExpectedMinor": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      },
+                      "allRecorded": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": ["remaining", "totalExpectedMinor", "allRecorded"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                "additionalProperties": false
+              }
+            ]
+          }
+        },
+        "required": ["widget"],
+        "additionalProperties": false
+      },
+      "WidgetState": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["ready", "empty", "stale", "error", "unavailable"]
+      },
+      "WidgetType": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": ["currency", "weather", "sunrise", "spend_pace", "fixed_costs"]
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "needsPlace": {
+            "type": "boolean"
+          },
+          "settingsSchema": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string"
+            },
+            "additionalProperties": {}
+          }
+        },
+        "required": ["kind", "name", "description", "enabled", "needsPlace", "settingsSchema"],
+        "additionalProperties": false
+      },
+      "WidgetTypesResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "kind": {
+                  "type": "string",
+                  "enum": ["currency", "weather", "sunrise", "spend_pace", "fixed_costs"]
+                },
+                "name": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string"
+                },
+                "enabled": {
+                  "type": "boolean"
+                },
+                "needsPlace": {
+                  "type": "boolean"
+                },
+                "settingsSchema": {
+                  "type": "object",
+                  "propertyNames": {
+                    "type": "string"
+                  },
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "kind",
+                "name",
+                "description",
+                "enabled",
+                "needsPlace",
+                "settingsSchema"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": ["types"],
+        "additionalProperties": false
+      },
+      "WidgetsRefreshResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "queued": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": ["queued"],
+        "additionalProperties": false
+      },
+      "WidgetsResponse": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "widgets": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "settings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "place": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "admin1": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "timeZone": {
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "cause": {
+                      "type": "string",
+                      "enum": [
+                        "rate_unavailable",
+                        "source_unreachable",
+                        "source_limit_reached",
+                        "place_not_found"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "currency"
+                    },
+                    "figures": {
+                      "type": "object",
+                      "properties": {
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "isDefault": {
+                                    "type": "boolean",
+                                    "const": true
+                                  }
+                                },
+                                "required": ["code", "isDefault"],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "rate": {
+                                    "type": "number"
+                                  },
+                                  "rateDate": {
+                                    "type": "string"
+                                  },
+                                  "prevChange": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "pct": {
+                                            "type": "number"
+                                          },
+                                          "direction": {
+                                            "type": "string",
+                                            "enum": ["up", "down", "flat"]
+                                          }
+                                        },
+                                        "required": ["pct", "direction"],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "monthChange": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "pct": {
+                                            "type": "number"
+                                          },
+                                          "direction": {
+                                            "type": "string",
+                                            "enum": ["up", "down", "flat"]
+                                          },
+                                          "since": {
+                                            "type": "string"
+                                          }
+                                        },
+                                        "required": ["pct", "direction"],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "changesPending": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "code",
+                                  "rate",
+                                  "rateDate",
+                                  "prevChange",
+                                  "monthChange"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "code": {
+                                    "type": "string"
+                                  },
+                                  "pending": {
+                                    "type": "boolean",
+                                    "const": true
+                                  }
+                                },
+                                "required": ["code", "pending"],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": ["rows"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "settings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "place": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "admin1": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "timeZone": {
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "cause": {
+                      "type": "string",
+                      "enum": [
+                        "rate_unavailable",
+                        "source_unreachable",
+                        "source_limit_reached",
+                        "place_not_found"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "weather"
+                    },
+                    "figures": {
+                      "type": "object",
+                      "properties": {
+                        "place": {
+                          "type": "string"
+                        },
+                        "temperatureC": {
+                          "type": "number"
+                        },
+                        "condition": {
+                          "type": "string"
+                        },
+                        "icon": {
+                          "type": "string"
+                        },
+                        "todayMaxC": {
+                          "type": "number"
+                        },
+                        "todayMinC": {
+                          "type": "number"
+                        },
+                        "outlook": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "date": {
+                                "type": "string"
+                              },
+                              "maxC": {
+                                "type": "number"
+                              },
+                              "minC": {
+                                "type": "number"
+                              },
+                              "icon": {
+                                "type": "string"
+                              },
+                              "condition": {
+                                "type": "string"
+                              }
+                            },
+                            "required": ["date", "maxC", "minC", "icon", "condition"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "observedAt": {
+                          "type": "string"
+                        },
+                        "staleSince": {
+                          "type": "string"
+                        },
+                        "attribution": {
+                          "type": "string",
+                          "const": "Weather data by Open-Meteo.com"
+                        }
+                      },
+                      "required": [
+                        "place",
+                        "temperatureC",
+                        "condition",
+                        "icon",
+                        "todayMaxC",
+                        "todayMinC",
+                        "outlook",
+                        "observedAt",
+                        "attribution"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "settings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "place": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "admin1": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "timeZone": {
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "cause": {
+                      "type": "string",
+                      "enum": [
+                        "rate_unavailable",
+                        "source_unreachable",
+                        "source_limit_reached",
+                        "place_not_found"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "sunrise"
+                    },
+                    "figures": {
+                      "type": "object",
+                      "properties": {
+                        "place": {
+                          "type": "string"
+                        },
+                        "sunrise": {
+                          "type": ["string", "null"]
+                        },
+                        "sunset": {
+                          "type": ["string", "null"]
+                        },
+                        "daylightSeconds": {
+                          "type": "number"
+                        },
+                        "placeTimeZone": {
+                          "type": "string"
+                        },
+                        "showZone": {
+                          "type": "boolean"
+                        },
+                        "polar": {
+                          "type": "string",
+                          "enum": ["day", "night"]
+                        },
+                        "attribution": {
+                          "type": "string",
+                          "const": "Weather data by Open-Meteo.com"
+                        }
+                      },
+                      "required": [
+                        "place",
+                        "sunrise",
+                        "sunset",
+                        "daylightSeconds",
+                        "placeTimeZone",
+                        "showZone",
+                        "attribution"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "settings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "place": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "admin1": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "timeZone": {
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "cause": {
+                      "type": "string",
+                      "enum": [
+                        "rate_unavailable",
+                        "source_unreachable",
+                        "source_limit_reached",
+                        "place_not_found"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "spend_pace"
+                    },
+                    "figures": {
+                      "type": "object",
+                      "properties": {
+                        "spentMinor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "budgetMinor": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "pct": {
+                          "type": ["number", "null"]
+                        },
+                        "daysLeft": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "dailyToBudgetMinor": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "overBudget": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "spentMinor",
+                        "budgetMinor",
+                        "pct",
+                        "daysLeft",
+                        "dailyToBudgetMinor",
+                        "overBudget"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                  "additionalProperties": false
+                },
+                {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "position": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "settings": {
+                      "type": "object",
+                      "propertyNames": {
+                        "type": "string"
+                      },
+                      "additionalProperties": {}
+                    },
+                    "place": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "admin1": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "maxLength": 100
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 100
+                        },
+                        "lat": {
+                          "type": "number",
+                          "minimum": -90,
+                          "maximum": 90
+                        },
+                        "lon": {
+                          "type": "number",
+                          "minimum": -180,
+                          "maximum": 180
+                        },
+                        "timeZone": {
+                          "type": "string",
+                          "maxLength": 64
+                        }
+                      },
+                      "required": ["name", "admin1", "country", "lat", "lon", "timeZone"],
+                      "additionalProperties": false
+                    },
+                    "state": {
+                      "type": "string",
+                      "enum": ["ready", "empty", "stale", "error", "unavailable"]
+                    },
+                    "asOf": {
+                      "type": "string"
+                    },
+                    "cause": {
+                      "type": "string",
+                      "enum": [
+                        "rate_unavailable",
+                        "source_unreachable",
+                        "source_limit_reached",
+                        "place_not_found"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "const": "fixed_costs"
+                    },
+                    "figures": {
+                      "type": "object",
+                      "properties": {
+                        "remaining": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "categoryId": {
+                                "type": "string"
+                              },
+                              "name": {
+                                "type": "string"
+                              },
+                              "usualMinor": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "usualBasis": {
+                                "type": "string",
+                                "enum": ["budget", "previous", "none"]
+                              }
+                            },
+                            "required": ["categoryId", "name", "usualMinor", "usualBasis"],
+                            "additionalProperties": false
+                          }
+                        },
+                        "totalExpectedMinor": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "allRecorded": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": ["remaining", "totalExpectedMinor", "allRecorded"],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": ["id", "position", "settings", "state", "asOf", "kind"],
+                  "additionalProperties": false
+                }
+              ]
+            }
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "temperatureUnit": {
+            "type": "string",
+            "enum": ["C", "F"]
+          }
+        },
+        "required": ["widgets", "limit", "temperatureUnit"],
         "additionalProperties": false
       },
       "YearSummary": {

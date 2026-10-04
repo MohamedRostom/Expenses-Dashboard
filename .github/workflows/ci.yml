@@ -109,6 +109,10 @@ jobs:
       - run: for f in today google_calendar google_mail microsoft standards; do pnpm flags set "panels.$f" --global on; done
         env:
           DATABASE_URL: postgres://desk:desk@localhost:5432/desk
+      # The seed adds the widgets.* flags off; e2e-ci runs with them on (spec 003 T003).
+      - run: for f in currency weather sunrise spend_pace fixed_costs; do pnpm flags set "widgets.$f" --global on; done
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
       - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'

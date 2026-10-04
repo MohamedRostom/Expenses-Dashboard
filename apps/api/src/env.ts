@@ -33,6 +33,7 @@ const envObjectSchema = z.object({
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),
+  OPEN_METEO_API_BASE: z.string().url().optional(),
   // T113: optional Sentry DSN — logger-node.ts/logger-worker.ts are no-ops without it.
   SENTRY_DSN: z.string().optional(),
   // T112: owner inbox for the daily feedback digest; the job skips sending when unset.
@@ -56,6 +57,17 @@ const envObjectSchema = z.object({
     .string()
     .optional()
     .transform((s) => s === 'true'),
+  // Comma list of flag keys switched on globally at startup (node.ts). Set only by
+  // deploy-preview.yml so a PR preview shows the features under review; refused on production.
+  FLAGS_ON: z
+    .string()
+    .optional()
+    .transform((s) =>
+      s
+        ?.split(',')
+        .map((k) => k.trim())
+        .filter(Boolean),
+    ),
   FLY_APP_NAME: z.string().optional(),
 });
 
@@ -83,6 +95,10 @@ export const envSchema = envObjectSchema
   .refine((env) => !(env.STANDARDS_ALLOW_PRIVATE_HOSTS && env.FLY_APP_NAME), {
     message: 'STANDARDS_ALLOW_PRIVATE_HOSTS must not be set on a Fly deployment',
     path: ['STANDARDS_ALLOW_PRIVATE_HOSTS'],
+  })
+  .refine((env) => !(env.FLAGS_ON?.length && env.FLY_APP_NAME === 'ros-desk-production'), {
+    message: 'FLAGS_ON must not be set on production',
+    path: ['FLAGS_ON'],
   });
 export type Env = z.infer<typeof envSchema>;
 

@@ -33,6 +33,7 @@ services:
       # those paths alongside the calendar API at their one mount, so one mock base covers both.
       GOOGLE_OAUTH_BASE: http://mocks:4000/google
       GRAPH_API_BASE: http://mocks:4000/graph
+      OPEN_METEO_API_BASE: http://mocks:4000/open-meteo
       MICROSOFT_LOGIN_BASE: http://mocks:4000/graph
       # T029 fix: the OAuth authorize URL is sent to the browser as a 302 redirect, so unlike the
       # bases above (server-to-server, resolved by the api container's own DNS) it needs a

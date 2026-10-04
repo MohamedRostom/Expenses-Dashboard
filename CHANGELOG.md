@@ -10,9 +10,29 @@ All notable changes to this project are recorded here, following [Keep a Changel
 - Mail and calendar panels, calendar (spec 002 Slice B, US1, behind `panels.google_calendar` and `panels.microsoft`): Google Calendar `events.list` and Microsoft Graph `calendarView` clients, the seven-day `CalendarPanel` with account chips, tentative marks and all-day/multi-day handling in the user's own time zone, refreshed within five minutes.
 - Mail and calendar panels, inbox and account management (spec 002 Slice C, US2 Microsoft, US3, US4, behind `panels.microsoft` and `panels.standards`): Microsoft Graph inbox delta and a from-scratch read-only IMAP client (one `Socket` interface, real adapters for Node `node:tls` and Cloudflare Workers `cloudflare:sockets`) feeding the `InboxPanel`; a CalDAV calendar source for standards-based accounts; account management (rename, recolour, pause/resume, per-calendar toggles, reconnect, disconnect that revokes then cascades, JSON export, ownership matrix) and a daily job that purges a 30-day-idle user's cached panels while keeping the connection and credentials.
 - Mail and calendar panels, Google mail (spec 002 Slice D, US2, behind `panels.google_mail`, dark in production until Google's CASA assessment passes per ADR-0004): Gmail `messages.list`/`messages.get` client with the same fifty-message cap and preview truncation as the other providers.
+- Dashboard widgets, strip and currency (spec 003 Slice A, behind `widgets.currency`, dark in production): the widget strip on the month view with add, edit and remove, and the currency widget with up to six codes, daily change and a seven-day sparkline from the cached ECB rates.
+- Dashboard widgets, weather and places (spec 003 Slice B, behind `widgets.weather`, dark in production): Open-Meteo place search and resolve, the weather widget and place picker with a per-user temperature unit, a shared per-place reading cache refreshed by a background job, a daily purge job, quota-pause handling with a `/healthz/widgets` probe, and per-source usage logging (ADR-0005).
+- Dashboard widgets, reorder and duplicate (spec 003 Slice C, no flag): reorder the strip, duplicate a widget, and a refresh action.
+- Dashboard widgets, spend pace, fixed costs and sunrise (spec 003 Slice D, behind `widgets.spend_pace`, `widgets.fixed_costs` and `widgets.sunrise`, dark in production): month spend pace against budget, fixed costs remaining this month, and sunrise and sunset for a chosen place.
+- Dashboard widgets, Today strip (spec 003 Slice E, behind `panels.today`, dark in production): the same widget strip on the Today page, after the calendar and inbox panels, sharing one store with the month view and rendering even when the panels fail to load.
 
 ### Fixed
 
+- PR preview deploys switch the `widgets.*` and `panels.today` flags on at startup (new `FLAGS_ON` env var, refused on production), so the add-widget sheet no longer opens empty on a preview; when no widget type is enabled the sheet now says "No widgets available yet" instead of showing nothing.
+- Widgets (spec 003 convergence, T080–T086):
+  - A failed widget load now shows an error or offline state instead of "No widgets yet".
+  - Spend pace shows the spend so far when no budget is set.
+  - Weather outlook days carry a condition word that screen readers announce.
+  - Rate changes always show one decimal place.
+  - An installed app opened offline shows the last widget figures.
+  - Every weather and rate source call is logged, and the logs name `limit_reached` when a source hits its limit.
+- Widgets (PR #26 review, T087–T098):
+  - Weather and sunrise dates use the time zone the weather source reports for the place, so one user's bad zone can no longer change another user's dates.
+  - The first weather reading fetched when a place is chosen is rate-limited (10 a minute per user), and its failures are logged.
+  - Database errors during a weather refresh are no longer counted as weather-source failures.
+  - A failing rates history request fails its job so it is retried; a currency pair the source does not publish is logged once and not retried.
+  - Choosing a place is recorded in the audit trail (`place.chosen`).
+  - The add-widget sheet shows an error when the widget list fails to load, and place search and widget settings word their errors by cause (paused, rate-limited, unreachable, signed out).
 - `deploy-fly`'s promote-production job deploys with `infra/fly/fly.toml` (it failed on the machineless production app) and rolls back by redeploying the previous image (`flyctl releases rollback` doesn't exist); `jobs-safety-net` runs the current release image instead of a nonexistent `:latest`.
 - The post-deploy smoke is seven atomic tests, one concern each (health, sign-up, add, edit, delete, currency change, account deletion), each on its own API-created account, instead of one chained round trip.
 - Sign-up no longer fails when the verification email can't be sent (the account was saved but the request 500'd, and retries silently did nothing). Unverified accounts can now sign in for 7 days; Settings shows an "Unverified" badge with "Resend verification email"; after 7 days sign-in is locked until verified, and housekeeping only purges unverified accounts that never signed in (FR-001 revised).

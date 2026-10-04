@@ -1,13 +1,21 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted } from 'vue';
+import { defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
 import { useTodayStore } from '../stores/today.js';
 import CalendarPanel from '../components/today/CalendarPanel.vue';
 import InboxPanel from '../components/today/InboxPanel.vue';
 
+const WidgetStrip = defineAsyncComponent(() => import('../components/widgets/WidgetStrip.vue'));
+
 const today = useTodayStore();
+/** The strip waits for the panels to settle (loaded or failed) so it never delays them (R14). */
+const settled = ref(false);
 
 onMounted(async () => {
-  await today.load();
+  try {
+    await today.load();
+  } finally {
+    settled.value = true;
+  }
   today.refreshIfStale(new Date());
 });
 
@@ -22,6 +30,7 @@ onUnmounted(() => {
       <CalendarPanel />
       <InboxPanel />
     </div>
+    <WidgetStrip v-if="settled" />
     <div aria-live="polite" aria-atomic="true" class="sr-only">
       {{ today.loading ? 'Loading panels...' : 'Panels loaded' }}
     </div>

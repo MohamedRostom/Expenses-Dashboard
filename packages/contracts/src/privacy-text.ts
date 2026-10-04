@@ -69,3 +69,20 @@ export const PROVIDER_PRIVACY_TEXT: Record<ProviderIdT, ProviderPrivacyText> = {
     scopes: ['The app-specific password you supply — no OAuth scopes are requested.'],
   },
 };
+
+/** T048: privacy text for the weather, sunrise and place-search widgets (ADR-0005). Rendered by
+ * `apps/landing/src/pages/privacy.vue`. */
+export const WEATHER_PRIVACY_TEXT = {
+  sent:
+    "Only the place's coarse, two-decimal coordinates (about 1 km) are sent to Open-Meteo, or the " +
+    'place name you type when searching. No account or personal data is sent.',
+  deviceLocation:
+    'If you choose "use my current location", your device coordinates are sent once, rounded to ' +
+    'two decimals, to find the nearest place.',
+  storage:
+    'Device coordinates are never stored. The resolved place is approximate and always confirmed ' +
+    'by you before it is saved.',
+  attribution: 'Weather data by Open-Meteo.com, licensed under CC-BY 4.0 (https://open-meteo.com).',
+};
+
+export type WeatherPrivacyText = typeof WEATHER_PRIVACY_TEXT;

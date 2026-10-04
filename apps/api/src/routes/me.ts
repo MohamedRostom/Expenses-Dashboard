@@ -36,6 +36,7 @@ import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
 import { emailChangeMail } from '../mail/email-change.js';
 import type { ConnectionsService } from '../services/connections.js';
+import { createWidgetsService } from '../services/widgets.js';
 
 export type MeRoutesDeps = {
   db: Db;
@@ -57,6 +58,7 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     defaultCurrency: u.defaultCurrency,
     theme: u.theme,
     timeZone: u.timeZone,
+    temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
     emailVerified: u.emailVerifiedAt !== null,
     createdAt: u.createdAt.toISOString(),
@@ -74,6 +76,7 @@ const EMAIL_CHANGE_PREFIX = 'email_change:';
 export function createMeRoutes(deps: MeRoutesDeps) {
   const { db, hasher, mailer, sessionStore, clock, appOrigin, limiter, connections, jobs } = deps;
   const app = new Hono<{ Variables: AppVariables }>();
+  const widgetsService = createWidgetsService(db);
 
   app.get('/me', (c) => {
     const user = requireAuth(c);
@@ -88,6 +91,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     const patch: Partial<typeof usersTable.$inferInsert> = {};
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.timeZone !== undefined) patch.timeZone = patchBody.timeZone;
+    if (patchBody.temperatureUnit !== undefined) patch.temperatureUnit = patchBody.temperatureUnit;
     if (patchBody.onboardingCompletedAt !== undefined) {
       patch.onboardingCompletedAt = patchBody.onboardingCompletedAt
         ? new Date(patchBody.onboardingCompletedAt)
@@ -185,8 +189,8 @@ export function createMeRoutes(deps: MeRoutesDeps) {
   app.get('/me/export', async (c) => {
     const user = requireAuth(c);
 
-    const [categories, expenses, importBatches, [notion], connectedAccountRows] = await Promise.all(
-      [
+    const [categories, expenses, importBatches, [notion], connectedAccountRows, widgets] =
+      await Promise.all([
         db.select().from(categoriesTable).where(eq(categoriesTable.userId, user.id)),
         db.select().from(expensesTable).where(eq(expensesTable.userId, user.id)),
         db.select().from(importBatchesTable).where(eq(importBatchesTable.userId, user.id)),
@@ -202,10 +206,11 @@ export function createMeRoutes(deps: MeRoutesDeps) {
           })
           .from(connectedAccountsTable)
           .where(eq(connectedAccountsTable.userId, user.id)),
-      ],
-    );
+        widgetsService.exportFor(user),
+      ]);
 
-    const doc: ExportDocumentT = {
+    // ExportDocument (contracts) has no widgets field yet; the document is not re-parsed.
+    const doc: ExportDocumentT & { widgets: typeof widgets } = {
       exportedAt: clock.now().toISOString(),
       user: toUserResponse(user),
       categories,
@@ -223,6 +228,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
           ? 'paused'
           : (row.status as 'connected' | 'reconnect_needed' | 'error'),
       })),
+      widgets,
       version: 1,
     };
 

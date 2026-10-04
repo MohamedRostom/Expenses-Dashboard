@@ -6,18 +6,30 @@ import { gte } from 'drizzle-orm';
 import { fxRates, type Db } from '@desk/db';
 import type { RatesProvider } from '@desk/connectors/rates';
 import type { JobHandler } from './index.js';
+import { enqueueIfShort, widgetPairs } from './widgets-rates-backfill.js';
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
-export function ratesWarmJob(db: Db, provider: RatesProvider): JobHandler {
+export function ratesWarmJob(
+  db: Db,
+  provider: RatesProvider,
+  clock: { now(): Date } = { now: () => new Date() },
+): JobHandler {
   return async (_payload, ctx) => {
-    const cutoff = new Date(Date.now() - NINETY_DAYS_MS).toISOString().slice(0, 10);
+    const cutoff = new Date(clock.now().getTime() - NINETY_DAYS_MS).toISOString().slice(0, 10);
     const pairs = await db
       .selectDistinct({ base: fxRates.base, quote: fxRates.quote })
       .from(fxRates)
       .where(gte(fxRates.rateDate, cutoff));
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = clock.now().toISOString().slice(0, 10);
+    // Daily retry for widget pairs whose history is still short (research R12): at most one
+    // queued backfill per pair across all users. Runs before the warm loop so one failing pair
+    // cannot starve it.
+    for (const { base, quote } of await widgetPairs(db)) {
+      await enqueueIfShort(db, [base], quote, today);
+    }
+
     let done = 0;
     await ctx.updateProgress(done, pairs.length);
 

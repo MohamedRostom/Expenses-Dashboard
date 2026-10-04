@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import type { Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
@@ -194,6 +195,62 @@ export async function nextMockAccount(provider: 'google' | 'microsoft'): Promise
   const base = `${MOCKS_URL}/${MOCK_MOUNTS[provider]}`;
   await postControl(`${base}/__control/next-account`, { key });
   return key;
+}
+
+/**
+ * Spec 003 T045: drives the Open-Meteo mock (infra/mocks/src/open-meteo.ts), mounted at /open-meteo.
+ * Process-wide state, so call `pauseSource(0)`, `failAll(false)` and `usePolar(null)` to reset.
+ */
+export function mockOpenMeteo() {
+  const base = `${MOCKS_URL}/open-meteo/__control/open-meteo`;
+  return {
+    setTemperature: (lat: number, lon: number, c: number) =>
+      postControl(`${base}/temperature`, { lat, lon, c }),
+    pauseSource: (ms: number) => postControl(`${base}/pause`, { ms }),
+    failAll: (on: boolean) => postControl(`${base}/fail`, { on }),
+    usePolar: (mode: 'day' | 'night' | null) => postControl(`${base}/polar`, { mode }),
+    addPlace: (candidate: {
+      name: string;
+      admin1?: string;
+      country: string;
+      lat: number;
+      lon: number;
+      timeZone: string;
+    }) => postControl(`${base}/place`, { candidate }),
+    async calls(): Promise<{ search: number; forecast: number }> {
+      const res = await fetch(`${base}/calls`);
+      if (!res.ok) throw new Error(`mockOpenMeteo: GET calls failed: ${res.status}`);
+      return (await res.json()) as { search: number; forecast: number };
+    },
+  };
+}
+
+/**
+ * Spec 003: the widgets.* flags are not seeded on, and ci.yml turns only the panels.* ones on, so a
+ * spec that drives the real widgets API switches them on first. One idempotent upsert, global
+ * (there is no per-user row to create without the flag row existing).
+ */
+export function enableWidgetFlags(): void {
+  const rows = ['currency', 'weather', 'sunrise', 'spend_pace', 'fixed_costs']
+    .map((k) => `('widgets.${k}', 'widgets.${k}', true)`)
+    .join(', ');
+  psql(
+    `insert into flags (key, description, default_on) values ${rows} on conflict (key) do update set default_on = true`,
+  );
+}
+
+/** Runs one SQL statement in the compose Postgres, for arranging stale readings and the like. */
+export function psql(sql: string): string {
+  const container = process.env['E2E_POSTGRES_CONTAINER'] ?? 'infra-postgres-1';
+  return execSync(`docker exec ${container} psql -U desk -d desk -At -c "${sql}"`, {
+    encoding: 'utf8',
+  });
+}
+
+/** The CSRF header page.request needs on a mutating call (apiFetch adds it for browser fetches). */
+export async function csrfHeaders(page: Page): Promise<Record<string, string>> {
+  const cookie = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf');
+  return cookie ? { 'X-CSRF-Token': cookie.value } : {};
 }
 
 async function postControl(url: string, body: unknown): Promise<void> {

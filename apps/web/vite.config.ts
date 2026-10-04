@@ -21,14 +21,16 @@ const apiProxy = Object.fromEntries(
     '/healthz',
     '/imports',
     '/jobs',
+    '/places',
     '/me',
     '/notion',
     '/panels',
     '/summary',
+    '/widgets',
   ].map((p) => [p, process.env['API_PROXY_TARGET'] ?? 'http://localhost:3000']),
 );
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     vue(),
     // research.md R18: generateSW, navigation fallback for the SPA, a font runtime-cache rule
@@ -63,8 +65,29 @@ export default defineConfig({
           /^\/notion/,
           /^\/panels/,
           /^\/summary/,
+          /^\/widgets/,
+          /^\/places/,
         ],
         runtimeCaching: [
+          // Spec edge case: an installed PWA opened offline shows the last widget figures.
+          // Exact /widgets only (not /widgets/types or /widgets/refresh); regexp, not a function,
+          // because generateSW serialises this config. Build only: in the dev SW (e2e-ci) the SW
+          // would fetch /widgets itself, past Playwright's page.route mocks.
+          ...(command === 'build'
+            ? [
+                {
+                  urlPattern: /\/widgets$/,
+                  method: 'GET' as const,
+                  handler: 'NetworkFirst' as const,
+                  options: {
+                    cacheName: 'widgets-last',
+                    networkTimeoutSeconds: 3,
+                    expiration: { maxEntries: 1 },
+                    cacheableResponse: { statuses: [200] },
+                  },
+                },
+              ]
+            : []),
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',
@@ -113,4 +136,4 @@ export default defineConfig({
     strictPort: true,
     proxy: apiProxy,
   },
-});
+}));

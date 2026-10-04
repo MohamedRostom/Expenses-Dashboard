@@ -59,3 +59,26 @@ export {
   type MessageRow,
   type MergedMessageRow,
 } from './panels/merge.js';
+export {
+  WIDGET_KINDS,
+  WIDGET_LIMIT,
+  CURRENCY_CAP,
+  settingsDescriptor,
+  validateSettings,
+  type WidgetKind,
+  type SettingsContext,
+  type SettingsIssue,
+  type SettingsDescriptor,
+} from './widgets/index.js';
+export { rateChanges, type RatePoint, type RateChange, type RateChanges } from './widgets/index.js';
+export {
+  roundCoord,
+  cacheKey,
+  normaliseQuery,
+  nearest,
+  spendPace,
+  fixedCosts,
+  type SpendPace,
+  type FixedCostRow,
+  type FixedCosts,
+} from './widgets/index.js';

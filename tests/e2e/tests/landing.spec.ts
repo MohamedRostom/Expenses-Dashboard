@@ -40,4 +40,17 @@ test.describe('landing page (US9)', () => {
     const results = await new AxeBuilder({ page }).analyze();
     expect(results.violations).toEqual([]);
   });
+
+  test('privacy page explains the weather and places data flow', async ({ page }) => {
+    await page.goto(`${LANDING_URL}/privacy`);
+    const section = page.locator('#weather-privacy');
+    await expect(section).toHaveText('Weather and places');
+    const body = page.locator('main');
+    await expect(body).toContainText('two-decimal coordinates');
+    await expect(body).toContainText('No account or personal data is sent');
+    await expect(body).toContainText('never stored');
+    await expect(body).toContainText('always confirmed by you');
+    await expect(body).toContainText('Open-Meteo.com');
+    await expect(body).toContainText('CC-BY 4.0');
+  });
 });

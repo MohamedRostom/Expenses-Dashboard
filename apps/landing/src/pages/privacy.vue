@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { content } from '../content';
-import { PROVIDER_PRIVACY_TEXT } from '@desk/contracts';
+import { PROVIDER_PRIVACY_TEXT, WEATHER_PRIVACY_TEXT } from '@desk/contracts';
 
 const PROVIDER_LABEL: Record<keyof typeof PROVIDER_PRIVACY_TEXT, string> = {
   google: 'Google',
@@ -35,8 +35,9 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
 
     <h2>Third parties</h2>
     <p>
-      Exchange rates from frankfurter.app (ECB). Notion, only if you connect it. No analytics or ad
-      tracking is enabled by default.
+      Exchange rates from frankfurter.app (ECB). Open-Meteo for weather, sunrise and place search
+      (see below). Notion, only if you connect it. No analytics or ad tracking is enabled by
+      default.
     </p>
 
     <h2>Mail and calendar panels, per provider</h2>
@@ -52,6 +53,12 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
       <p><strong>Revoke:</strong> {{ text.revoke }}</p>
       <p><strong>Scopes:</strong> {{ text.scopes.join(', ') }}</p>
     </section>
+
+    <h2 id="weather-privacy">Weather and places</h2>
+    <p>{{ WEATHER_PRIVACY_TEXT.sent }}</p>
+    <p>{{ WEATHER_PRIVACY_TEXT.deviceLocation }}</p>
+    <p>{{ WEATHER_PRIVACY_TEXT.storage }}</p>
+    <p>{{ WEATHER_PRIVACY_TEXT.attribution }}</p>
 
     <h2>Your rights</h2>
     <p>Export or delete your account and data at any time from account settings.</p>

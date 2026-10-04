@@ -7,6 +7,7 @@ import { categories, expenses } from '@desk/db';
 import { convert } from '@desk/core';
 import type { JobHandler } from './index.js';
 import type { Db } from '@desk/db';
+import { enqueueIfShort, widgetPairs } from './widgets-rates-backfill.js';
 
 export const BATCH_SIZE = 500;
 
@@ -223,8 +224,20 @@ export function combinedRowSource(...sources: RowSource[]): RowSource {
 export function currencyChangeJob(
   getRate: RateLookup,
   source: RowSource = NULL_ROW_SOURCE,
+  /** With a db, widget currencies get a history backfill against the new default (FR-010). */
+  db?: Db,
 ): JobHandler {
   return async (payload, ctx) => {
-    await runCurrencyChange(payload as CurrencyChangePayload, source, getRate, ctx);
+    const p = payload as CurrencyChangePayload;
+    await runCurrencyChange(p, source, getRate, ctx);
+    if (db) {
+      const pairs = await widgetPairs(db, p.userId);
+      await enqueueIfShort(
+        db,
+        pairs.map((x) => x.base),
+        p.toCurrency,
+        p.changeDate,
+      );
+    }
   };
 }

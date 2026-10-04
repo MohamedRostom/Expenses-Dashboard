@@ -11,6 +11,11 @@ export type PanelErrorKind =
   | 'validation'
   | 'rate_unavailable'
   | 'connector_error'
+  | 'source_unreachable'
+  | 'source_limit_reached'
+  | 'place_not_found'
+  | 'source_paused'
+  | 'rate_limited'
   | 'server_error';
 
 /** Maps a thrown error (ApiError, network TypeError, or anything else) to a PanelErrorKind. */
@@ -20,6 +25,15 @@ export function toPanelErrorKind(err: unknown): PanelErrorKind {
     if (err.status === 401) return 'session_expired';
     if (err.code === 'rate_unavailable') return 'rate_unavailable';
     if (err.code === 'validation_failed') return 'validation';
+    if (
+      err.code === 'source_unreachable' ||
+      err.code === 'source_limit_reached' ||
+      err.code === 'place_not_found' ||
+      err.code === 'source_paused' ||
+      err.code === 'rate_limited'
+    ) {
+      return err.code;
+    }
     if (err.status >= 500) return 'server_error';
     if (err.details?.['connector']) return 'connector_error';
     return 'server_error';

@@ -1,20 +1,40 @@
 # Implementation Plan: Dashboard Widgets
 
-**Branch**: `003-dashboard-widgets` (spec); delivery branches `phase-N/widgets-*` per the roadmap
-phase the slice lands in | **Date**: 2026-09-17 | **Spec**: [spec.md](spec.md)
+**Branch**: `feature/003-dashboard-widgets` (one feature branch, as spec 002 used; slices land
+as commits) | **Date**: 2026-09-17, revised 2026-10-03 | **Spec**: [spec.md](spec.md)
+
+**Revision 2026-10-03**: spec 002 has merged (the Today page, `panels.today`, `PanelState`,
+`PanelErrorKind`, visibility-paused polling and `users.last_active_at` now exist) and the spec
+gained five clarifications (sunrise widget owns its place, a widget currency that becomes the
+default, user time zone for "today"/"this month", rate-history failure, FR-019 operator
+signals). Research R10 to R14 cover them; Slice E no longer waits on another feature. A second clarify
+pass the same day narrowed FR-019 (public probe reports status only, counts in logs, failing =
+every call in the last 60 minutes failed, alert within 20 minutes, SC-008), added the polar
+day/night state to FR-018, extended SC-003 to the Today page and removed any time limit on
+pending rate changes. A conflict-resolution pass after the requirements-quality review then
+replaced the 60-minute failure window with "last three calls failed, cleared by a success"
+(the once-a-day rate-history retry could never meet a 60-minute window), added the
+`widget_source_state` table, made the logs name source and cause, and extended SC-008 to the
+rate source.
 
 **Input**: Feature specification from `/specs/003-dashboard-widgets/spec.md`
 
 ## Summary
 
-A widget strip on the expenses month view and, once spec 002 ships, on the Today page, sharing
+A widget strip on the expenses month view and on the Today page (spec 002, shipped; shown there
+only while `panels.today` is on for the user), sharing
 one per-user arrangement of up to eight widgets: currency (rates from the existing `fx_rates`
 cache, backfilled thirty-one days on add via Frankfurter's date-range endpoint), weather and
 sunrise/sunset (Open-Meteo, ADR-0005, cached once per place on the server), and two widgets
 computed from the user's own expense data (spend pace, upcoming fixed costs) using the baseline
 month-summary and forecast functions in `packages/core`. Widgets are rows in one `widgets` table
 with typed JSON settings validated per kind; readings live in shared, non-user-owned caches like
-`fx_rates`. No new dependency; every external call is `fetch`.
+`fx_rates`. No new dependency; every external call is `fetch`. Widgets reuse spec 002's
+surface conventions (`PanelState`, `PanelErrorKind`, polling paused while hidden) and its
+"active user" signal (`users.last_active_at`); operator signals (FR-019) are a shared
+`widget_source_usage` counter table and `widget_source_state` table plus a `/healthz/widgets`
+probe watched by the existing
+uptime monitor.
 
 ## Technical Context
 
@@ -26,8 +46,9 @@ fast-check). No additions: Open-Meteo and Frankfurter are called with `fetch`; d
 uses platform pointer events plus keyboard handlers, not a drag library (Principle VI).
 
 **Storage**: Postgres tables `widgets`, `places` (user-owned) and `weather_readings`,
-`geocode_cache` (shared, like `fx_rates`); `users.temperature_unit`; `fx_rates` reused for rate
-history. See data-model.md.
+`geocode_cache`, `widget_source_usage`, `widget_source_state` (shared, like `fx_rates`); `users.temperature_unit`;
+`fx_rates` reused for rate history; `users.time_zone` and `users.last_active_at` (baseline and
+spec 002) read, not changed. See data-model.md.
 
 **Testing**: Vitest unit and property tests in `packages/core/src/widgets/` (rate change maths,
 spend pace, fixed-cost "usual amount", coordinate rounding, WMO code mapping); recorded fixtures
@@ -35,24 +56,27 @@ and a fake for the Open-Meteo client and for Frankfurter's range endpoint in
 `packages/connectors`; API suite with Testcontainers including the ownership matrix for every
 widget route; Playwright `ci` against the mocks container (fake Open-Meteo); axe and Lighthouse
 on the month view with eight widgets; e2e-local nightly against the real Open-Meteo for one
-place (SC-004).
+place (SC-004). Today page tests switch `panels.today` on, as spec 002's e2e suite does;
+`/healthz/widgets` is covered by the API suite (healthy, paused, failing for an hour).
 
 **Target Platform**: as the baseline (Fly Node container, then Cloudflare Workers; PWA at 360 px
 and up). Nothing runtime-specific.
 
 **Project Type**: web application monorepo; this feature adds one strip component with five
-widget kinds, one settings sheet, one job family and nine routes.
+widget kinds, one settings sheet, one job family and ten routes.
 
 **Performance Goals**: strip shows cached figures within one second on a mid-range phone;
-month view load not lengthened by more than 100 ms (strip is a lazy chunk mounted after the
-month data resolves); `GET /widgets` under 150 ms server-side at eight widgets; weather reading
+month view load, and the time until the Today page's calendar and inbox panels appear, not
+lengthened by more than 100 ms (strip is a lazy chunk mounted after the host page's data
+resolves); `GET /widgets` under 150 ms server-side at eight widgets; weather reading
 never older than one hour for an active place.
 
 **Constraints**: eight widgets per user; six currencies per currency widget; readings shared per
 place keyed on coordinates rounded to two decimals; hourly weather refresh only for places with
 a user active in the last 24 hours; place search three characters, debounced, ten per user per
 minute, results cached one day; Open-Meteo free-tier quota (ADR-0005) never exceeded and
-exhaustion handled as a stale state; feature flag per widget kind; English UI.
+exhaustion handled as a stale state; feature flag per widget kind; "today" and "this month"
+in `users.time_zone`; operator signals carry no user id or place; English UI.
 
 **Scale/Scope**: 1,000 users × up to eight widgets; a few hundred distinct places; well under
 1,000 Open-Meteo calls per day; one strip reused on two pages; five widget kinds.
@@ -95,18 +119,21 @@ apps/web/src/
 ├── components/widgets/CurrencyWidget.vue, WeatherWidget.vue, SunriseWidget.vue,
 │                      SpendPaceWidget.vue, FixedCostsWidget.vue
 ├── components/widgets/AddWidgetSheet.vue       # catalogue from /widgets/types
+├── components/PanelState.vue, utils/errors.ts  # spec 002; PanelErrorKind gains source_unreachable, source_limit_reached, place_not_found
 ├── components/widgets/PlacePicker.vue          # typed search + "use my current location"
 ├── stores/widgets.ts                           # list, add, patch, reorder, remove, refresh, poll while visible
-└── views/MonthView.vue, views/TodayView.vue    # mount <WidgetStrip> after their own data resolves
+└── views/MonthView.vue, views/TodayView.vue    # mount <WidgetStrip> after their own data resolves (TodayView: after today.load(), success or error)
 
 apps/api/src/
 ├── routes/widgets.ts                           # /widgets, /widgets/types, /widgets/order, /widgets/refresh
 ├── routes/places.ts                            # /places/search, /places/resolve
+├── routes/health-widgets.ts                    # GET /healthz/widgets (FR-019, research R13)
 ├── services/widgets.ts                         # CRUD, caps, ownership, settings validation per kind
 ├── services/widget-figures.ts                  # builds each widget's figures for GET /widgets
 ├── services/places.ts                          # search with throttle + cache, approximate device-location resolution (research R1), rounding
+├── services/source-usage.ts                    # count calls/failures per source per day, last success (research R13)
 ├── jobs/widgets-weather-refresh.ts             # hourly per active place
-├── jobs/widgets-rates-backfill.ts              # on currency add: 31-day range into fx_rates
+├── jobs/widgets-rates-backfill.ts              # on currency add: 31-day range into fx_rates; failures re-queued by the daily rate fetch (R12)
 └── jobs/widgets-purge.ts                       # readings and geocode cache older than 7 days
 
 packages/connectors/src/
@@ -138,10 +165,17 @@ Open-Meteo client follows the rates and Notion pattern (real client, fake, fixtu
 | Slice | Spec stories | Ships | Gate |
 |-------|--------------|-------|------|
 | A. Strip, currency widget, add/remove | US1, US3 (add, remove, settings) | tables, `/widgets` routes, strip on the month view with empty state, currency widget with backfill job, flags | ownership matrix, rate-change property tests, Frankfurter range fixture, Playwright month view + axe, Lighthouse delta ≤ 100 ms |
-| B. Weather widget and places | US2 | Open-Meteo client + fake + mocks, places routes with throttle and cache, weather refresh and purge jobs, PlacePicker with device-location button, `temperature_unit`, privacy text | Open-Meteo fixtures, places API suite, Playwright weather with mocks, privacy page snapshot, e2e-local one real place nightly |
+| B. Weather widget and places | US2 | Open-Meteo client + fake + mocks, places routes with throttle and cache, weather refresh and purge jobs, PlacePicker with device-location button, `temperature_unit`, privacy text | Open-Meteo fixtures, places API suite, Playwright weather with mocks, privacy page snapshot, e2e-local one real place nightly; SC-008 rehearsal (fake refuses every call, then 429) against `/healthz/widgets` documented in the uptime runbook |
 | C. Arrange | US3 (reorder, duplicate) | `/widgets/order`, pointer and keyboard reorder with announcements, duplicate | API suite for order, Playwright keyboard reorder with live-region assertions |
 | D. Expense widgets and sunrise | US4 | spend pace, fixed costs, sunrise widgets | property tests against the month summary, Playwright seeded month |
-| E. Today page strip | FR-001 second surface | mount `<WidgetStrip>` on TodayView once spec 002's Slice A exists | Playwright: same arrangement on both pages |
+| E. Today page strip | FR-001 second surface | mount `<WidgetStrip>` on TodayView after the Today panels load (spec 002 shipped; no external wait) | Playwright with `panels.today` on: same arrangement on both pages, strip still renders when a Today panel errors; with it off: strip on the month view only, arrangement unchanged |
+
+Cross-slice additions from the 2026-10-03 clarifications: user time zone (R10) lands with
+Slices A and D; the sunrise place rule (R11) with Slice D; the default-currency row and
+rate-history failure (R12) with Slice A; FR-019 counters and probe (R13) start in Slice A for
+the rates range call and are completed in Slice B for Open-Meteo, together with the second
+uptime monitor entry in `docs/runbooks/uptime.md`. The polar day/night state lands with the
+sunrise widget in Slice D; the Today page timing budget (SC-003) is gated in Slice E.
 
 ## Complexity Tracking
 

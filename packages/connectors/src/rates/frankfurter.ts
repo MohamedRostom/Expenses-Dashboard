@@ -1,4 +1,4 @@
-import type { CurrencyCode, RateOutcome, RatesProvider } from './types.js';
+import type { CurrencyCode, RangeOutcome, RateOutcome, RatesProvider } from './types.js';
 
 type FrankfurterBody = {
   amount: number;
@@ -40,5 +40,31 @@ export class FrankfurterRates implements RatesProvider {
     if (rate === undefined) return { unsupported: true };
 
     return { rate: String(rate), rateDate: body.date, source: 'frankfurter' };
+  }
+
+  async range(
+    from: Date,
+    to: Date,
+    base: CurrencyCode,
+    quotes: CurrencyCode[],
+  ): Promise<RangeOutcome> {
+    const day = (d: Date) => d.toISOString().slice(0, 10);
+    const url = `${BASE_URL}/${day(from)}..${day(to)}?from=${encodeURIComponent(base)}&to=${quotes.map(encodeURIComponent).join(',')}`;
+    // Network failure and 5xx throw (a source error, unlike rate(): the backfill job retries).
+    const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(10000) });
+    if (res.status === 404 || res.status === 422) return { unsupported: true };
+    if (!res.ok)
+      throw Object.assign(new Error(`frankfurter range failed: ${res.status}`), {
+        status: res.status,
+      });
+
+    const body = (await res.json()) as { rates: Record<string, Record<string, number>> };
+    // ponytail: String(number) is the shortest round-trip repr; fine for ECB's <=6 decimals.
+    return Object.entries(body.rates)
+      .sort(([a], [b]) => (a < b ? -1 : 1))
+      .map(([date, r]) => ({
+        date,
+        rates: Object.fromEntries(Object.entries(r).map(([k, v]) => [k, String(v)])),
+      }));
   }
 }

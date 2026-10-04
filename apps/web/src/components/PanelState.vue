@@ -33,6 +33,26 @@ const COPY: Record<PanelErrorKind, { title: string; description: string }> = {
     title: 'Connector problem',
     description: 'The connected service had a problem. Check its settings or try again.',
   },
+  source_unreachable: {
+    title: "Couldn't reach the data source",
+    description: 'Showing the last reading. Desk will try again shortly.',
+  },
+  source_limit_reached: {
+    title: 'Data source limit reached',
+    description: 'Desk has used its daily allowance for this source. It resets tomorrow.',
+  },
+  place_not_found: {
+    title: 'Place not found',
+    description: "Choose the place again in this widget's settings.",
+  },
+  source_paused: {
+    title: 'Place search is paused',
+    description: 'The data source has paused place search for now. Try again later.',
+  },
+  rate_limited: {
+    title: 'Too many requests',
+    description: 'Please wait a moment before trying again.',
+  },
   server_error: {
     title: 'Something went wrong',
     description: 'Please try again shortly.',

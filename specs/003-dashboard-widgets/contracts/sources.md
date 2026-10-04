@@ -14,6 +14,7 @@ WeatherSource
 
 PlaceCandidate: { name, admin1?, country, lat, lon, timeZone }   // lat/lon rounded to 2 dp by the client
 Forecast: {
+  timeZone,   // the source's resolved zone (top-level `timezone`); used by POST /places/resolve with 'auto'
   current: { temperatureC, weatherCode, observedAt },
   daily: [{ date, maxC, minC, weatherCode, sunrise, sunset, daylightSeconds }]  // 4 entries, place-local
 }
@@ -36,7 +37,7 @@ RatesProvider (existing)
   range(from: Date, to: Date, base: string, quotes: string[]): { date, rates: { [quote]: string } }[]   // new
 ```
 
-- `range` calls `api.frankfurter.app/<from>..<to>?from=<base>&to=<quotes>`; rates are decimal
+- `range` calls `api.frankfurter.dev/v1/<from>..<to>?from=<base>&to=<quotes>`; rates are decimal
   strings, never parsed to floats; missing dates (weekends, holidays) are simply absent and the
   backfill job stores only published dates.
 - `FakeRates` gains `range` seeded from `fixtures/range-*.json`.

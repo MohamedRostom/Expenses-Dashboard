@@ -3,6 +3,7 @@ import type { Session, SessionStore } from '../../src/adapters/session-store.js'
 import type { RateLimiter } from '../../src/adapters/rate-limiter.js';
 import { CapturingMailer } from '../../src/adapters/mailer.js';
 import { FakeRates } from '@desk/connectors/rates';
+import { OpenMeteoFake } from '@desk/connectors/open-meteo/fake';
 import type { users } from '@desk/db';
 
 type UserRow = typeof users.$inferSelect;
@@ -77,6 +78,7 @@ export function testDeps(overrides: Partial<AppDeps> = {}): AppDeps {
     googlePanels: undefined,
     microsoft: undefined,
     rates: new FakeRates(),
+    weather: new OpenMeteoFake(),
     jobs: undefined,
     clock: { now: () => new Date('2026-09-18T00:00:00Z') },
     build: { version: '0.0.0-test', sha: 'testsha' },

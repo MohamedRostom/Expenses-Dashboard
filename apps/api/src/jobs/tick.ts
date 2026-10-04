@@ -6,7 +6,8 @@
 import postgres from 'postgres';
 import { parseEnv } from '../env.js';
 import { JobRunner } from './runner.js';
-import { registerAllJobs } from './register.js';
+import { registerAllJobs, ensureWidgetJobs } from './register.js';
+import { OpenMeteoClient } from '@desk/connectors/open-meteo/client';
 import { createRatesService } from '../services/rates.js';
 import { FrankfurterRates } from '@desk/connectors/rates';
 import { PgRateLimiter } from '../adapters/rate-limiter.js';
@@ -21,13 +22,17 @@ const queryDb: QueryDb = {
 };
 
 const ratesProvider = new FrankfurterRates();
+const runner = new JobRunner(queryDb);
 registerAllJobs({
   db,
   getRate: createRatesService(db, ratesProvider).getRate,
   ratesProvider,
   limiter: new PgRateLimiter(queryDb),
+  weather: new OpenMeteoClient(env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {}),
+  enqueue: (name, payload, opts) => runner.enqueue(name, payload, opts),
 });
+await ensureWidgetJobs(db, new Date());
 
-await new JobRunner(queryDb).runDueJobs();
+await runner.runDueJobs();
 await rawClient.end();
 process.exit(0);

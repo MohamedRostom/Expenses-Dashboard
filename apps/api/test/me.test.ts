@@ -9,6 +9,12 @@ import {
   accountCalendars,
   cachedEvents,
   cachedMessages,
+  widgets as widgetsTable,
+  places as placesTable,
+  weatherReadings,
+  geocodeCache,
+  widgetSourceUsage,
+  widgetSourceState,
 } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 
@@ -256,8 +262,41 @@ describe('me', () => {
       unread: true,
     });
 
+    // spec 003: widgets/places cascade; the shared caches and source counters stay.
+    const [place] = await h.db
+      .insert(placesTable)
+      .values({
+        userId: user.userId,
+        name: 'Cascade',
+        country: 'UK',
+        timeZone: 'UTC',
+        lat: '51.51',
+        lon: '-0.13',
+      })
+      .returning();
+    await h.db
+      .insert(widgetsTable)
+      .values({ userId: user.userId, kind: 'weather', position: 0, placeId: place!.id });
+    await h.db.insert(weatherReadings).values({ lat: '51.51', lon: '-0.13', timeZone: 'UTC' });
+    await h.db.insert(geocodeCache).values({ query: 'cascade', results: [] });
+    await h.db
+      .insert(widgetSourceUsage)
+      .values({ day: '2026-09-18', source: 'open_meteo.forecast' });
+    await h.db.insert(widgetSourceState).values({ source: 'open_meteo.forecast' });
+
     const res = await user.delete('/me', { password: 'test-password' });
     expect(res.status).toBe(204);
+
+    expect(
+      await h.db.select().from(widgetsTable).where(eq(widgetsTable.userId, user.userId)),
+    ).toHaveLength(0);
+    expect(
+      await h.db.select().from(placesTable).where(eq(placesTable.userId, user.userId)),
+    ).toHaveLength(0);
+    expect(await h.db.select().from(weatherReadings)).not.toHaveLength(0);
+    expect(await h.db.select().from(geocodeCache)).not.toHaveLength(0);
+    expect(await h.db.select().from(widgetSourceUsage)).not.toHaveLength(0);
+    expect(await h.db.select().from(widgetSourceState)).not.toHaveLength(0);
 
     const [gone] = await h.db.select().from(usersTable).where(eq(usersTable.id, user.userId));
     expect(gone).toBeUndefined();

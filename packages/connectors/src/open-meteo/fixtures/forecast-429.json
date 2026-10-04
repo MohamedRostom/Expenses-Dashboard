@@ -1,0 +1,8 @@
+{
+  "request": { "latitude": 53.48, "longitude": -2.24, "timezone": "Europe/London" },
+  "response": {
+    "status": 429,
+    "headers": { "retry-after": "3600" },
+    "body": { "error": true, "reason": "Daily API request limit exceeded" }
+  }
+}

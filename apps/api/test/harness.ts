@@ -6,6 +6,7 @@ import { createDb, users, type Db } from '@desk/db';
 import { FakeRates } from '@desk/connectors/rates';
 import type { RatesProvider } from '@desk/connectors/rates';
 import { FakeNotion } from '@desk/connectors/notion';
+import { OpenMeteoFake } from '@desk/connectors/open-meteo/fake';
 import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
 import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { createApp, type AppDeps, type Clock } from '../src/app.js';
@@ -18,6 +19,7 @@ import { CapturingMailer } from '../src/adapters/mailer.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
 import type { Db as QueryDb } from '../src/adapters/rate-limiter.js';
+import type { Logger } from '../src/adapters/logger.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
@@ -56,6 +58,8 @@ export type Harness = {
   /** The FakeNotion instance backing NOTION_API_BASE for this harness — seed pages or call
    * failNextWith('unauthorized'/'rate_limited') to script scenarios. */
   notionFake: FakeNotion;
+  /** The OpenMeteoFake backing `weather` � addPlace / pauseSource / failAll, and `.calls` counters. */
+  weatherFake: OpenMeteoFake;
   close(): Promise<void>;
 };
 
@@ -105,6 +109,8 @@ export async function startHarness(
      * care about the host-privacy check pass their own. */
     hostResolver?: HostResolver;
     standardsAllowPrivateHosts?: boolean;
+    /** FR-019: capture log lines (request lines included); defaults to stdout JSON. */
+    logger?: Logger;
   } = {},
 ): Promise<Harness> {
   if (opts.runJobsNow && !opts.withJobs) {
@@ -132,6 +138,7 @@ export async function startHarness(
   };
   const sessions = new PgSessionStore(queryDb);
 
+  const weatherFake = new OpenMeteoFake();
   const notionFake = new FakeNotion([]);
   const notionMockApp = createNotionMockApp(notionFake);
   const notionFetch: typeof fetch = async (input, init) => {
@@ -151,6 +158,8 @@ export async function startHarness(
     secretBox: createSecretBox(TEST_SECRET_BOX_KEY),
     breachChecker: new FakeBreachChecker(),
     rates: ratesProvider,
+    weather: weatherFake,
+    ...(opts.logger && { logger: opts.logger }),
     jobs: jobRunner,
     runJobsNow: opts.runJobsNow ? () => jobRunner!.runDueJobs() : undefined,
     clock,
@@ -213,6 +222,7 @@ export async function startHarness(
     clock,
     asUser,
     notionFake,
+    weatherFake,
     async close() {
       await rawClient.end();
       await closeDb();

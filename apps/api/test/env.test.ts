@@ -141,6 +141,18 @@ describe('parseEnv', () => {
     expect(env.MICROSOFT_LOGIN_BASE).toBeUndefined();
   });
 
+  it('OPEN_METEO_API_BASE is an optional URL, absent from the result when unset', () => {
+    expect(
+      parseEnv({ ...required, OPEN_METEO_API_BASE: 'http://mocks:4000/open-meteo' }),
+    ).toMatchObject({
+      OPEN_METEO_API_BASE: 'http://mocks:4000/open-meteo',
+    });
+    expect(parseEnv(required)).not.toHaveProperty('OPEN_METEO_API_BASE');
+    expect(() => parseEnv({ ...required, OPEN_METEO_API_BASE: 'not a url' })).toThrow(
+      /OPEN_METEO_API_BASE/,
+    );
+  });
+
   it('STANDARDS_ALLOW_PRIVATE_HOSTS defaults off, is only true for the exact string "true", and is refused on a Fly deployment (T070/FR-017)', () => {
     expect(parseEnv(required).STANDARDS_ALLOW_PRIVATE_HOSTS).toBe(false);
     expect(
@@ -161,6 +173,19 @@ describe('parseEnv', () => {
     // Compose (no FLY_APP_NAME there, NODE_ENV=production from the image) is unaffected.
     expect(() =>
       parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true', NODE_ENV: 'production' }),
+    ).not.toThrow();
+  });
+
+  it('FLAGS_ON splits a comma list of flag keys, is unset by default, and is refused on production', () => {
+    expect(parseEnv(required).FLAGS_ON).toBeUndefined();
+    expect(
+      parseEnv({ ...required, FLAGS_ON: ' widgets.currency, ,widgets.weather ' }).FLAGS_ON,
+    ).toEqual(['widgets.currency', 'widgets.weather']);
+    expect(() =>
+      parseEnv({ ...required, FLAGS_ON: 'widgets.currency', FLY_APP_NAME: 'ros-desk-production' }),
+    ).toThrow(/FLAGS_ON/);
+    expect(() =>
+      parseEnv({ ...required, FLAGS_ON: 'widgets.currency', FLY_APP_NAME: 'ros-desk-pr-26' }),
     ).not.toThrow();
   });
 });
