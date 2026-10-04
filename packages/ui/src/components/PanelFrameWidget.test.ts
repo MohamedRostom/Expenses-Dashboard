@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { WidgetT } from '@desk/contracts';
-import WidgetFrame from './WidgetFrame.vue';
+type WidgetT = { kind: string } & Record<string, unknown>;
+import PanelFrame from './PanelFrame.vue';
 
 const widget = (over: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -27,7 +28,7 @@ async function mount(props: Record<string, unknown>) {
   const app = createApp({
     render: () =>
       h(
-        WidgetFrame,
+        PanelFrame,
         {
           widget: widget(),
           index: 1,
@@ -40,7 +41,7 @@ async function mount(props: Record<string, unknown>) {
           onDragMove: on('dragMove'),
           onDragEnd: on('dragEnd'),
           ...props,
-        },
+        } as never,
         { default: () => h('p', { class: 'figs' }, 'figures') },
       ),
   });
@@ -54,7 +55,7 @@ const btn = (el: HTMLElement, label: string) =>
     (b) => b.textContent?.trim() === label,
   );
 
-describe('WidgetFrame menu (T052)', () => {
+describe('PanelFrame menu (T052)', () => {
   afterEach(() => (document.body.innerHTML = ''));
 
   it('Move up, Move down and Duplicate emit', async () => {
@@ -103,7 +104,7 @@ describe('WidgetFrame menu (T052)', () => {
   });
 });
 
-describe('WidgetFrame offline copy', () => {
+describe('PanelFrame offline copy', () => {
   afterEach(() => (document.body.innerHTML = ''));
 
   it('keeps the last figures and as-of time and says it is offline', async () => {
@@ -119,7 +120,7 @@ describe('WidgetFrame offline copy', () => {
   });
 });
 
-describe('WidgetFrame empty state', () => {
+describe('PanelFrame empty state', () => {
   afterEach(() => (document.body.innerHTML = ''));
   const empty = (kind: WidgetT['kind']) =>
     mount({ widget: widget({ kind, state: 'empty', figures: undefined } as Partial<WidgetT>) });

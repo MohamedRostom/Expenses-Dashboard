@@ -1,9 +1,9 @@
 <script setup lang="ts">
+import { PanelFrame } from '@desk/ui';
 import { ref } from 'vue';
 import type { PlaceCandidateT, WidgetPatchT, WidgetT } from '@desk/contracts';
 import PlacePicker from './PlacePicker.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ widget: WidgetT; patch: (body: WidgetPatchT) => Promise<unknown> }>();
 const error = ref<PanelErrorKind | null>(null);
@@ -22,6 +22,6 @@ async function choose(place: PlaceCandidateT) {
   <div class="desk-sunrise-settings">
     <p v-if="widget.place">Current place: {{ widget.place.name }}</p>
     <PlacePicker :previous="widget.place?.name" @select="choose" />
-    <PanelState v-if="error" kind="error" :code="error" />
+    <PanelFrame v-if="error" kind="error" :code="error" />
   </div>
 </template>

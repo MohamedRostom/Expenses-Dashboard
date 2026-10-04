@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue';
-import { Button, Input } from '@desk/ui';
+import { Button, Input, PanelFrame } from '@desk/ui';
 import type { PlaceCandidateT } from '@desk/contracts';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import PanelState from '../PanelState.vue';
 import { resolvePlace, searchPlaces } from '../../api/places.js';
 
 const props = defineProps<{ previous?: string | undefined }>();
@@ -17,7 +16,7 @@ const candidates = ref<PlaceCandidateT[]>([]);
 const near = ref<string | null>(null);
 const notice = ref('');
 const errorKind = ref<PanelErrorKind | null>(null);
-// Search-box copy for the codes /places/* emits; anything else (401, 500) falls through to PanelState.
+// Search-box copy for the codes /places/* emits; anything else (401, 500) falls through to PanelFrame.
 const SEARCH_COPY: Partial<Record<PanelErrorKind, string>> = {
   rate_limited: 'Please wait a moment before searching again.',
   source_paused: 'Place search is paused, try again later.',
@@ -96,7 +95,7 @@ function useLocation() {
     <p v-if="near" role="status">Near {{ near }} — tap to confirm.</p>
     <p v-if="notice" role="status">{{ notice }}</p>
     <p v-if="errorKind && SEARCH_COPY[errorKind]" role="alert">{{ SEARCH_COPY[errorKind] }}</p>
-    <PanelState v-else-if="errorKind" kind="error" :code="errorKind" />
+    <PanelFrame v-else-if="errorKind" kind="error" :code="errorKind" />
     <ul v-if="candidates.length" class="desk-place-list">
       <li v-for="c in candidates" :key="`${c.lat},${c.lon}`">
         <button

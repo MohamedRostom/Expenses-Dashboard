@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Button, EmptyState, useToast } from '@desk/ui';
+import { Button, EmptyState, useToast, PanelFrame } from '@desk/ui';
 import type { WidgetCreateT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
@@ -9,9 +9,7 @@ import WeatherWidget from './WeatherWidget.vue';
 import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
-import PanelState from '../PanelState.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
 
@@ -171,14 +169,14 @@ async function onDragEnd() {
       </template>
     </EmptyState>
 
-    <PanelState
+    <PanelFrame
       v-else-if="store.error && store.widgets.length === 0"
       kind="error"
       :code="offline ? 'offline' : store.error"
     />
 
     <div v-else ref="grid" class="desk-widget-grid">
-      <WidgetFrame
+      <PanelFrame
         v-for="(w, i) in shown"
         :key="w.id"
         :widget="w"
@@ -194,7 +192,7 @@ async function onDragEnd() {
         @settings="settingsId = w.id"
         @remove="onRemove(w.id, label(w.kind).toLowerCase())"
       >
-        <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
+        <!-- PanelFrame shows the skeleton/error when figures are absent. -->
         <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
         <WeatherWidget
           v-else-if="w.kind === 'weather' && w.figures"
@@ -204,7 +202,7 @@ async function onDragEnd() {
         <SunriseWidget v-else-if="w.kind === 'sunrise' && w.figures" :figures="w.figures" />
         <SpendPaceWidget v-else-if="w.kind === 'spend_pace' && w.figures" :figures="w.figures" />
         <FixedCostsWidget v-else-if="w.kind === 'fixed_costs' && w.figures" :figures="w.figures" />
-      </WidgetFrame>
+      </PanelFrame>
     </div>
 
     <p class="desk-sr-only" aria-live="polite" data-testid="widget-live">{{ announcement }}</p>

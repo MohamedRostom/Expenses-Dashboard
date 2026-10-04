@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { PanelFrame } from '@desk/ui';
 import { ref } from 'vue';
 import type { PlaceCandidateT, TemperatureUnitT, WidgetPatchT, WidgetT } from '@desk/contracts';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import PlacePicker from './PlacePicker.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ widget: WidgetT; patch: (body: WidgetPatchT) => Promise<unknown> }>();
 const store = useWidgetsStore();
@@ -46,7 +46,7 @@ async function setUnit(unit: TemperatureUnitT) {
         °{{ u }}
       </label>
     </fieldset>
-    <PanelState v-if="error" kind="error" :code="error" />
+    <PanelFrame v-if="error" kind="error" :code="error" />
   </div>
 </template>
 

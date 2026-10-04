@@ -2,13 +2,12 @@
 /** This-month-vs-last-month deltas: total and top categories, via /summary/compare. */
 import { computed, onMounted, ref } from 'vue';
 import type { CategoryResponseT, CompareSummaryT } from '@desk/contracts';
-import { Skeleton } from '@desk/ui';
+import { Skeleton, PanelFrame } from '@desk/ui';
 import { apiFetch } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { currentMonth } from '../stores/expenses.js';
 import { useSessionStore } from '../stores/session.js';
 import { toPanelErrorKind, type PanelErrorKind } from '../utils/errors.js';
-import PanelState from './PanelState.vue';
 
 const session = useSessionStore();
 const currency = computed(() => session.user?.defaultCurrency ?? 'GBP');
@@ -74,7 +73,7 @@ defineExpose({ load });
         </li>
       </ul>
     </template>
-    <PanelState v-else-if="errorKind" kind="error" :code="errorKind" />
+    <PanelFrame v-else-if="errorKind" kind="error" :code="errorKind" />
   </div>
 </template>
 

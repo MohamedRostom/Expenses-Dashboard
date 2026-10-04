@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { PanelFrame } from '@desk/ui';
 import { computed, onMounted, ref } from 'vue';
 import { apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
 import { CURRENCY_CAP } from '@desk/core';
 import type { Currency } from '../currencyFilter.js';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ chosen: string[] }>();
 defineEmits<{ toggle: [code: string] }>();
@@ -46,7 +46,7 @@ function disabledReason(code: string): string | null {
       {{ c.code }} — {{ c.name }}
       <small v-if="disabledReason(c.code)">({{ disabledReason(c.code) }})</small>
     </label>
-    <PanelState v-if="error" kind="error" :code="error" />
+    <PanelFrame v-if="error" kind="error" :code="error" />
   </fieldset>
 </template>
 

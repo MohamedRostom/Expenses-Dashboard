@@ -1,16 +1,18 @@
+// @vitest-environment jsdom
 import { createApp, nextTick } from 'vue';
 import { describe, expect, it } from 'vitest';
-import PanelState from './PanelState.vue';
-import type { PanelErrorKind } from '../utils/errors.js';
+import PanelFrame from './PanelFrame.vue';
+
+type PanelErrorKind = string;
 
 async function text(props: Record<string, unknown>) {
   const el = document.createElement('div');
-  createApp(PanelState, props).mount(el);
+  createApp(PanelFrame, props).mount(el);
   await nextTick();
   return el.textContent ?? '';
 }
 
-describe('PanelState', () => {
+describe('PanelFrame', () => {
   it.each<[PanelErrorKind, string]>([
     ['offline', "You're offline"],
     ['session_expired', 'Session expired'],

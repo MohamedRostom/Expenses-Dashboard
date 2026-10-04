@@ -1,10 +1,10 @@
 <script setup lang="ts">
+import { PanelFrame } from '@desk/ui';
 import { computed } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { TodayAccountT, TodayMessageT } from '@desk/contracts';
 import { useTodayStore } from '../../stores/today.js';
 import { formatDateTime } from '../../utils/format.js';
-import PanelState from '../PanelState.vue';
 import AccountChip from './AccountChip.vue';
 
 const today = useTodayStore();
@@ -99,8 +99,8 @@ function onRefresh() {
   <div class="inbox-panel">
     <h2>Inbox</h2>
 
-    <PanelState v-if="today.loading || today.purged" kind="loading" />
-    <PanelState v-else-if="today.error" kind="error" :code="today.error" />
+    <PanelFrame v-if="today.loading || today.purged" kind="loading" />
+    <PanelFrame v-else-if="today.error" kind="error" :code="today.error" />
 
     <template v-else-if="!hasAccounts">
       <div class="empty-state">

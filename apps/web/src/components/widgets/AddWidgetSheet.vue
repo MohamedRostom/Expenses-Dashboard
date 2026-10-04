@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Dialog, Button, EmptyState } from '@desk/ui';
+import { Dialog, Button, EmptyState, PanelFrame } from '@desk/ui';
 import type { WidgetCreateT, WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { CURRENCY_CAP } from '@desk/core';
 import CurrencyPicker from './CurrencyPicker.vue';
 import PlacePicker from './PlacePicker.vue';
-import PanelState from '../PanelState.vue';
 import type { PanelErrorKind } from '../../utils/errors.js';
 
 const props = defineProps<{
@@ -86,7 +85,7 @@ const PREVIEW: Record<WidgetKindT, string> = {
         </Button>
       </div>
     </div>
-    <PanelState v-else-if="typesError" kind="error" :code="typesError" />
+    <PanelFrame v-else-if="typesError" kind="error" :code="typesError" />
     <EmptyState
       v-else-if="!types.some((x) => x.enabled)"
       title="No widgets available yet"
