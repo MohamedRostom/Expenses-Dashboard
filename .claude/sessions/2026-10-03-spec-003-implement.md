@@ -1,41 +1,25 @@
-# Handoff — spec 003 implement (2026-10-03)
+# Handoff — spec 003 implement (2026-10-03, closed 2026-10-04)
 
-**Branch:** `feature/003-dashboard-widgets`. **Last commit:** `82ebf79 ci: switch the widgets.* flags on for e2e-ci`. Nothing pushed (not asked).
+**Branch:** `feature/003-dashboard-widgets`. **Last commit:** `0ec32d6 chore(003): record implement completion in spec context`. Nothing pushed (not asked). Working tree clean apart from untracked `archify-demo/` and `architecture*.json/html`, which are not from this session.
 
-## Uncommitted at handoff
-- `tests/e2e/tests/widgets.spec.ts` (+~22 tests for T036, T050, T056), `tests/e2e/tests/widgets.local.spec.ts` (new, T037), `tests/e2e/fixtures/index.ts` (`enableWidgetFlags`, `psql`, `csrfHeaders`); 30/31 passed on the compose stack before the bug fix below.
-- `specs/003-dashboard-widgets/tasks.md` box ticks.
-- An implementer was still running at cut-off fixing three web bugs (below) in `apps/web/src/components/widgets/{AddWidgetSheet,WidgetStrip,WidgetFrame}.vue` (maybe a new `CurrencyPicker.vue`) and appending one e2e test. Review `git status` / `git diff` before committing.
+## Status
+All 79 tasks in `specs/003-dashboard-widgets/tasks.md` are ticked; `.spec-context.json` says `implemented`. T074, T075, T078 and T079 (late review items) were declined with reasons written next to each; T076 and T077 were resolved with comments.
 
-## Open tasks
-- T036, T037, T050, T056: specs written; commit once `widgets.spec.ts` is fully green (`cd tests/e2e && pnpm exec playwright test --project=ci tests/widgets.spec.ts --workers=3`; no `--` before args, `pnpm test:e2e -- ...` ignores the file filter). T037 is @local, typecheck only.
-- T066: full quickstart run (lint, typecheck, test:unit, test:api, worker:build, e2e ci with `panels.*` and `widgets.*` flags on as in ci.yml), coverage >= 85 % on core and api, openapi not stale. Then tick T066, update the spec-003 paragraph in CLAUDE.md "Current state" (says "pending T066"), run the `speckit.companion.after-implement` hook.
+T066 run (2026-10-04, local compose stack): lint 0 errors; typecheck clean; core 144/144 (91.7 % lines); API 435/441 with the 85 % threshold met (three files failed only under full-suite load with coverage on and pass alone: `imports.test.ts` SC-004, `insights.test.ts`, `widgets-load.test.ts`); `worker:build` dry run passes; `openapi.json` not stale; e2e `ci` project 72 passed / 12 flaky / 7 failed at full parallelism, all failures timeouts that pass on rerun with two workers except `widgets-perf.spec.ts:91`, fixed by giving it a 90 s timeout. Spec 002's `today-inbox.spec.ts:162` ordering test is flaky (passes on retry).
 
-## Known bugs (being fixed at cut-off)
-1. Weather (and sunrise without a weather widget) cannot be added from the Add sheet: `WidgetStrip.vue:66` sends `{ kind }` with no place, silent 422.
-2. Currency cannot be added from the Add sheet: same call, no currencies, silent 422.
-3. Spend pace with no budget shows a skeleton: API returns `state: 'empty'` (kept by decision); web must render per-kind empty copy for spend_pace / fixed_costs.
-Decided fix: Add sheet configure step (currency picker / PlacePicker), errors shown with role=alert; WidgetFrame renders empty copy for spend_pace and fixed_costs.
-
-## Decisions made this session (and why)
-- `Forecast.timeZone` added (resolve needs the zone); contracts/sources.md updated.
-- Desk-owned weather icon names (`WEATHER_ICONS`); web uses inline SVG keyed by them (web can't import @desk/connectors).
-- Currency: a code with no history is a `{ code, pending: true }` row; whole-widget error only when no row is ready (T069). fx_rates history in one window-function query (T072).
-- `fixedCosts` owns budget, then previous month, then none; no `budgets` param. Coordinates round half away from zero.
-- `ensurePlace` stays in services/widgets.ts; inline best-effort first reading on create/patch of weather/sunrise; `markDue` = `fetched_at = least(fetched_at, now-1h-1s)`; `/places/resolve` own 10/min limiter; no reading and no error gives `empty`.
-- Lighthouse config unchanged (no new dep); SC-003 timing as Playwright assertions in widgets-perf.spec.ts.
-- Review fixes: PlaceCandidate bounded + IANA-validated; widget jobs catch instead of rethrow, ensure is advisory-locked and treats `running` rows older than 10 min as dead; widget routes answer 422 via `apps/api/src/lib/parse.ts`; weather job backs off globally 10 min after 3 consecutive failures.
-- Runbook lifts the weather pause with SQL (`pnpm flags set` can't clear `flags.value`).
-- Worker uses the default OpenMeteoClient (no OPEN_METEO_API_BASE binding).
-
-## Known failing / flaky
-- `apps/api/test/imports.test.ts` SC-004 times out under parallel agent load; re-run alone.
-- Locally the `pixel-7` / `iphone-14` projects fail ("Unsupported webkit channel msedge").
-- Local compose DB has `widgets.*` default_on = true from e2e runs.
+## Decisions (see also commit messages)
+- `Forecast.timeZone`; Desk-owned weather icon names; currency `{ code, pending: true }` rows; one window-function fx_rates query.
+- `fixedCosts` owns budget, then previous month, then none; coordinates round half away from zero.
+- Inline best-effort first reading on create/patch; `markDue` backdates `fetched_at`; `/places/resolve` limiter 10/min; no reading and no error gives `empty`; spend pace / fixed costs `empty` render per-kind copy in the web.
+- Add sheet has a configure step (currency picker / place picker) and shows add errors.
+- Review hardening: bounded, IANA-validated places; widget jobs never rethrow, ensure is advisory-locked, dead `running` rows older than 10 min are replaced; widget routes answer 422; weather job backs off 10 min after three straight failures.
+- Lighthouse config unchanged (no new dependency); SC-003 timing in `widgets-perf.spec.ts`.
+- CI turns the `widgets.*` flags on in e2e-ci.
 
 ## Open questions for Rostom
-- `checklists/spec-quality.md` has 88 unchecked reviewer items; implementation proceeded without it, as earlier phases did.
-- Weather job: per-row backoff instead of the global 10-minute backoff?
+- `checklists/spec-quality.md` has 88 unchecked reviewer items; implementation proceeded without it.
+- Per-row weather backoff instead of the global 10-minute one?
+- Owner-only: run T037 (`widgets.local.spec.ts`) on `desk-local`, and SC-005, SC-007, SC-008 (`needs-rostom` in `docs/ROADMAP.md`).
 
 ## Exact next step
-Check the bug-fix implementer's diff, run `pnpm --filter @desk/web test` and the widgets e2e spec, commit the fix and the e2e specs (T036, T037, T050, T056), tick them, then do T066.
+Review the branch and, when ready, ask for a push and PR (not done: needs an explicit instruction).
