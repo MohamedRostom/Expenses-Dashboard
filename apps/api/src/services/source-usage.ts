@@ -15,7 +15,9 @@ export async function recordSourceCall(
   source: string,
   ok: boolean,
   now: Date,
-  logger?: Logger,
+  logger: Logger,
+  /** Why a failed call failed, when it is known to be the upstream quota. */
+  cause?: 'limit_reached',
 ): Promise<void> {
   const day = now.toISOString().slice(0, 10);
   const at = now.toISOString();
@@ -34,14 +36,14 @@ export async function recordSourceCall(
           last_failure_at = ${ok ? sql`widget_source_state.last_failure_at` : at}
     RETURNING consecutive_failures`)) as unknown as { consecutive_failures: number }[];
   const failing = (rows[0]?.consecutive_failures ?? 0) >= FAILING_AFTER;
-  logger?.log({
+  logger.log({
     ...base,
     status: ok ? 200 : 503,
     durationMs: 0,
     event: 'widget_source_call',
     source,
     outcome: ok ? 'ok' : 'failure',
-    ...(failing ? { cause: 'failing' } : {}),
+    ...(!ok && cause ? { cause } : failing ? { cause: 'failing' } : {}),
   });
 }
 
@@ -89,6 +91,7 @@ export async function emitSourceSummary(db: Db, logger: Logger, now: Date): Prom
     calls: number;
     failures: number;
   }[];
+  const paused = await weatherPausedUntil(db, now);
   const places = (await db.execute(
     sql`SELECT count(*)::int AS n FROM weather_readings`,
   )) as unknown as { n: number }[];
@@ -99,7 +102,11 @@ export async function emitSourceSummary(db: Db, logger: Logger, now: Date): Prom
       durationMs: 0,
       event: 'widget_source_summary',
       ...s,
-      ...(s.consecutiveFailures >= FAILING_AFTER ? { cause: 'failing' } : {}),
+      ...(paused && s.source.startsWith('open_meteo')
+        ? { cause: 'limit_reached' }
+        : s.consecutiveFailures >= FAILING_AFTER
+          ? { cause: 'failing' }
+          : {}),
       cachedPlaces: places[0]?.n ?? 0,
     });
   }

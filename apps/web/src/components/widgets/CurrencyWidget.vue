@@ -28,7 +28,7 @@ type Change = { pct: number; direction: keyof typeof GLYPH; since?: string };
             <template v-if="r.changesPending || !c">not available yet</template>
             <template v-else>
               <span aria-hidden="true">{{ GLYPH[c.direction] }}</span>
-              {{ c.direction }} {{ c.pct }}%
+              {{ c.direction }} {{ c.pct.toFixed(1) }}%
               <small v-if="c.since">since {{ c.since }}</small>
             </template>
           </span>

@@ -175,6 +175,7 @@ const weather: Builder = async (db, _user, widget, ctx) => {
         maxC: d.maxC,
         minC: d.minC,
         icon: wmo(d.weatherCode).icon,
+        condition: wmo(d.weatherCode).condition,
       })),
       observedAt: current.observedAt,
       ...(r.staleSince && { staleSince: r.staleSince }),
@@ -246,14 +247,15 @@ const totals = (s: ReturnType<typeof monthSummary>) =>
 
 const spend_pace: Builder = async (db, user, _widget, ctx) => {
   const { cats, thisMonth } = await monthRollups(db, user, ctx);
-  if (cats.every((c) => c.budgetMinor === null)) return { state: 'empty' };
   const figures = spendPace(
     thisMonth,
     cats.map((c) => c.budgetMinor),
     user.timeZone,
     ctx.now,
   );
-  return { state: 'ready', asOf: ctx.now.toISOString(), figures };
+  // No budget: still carry the spend so far; the web frame adds the set-a-budget offer.
+  const state = cats.every((c) => c.budgetMinor === null) ? 'empty' : 'ready';
+  return { state, asOf: ctx.now.toISOString(), figures };
 };
 
 const fixed_costs: Builder = async (db, user, _widget, ctx) => {

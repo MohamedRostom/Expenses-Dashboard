@@ -23,7 +23,7 @@ export function widgetsWeatherRefreshJob(deps: {
   source: WeatherSource;
   clock: Clock;
   enqueue: Enqueue;
-  logger?: Logger;
+  logger: Logger;
 }): JobHandler {
   return async () => {
     try {

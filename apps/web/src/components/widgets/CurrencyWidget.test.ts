@@ -55,6 +55,12 @@ describe('CurrencyWidget', () => {
     app.unmount();
   });
 
+  it('formats a whole-number change to one decimal', async () => {
+    const { el, app } = await mountRows([row({ prevChange: { pct: 12, direction: 'up' } })]);
+    expect(el.textContent).toContain('up 12.0%');
+    app.unmount();
+  });
+
   it('says "not available yet" for both changes when changes are pending', async () => {
     const { el, app } = await mountRows([
       row({ changesPending: true, prevChange: null, monthChange: null }),

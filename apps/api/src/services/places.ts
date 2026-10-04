@@ -10,6 +10,7 @@ import {
   type PlaceCandidate,
   type WeatherSource,
 } from '@desk/connectors/open-meteo';
+import type { Logger } from '../adapters/logger.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
 import type { SessionUser } from '../middleware/session.js';
@@ -27,8 +28,9 @@ export function createPlacesService(deps: {
   source: WeatherSource;
   limiter: RateLimiter;
   clock: { now(): Date };
+  logger: Logger;
 }) {
-  const { db, source, limiter, clock } = deps;
+  const { db, source, limiter, clock, logger } = deps;
 
   async function hit(key: string) {
     if (!(await limiter.hit(key, LIMIT, WINDOW_MS))) {
@@ -46,10 +48,17 @@ export function createPlacesService(deps: {
   async function counted<T>(name: string, call: () => Promise<T>): Promise<T> {
     try {
       const out = await call();
-      await recordSourceCall(db, name, true, clock.now());
+      await recordSourceCall(db, name, true, clock.now(), logger);
       return out;
     } catch (e) {
-      await recordSourceCall(db, name, false, clock.now());
+      await recordSourceCall(
+        db,
+        name,
+        false,
+        clock.now(),
+        logger,
+        e instanceof SourcePaused ? 'limit_reached' : undefined,
+      );
       if (e instanceof SourcePaused) {
         throw new ApiError('source_paused', 'Place search is paused, try again later', 503);
       }

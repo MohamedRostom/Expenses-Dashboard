@@ -65,6 +65,42 @@ describe('WidgetStrip', () => {
     app.unmount();
   });
 
+  describe('failed load (T080)', () => {
+    async function mountFailing(err: unknown) {
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.getWidgets).mockRejectedValue(err);
+      vi.mocked(api.getWidgetTypes).mockResolvedValue({ types: [] });
+      const { default: WidgetStrip } = await import('./WidgetStrip.vue');
+      const pinia = createPinia();
+      setActivePinia(pinia);
+      const el = document.createElement('div');
+      document.body.appendChild(el);
+      const app = createApp(WidgetStrip).use(pinia);
+      app.mount(el);
+      for (let i = 0; i < 5; i++) await nextTick();
+      await new Promise((r) => setTimeout(r, 0));
+      await nextTick();
+      return { el, app };
+    }
+
+    it('a 500 shows the error state, not "No widgets yet"', async () => {
+      const { ApiError } = await import('../../api/client.js');
+      const { el, app } = await mountFailing(new ApiError('internal', 'boom', 500));
+      expect(el.textContent).not.toContain('No widgets yet');
+      expect(el.textContent).toContain('Something went wrong');
+      app.unmount();
+    });
+
+    it('a network failure while offline shows the offline copy', async () => {
+      const spy = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false);
+      const { el, app } = await mountFailing(new TypeError('Failed to fetch'));
+      expect(el.textContent).not.toContain('No widgets yet');
+      expect(el.textContent).toContain("You're offline");
+      app.unmount();
+      spy.mockRestore();
+    });
+  });
+
   it('renders frames in the order given', async () => {
     const { el, app } = await mount([
       widget('a', { kind: 'fixed_costs' }),

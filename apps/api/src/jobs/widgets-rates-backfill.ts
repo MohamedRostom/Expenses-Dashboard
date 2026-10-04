@@ -5,6 +5,7 @@ import { and, eq, inArray, min, sql } from 'drizzle-orm';
 import { fxRates, jobs, widgets, users, type Db } from '@desk/db';
 import { isUnsupported, type RatesProvider } from '@desk/connectors/rates';
 import type { JobHandler } from './index.js';
+import type { Logger } from '../adapters/logger.js';
 import { recordSourceCall } from '../services/source-usage.js';
 
 export const BACKFILL_JOB = 'widgets.rates_backfill';
@@ -77,6 +78,7 @@ export function widgetsRatesBackfillJob(
   db: Db,
   provider: RatesProvider,
   clock: { now(): Date },
+  logger: Logger,
 ): JobHandler {
   return async (payload) => {
     const { base, quote } = payload as { base: string; quote: string };
@@ -86,11 +88,19 @@ export function widgetsRatesBackfillJob(
     let outcome;
     try {
       outcome = await provider.range(from, to, base, [quote]);
-    } catch {
-      await recordSourceCall(db, 'frankfurter.range', false, now);
+    } catch (e) {
+      const limited = (e as { status?: number }).status === 429;
+      await recordSourceCall(
+        db,
+        'frankfurter.range',
+        false,
+        now,
+        logger,
+        limited ? 'limit_reached' : undefined,
+      );
       return;
     }
-    await recordSourceCall(db, 'frankfurter.range', true, now);
+    await recordSourceCall(db, 'frankfurter.range', true, now, logger);
     if (isUnsupported(outcome)) return;
     for (const { date, rates } of outcome) {
       const rate = rates[quote];

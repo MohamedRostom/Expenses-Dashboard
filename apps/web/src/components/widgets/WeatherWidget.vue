@@ -66,7 +66,8 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
           stroke-width="1.6"
           stroke-linecap="round"
           stroke-linejoin="round"
-          aria-hidden="true"
+          role="img"
+          :aria-label="d.condition"
         >
           <path :d="path(d.icon)" />
         </svg>

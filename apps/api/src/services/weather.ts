@@ -11,7 +11,7 @@ export type WeatherDeps = {
   db: Db;
   source: WeatherSource;
   clock: { now(): Date };
-  logger?: Logger;
+  logger: Logger;
 };
 
 const DEGRADED_FAILURES = 3;
@@ -71,7 +71,14 @@ export async function refreshReadings(deps: WeatherDeps, opts: { userId?: string
           time_zone = EXCLUDED.time_zone, current = EXCLUDED.current, daily = EXCLUDED.daily,
           fetched_at = EXCLUDED.fetched_at, last_active_at = EXCLUDED.last_active_at, error = NULL`);
     } catch (e) {
-      await recordSourceCall(db, 'open_meteo.forecast', false, now, logger);
+      await recordSourceCall(
+        db,
+        'open_meteo.forecast',
+        false,
+        now,
+        logger,
+        e instanceof SourcePaused ? 'limit_reached' : undefined,
+      );
       if (e instanceof SourcePaused) {
         const until = new Date(now.getTime() + e.retryAfterMs);
         await pauseWeatherUntil(db, until);

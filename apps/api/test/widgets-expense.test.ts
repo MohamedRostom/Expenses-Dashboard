@@ -115,11 +115,14 @@ describe('expense and sunrise widgets', () => {
     expect(w.asOf).toBe(NOW.toISOString());
   });
 
-  it('spend pace is empty when no category has a budget', async () => {
+  it('spend pace with no budget is empty but still carries the spend so far', async () => {
     const u = await user('we-nobudget@example.com');
-    await cat(u.userId, 'Food', { budgetMinor: null });
+    const food = await cat(u.userId, 'Food', { budgetMinor: null });
+    await spend(u.userId, food.id, '2026-09-05', 15000);
     await widget(u, 'spend_pace');
-    expect((await figures(u, 'spend_pace')).state).toBe('empty');
+    const w = await figures(u, 'spend_pace');
+    expect(w.state).toBe('empty');
+    expect(w.figures).toMatchObject({ spentMinor: 15000, budgetMinor: null, pct: null });
   });
 
   it('fixed costs lists only unrecorded fixed categories with their usual basis', async () => {

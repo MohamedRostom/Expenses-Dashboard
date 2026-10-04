@@ -104,6 +104,21 @@ test('with no widgets the strip explains widgets and offers the enabled kinds', 
   await axeCheck(page);
 });
 
+test('a failed widgets load shows the error copy, not the empty state', async ({ page }) => {
+  await mockWidgets(page, (route) =>
+    route.fulfill({
+      status: 500,
+      json: { error: { code: 'internal', message: 'boom' } },
+    }),
+  );
+  await signUpAndVerify(page, uniqueEmail('widgets-500'), PASSWORD);
+  await expect(page).toHaveURL('/');
+
+  const strip = page.getByTestId('widget-strip');
+  await expect(strip.getByText('Something went wrong')).toBeVisible();
+  await expect(page.getByText('No widgets yet')).toBeHidden();
+});
+
 test('add widget lists each kind with a description and a preview', async ({ page }) => {
   await mockWidgets(page, (route) => route.fulfill({ json: list([]) }));
   await signUpAndVerify(page, uniqueEmail('widgets-add'), PASSWORD);
@@ -478,6 +493,9 @@ test.describe('weather and sunrise (shared mock state, serial)', () => {
     await expect(weather.getByRole('img').first()).toBeVisible(); // condition icon, labelled
     await expect(weather).toContainText(/H -?\d+° · L -?\d+°/);
     await expect(weather.getByTestId('outlook-day')).toHaveCount(3);
+    for (const day of await weather.getByTestId('outlook-day').all()) {
+      await expect(day.getByRole('img', { name: /\S/ })).toBeVisible(); // condition word, not hidden
+    }
     await expect(weather).toContainText(/as of \d{2}:\d{2}/);
     const rangeC = (await weather.locator('.desk-weather-range').innerText())
       .match(/-?\d+/g)!
@@ -867,6 +885,7 @@ test.describe('expense widgets (US4)', () => {
     await addWidget(page, 'Spend pace');
     const pace = frame(page, 'Spend pace');
     await expect(pace).toContainText('No budget set', { timeout: 5000 });
+    await expect(pace.locator('.desk-spend-pace-num').first()).toContainText(/\d/); // spend so far
     await expect(pace.getByRole('link', { name: /set a budget/i })).toHaveAttribute(
       'href',
       '/categories',

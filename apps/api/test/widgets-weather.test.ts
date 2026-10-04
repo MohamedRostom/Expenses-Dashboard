@@ -92,6 +92,7 @@ describe('weather figures', () => {
         maxC: d.maxC,
         minC: d.minC,
         icon: expect.any(String),
+        condition: expect.any(String),
       })),
     );
   });

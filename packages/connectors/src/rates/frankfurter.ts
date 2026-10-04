@@ -53,7 +53,10 @@ export class FrankfurterRates implements RatesProvider {
     // Network failure and 5xx throw (a source error, unlike rate(): the backfill job retries).
     const res = await this.fetchImpl(url, { signal: AbortSignal.timeout(10000) });
     if (res.status === 404 || res.status === 422) return { unsupported: true };
-    if (!res.ok) throw new Error(`frankfurter range failed: ${res.status}`);
+    if (!res.ok)
+      throw Object.assign(new Error(`frankfurter range failed: ${res.status}`), {
+        status: res.status,
+      });
 
     const body = (await res.json()) as { rates: Record<string, Record<string, number>> };
     // ponytail: String(number) is the shortest round-trip repr; fine for ECB's <=6 decimals.

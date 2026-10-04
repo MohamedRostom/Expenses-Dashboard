@@ -12,9 +12,9 @@ const FIGURES: Figures = {
   todayMaxC: 22,
   todayMinC: 10,
   outlook: [
-    { date: '2026-10-04', maxC: 18, minC: 8, icon: 'rain' },
-    { date: '2026-10-05', maxC: 0, minC: -5, icon: 'snow' },
-    { date: '2026-10-06', maxC: 25, minC: 15, icon: 'sun' },
+    { date: '2026-10-04', maxC: 18, minC: 8, icon: 'rain', condition: 'Rain' },
+    { date: '2026-10-05', maxC: 0, minC: -5, icon: 'snow', condition: 'Snow' },
+    { date: '2026-10-06', maxC: 25, minC: 15, icon: 'sun', condition: 'Clear' },
   ],
   observedAt: '2026-10-03T11:40:00Z',
   attribution: 'Weather data by Open-Meteo.com',
@@ -42,6 +42,15 @@ describe('WeatherWidget', () => {
     expect(el.querySelector('[data-testid="outlook-day"] [data-icon="rain"]')).not.toBeNull();
     expect(text).toMatch(/as of/i);
     expect(text).toContain('Weather data by Open-Meteo.com');
+    const labels = [...el.querySelectorAll('[data-testid="outlook-day"] svg')].map((s) => [
+      s.getAttribute('role'),
+      s.getAttribute('aria-label'),
+    ]);
+    expect(labels).toEqual([
+      ['img', 'Rain'],
+      ['img', 'Snow'],
+      ['img', 'Clear'],
+    ]);
   });
 
   it('converts to Fahrenheit client-side, rounding only for display', async () => {

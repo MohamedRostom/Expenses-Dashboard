@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm';
+import type { LogEvent } from '../src/adapters/logger.js';
 import { startHarness, type Harness } from './harness.js';
 import { pauseWeatherUntil, weatherPausedUntil } from '../src/services/source-usage.js';
 
@@ -6,16 +7,19 @@ type Cand = { name: string; admin1: string | null; country: string; lat: number;
 
 describe('places API (T034)', () => {
   let h: Harness;
+  const lines: LogEvent[] = [];
+  const callLines = () => lines.filter((e) => e.event === 'widget_source_call');
   const t0 = new Date('2026-09-18T10:00:00Z');
 
   beforeAll(async () => {
-    h = await startHarness();
+    h = await startHarness(undefined, { logger: { log: (e) => void lines.push(e) } });
   });
   afterAll(async () => {
     await h.close();
   });
   beforeEach(async () => {
     h.clock.set(t0);
+    lines.length = 0;
     h.weatherFake.calls.search = 0;
     h.weatherFake.calls.forecast = 0;
     await h.db.execute(sql`DELETE FROM geocode_cache`);
@@ -56,6 +60,21 @@ describe('places API (T034)', () => {
     expect(candidates.map((c) => c.admin1).sort()).toEqual(['England', 'New Hampshire']);
     expect(candidates.every((c) => c.country)).toBe(true);
     expect(await usage('open_meteo.search')).toBe(1);
+    expect(callLines()).toHaveLength(1);
+    expect(callLines()[0]).toMatchObject({ source: 'open_meteo.search', outcome: 'ok' });
+    expect(JSON.stringify(callLines())).not.toMatch(/Manch|userId|ps-a@test/);
+  });
+
+  it('a 429 on search logs one failure line with cause limit_reached', async () => {
+    const a = await h.asUser('ps-429@test');
+    h.weatherFake.pauseSource(60_000);
+    try {
+      expect((await a.get('/places/search?q=Lond')).status).toBe(503);
+    } finally {
+      h.weatherFake.pauseSource(0);
+    }
+    expect(callLines()).toHaveLength(1);
+    expect(callLines()[0]).toMatchObject({ outcome: 'failure', cause: 'limit_reached' });
   });
 
   it('serves a second user from geocode_cache without a source call', async () => {
@@ -150,6 +169,7 @@ describe('places API (T034)', () => {
     expect(body.candidates.map((c) => c.name)).toContain('London');
     expect(h.weatherFake.calls.forecast).toBe(1);
     expect(await usage('open_meteo.forecast')).toBe(1);
+    expect(callLines().filter((e) => e.source === 'open_meteo.forecast')).toHaveLength(1);
     await expectNoPlaceAndCleanAudit(a.userId);
   });
 

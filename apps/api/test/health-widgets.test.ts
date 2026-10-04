@@ -84,6 +84,26 @@ describe('GET /healthz/widgets (FR-019)', () => {
     expect(calls[1]?.cause).toBeUndefined();
   });
 
+  it('a limit_reached failure names its cause on the call line, even before the third failure', async () => {
+    await recordSourceCall(harness.db, 'open_meteo.forecast', false, t0, stub, 'limit_reached');
+    expect(events.at(-1)).toMatchObject({
+      event: 'widget_source_call',
+      outcome: 'failure',
+      cause: 'limit_reached',
+    });
+  });
+
+  it('the summary names limit_reached for open_meteo sources while the pause is in the future', async () => {
+    await recordSourceCall(harness.db, 'open_meteo.forecast', true, t0, stub);
+    await ok();
+    await setPause('2026-09-18T12:00:00.000Z');
+    events.length = 0;
+    await emitSourceSummary(harness.db, stub, t0);
+    const by = (s: string) => events.find((e) => e.source === s);
+    expect(by('open_meteo.forecast')).toMatchObject({ cause: 'limit_reached' });
+    expect(by('open-meteo')?.cause).toBeUndefined();
+  });
+
   it('summary lines carry counts and no user id or place', async () => {
     await ok();
     await fail();

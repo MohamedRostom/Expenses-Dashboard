@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { fxRates, jobs, setGlobalFlag, users } from '@desk/db';
 import { FakeRates } from '@desk/connectors/rates';
+import type { LogEvent } from '../src/adapters/logger.js';
 import { startHarness, type Harness } from './harness.js';
 import { widgetsRatesBackfillJob } from '../src/jobs/widgets-rates-backfill.js';
 import { ratesWarmJob } from '../src/jobs/rates.js';
@@ -21,7 +22,10 @@ const SAT = new Date('2026-09-26T10:00:00Z');
 describe('currency widget', () => {
   let h: Harness;
   const rates = new FakeRates();
-  const backfill = () => widgetsRatesBackfillJob(h.db, rates, h.clock);
+  const lines: LogEvent[] = [];
+  const backfill = () =>
+    widgetsRatesBackfillJob(h.db, rates, h.clock, { log: (e) => void lines.push(e) });
+  const callLines = () => lines.filter((e) => e.event === 'widget_source_call');
 
   const queued = async () =>
     (await h.db.select().from(jobs).where(eq(jobs.name, 'widgets.rates_backfill'))).map(
@@ -58,6 +62,7 @@ describe('currency widget', () => {
 
   it('POST enqueues one backfill per pair and the job upserts the 31-day fixture and counts the call', async () => {
     h.clock.set(WED);
+    lines.length = 0;
     const u = await h.asUser('wc-create@example.com');
     const before = (await usage())[0]!.calls;
     const res = await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
@@ -77,6 +82,8 @@ describe('currency widget', () => {
     expect(rows.every((r) => r.source === 'frankfurter' && r.quote === 'GBP')).toBe(true);
     expect(rows.map((r) => r.rateDate)).not.toContain('2026-09-26'); // Saturday absent
     expect((await usage())[0]!.calls).toBe(before + 1);
+    expect(callLines()).toHaveLength(1);
+    expect(callLines()[0]).toMatchObject({ source: 'frankfurter.range', outcome: 'ok' });
 
     // history now reaches back 30 days: a further add enqueues nothing new
     await h.db.delete(jobs).where(eq(jobs.name, 'widgets.rates_backfill'));
@@ -235,6 +242,20 @@ describe('currency widget', () => {
     }
     await backfill()({ base: 'EUR', quote: 'JPY' }, ctx);
     expect((await h.app.request('/healthz/widgets')).status).toBe(200);
+  });
+
+  it('a 429 from the range call logs one failure line with cause limit_reached', async () => {
+    h.clock.set(WED);
+    lines.length = 0;
+    rates.failRange(true, 429);
+    try {
+      await backfill()({ base: 'EUR', quote: 'JPY' }, ctx);
+    } finally {
+      rates.failRange(false);
+    }
+    expect(callLines()).toHaveLength(1);
+    expect(callLines()[0]).toMatchObject({ outcome: 'failure', cause: 'limit_reached' });
+    await backfill()({ base: 'EUR', quote: 'JPY' }, ctx); // clear the failure streak
   });
 
   it('a pair with no fx_rates row is an error with rate_unavailable', async () => {

@@ -12,6 +12,7 @@ import {
 import { WIDGET_LIMIT } from '@desk/core';
 import type { WeatherSource } from '@desk/connectors/open-meteo';
 import type { AppVariables } from '../app.js';
+import type { Logger } from '../adapters/logger.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
 import { parse } from '../lib/parse.js';
@@ -27,6 +28,7 @@ export function createWidgetsRoutes(
   clock: { now(): Date },
   limiter: RateLimiter,
   weather: WeatherSource,
+  logger: Logger,
 ) {
   const app = new Hono<{ Variables: AppVariables }>();
   const service = createWidgetsService(db, clock);
@@ -35,7 +37,7 @@ export function createWidgetsRoutes(
   async function firstReading(user: SessionUser, row: WidgetRow) {
     if (!row.place || (row.kind !== 'weather' && row.kind !== 'sunrise')) return;
     try {
-      await refreshReadings({ db, source: weather, clock }, { userId: user.id });
+      await refreshReadings({ db, source: weather, clock, logger }, { userId: user.id });
     } catch {
       // never fail the widget request over weather
     }

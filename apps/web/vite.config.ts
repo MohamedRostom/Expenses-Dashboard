@@ -65,8 +65,24 @@ export default defineConfig({
           /^\/notion/,
           /^\/panels/,
           /^\/summary/,
+          /^\/widgets/,
+          /^\/places/,
         ],
         runtimeCaching: [
+          // Spec edge case: an installed PWA opened offline shows the last widget figures.
+          // Exact /widgets only (not /widgets/types or /widgets/refresh); regexp, not a function,
+          // because generateSW serialises this config.
+          {
+            urlPattern: /\/widgets$/,
+            method: 'GET',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'widgets-last',
+              networkTimeoutSeconds: 3,
+              expiration: { maxEntries: 1 },
+              cacheableResponse: { statuses: [200] },
+            },
+          },
           {
             urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
             handler: 'CacheFirst',

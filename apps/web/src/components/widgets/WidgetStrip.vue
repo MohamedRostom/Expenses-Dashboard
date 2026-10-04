@@ -9,6 +9,7 @@ import WeatherWidget from './WeatherWidget.vue';
 import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
+import PanelState from '../PanelState.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -158,7 +159,7 @@ async function onDragEnd() {
     </div>
 
     <EmptyState
-      v-if="loaded && store.widgets.length === 0"
+      v-if="loaded && !store.error && store.widgets.length === 0"
       title="No widgets yet"
       description="Widgets show small, read-only figures such as exchange rates or your spend pace, right above your expenses."
     >
@@ -166,6 +167,12 @@ async function onDragEnd() {
         <p class="desk-widget-offer">Available: {{ enabledTypes.map((t) => t.name).join(', ') }}</p>
       </template>
     </EmptyState>
+
+    <PanelState
+      v-else-if="store.error && store.widgets.length === 0"
+      kind="error"
+      :code="offline ? 'offline' : store.error"
+    />
 
     <div v-else ref="grid" class="desk-widget-grid">
       <WidgetFrame

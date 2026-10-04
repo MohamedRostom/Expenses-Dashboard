@@ -408,7 +408,16 @@ export function createApp(deps: AppDeps) {
 
   app.route('/', createFeedbackRoutes(deps.db, deps.limiter));
 
-  app.route('/', createWidgetsRoutes(deps.db, deps.clock, deps.limiter, deps.weather));
+  app.route(
+    '/',
+    createWidgetsRoutes(
+      deps.db,
+      deps.clock,
+      deps.limiter,
+      deps.weather,
+      deps.logger ?? defaultLogger,
+    ),
+  );
   app.route(
     '/',
     createPlacesRoutes(
@@ -417,6 +426,7 @@ export function createApp(deps: AppDeps) {
         source: deps.weather,
         limiter: deps.limiter,
         clock: deps.clock,
+        logger: deps.logger ?? defaultLogger,
       }),
     ),
   );

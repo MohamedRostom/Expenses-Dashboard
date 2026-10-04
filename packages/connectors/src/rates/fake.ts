@@ -29,6 +29,7 @@ export class FakeRates implements RatesProvider {
 
   private readonly ranges = new Map<string, RangeFixture>();
   private rangeFails = false;
+  private rangeStatus: number | undefined;
 
   constructor(fixtures: Fixture[] = FIXTURES, rangeFixtures: RangeFixture[] = RANGE_FIXTURES) {
     for (const f of rangeFixtures) this.ranges.set(`${f.request.base}|${f.request.quotes}`, f);
@@ -49,8 +50,9 @@ export class FakeRates implements RatesProvider {
   }
 
   /** Test control: make range() throw like a 5xx / network failure. */
-  failRange(on: boolean): void {
+  failRange(on: boolean, status?: number): void {
     this.rangeFails = on;
+    this.rangeStatus = status;
   }
 
   async range(
@@ -59,7 +61,8 @@ export class FakeRates implements RatesProvider {
     base: CurrencyCode,
     quotes: CurrencyCode[],
   ): Promise<RangeOutcome> {
-    if (this.rangeFails) throw new Error('FakeRates: range failed');
+    if (this.rangeFails)
+      throw Object.assign(new Error('FakeRates: range failed'), { status: this.rangeStatus });
     const fixture = this.ranges.get(`${base}|${quotes}`);
     if (!fixture || fixture.response.status !== 200) return { unsupported: true };
 

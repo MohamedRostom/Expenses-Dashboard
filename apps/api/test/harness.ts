@@ -19,6 +19,7 @@ import { CapturingMailer } from '../src/adapters/mailer.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { FakeBreachChecker } from '../src/adapters/breach-checker.js';
 import type { Db as QueryDb } from '../src/adapters/rate-limiter.js';
+import type { Logger } from '../src/adapters/logger.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
@@ -108,6 +109,8 @@ export async function startHarness(
      * care about the host-privacy check pass their own. */
     hostResolver?: HostResolver;
     standardsAllowPrivateHosts?: boolean;
+    /** FR-019: capture log lines (request lines included); defaults to stdout JSON. */
+    logger?: Logger;
   } = {},
 ): Promise<Harness> {
   if (opts.runJobsNow && !opts.withJobs) {
@@ -156,6 +159,7 @@ export async function startHarness(
     breachChecker: new FakeBreachChecker(),
     rates: ratesProvider,
     weather: weatherFake,
+    ...(opts.logger && { logger: opts.logger }),
     jobs: jobRunner,
     runJobsNow: opts.runJobsNow ? () => jobRunner!.runDueJobs() : undefined,
     clock,

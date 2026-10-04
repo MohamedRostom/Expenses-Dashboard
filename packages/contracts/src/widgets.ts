@@ -44,7 +44,13 @@ export const WeatherFigures = z.object({
   todayMaxC: z.number(),
   todayMinC: z.number(),
   outlook: z.array(
-    z.object({ date: z.string(), maxC: z.number(), minC: z.number(), icon: z.string() }),
+    z.object({
+      date: z.string(),
+      maxC: z.number(),
+      minC: z.number(),
+      icon: z.string(),
+      condition: z.string(),
+    }),
   ),
   observedAt: z.string(),
   staleSince: z.string().optional(),

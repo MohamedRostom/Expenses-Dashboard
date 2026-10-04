@@ -28,8 +28,17 @@ describe('widgets weather jobs', () => {
     enqueued.push({ name, runAfter: opts?.runAfter });
     return 'id';
   };
+  const captured: LogEvent[] = [];
+  const capture: Logger = { log: (e) => void captured.push(e) };
+  const callLines = () => captured.filter((e) => e.event === 'widget_source_call');
   const run = () =>
-    widgetsWeatherRefreshJob({ db: h.db, source: h.weatherFake, clock: h.clock, enqueue })({}, ctx);
+    widgetsWeatherRefreshJob({
+      db: h.db,
+      source: h.weatherFake,
+      clock: h.clock,
+      enqueue,
+      logger: capture,
+    })({}, ctx);
   const rows = async (q: ReturnType<typeof sql>) => (await h.db.execute(q)) as unknown as Row[];
   const usage = async (source: string) =>
     Number(
@@ -72,6 +81,7 @@ describe('widgets weather jobs', () => {
     h.weatherFake.pauseSource(0);
     h.weatherFake.failAll(false);
     enqueued.length = 0;
+    captured.length = 0;
     await h.db.execute(sql`DELETE FROM widgets`);
     await h.db.execute(sql`DELETE FROM places`);
     await h.db.execute(sql`DELETE FROM weather_readings`);
@@ -95,6 +105,7 @@ describe('widgets weather jobs', () => {
       await run();
       expect(h.weatherFake.calls.forecast).toBe(2);
       expect(await usage('open_meteo.forecast')).toBe(2);
+      expect(callLines()).toHaveLength(2); // one widget_source_call line per upstream call
       const got = await rows(sql`SELECT lat::text FROM weather_readings ORDER BY lat`);
       expect(got.map((r) => r['lat'])).toEqual(['40.71', '48.86', '51.51']);
     });
@@ -138,6 +149,9 @@ describe('widgets weather jobs', () => {
       h.weatherFake.pauseSource(120_000);
       await run();
       expect(h.weatherFake.calls.forecast).toBe(1);
+      expect(callLines()).toHaveLength(1);
+      expect(callLines()[0]).toMatchObject({ outcome: 'failure', cause: 'limit_reached' });
+      expect(JSON.stringify(callLines())).not.toMatch(/51\.51|userId|wj-429/);
       const until = await weatherPausedUntil(h.db, t0);
       expect(until!.getTime() - t0.getTime()).toBeGreaterThan(100_000);
       expect(
@@ -268,6 +282,7 @@ describe('widgets weather jobs', () => {
         source: boom,
         clock: h.clock,
         enqueue: realEnqueue,
+        logger: capture,
       })({}, ctx);
       await widgetsPurgeJob({ db: badDb, clock: h.clock, enqueue: realEnqueue })({}, ctx);
       expect((await queued()).map((r) => r['name']).sort()).toEqual([

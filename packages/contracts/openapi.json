@@ -5757,9 +5757,12 @@
                 },
                 "icon": {
                   "type": "string"
+                },
+                "condition": {
+                  "type": "string"
                 }
               },
-              "required": ["date", "maxC", "minC", "icon"],
+              "required": ["date", "maxC", "minC", "icon", "condition"],
               "additionalProperties": false
             }
           },
@@ -6097,9 +6100,12 @@
                         },
                         "icon": {
                           "type": "string"
+                        },
+                        "condition": {
+                          "type": "string"
                         }
                       },
-                      "required": ["date", "maxC", "minC", "icon"],
+                      "required": ["date", "maxC", "minC", "icon", "condition"],
                       "additionalProperties": false
                     }
                   },
@@ -6981,9 +6987,12 @@
                             },
                             "icon": {
                               "type": "string"
+                            },
+                            "condition": {
+                              "type": "string"
                             }
                           },
-                          "required": ["date", "maxC", "minC", "icon"],
+                          "required": ["date", "maxC", "minC", "icon", "condition"],
                           "additionalProperties": false
                         }
                       },
@@ -7833,9 +7842,12 @@
                               },
                               "icon": {
                                 "type": "string"
+                              },
+                              "condition": {
+                                "type": "string"
                               }
                             },
-                            "required": ["date", "maxC", "minC", "icon"],
+                            "required": ["date", "maxC", "minC", "icon", "condition"],
                             "additionalProperties": false
                           }
                         },

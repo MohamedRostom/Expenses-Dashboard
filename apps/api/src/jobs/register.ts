@@ -19,6 +19,7 @@ import { feedbackDigestJob, type FeedbackDigestDeps } from './feedback-digest.js
 import type { WeatherSource } from '@desk/connectors/open-meteo';
 import { widgetsWeatherRefreshJob, type Enqueue } from './widgets-weather-refresh.js';
 import { widgetsPurgeJob } from './widgets-purge.js';
+import { logger } from '../adapters/logger.js';
 import type { RateLimiter } from '../adapters/rate-limiter.js';
 
 export function registerAllJobs(deps: {
@@ -45,7 +46,7 @@ export function registerAllJobs(deps: {
   registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
   registerJob(
     'widgets.rates_backfill',
-    widgetsRatesBackfillJob(deps.db, deps.ratesProvider, { now: () => new Date() }),
+    widgetsRatesBackfillJob(deps.db, deps.ratesProvider, { now: () => new Date() }, logger),
   );
   registerJob('rates.retry', ratesRetryJob(deps.db));
   registerJob('housekeeping', housekeepingJob(deps.db, deps.limiter));
@@ -55,7 +56,7 @@ export function registerAllJobs(deps: {
     const { db, weather: source, enqueue } = deps;
     registerJob(
       'widgets.weather_refresh',
-      widgetsWeatherRefreshJob({ db, source, clock, enqueue }),
+      widgetsWeatherRefreshJob({ db, source, clock, enqueue, logger }),
     );
     registerJob('widgets.purge', widgetsPurgeJob({ db, clock, enqueue }));
   }
