@@ -25,7 +25,7 @@ Sections in this order, each mandatory:
 7. **Taste dials**: variance, motion intensity, visual density as recorded from the taste
    skill, each with the chosen value and one sentence of reasoning.
 8. **Mock-ups**: links to `/__ui/mockups/month-view`, `/__ui/mockups/add-expense`,
-   `/__ui/mockups/settings` and the "before" screenshots.
+   `/__ui/mockups/settings`, `/__ui/mockups/month-view-fallback` and the "before" screenshots.
 9. **Fallback**: the refinement variant (every decision `kept`; only scales, motion, states
    and consistency change) used if ADR-0006 is rejected.
 10. **Building a new panel**: the thirty-minute walkthrough (User Story 3).
@@ -72,15 +72,31 @@ three budgets (one over), and the error causes the panels can show. No real data
 
 | Dimension | Values |
 |-----------|--------|
-| Subject | every catalogue story; the three mock-ups; each refreshed screen |
+| Subject | every catalogue story; the four mock-ups; every refreshed screen (18 routes, Today panels and widgets with their flags on); the existing `year.spec.ts` shots |
 | Width × height | 360 × 800, 1280 × 800 |
 | Theme | light (`data-theme="light"`), dark (`data-theme="dark"`) |
-| Renderer | Chromium in the CI container |
-| Tolerance | `maxDiffPixelRatio: 0.002`, animations disabled, fonts self-hosted |
+| Renderer | Chromium in `mcr.microsoft.com/playwright:v<pinned>-noble` (research R6) |
+| Tolerance | `maxDiffPixelRatio: 0.005` set once in config, animations disabled, clock frozen, fonts self-hosted; no per-call override |
 
-Baseline files live in `tests/e2e/tests/visual.spec.ts-snapshots/` and are produced only by
-the `update-snapshots` workflow; a snapshot change in a PR must be an intended one named in
-the PR description.
+Baseline files live next to each spec (`*.spec.ts-snapshots/`) and are produced only in the
+pinned image, by the `update-snapshots` workflow or a local Docker run; a snapshot change in a
+PR must be an intended one named in the PR description. About 150 images in total.
+
+## Drift pending list (`packages/ui/src/drift-pending.json`)
+
+A sorted JSON array of repo-relative paths, e.g. `["apps/web/src/views/BinView.vue"]`.
+Seeded in Slice A from the first drift run; may only shrink; a listed file that is already
+clean fails the test; deleted in Slice D when empty (research R12).
+
+## Journey baseline (`tests/e2e/fixtures/journey-baseline.json`)
+
+```json
+{ "add-expense-foreign": { "taps": 4, "keystrokes": 9, "screens": 2 } }
+```
+
+Values illustrative. One key per core journey: `sign-in`, `add-expense-foreign`,
+`change-month`, `edit-budget`, `open-settings`. Recorded on `main` in Slice A0 before any token
+change; counts may only go down (research R13).
 
 ## Landing screenshots (`apps/landing/public/screenshots/`)
 

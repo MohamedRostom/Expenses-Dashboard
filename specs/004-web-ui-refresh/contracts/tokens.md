@@ -63,3 +63,7 @@ Allowed in `apps/web/src`, `apps/landing/src`, `packages/ui/src/components`:
 Forbidden anywhere outside `tokens.css`: hex or `rgb()`/`hsl()` colours, `font-size` in `px`
 or `rem` literals, `margin`/`padding`/`gap` in `px` or `rem` literals, `transition-duration`
 literals. The test names the file and line of every hit.
+
+Files listed in `packages/ui/src/drift-pending.json` are skipped until their refresh change
+removes them; a listed file that is already clean also fails, so the list can only shrink
+(research R12).

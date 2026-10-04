@@ -46,7 +46,8 @@ not change what the user is promised here.
 - Q: Which screens must exist before the app-screen story starts? → A: The month view, the
   add-expense flow, categories with budgets and settings (roadmap Phases 1–2); the refresh is
   scheduled at the start of Phase 4 as the roadmap already places it, and screens built later
-  adopt the direction through the shared blocks.
+  adopt the direction through the shared blocks. *(Timing superseded 2026-10-04: Phase 4 and
+  specs 002–003 have shipped, so the refresh starts now and covers every screen; see below.)*
 - Q: Which accessibility standard defines "the threshold"? → A: WCAG 2.2 Level AA throughout:
   text contrast 4.5:1 (3:1 for large text and for non-text controls), a visible focus indicator
   at least 2 px thick with 3:1 contrast against the unfocused state, and no motion that cannot
@@ -67,6 +68,45 @@ not change what the user is promised here.
 - Q: What are the desktop layout rules? → A: From 1024 px wide, content is centred within one
   maximum width, tiles sit in a single row, and the category bars and entries table sit side
   by side; nothing stretches beyond the maximum width.
+
+### Session 2026-10-04 (answered by the agent at the owner's request)
+
+- Q: Which screens are in scope now that Phase 4 and specs 002–003 have shipped (about 24
+  views, plus flagged panels and widgets)? → A: Every signed-in screen. The five core-flow
+  screens (month view, add expense, categories with budgets, settings, sign-in) and the Today
+  view are refreshed one change each; every other screen (year and category views, import,
+  bin, capture, onboarding, connections, register/verify/reset, and the spec 002–003 panels and
+  widgets) is refreshed in changes grouped by area, from the blocks, without mock-ups. Flagged
+  screens are refreshed behind their existing flags; no flag changes state.
+- Q: How close must a screen be to its approved snapshot? → A: Snapshots are rendered only in
+  the pinned browser container CI uses, with animations disabled and the clock frozen, and a
+  screen matches when at most 0.5 % of its pixels differ; the rule applies to every visual
+  snapshot in the suite, replacing the fixed pixel allowances already in it.
+- Q: Do the checks that need real people (SC-002, the SC-003 screen-reader pass, SC-006,
+  SC-008) block merging? → A: No; they are `needs-rostom`, recorded in `docs/ROADMAP.md`, and
+  never block a screen change. SC-002 runs as part of the direction review (User Story 1); the
+  screen-reader pass uses NVDA on Windows and VoiceOver on iPhone, once on the preview
+  deployment after the last core screen is refreshed; the feature is not called done until all
+  four results are recorded.
+- Q: What is the "before" count for the zero-regression check? → A: Before the token change
+  merges, each core journey in the automated suite records its taps, keystrokes and screens in
+  a committed baseline file; every screen change asserts its journey counts are equal or lower.
+- Q: Over what area is the 0.5 % snapshot tolerance measured? → A: Per image, and every image
+  is one viewport (360 × 800 or 1280 × 800); content below the first viewport is captured as
+  element snapshots of each panel, never as one full-page image.
+- Q: What counts as a tap, a keystroke and a screen? → A: A tap is each pointer activation; a
+  keystroke is each key press, each typed character included; a screen is each change of route.
+  Opening a sheet or dialog is not a screen; the tap that opens it is counted.
+- Q: Does FR-018 override the snapshot tolerances written in spec 001 (the year view, T100)? →
+  A: Yes; those snapshots are re-baselined under FR-018, and spec 001's tasks stay unedited as
+  a historical record.
+- Q: What does "published" mean for the landing page? → A: Deployed to its public host through
+  the `LANDING_ENABLED` repository variable, which only the owner sets once the product name is
+  decided; local, CI and preview builds are not publication.
+- Q: Which wins when a WCAG 2.2 AA fix needs an extra step that FR-010 forbids? → A:
+  Accessibility, only when the step is unavoidable: the change raises that journey's baseline
+  in the same change, gives the reason in its description, and the owner approves it in
+  review; any other increase fails.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -214,14 +254,22 @@ screenshots on the page are visually identical to the corresponding refreshed ap
   table keeps its alignment.
 - Dark theme on an OLED phone at night: no large pure-white surfaces; text contrast stays within
   the threshold without glare.
+- A screen sits behind a feature flag that is off in production (spec 002–003 panels and
+  widgets): it is refreshed and snapshotted with the flag on in the test environment; the flag
+  itself is not changed by the refresh.
 - The refresh lands while a feature branch is mid-flight: because tokens land first and screens
   follow one at a time, an unmerged screen keeps rendering with the new tokens and is refreshed
-  and re-snapshotted in its own change after merge; a half-refreshed product is expected during
-  Phase 4 and acceptable because nothing is announced yet.
+  and re-snapshotted in its own change after merge; a half-refreshed product is expected while
+  the refresh is in progress and acceptable because nothing is announced yet.
 - A block is needed that the catalogue does not have: it is added to the catalogue with its
   states and documented before the screen that needs it ships; no one-off styling on a screen.
-- The product name is still undecided when the landing page is due: the landing page ships with
-  the working name behind a switch and is not published until the name is chosen.
+- The product name is still undecided when the landing page is due: the landing page is built
+  and reviewed under the working name on local, CI and preview builds, and is not published
+  (deployed to its public host through the `LANDING_ENABLED` repository variable, set only by
+  the owner) until the name is chosen.
+- An accessibility fix needs a step the old flow did not have: WCAG 2.2 AA wins when the step is
+  unavoidable; the change raises that journey's baseline with the reason stated and the
+  owner's approval in review (FR-010).
 
 ## Requirements *(mandatory)*
 
@@ -270,7 +318,12 @@ App screens
   state, text contrast is at least 4.5:1 (3:1 for large text and non-text controls), and no
   motion runs that the device's reduce-motion preference cannot switch off.
 - **FR-010**: The refresh MUST NOT change any workflow: every task a user could complete before
-  MUST take no more taps, keystrokes or screens after.
+  MUST take no more taps, keystrokes or screens after, measured against a baseline file of
+  per-journey counts committed before the token change merges. A tap is each pointer
+  activation, a keystroke each key press (typed characters included), a screen each change of
+  route; opening a sheet or dialog is not a screen. The only permitted increase is an
+  unavoidable WCAG 2.2 AA step, raised in the baseline in the same change with its reason and
+  the owner's approval.
 - **FR-011**: Numeric figures MUST use aligned, tabular digits so amounts in a column can be
   compared by eye; the primary figure of a tile MUST be its most prominent element.
 
@@ -289,8 +342,17 @@ Rollout
 - **FR-017**: The refresh MUST reach users screen by screen: the direction's tokens land in one
   change, then each screen is refreshed in its own change reviewed on the preview deployment;
   there is no runtime switch between the old and new look and never two token sets in the
-  product at once. The app-screen story MUST NOT start before the month view, the add-expense
-  flow, categories with budgets and settings exist.
+  product at once. Every signed-in screen is in scope: the five core-flow screens and the Today
+  view are refreshed one change each, and every other screen, including flagged spec 002–003
+  panels and widgets, in changes grouped by area; flagged screens are refreshed behind their
+  existing flags without changing them.
+- **FR-018**: Visual snapshots MUST be rendered only in the pinned browser container CI uses,
+  with animations disabled and the clock frozen; a screen or block matches its snapshot when at
+  most 0.5 % of its pixels differ. The tolerance is per image and every image is one viewport
+  (360 × 800 or 1280 × 800); content below the first viewport is captured as element
+  snapshots of each panel, never as a full-page image. This applies to every visual snapshot
+  in the suite and overrides tolerances written in earlier specs (spec 001's year-view
+  snapshots are re-baselined under it).
 
 Landing page
 
@@ -301,7 +363,8 @@ Landing page
 Scope
 
 - **FR-015**: The refresh applies to both the signed-in app screens and the marketing landing
-  page; the app screens come first and the landing page last, after the product name is
+  page; the app screens come first and the landing page last. The landing page is published
+  (deployed to its public host through `LANDING_ENABLED`) only after the product name is
   decided.
 - **FR-016**: The direction MAY propose a new visual identity (type family, accent, backgrounds,
   theme treatment) drawn from the reference design systems; a new identity MUST be recorded as
@@ -309,7 +372,10 @@ Scope
   rules that survive regardless are: three theme states, status colours never reused as chart
   series, hand-written charts, and no new runtime dependency. Before acceptance the proposed
   identity MAY appear only in the block catalogue and the coded mock-ups on dev and preview
-  deployments; shipped screens keep the existing system.
+  deployments; shipped screens keep the existing system. Because the constitution (Principle VI)
+  names the type family and the green accent, accepting an identity that replaces either MUST
+  also amend the constitution in the same change (a MINOR version, with ADR-0006 as its ADR,
+  merged only by the owner) and update `CLAUDE.md`; choosing the fallback needs no amendment.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -320,7 +386,8 @@ Scope
 - **Token**: a named value (type size, spacing step, colour role, motion duration) defined once
   and referenced everywhere.
 - **Visual snapshot**: the recorded appearance of a block or screen in a given theme and width,
-  compared on every change.
+  compared on every change; one viewport or one panel per image, matching when at most 0.5 % of
+  its pixels differ (FR-018).
 
 ## Success Criteria *(mandatory)*
 
@@ -332,13 +399,15 @@ Scope
   outside the project choose the "after" as the more finished product.
 - **SC-003**: Every refreshed screen passes the accessibility audit with zero serious or critical
   issues at 360 px and desktop width in both themes, and keyboard-only completion of the core
-  flows succeeds in a test with a screen reader.
+  flows succeeds in a test with a screen reader (NVDA on Windows and VoiceOver on iPhone, run
+  once on the preview deployment by the owner; `needs-rostom`).
 - **SC-004**: Performance and accessibility budgets on the app and the landing page stay at or
   above their current thresholds (performance ≥ 90, accessibility ≥ 95) on the throttled mobile
   profile after the refresh.
 - **SC-005**: Zero workflow regressions: each core flow (sign in, add expense, change month, edit
-  budget, open settings) takes the same or fewer taps and keystrokes than before, measured in
-  the same automated journeys.
+  budget, open settings) takes the same or fewer taps, keystrokes and screens than the counts
+  in the baseline file committed before the token change, measured in the same automated
+  journeys.
 - **SC-006**: A contributor builds a new panel from the documented blocks alone in under thirty
   minutes and it passes the visual and accessibility checks first time.
 - **SC-007**: After the refresh, no screen contains a type, spacing or colour value outside the
@@ -370,11 +439,13 @@ its own, and any output that conflicts with a fixed design decision is handled b
 
 ## Assumptions
 
-- The refresh sits inside roadmap Phase 4 ("Premium UI, PWA, landing page") and refines feature
-  F6 from the platform decision record; it does not add product features and does not change
-  the roadmap order. It starts at the beginning of Phase 4, when the month view, add-expense
-  flow, categories and settings exist; screens built later adopt the direction through the
-  shared blocks (User Story 3).
+- The refresh refines feature F6 from the platform decision record (roadmap Phase 4, "Premium
+  UI, PWA, landing page"); it does not add product features. Phase 4 and specs 002–003 have
+  shipped, so it starts on the product as built and covers every signed-in screen (FR-017);
+  screens built afterwards adopt the direction through the shared blocks (User Story 3).
+- SC-002, the SC-003 screen-reader pass, SC-006 and SC-008 need real people and are
+  `needs-rostom`: they never block a screen change, and the feature is not called done until
+  their results are recorded in `docs/ROADMAP.md`.
 - The direction is free to propose a new visual identity (FR-016); until ADR-0006 is accepted
   the existing design system stays in force, the direction presents the identity as a
   kept/adjusted/replaced table (FR-002) so the owner approves one delta, not many, and a
@@ -392,7 +463,8 @@ its own, and any output that conflicts with a fixed design decision is handled b
   section are authoring aids used during planning and development, not part of the shipped
   product.
 - The landing page story waits for the product name decision to be published, but its layout
-  and blocks can be built under the working name.
+  and blocks can be built under the working name; it is already built and has a deploy job
+  gated by `LANDING_ENABLED` (off).
 - English interface only, as for the rest of the product.
 - Out of scope: new features or data, changes to any workflow, a public design-system site,
   per-user themes beyond light, dark and system, and marketing content beyond the three-step

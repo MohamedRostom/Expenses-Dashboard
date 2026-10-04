@@ -63,6 +63,40 @@
 - [ ] CHK036 Is the licence assumption for the reference DESIGN.md files (MIT for the collection, no claim over brand identity) validated against the constraint that no brand asset is reused, and is "principles and scales only" precise enough to review? [Assumption, Spec §Edge Cases, Research R2]
 - [ ] CHK037 Is the assumption that the six tools alter only the owner's local configuration and never the shipped product recorded where `/speckit-tasks` will see it, so no tool output is committed by accident? [Assumption, Spec §Design workflow, Research R11]
 
+## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Completeness
+
+- [ ] CHK038 Does the spec name the screens in scope, or point at a canonical list, so that "every signed-in screen" in FR-017 has a boundary a reviewer can check, including screens added by other features while the refresh is in progress? [Completeness, Spec §FR-017]
+- [ ] CHK039 Is placement stated for the parts that are not routes (`HelloView`, the feedback widget, version history, month compare) in the core and grouped changes, or is it left implicit? [Completeness, Spec §FR-017, Plan §Phase Delivery Map]
+- [ ] CHK040 Does the spec say how flagged screens are put into the test environment (flags on), and whether their snapshots and audits gate a merge while the flag is off in production? [Gap, Spec §Edge Cases, §FR-017]
+- [ ] CHK041 Is it stated whether a screen added by another feature (for example a spec 005 fix) after its area's refresh change has merged must be built refreshed from the start? [Coverage, Spec §Edge Cases]
+- [ ] CHK042 Is the shrinking-to-zero path for the drift check (the pending-files list) reflected in the spec, or only in the plan, given SC-007 states only the end state? [Gap, Spec §SC-007, Research R12]
+
+## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Clarity
+
+- [ ] CHK043 Is "the pinned browser container CI uses" in FR-018 specific enough to review without the plan (who pins it, and how its version is kept equal to the test library's)? [Clarity, Spec §FR-018]
+- [ ] CHK044 Is the 0.5 % tolerance stated per image and over a defined area (viewport, full page or element)? A full-page shot of a long screen dilutes a local change below the threshold. [Ambiguity, Spec §FR-018]
+- [ ] CHK045 Are "taps, keystrokes and screens" defined (does typing nine characters count as nine; is an opened sheet a screen)? [Clarity, Spec §FR-010, §SC-005]
+
+## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Consistency
+
+- [ ] CHK046 Does the SC-005 journey list ("add expense") match US2's independent test ("add an expense in a foreign currency"), so the baseline file and the acceptance test record the same flow? [Consistency, Spec §SC-005, §US2]
+- [ ] CHK047 Do FR-004 (mock-ups for month view, add expense, settings, fallback month view) and FR-017 (six screens, one change each, including categories, sign-in and Today) agree, and is the absence of a Today mock-up stated as intentional? [Consistency, Spec §FR-004, §FR-017, §Clarifications]
+- [ ] CHK048 Does the 2026-10-04 clarification ("baseline recorded before the token change merges") fit FR-017's "tokens land in one change" without implying an extra pre-token change the spec does not name? [Consistency, Spec §Clarifications 2026-10-04, §FR-017, Plan Slice A0]
+- [ ] CHK049 Does FR-018 ("applies to every visual snapshot in the suite") override a tolerance written in another spec's tasks (spec 001's year-view snapshots), and does the spec say so explicitly? [Conflict, Spec §FR-018]
+- [ ] CHK050 Do the Assumptions (SC-006 is `needs-rostom`) and the plan (the agent may run the contributor exercise and record it) agree on who satisfies SC-006? [Conflict, Spec §Assumptions, §SC-006, Plan §Phase Delivery Map]
+- [ ] CHK051 Is the landing-page edge case ("ships with the working name behind a switch and is not published") consistent with the landing page already being built and deployed to staging in Phase 4? Is "published" defined (production only, or any public URL)? [Conflict, Spec §Edge Cases, §FR-015, Research §Owner decisions]
+
+## Re-check after the 2026-10-04 clarifications and re-plan: Acceptance Criteria Quality
+
+- [ ] CHK052 Is the "results are recorded" condition for done given a location and a format (date, pass or fail, who ran it) in `docs/ROADMAP.md`? [Measurability, Spec §Assumptions]
+- [ ] CHK053 Does SC-003 state a pass condition for the screen-reader pass (which flows, and what counts as completing them) beyond naming NVDA and VoiceOver? [Measurability, Spec §SC-003]
+
+## Re-check after the 2026-10-04 clarifications and re-plan: Edge Cases, Dependencies and Assumptions
+
+- [ ] CHK054 Is the conflict handled when an accessibility fix (for example a focus trap that needs Esc) would raise a journey count that FR-010 forbids to rise, and does the spec say which requirement wins? [Conflict, Edge Case, Spec §FR-009, §FR-010]
+- [ ] CHK055 Is a bulk re-baseline (a browser or font update that changes every image) allowed, and how is it reviewed so it cannot hide a real regression? [Edge Case, Gap, Spec §FR-018]
+- [ ] CHK056 Are the environment assumptions behind FR-018 (Docker available locally, host networking on the CI runner) recorded, with the CI workflow as the fallback when local Docker is unavailable? [Assumption, Research R6, Plan §Technical Context]
+
 ## Notes
 
 - Mark items `[x]` only after review confirms the requirement-quality criterion is satisfied
@@ -70,3 +104,5 @@
 - `/speckit-implement` reads checklist checkbox state as a gate and must not modify markers
 - `checklists/requirements.md` has a separate built-in lifecycle maintained by `/speckit-specify` and `/speckit-clarify`
 - Items most likely to change the spec text: CHK001, CHK005, CHK020, CHK021, CHK022 (one conflict, four gaps around the mock-ups and rollout)
+- 2026-10-04: the spec's second clarification session bears on CHK016 (screen reader named in SC-003), CHK027 (people-based criteria are `needs-rostom` and gate "done", not merges) and CHK028 (SC-005 baseline file); the re-plan bears on CHK008 (charts restyled, contracts/blocks.md) and CHK035 (prerequisites marked built in research). Their markers are left for the reviewer.
+- Items from the 2026-10-04 re-check most likely to change the spec text: CHK044, CHK045, CHK049, CHK051, CHK054.
