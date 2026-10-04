@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// simplified: animates background-position, not opacity/transform; revisit at the screen refresh
 withDefaults(defineProps<{ height?: string; width?: string }>(), {
   height: '1rem',
   width: '100%',
@@ -11,7 +12,7 @@ withDefaults(defineProps<{ height?: string; width?: string }>(), {
 
 <style scoped>
 .desk-skeleton {
-  border-radius: 4px;
+  border-radius: var(--radius-sm);
   background: linear-gradient(
     90deg,
     color-mix(in srgb, var(--color-fg) 8%, transparent) 25%,

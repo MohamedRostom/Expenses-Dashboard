@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 
 // ponytail: copy keyed by string here, not @desk/contracts's ErrorCode — keeps
 // @desk/ui dependency-free. Callers pass ErrorCodeT values, which widen fine.
@@ -33,10 +33,16 @@ const FALLBACK = { title: 'Something went wrong', description: 'Please try again
 
 const props = defineProps<{ code?: string; title?: string; description?: string }>();
 const copy = computed(() => (props.code && COPY[props.code]) || FALLBACK);
+
+// role="alert" only on the first render so a re-render with new props does not re-announce.
+const announce = ref(true);
+onMounted(() => {
+  announce.value = false;
+});
 </script>
 
 <template>
-  <div class="desk-error-state">
+  <div class="desk-error-state" :role="announce ? 'alert' : undefined">
     <p class="desk-error-title">{{ title ?? copy.title }}</p>
     <p class="desk-error-desc">{{ description ?? copy.description }}</p>
     <div v-if="$slots.action" class="desk-error-action"><slot name="action" /></div>
@@ -48,11 +54,11 @@ const copy = computed(() => (props.code && COPY[props.code]) || FALLBACK);
   font-family: var(--font-sans);
   color: var(--color-fg);
   text-align: center;
-  padding: 2rem 1rem;
+  padding: var(--space-8) var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-error-title {
   font-weight: 600;

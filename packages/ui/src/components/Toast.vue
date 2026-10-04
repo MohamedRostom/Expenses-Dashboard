@@ -1,7 +1,23 @@
 <script setup lang="ts">
-import { useToast } from '../composables/useToast.js';
+import { useToast, type ToastMessage } from '../composables/useToast.js';
 
-const { toasts, dismiss } = useToast();
+const { toasts, dismiss, pause, resume } = useToast();
+
+// Timer pauses while hovered or focused; resumes only when neither holds it.
+const held = new Map<number, { hover: boolean; focus: boolean }>();
+function hold(id: number, key: 'hover' | 'focus', on: boolean) {
+  const h = held.get(id) ?? { hover: false, focus: false };
+  const was = h.hover || h.focus;
+  h[key] = on;
+  held.set(id, h);
+  const now = h.hover || h.focus;
+  if (now && !was) pause(id);
+  else if (!now && was) resume(id);
+}
+function undo(t: ToastMessage) {
+  t.undo?.();
+  dismiss(t.id);
+}
 </script>
 
 <template>
@@ -12,9 +28,17 @@ const { toasts, dismiss } = useToast();
         :key="t.id"
         class="desk-toast"
         :class="t.variant"
+        :role="t.variant === 'critical' ? 'alert' : 'status'"
         @click="dismiss(t.id)"
+        @mouseenter="hold(t.id, 'hover', true)"
+        @mouseleave="hold(t.id, 'hover', false)"
+        @focusin="hold(t.id, 'focus', true)"
+        @focusout="hold(t.id, 'focus', false)"
       >
         {{ t.text }}
+        <button v-if="t.undo" type="button" class="desk-toast-undo" @click.stop="undo(t)">
+          Undo
+        </button>
       </div>
     </div>
   </Teleport>
@@ -23,11 +47,11 @@ const { toasts, dismiss } = useToast();
 <style scoped>
 .desk-toast-stack {
   position: fixed;
-  bottom: 1rem;
-  right: 1rem;
+  bottom: var(--space-4);
+  right: var(--space-4);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
   z-index: 200;
 }
 .desk-toast {
@@ -44,5 +68,24 @@ const { toasts, dismiss } = useToast();
 }
 .desk-toast.critical {
   background: var(--color-critical);
+}
+.desk-toast.success {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+}
+.desk-toast-undo {
+  margin-left: var(--space-3);
+  font: inherit;
+  font-weight: 600;
+  color: inherit;
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.desk-toast-undo:focus-visible,
+.desk-toast:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 </style>
