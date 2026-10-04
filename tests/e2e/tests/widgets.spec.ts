@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { expect, test, type Page, type Route } from '@playwright/test';
 import {
   axeCheck,
@@ -359,7 +360,7 @@ type ApiWidget = {
   figures?: Record<string, unknown>;
 };
 
-const rnd = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0]! % n;
+const rnd = (n: number) => randomInt(n);
 const letters = (n: number) =>
   Array.from({ length: n }, () => 'abcdefghijklmnop'[rnd(16)]).join('');
 
