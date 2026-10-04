@@ -328,6 +328,8 @@ One developer working evenings (constitution rationale), with the main session d
 
 **Order**: T087 → T088 → T089 touch the same path (place → reading) and run in sequence; T090–T098 are independent ([P] where the file is not shared). Below-threshold notes from the same review (the `as WidgetsResponseT['widgets']` cast in `present()`, no CHECK constraint on `widgets.kind`, `daily[0]!`) are not tasks; reopen them if corrupt data ever reaches `GET /widgets`.
 
+**Decisions taken while implementing T087–T098 (2026-10-04)**: T087's failure path stores `'UTC'` as a placeholder zone (the column is NOT NULL; no figure reads it before a successful fetch overwrites it). T091's "stop re-queuing" is a permanent `jobs` row (`status 'done'`, `error 'unsupported'`) that `enqueueRatesBackfill` checks; delete it to retry the pair. T092 took the "re-enqueue first" option, so one bad pair still fails `rates.warm` and the job runner retries it. The audit entry "place chosen" listed in `data-model.md` was found missing and added as `place.chosen`.
+
 ---
 
 ## Phase 10: Spec wording pass from the requirements-quality review (2026-10-04)

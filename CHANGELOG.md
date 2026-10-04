@@ -26,6 +26,13 @@ All notable changes to this project are recorded here, following [Keep a Changel
   - Rate changes always show one decimal place.
   - An installed app opened offline shows the last widget figures.
   - Every weather and rate source call is logged, and the logs name `limit_reached` when a source hits its limit.
+- Widgets (PR #26 review, T087–T098):
+  - Weather and sunrise dates use the time zone the weather source reports for the place, so one user's bad zone can no longer change another user's dates.
+  - The first weather reading fetched when a place is chosen is rate-limited (10 a minute per user), and its failures are logged.
+  - Database errors during a weather refresh are no longer counted as weather-source failures.
+  - A failing rates history request fails its job so it is retried; a currency pair the source does not publish is logged once and not retried.
+  - Choosing a place is recorded in the audit trail (`place.chosen`).
+  - The add-widget sheet shows an error when the widget list fails to load, and place search and widget settings word their errors by cause (paused, rate-limited, unreachable, signed out).
 - `deploy-fly`'s promote-production job deploys with `infra/fly/fly.toml` (it failed on the machineless production app) and rolls back by redeploying the previous image (`flyctl releases rollback` doesn't exist); `jobs-safety-net` runs the current release image instead of a nonexistent `:latest`.
 - The post-deploy smoke is seven atomic tests, one concern each (health, sign-up, add, edit, delete, currency change, account deletion), each on its own API-created account, instead of one chained round trip.
 - Sign-up no longer fails when the verification email can't be sent (the account was saved but the request 500'd, and retries silently did nothing). Unverified accounts can now sign in for 7 days; Settings shows an "Unverified" badge with "Resend verification email"; after 7 days sign-in is locked until verified, and housekeeping only purges unverified accounts that never signed in (FR-001 revised).
