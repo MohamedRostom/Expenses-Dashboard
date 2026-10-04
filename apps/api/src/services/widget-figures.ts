@@ -22,7 +22,7 @@ import { toCategoryRow, toExpenseRow } from '../routes/summary.js';
 import { todayInTimeZone } from './capture.js';
 import { weatherPausedUntil } from './source-usage.js';
 
-export type WidgetFigures = {
+type WidgetFigures = {
   state: WidgetStateT;
   asOf: string;
   cause?: WidgetCauseT;
@@ -151,6 +151,7 @@ async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContex
   }
   const stale = ctx.now.getTime() - r.fetchedAt.getTime() > STALE_AFTER_MS;
   return {
+    timeZone: r.timeZone,
     current: r.current as Forecast['current'],
     daily: r.daily as Forecast['daily'],
     state: (stale || cause ? 'stale' : 'ready') as WidgetStateT,
@@ -210,8 +211,8 @@ const sunrise: Builder = async (db, user, widget, ctx) => {
       sunrise: today.sunrise,
       sunset: today.sunset,
       daylightSeconds: today.daylightSeconds,
-      placeTimeZone: widget.place!.timeZone,
-      showZone: widget.place!.timeZone !== user.timeZone,
+      placeTimeZone: r.timeZone,
+      showZone: r.timeZone !== user.timeZone,
       ...(polar && { polar }),
       attribution: WEATHER_ATTRIBUTION,
     },

@@ -12,7 +12,7 @@ import {
 const STALE_MS = 3_600_000;
 const ACTIVE_MS = 24 * 3_600_000;
 
-export type WeatherDeps = {
+type WeatherDeps = {
   db: Db;
   source: WeatherSource;
   clock: { now(): Date };
@@ -30,13 +30,13 @@ async function sourceDegraded(db: Db, now: Date): Promise<boolean> {
   return rows.length > 0;
 }
 
-type Due = { lat: string; lon: string; tz: string; active: string | null };
+type Due = { lat: string; lon: string; active: string | null };
 
 /**
  * Fetches one forecast per distinct rounded (lat, lon). Job path: places of users active in the
  * last 24h whose reading is missing or older than 1h. Inline path (`userId`): that user's places
- * with no reading yet. Source failures never throw; only rounded coordinates and the stored
- * time zone reach the source.
+ * with no reading yet. Source failures never throw; only rounded coordinates reach the source, and the
+ * stored zone is always the one the source returns for them (`auto`), never a client-sent one.
  */
 export async function refreshReadings(deps: WeatherDeps, opts: { userId?: string } = {}) {
   const { db, source, clock, logger } = deps;
@@ -54,26 +54,17 @@ export async function refreshReadings(deps: WeatherDeps, opts: { userId?: string
           AND (r.lat IS NULL OR r.fetched_at < ${staleBefore}::timestamptz)`;
   const due = (await db.execute(sql`
     SELECT p.lat::text AS lat, p.lon::text AS lon,
-           coalesce(r.time_zone, min(p.time_zone)) AS tz,
            max(u.last_active_at)::text AS active
     FROM places p
     JOIN users u ON u.id = p.user_id
     LEFT JOIN weather_readings r ON r.lat = p.lat AND r.lon = p.lon
     WHERE ${scope}
-    GROUP BY p.lat, p.lon, r.time_zone`)) as unknown as Due[];
+    GROUP BY p.lat, p.lon`)) as unknown as Due[];
 
   for (const d of due) {
+    let f;
     try {
-      const f = await source.forecast(Number(d.lat), Number(d.lon), d.tz);
-      await recordSourceCall(db, 'open_meteo.forecast', true, now, logger);
-      await db.execute(sql`
-        INSERT INTO weather_readings (lat, lon, time_zone, current, daily, fetched_at, last_active_at, error)
-        VALUES (${d.lat}, ${d.lon}, ${f.timeZone}, ${JSON.stringify(f.current)}::jsonb,
-                ${JSON.stringify(f.daily)}::jsonb, ${iso}::timestamptz,
-                coalesce(${d.active}::timestamptz, ${iso}::timestamptz), NULL)
-        ON CONFLICT (lat, lon) DO UPDATE SET
-          time_zone = EXCLUDED.time_zone, current = EXCLUDED.current, daily = EXCLUDED.daily,
-          fetched_at = EXCLUDED.fetched_at, last_active_at = EXCLUDED.last_active_at, error = NULL`);
+      f = await source.forecast(Number(d.lat), Number(d.lon), 'auto');
     } catch (e) {
       await recordSourceCall(
         db,
@@ -95,10 +86,23 @@ export async function refreshReadings(deps: WeatherDeps, opts: { userId?: string
         return; // the quota is shared; every further call would be refused too
       }
       // keep the old current/daily; B2 reads `error` as cause source_unreachable
+      // time_zone is NOT NULL: 'UTC' is a placeholder only a failed first call can leave; the next
+      // success overwrites it, and no figure reads the zone without a stored forecast.
       await db.execute(sql`
         INSERT INTO weather_readings (lat, lon, time_zone, last_active_at, error)
-        VALUES (${d.lat}, ${d.lon}, ${d.tz}, coalesce(${d.active}::timestamptz, ${iso}::timestamptz), 'source_unreachable')
+        VALUES (${d.lat}, ${d.lon}, 'UTC', coalesce(${d.active}::timestamptz, ${iso}::timestamptz), 'source_unreachable')
         ON CONFLICT (lat, lon) DO UPDATE SET error = 'source_unreachable'`);
+      continue;
     }
+    // A failure below (DB, mapping) is not the source's fault: it propagates unrecorded.
+    await recordSourceCall(db, 'open_meteo.forecast', true, now, logger);
+    await db.execute(sql`
+      INSERT INTO weather_readings (lat, lon, time_zone, current, daily, fetched_at, last_active_at, error)
+      VALUES (${d.lat}, ${d.lon}, ${f.timeZone}, ${JSON.stringify(f.current)}::jsonb,
+              ${JSON.stringify(f.daily)}::jsonb, ${iso}::timestamptz,
+              coalesce(${d.active}::timestamptz, ${iso}::timestamptz), NULL)
+      ON CONFLICT (lat, lon) DO UPDATE SET
+        time_zone = EXCLUDED.time_zone, current = EXCLUDED.current, daily = EXCLUDED.daily,
+        fetched_at = EXCLUDED.fetched_at, last_active_at = EXCLUDED.last_active_at, error = NULL`);
   }
 }

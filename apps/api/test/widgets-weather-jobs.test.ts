@@ -4,6 +4,7 @@ import { setGlobalFlag } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 import { widgetsWeatherRefreshJob, ensureWidgetJobs } from '../src/jobs/widgets-weather-refresh.js';
 import { widgetsPurgeJob } from '../src/jobs/widgets-purge.js';
+import { refreshReadings } from '../src/services/weather.js';
 import { weatherPausedUntil } from '../src/services/source-usage.js';
 import type { Logger, LogEvent } from '../src/adapters/logger.js';
 
@@ -181,6 +182,28 @@ describe('widgets weather jobs', () => {
       );
       expect(r).toEqual({ error: 'source_unreachable', t: '1' });
       expect(await usage('open_meteo.forecast')).toBe(1);
+    });
+
+    // T090: only source.forecast errors are source failures.
+    it('a DB failure on the upsert is not blamed on the source and propagates', async () => {
+      const a = await user('wj-dbfail@test', 1);
+      await place(a.userId, '51.51', '-0.13');
+      await h.db.execute(sql`
+        CREATE OR REPLACE FUNCTION wr_boom() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'upsert boom'; END $$ LANGUAGE plpgsql`);
+      await h.db.execute(
+        sql`CREATE TRIGGER wr_boom BEFORE INSERT ON weather_readings FOR EACH ROW EXECUTE FUNCTION wr_boom()`,
+      );
+      try {
+        await expect(
+          refreshReadings({ db: h.db, source: h.weatherFake, clock: h.clock, logger: capture }),
+        ).rejects.toMatchObject({ cause: { message: /upsert boom/ } }); // drizzle wraps the pg error
+      } finally {
+        await h.db.execute(sql`DROP TRIGGER wr_boom ON weather_readings`);
+      }
+      expect(callLines().filter((e) => e['outcome'] === 'failure')).toHaveLength(0);
+      expect(await rows(sql`SELECT 1 FROM weather_readings WHERE error IS NOT NULL`)).toHaveLength(
+        0,
+      );
     });
 
     it('re-enqueues itself one minute later', async () => {

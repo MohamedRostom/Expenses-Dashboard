@@ -36,10 +36,21 @@ export function createWidgetsRoutes(
   /** Best-effort first reading for a new/changed place; the job and refresh cover the rest. */
   async function firstReading(user: SessionUser, row: WidgetRow) {
     if (!row.place || (row.kind !== 'weather' && row.kind !== 'sunrise')) return;
+    // Same budget as /places/*: a PATCH loop over fresh cells must not drain the shared quota.
+    if (!(await limiter.hit(`widgets.place:${user.id}`, 10, 60_000))) return;
     try {
       await refreshReadings({ db, source: weather, clock, logger }, { userId: user.id });
-    } catch {
+    } catch (error) {
       // never fail the widget request over weather
+      logger.log({
+        requestId: '',
+        hashedUserId: null,
+        route: '/widgets',
+        status: 0,
+        durationMs: 0,
+        event: 'widget_first_reading_failed',
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

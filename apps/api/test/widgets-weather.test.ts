@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
 import { setGlobalFlag, users } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
+import type { LogEvent } from '../src/adapters/logger.js';
 
 // T035 (figures half) / T044: weather figures builder (spec 003 US2).
 
@@ -60,6 +61,7 @@ describe('weather figures', () => {
   beforeAll(async () => {
     h = await startHarness();
     await setGlobalFlag(h.db, 'widgets.weather', true);
+    await setGlobalFlag(h.db, 'widgets.sunrise', true);
   }, 120_000);
   afterAll(async () => {
     await h.close();
@@ -155,10 +157,81 @@ describe('weather figures', () => {
     expect(rows[0]!.n).toBe(1);
   });
 
+  // T087: a client-supplied zone never reaches the shared reading.
+  it("user A's bogus zone does not decide user B's zone for the same cell", async () => {
+    const a = await h.asUser('ww-zone-a@example.com');
+    const bogus = { ...PLACE, timeZone: 'Pacific/Auckland' };
+    expect((await a.post('/widgets', { kind: 'sunrise', settings: {}, place: bogus })).status).toBe(
+      201,
+    );
+    const b = await h.asUser('ww-zone-b@example.com');
+    expect((await b.post('/widgets', { kind: 'sunrise', settings: {}, place: PLACE })).status).toBe(
+      201,
+    );
+    const [r] = (await h.db.execute(sql`SELECT time_zone FROM weather_readings`)) as unknown as {
+      time_zone: string;
+    }[];
+    expect(r!.time_zone).toBe('Europe/London');
+    for (const u of [a, b]) {
+      const w = (await j(await u.get('/widgets'))).widgets.find(
+        (x: { kind: string }) => x.kind === 'sunrise',
+      );
+      expect(w.figures.placeTimeZone).toBe('Europe/London');
+    }
+  });
+
   it('temperatureUnit round-trips PATCH /me to GET /widgets', async () => {
     const u = await h.asUser('ww-unit@example.com');
     expect((await u.patch('/me', { temperatureUnit: 'F' })).status).toBe(200);
     expect((await j(await u.get('/widgets'))).temperatureUnit).toBe('F');
     await h.db.update(users).set({ temperatureUnit: 'C' }).where(eq(users.id, u.userId));
+  });
+});
+
+describe('inline first reading', () => {
+  let h: Harness;
+  const lines: LogEvent[] = [];
+  const at = (i: number) => ({ ...PLACE, name: `P${i}`, lat: 10 + i, lon: 20 });
+
+  beforeAll(async () => {
+    h = await startHarness(undefined, { logger: { log: (e) => void lines.push(e) } });
+    await setGlobalFlag(h.db, 'widgets.weather', true);
+  }, 120_000);
+  afterAll(async () => {
+    await h.close();
+  });
+
+  // T088
+  it('the eleventh place change in a minute makes no forecast call and still answers 200', async () => {
+    h.clock.set(NOW);
+    h.weatherFake.calls.forecast = 0;
+    const u = await h.asUser('ww-limit@example.com');
+    const created = await u.post('/widgets', { kind: 'weather', settings: {}, place: at(0) });
+    expect(created.status).toBe(201);
+    const id = (await j(created)).widget.id;
+    for (let i = 1; i < 10; i++) {
+      expect((await u.patch(`/widgets/${id}`, { place: at(i) })).status).toBe(200);
+    }
+    expect(h.weatherFake.calls.forecast).toBe(10);
+    expect((await u.patch(`/widgets/${id}`, { place: at(10) })).status).toBe(200);
+    expect(h.weatherFake.calls.forecast).toBe(10);
+  });
+
+  // T089
+  it('a failing readings upsert is logged as widget_first_reading_failed and the request still succeeds', async () => {
+    h.clock.set(new Date(NOW.getTime() + 3_600_000)); // fresh limiter window
+    await h.db.execute(sql`
+      CREATE OR REPLACE FUNCTION wr_boom() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'upsert boom'; END $$ LANGUAGE plpgsql`);
+    await h.db.execute(
+      sql`CREATE TRIGGER wr_boom BEFORE INSERT ON weather_readings FOR EACH ROW EXECUTE FUNCTION wr_boom()`,
+    );
+    try {
+      const u = await h.asUser('ww-log@example.com');
+      const res = await u.post('/widgets', { kind: 'weather', settings: {}, place: at(50) });
+      expect(res.status).toBe(201);
+      expect(lines.filter((e) => e['event'] === 'widget_first_reading_failed')).toHaveLength(1);
+    } finally {
+      await h.db.execute(sql`DROP TRIGGER wr_boom ON weather_readings`);
+    }
   });
 });
