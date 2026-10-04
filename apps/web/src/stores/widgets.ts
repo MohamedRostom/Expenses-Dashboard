@@ -140,6 +140,8 @@ export const useWidgetsStore = defineStore('widgets', {
       poll.handle = setTimeout(tick, POLL_MS);
       poll.onVisibility = () => {
         if (document.visibilityState !== 'visible') return;
+        // Not silent: load() records its failure in `error` (the strip shows it) before rethrowing;
+        // a failed refresh is best-effort and the load that follows shows what the server has.
         void this.refreshIfStale(new Date())
           .catch(() => {})
           .then(() => this.load())

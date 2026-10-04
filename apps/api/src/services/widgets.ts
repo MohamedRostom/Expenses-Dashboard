@@ -255,6 +255,8 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
         else if (body.placeId) placeId = await ownedPlaceId(tx, user.id, body.placeId);
         if (body.kind === 'sunrise' && !placeId) {
           // contracts/api.md: a sunrise widget with no place takes the first weather widget's.
+          // ponytail: a weather add still in flight in another request is not visible here, so that
+          // sunrise add answers place_required; the add sheet sends one add at a time, so accepted.
           placeId = rows.find((r) => r.w.kind === 'weather' && r.w.placeId)?.w.placeId ?? null;
           if (!placeId) {
             throw new ApiError('validation_failed', 'Invalid widget settings', 422, {
