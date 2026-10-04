@@ -23,6 +23,13 @@ export function ratesWarmJob(
       .where(gte(fxRates.rateDate, cutoff));
 
     const today = clock.now().toISOString().slice(0, 10);
+    // Daily retry for widget pairs whose history is still short (research R12): at most one
+    // queued backfill per pair across all users. Runs before the warm loop so one failing pair
+    // cannot starve it.
+    for (const { base, quote } of await widgetPairs(db)) {
+      await enqueueIfShort(db, [base], quote, today);
+    }
+
     let done = 0;
     await ctx.updateProgress(done, pairs.length);
 
@@ -42,12 +49,6 @@ export function ratesWarmJob(
       }
       done += 1;
       await ctx.updateProgress(done, pairs.length);
-    }
-
-    // Daily retry for widget pairs whose history is still short (research R12): at most one
-    // queued backfill per pair across all users.
-    for (const { base, quote } of await widgetPairs(db)) {
-      await enqueueIfShort(db, [base], quote, today);
     }
   };
 }

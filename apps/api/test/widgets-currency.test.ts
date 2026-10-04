@@ -4,7 +4,7 @@ import { fxRates, jobs, setGlobalFlag, users } from '@desk/db';
 import { FakeRates } from '@desk/connectors/rates';
 import type { LogEvent } from '../src/adapters/logger.js';
 import { startHarness, type Harness } from './harness.js';
-import { widgetsRatesBackfillJob } from '../src/jobs/widgets-rates-backfill.js';
+import { enqueueIfShort, widgetsRatesBackfillJob } from '../src/jobs/widgets-rates-backfill.js';
 import { ratesWarmJob } from '../src/jobs/rates.js';
 import { currencyChangeJob, NULL_ROW_SOURCE } from '../src/jobs/currency-change.js';
 
@@ -213,7 +213,7 @@ describe('currency widget', () => {
       await u2.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
       const before = (await usage())[0]!.failures;
       for (let i = 0; i < 3; i++) {
-        await backfill()({ base: 'EUR', quote: 'JPY' }, ctx); // records and exits, never throws
+        await expect(backfill()({ base: 'EUR', quote: 'JPY' }, ctx)).rejects.toThrow(); // recorded, then rethrown (T091)
       }
       expect((await usage())[0]!.failures).toBe(before + 3);
       const [state] = (await h.db.execute(
@@ -256,6 +256,53 @@ describe('currency widget', () => {
     expect(callLines()).toHaveLength(1);
     expect(callLines()[0]).toMatchObject({ outcome: 'failure', cause: 'limit_reached' });
     await backfill()({ base: 'EUR', quote: 'JPY' }, ctx); // clear the failure streak
+  });
+
+  it('a 500 from the range call is logged and rethrown so the job fails and retries (T091)', async () => {
+    h.clock.set(WED);
+    lines.length = 0;
+    rates.failRange(true, 500);
+    try {
+      await expect(backfill()({ base: 'EUR', quote: 'JPY' }, ctx)).rejects.toThrow(/range failed/);
+    } finally {
+      rates.failRange(false);
+    }
+    expect(lines.filter((e) => e.event === 'widget_rates_backfill_failed')).toEqual([
+      expect.objectContaining({ base: 'EUR', quote: 'JPY', status: 500 }),
+    ]);
+    await backfill()({ base: 'EUR', quote: 'JPY' }, ctx); // clear the failure streak
+  });
+
+  it('an unsupported pair is logged once and never re-enqueued (T091)', async () => {
+    h.clock.set(WED);
+    lines.length = 0;
+    await h.db.delete(jobs).where(eq(jobs.name, 'widgets.rates_backfill'));
+    await backfill()({ base: 'EUR', quote: 'XYZ' }, ctx);
+    expect(lines.filter((e) => e.event === 'widget_rates_backfill_unsupported')).toEqual([
+      expect.objectContaining({ base: 'EUR', quote: 'XYZ' }),
+    ]);
+    await enqueueIfShort(h.db, ['EUR'], 'XYZ', '2026-09-30');
+    expect(
+      (await h.db.select().from(jobs).where(eq(jobs.status, 'queued'))).filter(
+        (r) => (r.payload as { quote: string }).quote === 'XYZ',
+      ),
+    ).toEqual([]);
+  });
+
+  it('one pair throwing in the warm loop still enqueues the short widget pair (T092)', async () => {
+    h.clock.set(WED);
+    const u = await setUser('wc-warm-throw@example.com', { defaultCurrency: 'NOK' });
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
+    await seed('2026-09-30', 'EUR', 'NOK', '11.0000000000'); // in the loop, history short
+    await h.db.delete(jobs).where(eq(jobs.name, 'widgets.rates_backfill'));
+    const throwing = {
+      rate: async () => {
+        throw new Error('boom');
+      },
+      range: rates.range.bind(rates),
+    };
+    await expect(ratesWarmJob(h.db, throwing, h.clock)({}, ctx)).rejects.toThrow('boom');
+    expect((await queued()).map((p) => `${p.base}:${p.quote}`)).toContain('EUR:NOK');
   });
 
   it('a pair with no fx_rates row is an error with rate_unavailable', async () => {

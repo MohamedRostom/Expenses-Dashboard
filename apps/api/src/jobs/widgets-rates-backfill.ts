@@ -14,6 +14,14 @@ const WINDOW_DAYS = 35;
 const REACH_DAYS = 30;
 const DAY_MS = 86_400_000;
 
+const UNSUPPORTED = 'unsupported';
+// LogEvent requires request fields; job lines are not per-request.
+const logBase = {
+  requestId: 'widgets-rates-backfill',
+  hashedUserId: null,
+  route: 'widgets.rates_backfill',
+  durationMs: 0,
+};
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
 /** True when fx_rates for the pair has no row at or before `day - 30` (the history is short). */
@@ -40,7 +48,19 @@ export async function enqueueRatesBackfill(db: Db, base: string, quote: string) 
       ),
     )
     .limit(1);
-  if (!existing)
+  // A done row marked 'unsupported' by the job (below) means Frankfurter doesn't publish the pair.
+  const [dead] = await db
+    .select({ id: jobs.id })
+    .from(jobs)
+    .where(
+      and(
+        eq(jobs.name, BACKFILL_JOB),
+        eq(jobs.error, UNSUPPORTED),
+        sql`${jobs.payload}->>'key' = ${key}`,
+      ),
+    )
+    .limit(1);
+  if (!existing && !dead)
     await db.insert(jobs).values({ name: BACKFILL_JOB, payload: { base, quote, key } });
 }
 
@@ -89,7 +109,8 @@ export function widgetsRatesBackfillJob(
     try {
       outcome = await provider.range(from, to, base, [quote]);
     } catch (e) {
-      const limited = (e as { status?: number }).status === 429;
+      const status = (e as { status?: number }).status;
+      const limited = status === 429;
       await recordSourceCall(
         db,
         'frankfurter.range',
@@ -98,10 +119,37 @@ export function widgetsRatesBackfillJob(
         logger,
         limited ? 'limit_reached' : undefined,
       );
+      logger.log({
+        ...logBase,
+        event: 'widget_rates_backfill_failed',
+        base,
+        quote,
+        status: status ?? 500,
+        message: (e as Error).message,
+      });
+      if (!limited) throw e; // job row fails and the runner retries; a 429 waits for the daily warm
       return;
     }
     await recordSourceCall(db, 'frankfurter.range', true, now, logger);
-    if (isUnsupported(outcome)) return;
+    if (isUnsupported(outcome)) {
+      logger.log({
+        ...logBase,
+        status: 200,
+        event: 'widget_rates_backfill_unsupported',
+        base,
+        quote,
+      });
+      // Durable marker (no migration): enqueueRatesBackfill skips pairs with a done 'unsupported' row.
+      // ponytail: permanent; delete the row to retry a pair Frankfurter later adds.
+      await db.insert(jobs).values({
+        name: BACKFILL_JOB,
+        payload: { base, quote, key: `${BACKFILL_JOB}:${base}:${quote}` },
+        status: 'done',
+        error: UNSUPPORTED,
+        finishedAt: now,
+      });
+      return;
+    }
     const rows = outcome.flatMap(({ date, rates }) => {
       const rate = rates[quote];
       return rate === undefined
