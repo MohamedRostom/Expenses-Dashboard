@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "871ab16b-b24a-41ea-a734-3ff1f1bab19a",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "C:\\MyData\\Learning\\NewWorkSpace\\Expenses-Dashboard\\architecture.json",
+  "output": "C:\\MyData\\Learning\\NewWorkSpace\\Expenses-Dashboard\\architecture.html",
+  "specification": {
+    "sha256": "c048d07add4a2311bbf13220c5fc7b80944c1fa99a14f6615283442fb311cf77",
+    "bytes": 7842
+  },
+  "artifact": {
+    "sha256": "bb4eecc321c394a00a261d972056fb8ed0c09ae89ddb5d0dd8d3c64f9d3413b9",
+    "bytes": 786722
+  }
+}

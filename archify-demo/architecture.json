@@ -1,0 +1,263 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Desk — System Architecture",
+    "output": "architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/MohamedRostom/Expenses-Dashboard.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "4e1052b977fbcb36db121dd776b19e7e8a1f0adb"
+    }
+  },
+  "components": [
+    {
+      "id": "user",
+      "type": "external",
+      "label": "Browser user",
+      "sublabel": "desktop or installed PWA",
+      "pos": [30, 300],
+      "size": [150, 64]
+    },
+    {
+      "id": "phone",
+      "type": "external",
+      "label": "Phone automation",
+      "sublabel": "MacroDroid-style webhook",
+      "pos": [250, 110],
+      "size": [170, 64],
+      "sources": [
+        {
+          "path": "apps/api/src/routes/hooks.ts",
+          "line": 14,
+          "label": "POST /hooks/generic/:token"
+        }
+      ]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Web App",
+      "sublabel": "Vue 3 · Pinia · PWA",
+      "pos": [250, 300],
+      "size": [170, 64],
+      "sources": [
+        { "path": "apps/web/src/api/client.ts", "line": 64, "label": "fetch with credentials" }
+      ]
+    },
+    {
+      "id": "api_node",
+      "type": "backend",
+      "label": "API · Node",
+      "sublabel": "Hono on Fly.io (node.ts)",
+      "pos": [540, 200],
+      "size": [180, 64],
+      "sources": [
+        { "path": "apps/api/src/node.ts", "line": 32, "label": "migrations on start" },
+        { "path": "apps/api/src/app.ts", "line": 142, "label": "createApp" }
+      ]
+    },
+    {
+      "id": "api_worker",
+      "type": "backend",
+      "label": "API · Worker",
+      "sublabel": "Hono on Workers (worker.ts)",
+      "pos": [540, 440],
+      "size": [180, 64],
+      "sources": [
+        { "path": "apps/api/src/worker.ts", "line": 84, "end_line": 105, "label": "fetch handler" },
+        { "path": "infra/cloudflare/wrangler.toml", "line": 6, "end_line": 7 }
+      ]
+    },
+    {
+      "id": "kv",
+      "type": "database",
+      "label": "Cloudflare KV",
+      "sublabel": "sessions, Stage 2",
+      "pos": [540, 620],
+      "size": [180, 64],
+      "sources": [
+        {
+          "path": "apps/api/src/adapters/session-store-kv.ts",
+          "line": 66,
+          "label": "KvSessionStore"
+        }
+      ]
+    },
+    {
+      "id": "postgres",
+      "type": "database",
+      "label": "Postgres 16",
+      "sublabel": "Neon · Drizzle ORM",
+      "pos": [850, 320],
+      "size": [170, 64],
+      "sources": [
+        { "path": "packages/db/src/index.ts", "line": 8, "label": "createDb" },
+        { "path": "apps/api/src/adapters/session-store.ts", "line": 67, "label": "PgSessionStore" }
+      ]
+    },
+    {
+      "id": "jobs",
+      "type": "backend",
+      "label": "Job Runner",
+      "sublabel": "jobs table, due-job tick",
+      "pos": [850, 540],
+      "size": [170, 64],
+      "sources": [
+        { "path": "apps/api/src/jobs/runner.ts", "line": 12, "label": "JobRunner" },
+        { "path": "apps/api/src/jobs/register.ts", "line": 25, "label": "registerAllJobs" }
+      ]
+    },
+    {
+      "id": "connectors",
+      "type": "backend",
+      "label": "Connectors",
+      "sublabel": "real client + fake + fixtures",
+      "pos": [1150, 410],
+      "size": [180, 110],
+      "sources": [{ "path": "packages/connectors/src/index.ts", "line": 1 }]
+    },
+    {
+      "id": "notion",
+      "type": "external",
+      "label": "Notion API",
+      "sublabel": "public OAuth",
+      "pos": [1470, 190],
+      "size": [170, 64],
+      "sources": [{ "path": "packages/connectors/src/notion/client.ts", "line": 4 }]
+    },
+    {
+      "id": "frankfurter",
+      "type": "external",
+      "label": "Frankfurter",
+      "sublabel": "ECB rates, no key",
+      "pos": [1470, 330],
+      "size": [170, 64],
+      "sources": [{ "path": "packages/connectors/src/rates/frankfurter.ts", "line": 13 }]
+    },
+    {
+      "id": "openmeteo",
+      "type": "external",
+      "label": "Open-Meteo",
+      "sublabel": "forecast + geocoding",
+      "pos": [1470, 470],
+      "size": [170, 64],
+      "sources": [
+        { "path": "packages/connectors/src/open-meteo/client.ts", "line": 9, "end_line": 10 }
+      ]
+    },
+    {
+      "id": "providers",
+      "type": "external",
+      "label": "Mail & calendar",
+      "sublabel": "Google · Graph · CalDAV/IMAP",
+      "pos": [1470, 610],
+      "size": [170, 64],
+      "sources": [
+        { "path": "packages/connectors/src/google/calendar.ts", "line": 107 },
+        { "path": "packages/connectors/src/microsoft/mail.ts", "line": 24 },
+        { "path": "packages/connectors/src/imap/client.ts", "line": 478 }
+      ]
+    },
+    {
+      "id": "resend",
+      "type": "external",
+      "label": "Resend / SMTP",
+      "sublabel": "auth + digest mail",
+      "pos": [440, 20],
+      "size": [160, 64],
+      "sources": [
+        {
+          "path": "apps/api/src/adapters/mailer.ts",
+          "line": 14,
+          "end_line": 21,
+          "label": "ResendMailer"
+        },
+        { "path": "apps/api/src/adapters/mailer.ts", "line": 41, "label": "SmtpMailer (local)" }
+      ]
+    },
+    {
+      "id": "hibp",
+      "type": "external",
+      "label": "HIBP",
+      "sublabel": "breached-password range",
+      "pos": [680, 20],
+      "size": [160, 64],
+      "sources": [{ "path": "apps/api/src/adapters/breach-checker.ts", "line": 17, "end_line": 28 }]
+    }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Fly.io · Stage 1 (live)", "wraps": ["api_node"], "pad": 16 },
+    {
+      "kind": "region",
+      "label": "Cloudflare · Stage 2 (cut-over pending)",
+      "wraps": ["api_worker", "kv"],
+      "pad": 16
+    },
+    {
+      "kind": "region",
+      "label": "Third-party APIs",
+      "wraps": ["notion", "frankfurter", "openmeteo", "providers"],
+      "pad": 16
+    }
+  ],
+  "connections": [
+    { "from": "user", "to": "web", "label": "HTTPS", "variant": "emphasis" },
+    { "from": "web", "to": "api_node", "label": "REST + session cookie", "variant": "emphasis" },
+    { "from": "web", "to": "api_worker", "label": "same REST API", "variant": "dashed" },
+    { "from": "phone", "to": "api_node", "label": "capture webhook", "variant": "default" },
+    { "from": "api_node", "to": "postgres", "label": "Drizzle · sessions", "variant": "emphasis" },
+    { "from": "api_worker", "to": "postgres", "label": "via Hyperdrive", "variant": "dashed" },
+    { "from": "api_worker", "to": "kv", "label": "sessions", "variant": "dashed" },
+    { "from": "api_node", "to": "jobs", "label": "30 s tick", "variant": "dashed" },
+    { "from": "api_worker", "to": "jobs", "label": "cron */5", "variant": "dashed" },
+    { "from": "jobs", "to": "postgres", "label": "claim due jobs", "variant": "default" },
+    { "from": "jobs", "to": "connectors", "label": "scheduled syncs", "variant": "default" },
+    { "from": "api_node", "to": "connectors", "label": "on-request calls", "variant": "default" },
+    { "from": "connectors", "to": "notion", "label": "two-way sync", "variant": "default" },
+    { "from": "connectors", "to": "frankfurter", "label": "daily rates", "variant": "default" },
+    { "from": "connectors", "to": "openmeteo", "label": "weather", "variant": "default" },
+    { "from": "connectors", "to": "providers", "label": "read-only panels", "variant": "default" },
+    { "from": "api_node", "to": "resend", "label": "send mail", "variant": "default" },
+    { "from": "api_node", "to": "hibp", "label": "k-anonymity", "variant": "security" }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One app, two runtimes",
+      "items": [
+        "createApp() is shared; node.ts and worker.ts only swap adapters",
+        "Node: Postgres sessions, in-process 30 s job tick, Fly machine as safety net",
+        "Worker: KV sessions, Hyperdrive, cron */5; Notion and Google not wired yet"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Pure shared packages",
+      "items": [
+        "core: Money in minor units, conversion, budgets, sync diff — no I/O",
+        "contracts: zod schemas → generated openapi.json",
+        "db: Drizzle schema, SQL migrations, flags"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security baseline",
+      "items": [
+        "HTTP-only session cookie + CSRF double-submit",
+        "Argon2id passwords, Google OIDC openid email profile only",
+        "Connector tokens sealed by SecretBox; per-user ownership tests"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Behind flags, off in production",
+      "items": [
+        "panels.* — mail and calendar panels (Google mail gated on CASA)",
+        "widgets.* — currency, weather, spend pace, fixed costs, sunrise"
+      ]
+    }
+  ]
+}
