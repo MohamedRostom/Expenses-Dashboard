@@ -89,6 +89,9 @@ test.describe('SC-003 performance', () => {
   });
 
   test('cached figures are visible within 1 s on throttled mobile', async ({ page }) => {
+    // ponytail: the dev-build reload under slow 4G alone takes ~30 s on the ci stack; the 1 s budget
+    // below is the assertion, this only stops the reload from eating the default test timeout.
+    test.setTimeout(90_000);
     await page.unrouteAll({ behavior: 'ignoreErrors' });
     await mock(page, 8);
     await page.setViewportSize({ width: 360, height: 640 });
