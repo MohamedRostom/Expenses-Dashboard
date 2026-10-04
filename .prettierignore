@@ -10,3 +10,4 @@ packages/db/migrations/meta
 .specify
 .claude
 *.md
+archify-demo
