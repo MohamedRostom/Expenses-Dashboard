@@ -4,21 +4,23 @@ import { apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
 import { CURRENCY_CAP } from '@desk/core';
 import type { Currency } from '../currencyFilter.js';
+import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ chosen: string[] }>();
 defineEmits<{ toggle: [code: string] }>();
 const session = useSessionStore();
 
 const currencies = ref<Currency[]>([]);
-const error = ref('');
+const error = ref<PanelErrorKind | null>(null);
 const defaultCode = computed(() => session.user?.defaultCurrency ?? '');
 const atCap = computed(() => props.chosen.length >= CURRENCY_CAP);
 
 onMounted(async () => {
   try {
     currencies.value = (await apiFetch<{ currencies: Currency[] }>('/currencies')).currencies;
-  } catch {
-    error.value = "Couldn't load the currency list.";
+  } catch (err) {
+    error.value = toPanelErrorKind(err);
   }
 });
 
@@ -44,7 +46,7 @@ function disabledReason(code: string): string | null {
       {{ c.code }} — {{ c.name }}
       <small v-if="disabledReason(c.code)">({{ disabledReason(c.code) }})</small>
     </label>
-    <p v-if="error" role="alert">{{ error }}</p>
+    <PanelState v-if="error" kind="error" :code="error" />
   </fieldset>
 </template>
 

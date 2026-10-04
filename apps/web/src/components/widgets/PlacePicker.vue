@@ -2,7 +2,8 @@
 import { onBeforeUnmount, ref } from 'vue';
 import { Button, Input } from '@desk/ui';
 import type { PlaceCandidateT } from '@desk/contracts';
-import { ApiError } from '../../api/client.js';
+import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import PanelState from '../PanelState.vue';
 import { resolvePlace, searchPlaces } from '../../api/places.js';
 
 const props = defineProps<{ previous?: string | undefined }>();
@@ -15,6 +16,13 @@ const query = ref('');
 const candidates = ref<PlaceCandidateT[]>([]);
 const near = ref<string | null>(null);
 const notice = ref('');
+const errorKind = ref<PanelErrorKind | null>(null);
+// Search-box copy for the codes /places/* emits; anything else (401, 500) falls through to PanelState.
+const SEARCH_COPY: Partial<Record<PanelErrorKind, string>> = {
+  rate_limited: 'Please wait a moment before searching again.',
+  source_paused: 'Place search is paused, try again later.',
+  source_unreachable: 'Place search is unavailable, try again later.',
+};
 let timer: ReturnType<typeof setTimeout> | undefined;
 let seq = 0;
 
@@ -31,6 +39,7 @@ onBeforeUnmount(() => clearTimeout(timer));
 async function run(q: string) {
   const mine = ++seq;
   notice.value = '';
+  errorKind.value = null;
   near.value = null;
   try {
     const res = await searchPlaces(q);
@@ -44,13 +53,7 @@ async function run(q: string) {
   } catch (err) {
     if (mine !== seq) return;
     candidates.value = [];
-    const status = err instanceof ApiError ? err.status : 0;
-    notice.value =
-      status === 429
-        ? 'Please wait a moment before searching again.'
-        : status === 503
-          ? 'Place search is unavailable, try again later.'
-          : "Couldn't search places, try again later.";
+    errorKind.value = toPanelErrorKind(err);
   }
 }
 
@@ -92,6 +95,8 @@ function useLocation() {
     </Button>
     <p v-if="near" role="status">Near {{ near }} — tap to confirm.</p>
     <p v-if="notice" role="status">{{ notice }}</p>
+    <p v-if="errorKind && SEARCH_COPY[errorKind]" role="alert">{{ SEARCH_COPY[errorKind] }}</p>
+    <PanelState v-else-if="errorKind" kind="error" :code="errorKind" />
     <ul v-if="candidates.length" class="desk-place-list">
       <li v-for="c in candidates" :key="`${c.lat},${c.lon}`">
         <button

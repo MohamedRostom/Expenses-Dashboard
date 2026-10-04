@@ -5,9 +5,11 @@ import type { PlaceCandidateT } from '@desk/contracts';
 vi.mock('../../api/places.js', () => ({ searchPlaces: vi.fn(), resolvePlace: vi.fn() }));
 vi.mock('../../api/client.js', () => ({
   ApiError: class extends Error {
+    code: string;
     status: number;
-    constructor(_code: string, message: string, status: number) {
+    constructor(code: string, message: string, status: number) {
       super(message);
+      this.code = code;
       this.status = status;
     }
   },
@@ -84,19 +86,27 @@ describe('PlacePicker', () => {
   });
 
   it.each([
-    [429, 'wait a moment'],
-    [503, 'try again later'],
-  ])('shows calm copy for %i', async (status, copy) => {
+    ['rate_limited', 429, 'Please wait a moment before searching again'],
+    ['source_paused', 503, 'Place search is paused'],
+    ['source_unreachable', 502, 'Place search is unavailable'],
+    ['unauthenticated', 401, 'Session expired'],
+  ])('branches copy on code %s', async (code, status, copy) => {
     const api = await import('../../api/places.js');
     const { ApiError } = await import('../../api/client.js');
     vi.mocked(api.searchPlaces).mockRejectedValue(
-      new (ApiError as unknown as new (c: string, m: string, s: number) => Error)('x', 'x', status),
+      new (ApiError as unknown as new (c: string, m: string, s: number) => Error)(
+        code,
+        'x',
+        status,
+      ),
     );
     const { type, el } = await mount();
     await type('Manc');
     await vi.advanceTimersByTimeAsync(400);
     await flush();
     expect(el.textContent).toContain(copy);
+    // panel copy about "the last reading" means nothing in a search box
+    expect(el.textContent).not.toContain('last reading');
   });
 
   it('says the place was not found and keeps the previous one', async () => {

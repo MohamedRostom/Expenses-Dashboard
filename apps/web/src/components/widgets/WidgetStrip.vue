@@ -10,6 +10,7 @@ import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
 import PanelState from '../PanelState.vue';
+import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -17,6 +18,7 @@ import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
 const store = useWidgetsStore();
 const toast = useToast();
 const catalogue = ref<WidgetTypeT[]>([]);
+const typesError = ref<PanelErrorKind | null>(null);
 const adding = ref(false);
 const settingsId = ref<string | null>(null);
 const loaded = ref(false);
@@ -38,7 +40,10 @@ const settingsWidget = computed(() => store.widgets.find((w) => w.id === setting
 
 onMounted(async () => {
   // The catalogue is independent of the widget list; fetch both at once.
-  const types = store.types().catch(() => []);
+  const types = store.types().catch((err) => {
+    typesError.value = toPanelErrorKind(err);
+    return [];
+  });
   try {
     await store.load();
   } catch {
@@ -209,6 +214,7 @@ async function onDragEnd() {
     <AddWidgetSheet
       :open="adding"
       :types="catalogue"
+      :types-error="typesError"
       :has-weather="store.widgets.some((w) => w.kind === 'weather')"
       :add="onAdd"
       @close="adding = false"

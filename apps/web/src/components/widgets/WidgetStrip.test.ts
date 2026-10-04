@@ -33,10 +33,11 @@ const type = (kind: WidgetTypeT['kind'], name: string, enabled = true): WidgetTy
   settingsSchema: {},
 });
 
-async function mount(widgets: WidgetT[], types: WidgetTypeT[] = []) {
+async function mount(widgets: WidgetT[], types: WidgetTypeT[] = [], typesError?: unknown) {
   const api = await import('../../api/widgets.js');
   vi.mocked(api.getWidgets).mockResolvedValue({ widgets, limit: 8, temperatureUnit: 'C' });
-  vi.mocked(api.getWidgetTypes).mockResolvedValue({ types });
+  if (typesError) vi.mocked(api.getWidgetTypes).mockRejectedValue(typesError);
+  else vi.mocked(api.getWidgetTypes).mockResolvedValue({ types });
   const { default: WidgetStrip } = await import('./WidgetStrip.vue');
   const pinia = createPinia();
   setActivePinia(pinia);
@@ -99,6 +100,16 @@ describe('WidgetStrip', () => {
       app.unmount();
       spy.mockRestore();
     });
+  });
+
+  it('a failed catalogue fetch shows an error in the add sheet, not an empty list (T093)', async () => {
+    const { ApiError } = await import('../../api/client.js');
+    const { el, app } = await mount([widget('a')], [], new ApiError('internal', 'boom', 500));
+    el.querySelector<HTMLButtonElement>('[data-testid="add-widget"]')!.click();
+    for (let i = 0; i < 5; i++) await nextTick();
+    expect(document.body.textContent).toContain('Something went wrong');
+    expect(document.body.textContent).not.toContain('No widgets available yet');
+    app.unmount();
   });
 
   it('renders frames in the order given', async () => {

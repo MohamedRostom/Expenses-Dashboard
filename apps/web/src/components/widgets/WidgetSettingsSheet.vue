@@ -7,6 +7,8 @@ import { useWidgetsStore } from '../../stores/widgets.js';
 import CurrencyPicker from './CurrencyPicker.vue';
 import WeatherSettings from './WeatherSettings.vue';
 import SunriseSettings from './SunriseSettings.vue';
+import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ open: boolean; widget: WidgetT | null }>();
 defineEmits<{ close: [] }>();
@@ -17,7 +19,7 @@ function patch(body: WidgetPatchT) {
   return store.patch(props.widget!.id, body);
 }
 
-const error = ref('');
+const error = ref<PanelErrorKind | null>(null);
 const chosen = computed(() => (props.widget?.settings.currencies as string[] | undefined) ?? []);
 const atCap = computed(() => chosen.value.length >= CURRENCY_CAP);
 
@@ -26,19 +28,20 @@ async function toggle(code: string) {
     ? chosen.value.filter((c) => c !== code)
     : [...chosen.value, code];
   if (next.length === 0) return;
-  error.value = '';
+  error.value = null;
   try {
     await patch({ settings: { currencies: next } });
-  } catch {
-    error.value = "Couldn't save that change.";
+  } catch (err) {
+    error.value = toPanelErrorKind(err);
   }
 }
 
 async function addSecond() {
+  error.value = null;
   try {
     await store.add({ kind: 'currency' });
-  } catch {
-    error.value = "Couldn't add another currency widget.";
+  } catch (err) {
+    error.value = toPanelErrorKind(err);
   }
 }
 </script>
@@ -52,7 +55,7 @@ async function addSecond() {
           A currency widget shows up to six currencies.
           <button type="button" @click="addSecond">Add a second currency widget</button>
         </p>
-        <p v-if="error" role="alert">{{ error }}</p>
+        <PanelState v-if="error" kind="error" :code="error" />
       </div>
       <WeatherSettings v-else-if="widget.kind === 'weather'" :widget="widget" :patch="patch" />
       <SunriseSettings v-else-if="widget.kind === 'sunrise'" :widget="widget" :patch="patch" />

@@ -6,10 +6,14 @@ import { ApiError } from '../../api/client.js';
 import { CURRENCY_CAP } from '@desk/core';
 import CurrencyPicker from './CurrencyPicker.vue';
 import PlacePicker from './PlacePicker.vue';
+import PanelState from '../PanelState.vue';
+import type { PanelErrorKind } from '../../utils/errors.js';
 
 const props = defineProps<{
   open: boolean;
   types: WidgetTypeT[];
+  /** Set when the catalogue fetch failed: shown by code instead of the empty state. */
+  typesError?: PanelErrorKind | null;
   /** True when the user has a weather widget: sunrise then borrows its place. */
   hasWeather: boolean;
   /** Adds the widget; rejects with the server's error, shown here. */
@@ -82,6 +86,7 @@ const PREVIEW: Record<WidgetKindT, string> = {
         </Button>
       </div>
     </div>
+    <PanelState v-else-if="typesError" kind="error" :code="typesError" />
     <EmptyState
       v-else-if="!types.some((x) => x.enabled)"
       title="No widgets available yet"

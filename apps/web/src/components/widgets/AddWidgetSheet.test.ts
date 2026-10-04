@@ -2,6 +2,7 @@ import { createPinia, setActivePinia } from 'pinia';
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WidgetCreateT, WidgetTypeT } from '@desk/contracts';
+import type { PanelErrorKind } from '../../utils/errors.js';
 
 vi.mock('../../api/client.js', async (orig: () => Promise<Record<string, unknown>>) => ({
   ...(await orig()),
@@ -45,7 +46,12 @@ const flush = async () => {
   await nextTick();
 };
 
-async function mount(add: (b: WidgetCreateT) => Promise<void>, hasWeather = false, types = TYPES) {
+async function mount(
+  add: (b: WidgetCreateT) => Promise<void>,
+  hasWeather = false,
+  types = TYPES,
+  typesError: PanelErrorKind | null = null,
+) {
   const { default: AddWidgetSheet } = await import('./AddWidgetSheet.vue');
   const { useSessionStore } = await import('../../stores/session.js');
   const pinia = createPinia();
@@ -54,7 +60,8 @@ async function mount(add: (b: WidgetCreateT) => Promise<void>, hasWeather = fals
   const el = document.createElement('div');
   document.body.appendChild(el);
   const app = createApp({
-    render: () => h(AddWidgetSheet, { open: true, types, hasWeather, add, onClose: vi.fn() }),
+    render: () =>
+      h(AddWidgetSheet, { open: true, types, typesError, hasWeather, add, onClose: vi.fn() }),
   }).use(pinia);
   app.mount(el);
   await flush();
@@ -83,6 +90,17 @@ describe('AddWidgetSheet', () => {
     );
     expect(body().querySelector('li')).toBeNull();
     expect(body().textContent).toContain('No widgets available yet');
+  });
+
+  it('a failed catalogue fetch shows the error by code, not "No widgets available yet"', async () => {
+    await mount(vi.fn(), false, [], 'server_error');
+    expect(body().textContent).toContain('Something went wrong');
+    expect(body().textContent).not.toContain('No widgets available yet');
+  });
+
+  it('a 401 on the catalogue shows the sign-in prompt', async () => {
+    await mount(vi.fn(), false, [], 'session_expired');
+    expect(body().textContent).toContain('Session expired');
   });
 
   it('adds kinds that need nothing immediately', async () => {
@@ -127,8 +145,7 @@ describe('AddWidgetSheet', () => {
     )!;
     input.value = 'Manch';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    await new Promise((r) => setTimeout(r, 450));
-    await flush();
+    await vi.waitFor(() => expect(button('Manchester, England, United Kingdom')).toBeTruthy());
     button('Manchester, England, United Kingdom')!.click();
     await flush();
     expect(add).toHaveBeenCalledWith({

@@ -3,26 +3,28 @@ import { ref } from 'vue';
 import type { PlaceCandidateT, TemperatureUnitT, WidgetPatchT, WidgetT } from '@desk/contracts';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import PlacePicker from './PlacePicker.vue';
+import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ widget: WidgetT; patch: (body: WidgetPatchT) => Promise<unknown> }>();
 const store = useWidgetsStore();
-const error = ref('');
+const error = ref<PanelErrorKind | null>(null);
 
 async function choose(place: PlaceCandidateT) {
-  error.value = '';
+  error.value = null;
   try {
     await props.patch({ place });
-  } catch {
-    error.value = "Couldn't save that place.";
+  } catch (err) {
+    error.value = toPanelErrorKind(err);
   }
 }
 
 async function setUnit(unit: TemperatureUnitT) {
-  error.value = '';
+  error.value = null;
   try {
     await store.setTemperatureUnit(unit);
-  } catch {
-    error.value = "Couldn't save that change.";
+  } catch (err) {
+    error.value = toPanelErrorKind(err);
   }
 }
 </script>
@@ -44,7 +46,7 @@ async function setUnit(unit: TemperatureUnitT) {
         °{{ u }}
       </label>
     </fieldset>
-    <p v-if="error" role="alert">{{ error }}</p>
+    <PanelState v-if="error" kind="error" :code="error" />
   </div>
 </template>
 

@@ -31,3 +31,20 @@ describe('SunriseSettings', () => {
     expect(patch).toHaveBeenCalledWith({ place: { name: 'Leeds' } });
   });
 });
+
+describe('SunriseSettings errors', () => {
+  it('a 401 saving the place shows the sign-in prompt, not a generic line', async () => {
+    const { ApiError } = await import('../../api/client.js');
+    const widget = { id: 's1', kind: 'sunrise' } as WidgetT;
+    const patch = vi.fn().mockRejectedValue(new ApiError('unauthenticated', 'x', 401));
+    const { default: S } = await import('./SunriseSettings.vue');
+    const el = document.createElement('div');
+    createApp(S, { widget, patch }).mount(el);
+    await nextTick();
+    el.querySelector<HTMLButtonElement>('[data-testid="fake-pick"]')!.click();
+    await nextTick();
+    await nextTick();
+    expect(el.textContent).toContain('Session expired');
+    expect(el.textContent).not.toContain("Couldn't save");
+  });
+});

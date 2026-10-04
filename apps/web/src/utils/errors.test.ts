@@ -9,6 +9,8 @@ describe('toPanelErrorKind', () => {
     ['source_unreachable', 502],
     ['source_limit_reached', 503],
     ['place_not_found', 404],
+    ['source_paused', 503],
+    ['rate_limited', 429],
   ] as const)('maps ApiError code %s to its own kind regardless of status', (code, status) => {
     expect(toPanelErrorKind(new ApiError(code, 'x', status))).toBe(code);
   });

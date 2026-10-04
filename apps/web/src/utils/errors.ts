@@ -14,6 +14,8 @@ export type PanelErrorKind =
   | 'source_unreachable'
   | 'source_limit_reached'
   | 'place_not_found'
+  | 'source_paused'
+  | 'rate_limited'
   | 'server_error';
 
 /** Maps a thrown error (ApiError, network TypeError, or anything else) to a PanelErrorKind. */
@@ -26,7 +28,9 @@ export function toPanelErrorKind(err: unknown): PanelErrorKind {
     if (
       err.code === 'source_unreachable' ||
       err.code === 'source_limit_reached' ||
-      err.code === 'place_not_found'
+      err.code === 'place_not_found' ||
+      err.code === 'source_paused' ||
+      err.code === 'rate_limited'
     ) {
       return err.code;
     }

@@ -21,6 +21,8 @@ describe('PanelState', () => {
     ['source_unreachable', "Couldn't reach the data source"],
     ['source_limit_reached', 'Data source limit reached'],
     ['place_not_found', 'Place not found'],
+    ['source_paused', 'Place search is paused'],
+    ['rate_limited', 'Too many requests'],
   ])('error %s shows its own title', async (code, title) => {
     expect(await text({ kind: 'error', code })).toContain(title);
   });
@@ -29,6 +31,7 @@ describe('PanelState', () => {
     const a = await text({ kind: 'error', code: 'source_unreachable' });
     const b = await text({ kind: 'error', code: 'source_limit_reached' });
     const c = await text({ kind: 'error', code: 'place_not_found' });
-    expect(new Set([a, b, c]).size).toBe(3);
+    const d = await text({ kind: 'error', code: 'source_paused' });
+    expect(new Set([a, b, c, d]).size).toBe(4);
   });
 });

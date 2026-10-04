@@ -45,6 +45,14 @@ const COPY: Record<PanelErrorKind, { title: string; description: string }> = {
     title: 'Place not found',
     description: "Choose the place again in this widget's settings.",
   },
+  source_paused: {
+    title: 'Place search is paused',
+    description: 'The data source has paused place search for now. Try again later.',
+  },
+  rate_limited: {
+    title: 'Too many requests',
+    description: 'Please wait a moment before trying again.',
+  },
   server_error: {
     title: 'Something went wrong',
     description: 'Please try again shortly.',
