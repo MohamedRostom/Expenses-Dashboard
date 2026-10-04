@@ -27,3 +27,8 @@ tests/e2e/test-accounts.local.yaml
 .mcp.json
 .graphifyignore
 .cerebrofy-ignore
+
+# local tooling output, not part of the product
+archify-demo/
+.claude/skills/cerebrofy-*/
+specs/*/.spec-context*
