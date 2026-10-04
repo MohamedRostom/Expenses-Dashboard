@@ -221,6 +221,9 @@ confirm the last reading stays visible marked as stale.
 8. **Given** the user taps "use my current location" and denies permission or the device
    cannot resolve a place, **When** the request ends, **Then** the typed search stays
    available and no error blocks the widget.
+9. **Given** a user who has chosen a place, **When** they open the privacy page, **Then** it
+   names the weather source, says only the place's coarse coordinates are sent to it, and says
+   device coordinates are sent once, rounded, and never stored.
 
 ---
 
@@ -240,7 +243,8 @@ phone and confirm it is gone on the laptop after reload.
 **Acceptance Scenarios**:
 
 1. **Given** the widget area, **When** the user opens "add widget", **Then** every available
-   widget is listed with a one-line description and a preview, and adding one places it last.
+   widget is listed with a one-line description and a preview (a fixed sample line, not live data), and
+   adding one places it last.
 2. **Given** several widgets, **When** the user moves one with a pointer or with the keyboard,
    **Then** the new order is saved and announced to assistive technology.
 3. **Given** a widget, **When** the user opens its settings, **Then** only that widget's
@@ -248,6 +252,13 @@ phone and confirm it is gone on the laptop after reload.
    changes apply immediately.
 4. **Given** the maximum number of widgets, **When** the user tries to add another, **Then**
    the add control is disabled with the limit shown.
+5. **Given** a user who can see the Today page, **When** they open it, **Then** the same
+   widgets show in the same order below its calendar and inbox panels; a user who cannot see
+   the Today page has the strip on the month view only.
+6. **Given** a widget whose kind the operator has switched off, **When** the strip loads,
+   **Then** that widget shows "temporarily unavailable" with its last value and can be removed,
+   and the kind is absent from "add widget"; when the kind is switched back on the widget
+   shows figures again on the next load with its settings unchanged.
 
 ---
 
@@ -353,6 +364,19 @@ weather widget's place; confirm the first two made no external request.
 - The Today page's calendar or inbox panel is in an error state: the strip still loads and
   shows its own figures; one surface's failure never blanks the other.
 - Screen at 360 px wide: widgets stack in one column; nothing scrolls sideways.
+- A chosen place the source no longer lists by name: nothing changes, since readings are
+  fetched by the place's stored coordinates; if the source stops answering for them, the widget
+  shows its last reading marked stale with the cause "source unreachable".
+- Two tabs edit the same widget's settings, or both add a widget at seven: the last saved
+  settings win; the add that would make nine is refused with the limit shown.
+- A selected currency the rate source stops publishing: the widget shows the last published
+  rate with its date, marked stale; with no rate at all the row reads "rate not published".
+- A place across the date line or with daylight-saving changes: "today", sunrise, sunset and
+  day length follow the place's own time zone as the source reports it.
+- A sunset (or sunrise) that falls after local midnight near the polar circles: the widget
+  shows the times the source gives for the place's current local date, without a date.
+- The user changes their time zone setting mid-month: the next load recomputes "today" and
+  "this month" in the new zone; nothing stored changes.
 
 ## Requirements *(mandatory)*
 
@@ -365,26 +389,36 @@ Widget area
   strip MUST render after the expenses data, and on the Today page after the calendar and inbox
   panels, and MUST NOT delay either; on either page a widget that has no figures yet shows its
   loading state without shifting the content below it once loaded. The strip appears on the
-  Today page only for users who can see the Today page; for everyone else it appears on the
+  Today page only for users who can see the Today page (those for whom the operator has
+  switched the Today page on, for them alone or for everyone); for everyone else it appears on the
   month view alone, and switching the Today page on or off never changes the arrangement.
 - **FR-002**: Users MUST be able to add, remove, reorder and duplicate widgets; the
   arrangement is per user, saved on the server, and identical on every device the user signs in
-  on. A user MAY have at most eight widgets; the ninth add is refused with the limit shown.
-- **FR-003**: Every widget MUST have loading, empty, stale, error and unavailable states, MUST
+  on. Duplicating copies a widget's kind, settings and place into a new widget placed last,
+  and the copy counts toward the cap. A user MAY have at most eight widgets; the ninth add is
+  refused with the limit shown.
+- **FR-003**: Every widget MUST have loading, ready, empty, stale, error and unavailable states
+  (loading exists only on the device), MUST
   show the time its figures are from, and MUST keep its last figures visible when a refresh
   fails; error copy MUST name the cause: source unreachable, source limit reached, place not
   found, rate not published (these four come from the server), or offline (decided on the
   device, never reported as a server error). An expired session is handled the way every other
   panel in the app handles it, not as a widget error. A widget asks for fresh figures only while
-  its page is visible and catches up when the page is shown again.
+  its page is visible and, when the page is shown again, catches up if its figures are past
+  their refresh window: one hour for weather and sunrise, the next daily rate fetch for
+  currency, every load for spend pace and upcoming fixed costs. The user MAY also ask for fresh
+  figures, at most once a minute; a refused or failed refresh never removes figures.
 - **FR-004**: Every widget MUST be usable by keyboard and screen reader: adding, removing,
-  reordering and changing settings MUST work without a pointer, and reorder MUST be announced.
+  reordering and changing settings MUST work without a pointer, and reorder MUST be announced
+  as "<widget> moved to position <n> of <total>".
 - **FR-005**: Widgets MUST be read-only. No widget creates, edits, suggests or links expenses,
   and no widget sends the user's expense data to any external source.
 - **FR-006**: Every widget, its settings and its chosen place MUST belong to exactly one user
   and MUST be invisible to every other user on every screen and request; account deletion
-  removes them all; data export includes widget types, settings and places but not cached
-  figures. Figures cached from an external source are keyed by place or currency pair, hold no
+  removes them all; data export lists each widget with its type, settings and place (a place
+  shared by two widgets appears with each) but not cached figures. Adding, removing,
+  reordering, choosing or removing a place and using device location are recorded in the
+  user's audit trail, never with coordinates. Figures cached from an external source are keyed by place or currency pair, hold no
   user data, and are shared by every user with that place or pair (FR-013); nothing in a
   cached figure reveals who else uses it.
 - **FR-007**: Each widget type MUST be individually switchable by the operator; a switched-off
@@ -396,18 +430,22 @@ Currency widget
 - **FR-008**: The currency widget MUST show, for each selected currency (at most six per
   widget), the rate from that currency to the user's default currency, the published date of
   that rate, the change since the previous published rate and over the last thirty days, each
-  change with its direction and percentage to one decimal place. When a currency is added,
+  change with its direction and percentage to one decimal place, rounded half away from zero;
+  a change that rounds to 0.0 % reads "flat" with no direction. When a currency is added,
   Desk MUST obtain the previous thirty-one days of published rates for it in one request so
   both changes are available immediately; when the source holds less history the widget
   labels the change "since <first date>" instead of thirty days. If that request fails, the
   currency is still added and shows today's rate, both changes read "not available yet", and
-  Desk retries with the next daily rate fetch, with no time limit; a lasting failure is an
+  Desk retries with the next daily rate fetch, with no time limit and at most one history
+  request per currency pair per day across all users; a lasting failure is an
   operator signal (FR-019), never a user-facing error.
 - **FR-009**: The rate and rate date shown MUST be the same rate and date Desk would record on
   an expense in that currency dated today; on weekends and holidays the widget MUST show the
   last published rate and its date.
 - **FR-010**: The currency picker MUST offer only currencies Desk can convert, MUST refuse the
-  user's default currency, and MUST re-base every figure when the default currency changes. A
+  user's default currency, and MUST re-base every figure when the default currency changes,
+  fetching each selected currency's thirty-one-day history against the new default the same
+  way as on add. A
   selected currency that becomes the default stays in the widget's settings and shows "your
   default currency" with no figures; it shows figures again once the default changes away
   from it. Such a row still counts toward the six-currency cap.
@@ -415,11 +453,12 @@ Currency widget
 Weather widget
 
 - **FR-011**: The weather widget MUST show, for one user-chosen place, the current temperature,
-  a condition word and icon, today's high and low, a three-day outlook (day, high, low,
-  condition) and the time of the current reading, in °C or °F as the user chooses; the unit
+  a condition word and icon, today's high and low (today being the place's local day), a
+  three-day outlook for the three days after today (day, high, low, condition) and the time of the current reading, in °C or °F as the user chooses; the unit
   choice applies to every weather widget the user has.
-- **FR-012**: Place selection MUST be by typed search returning candidates with region and
-  country, or by a "use my current location" button that states before the tap that it will
+- **FR-012**: Place selection MUST be by typed search returning up to five candidates, in the
+  source's order, with region (the first-level area such as a county or state; only the
+  country is shown when the source has none) and country, or by a "use my current location" button that states before the tap that it will
   ask the device once; nothing is stored until the user confirms a named place. Desk MUST NOT
   request the device's location except on that tap, MUST discard the coordinates once a place
   is resolved, and MUST NOT store a location more precise than the chosen place. Typed search
@@ -436,8 +475,9 @@ Weather widget
   with that place, refreshed hourly only while a user with that place has been active in the
   last 24 hours (active means any signed-in request, the same definition spec 002 uses), so the
   source is called neither per device nor per user. Place search MUST
-  run only for three or more characters after the user pauses typing, at most ten searches
-  per user per minute (the eleventh shows "wait a moment"), with results cached for a day.
+  run only for three or more characters after the user pauses typing for 400 ms, at most ten searches
+  per user per minute (the eleventh shows "wait a moment"), with results cached for a day, keyed by the query text alone with no user identifier.
+  Readings for places no active user has are discarded after seven days.
 - **FR-014**: The chosen place MUST be stored only with the widgets that use it (weather,
   sunrise and sunset), removed when the last of them is removed, included in the user's data
   export, and described on the privacy page together with the single source used, what is
@@ -451,7 +491,7 @@ Other widgets
   MUST compute from Desk's own records with no external request and MUST match the figures
   shown elsewhere in the app for the same month, category and currency. "Today" (for rates)
   and "this month" (for spend pace and upcoming fixed costs) follow the user's time zone
-  setting, the same one the month view uses; only sunrise and sunset use the place's time.
+  setting, the same one the month view uses; only weather and sunrise and sunset use the place's local day.
 - **FR-016**: The spend pace widget MUST show the current month's spend so far, the month's
   budget (the sum of the category budgets for the month, identical to the month view's
   "budgeted" tile; spend in categories without a budget counts toward spend but not budget),
@@ -484,7 +524,8 @@ Operations
   the limit being reached). The status check the monitor reads MUST be reachable without
   sign-in and MUST reveal only "healthy" or "degraded"; call counts, cached-place numbers and
   which source and cause made the status degraded are visible only in the operator's logs.
-  These signals MUST carry no user identifier and no place.
+  The logs carry one summary line per source per day, and the daily counts are kept for 90
+  days. These signals MUST carry no user identifier and no place.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -492,10 +533,12 @@ Operations
   widget; a place for weather and for sunrise and sunset; none for spend pace and upcoming
   fixed costs; the temperature unit is a user preference, not a widget setting), created and
   updated times.
-- **Widget type**: the catalogue entry: name, description, settings it accepts, refresh interval,
+- **Widget type**: the catalogue entry: name, description, settings it accepts, refresh window
+  (FR-003),
   whether it needs an external source, operator switch.
-- **Cached reading**: for widgets with an external source, per place or per currency pair: the
-  figures, the time they are from, the source, and whether they are stale.
+- **Cached reading**: for weather and sunrise, per place: the figures, the time they are from,
+  the place's time zone, and whether the last refresh failed. Currency figures come from Rate
+  history, not from a cached reading.
 - **Place**: name, region, country, time zone and coordinates rounded to two decimal places;
   owned by the widgets that chose it; the rounded coordinates are the key readings are cached
   under.
@@ -517,7 +560,8 @@ Operations
   a mid-range phone (a standard emulated mid-range mobile profile: 4× CPU slowdown, simulated slow 4G),
   and adding the widget area lengthens neither the month view's measured
   load time nor the time until the Today page's calendar and inbox panels appear by more than
-  100 ms.
+  100 ms, the Today page being compared with its panels served from cache, with no widgets
+  and with eight. With eight widgets the server answers the widget list in under 150 ms.
 - **SC-004**: While the user is active and the weather source is reachable, the weather reading
   is never more than one hour old in 99 % of samples over a week, sampled by a nightly
   check against the real source.
@@ -557,7 +601,13 @@ Operations
   pauses while the page is hidden, and error copy chosen by cause. Widgets reuse those
   conventions (the same panel states and cause wording, the same "active user" definition) and
   add no second design. The Today strip therefore no longer waits on another feature, but it
-  reaches production users only when the Today page is switched on for them.
+  reaches production users only when the Today page is switched on for them, so SC-002 and
+  SC-007 are measured on the month view.
+- Spend pace and upcoming fixed costs rely on the baseline's month summary and category budgets
+  (spec 001 Phase 2), and FR-014 on its privacy page (spec 001 Phase 4); both have shipped.
+- FR-019's alert needs the uptime monitor's alert routing, still an open owner to-do in
+  `docs/runbooks/uptime.md`; until it is filled in, the alert shows only on the monitor's own
+  dashboard.
 - "Usual amount" for a fixed category follows the baseline forecast: the category budget when
   set, else the previous month's amount, else none. Day length and sunrise and sunset come from
   the weather source's daily data, and the place's time zone from its geocoding result, so no
@@ -568,7 +618,8 @@ Operations
 - The weather source's free tier is expected to be limited to non-commercial use and roughly
   ten thousand calls a day shared across all users; the per-place cache, the hourly cadence
   for active places and the search throttle in FR-013 keep a thousand users well inside that.
-  Whether a free public product counts as non-commercial is part of the source ADR.
+  ADR-0005 accepts the free tier for a free public product and requires a revisit before any
+  monetisation.
 - English interface only, as for the rest of the product.
 - Out of scope: notifications or alerts from any widget, widgets that write data, widgets
   showing another user's data, third-party or user-authored widgets, embedding external web

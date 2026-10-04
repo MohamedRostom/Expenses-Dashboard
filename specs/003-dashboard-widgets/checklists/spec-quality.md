@@ -10,30 +10,30 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Is the refresh cadence of every widget kind stated, not only weather? The currency widget (daily rate fetch), spend pace and fixed costs ("on the next reload") have no stated interval, yet the Widget type entity lists "refresh interval" as an attribute. [Completeness, Spec §FR-013, §Key Entities]
-- [ ] CHK002 Is a user-triggered refresh a requirement? `contracts/api.md` defines `POST /widgets/refresh` with a one-per-minute limit and research R7 calls it on page open, but no FR or scenario asks for it. [Gap, Contracts §Widgets]
-- [ ] CHK003 Are audit requirements stated for widget add, remove, reorder, place chosen, place removed and device-location use? `data-model.md` §Baseline tables lists these audit entries; the spec has none. [Gap, Data-model §audit_log]
-- [ ] CHK004 Is the retention rule for cached readings (discard after seven days without an active user) and search results (one day) written as a requirement rather than only as an Assumption? [Completeness, Spec §Assumptions, §FR-013]
-- [ ] CHK005 Does the spec say what "duplicate" copies for each kind (settings, and for weather/sunrise the place) and that the copy counts toward the eight-widget cap? `data-model.md` §widgets defines the copy; the spec only names the action. [Completeness, Spec §FR-002]
+- [x] CHK001 Is the refresh cadence of every widget kind stated, not only weather? The currency widget (daily rate fetch), spend pace and fixed costs ("on the next reload") have no stated interval, yet the Widget type entity lists "refresh interval" as an attribute. [Completeness, Spec §FR-013, §Key Entities]
+- [x] CHK002 Is a user-triggered refresh a requirement? `contracts/api.md` defines `POST /widgets/refresh` with a one-per-minute limit and research R7 calls it on page open, but no FR or scenario asks for it. [Gap, Contracts §Widgets]
+- [x] CHK003 Are audit requirements stated for widget add, remove, reorder, place chosen, place removed and device-location use? `data-model.md` §Baseline tables lists these audit entries; the spec has none. [Gap, Data-model §audit_log]
+- [x] CHK004 Is the retention rule for cached readings (discard after seven days without an active user) and search results (one day) written as a requirement rather than only as an Assumption? [Completeness, Spec §Assumptions, §FR-013]
+- [x] CHK005 Does the spec say what "duplicate" copies for each kind (settings, and for weather/sunrise the place) and that the copy counts toward the eight-widget cap? `data-model.md` §widgets defines the copy; the spec only names the action. [Completeness, Spec §FR-002]
 - [x] CHK006 Is the source of the user's own time zone, used to decide "days left" and whether to show the place's zone, named? [Gap, Spec §FR-016, §FR-018]
-- [ ] CHK007 Are the number of place candidates offered (contract: up to five) and their order specified? [Gap, Spec §FR-012, Contracts §Places]
+- [x] CHK007 Are the number of place candidates offered (contract: up to five) and their order specified? [Gap, Spec §FR-012, Contracts §Places]
 - [x] CHK008 Is the behaviour defined when the user's default currency changes to a currency already selected in a currency widget (FR-010 refuses the default as a selection; FR-010 also re-bases on change)? [Gap, Spec §FR-010]
-- [ ] CHK009 Does re-basing on a default currency change also require a new thirty-one-day backfill for every selected currency against the new default? FR-008 ties backfill to "when a currency is added" only. [Gap, Spec §FR-008, §FR-010]
-- [ ] CHK010 Are the contents of the reorder announcement for assistive technology specified (what is announced, e.g. "Weather moved to position 1 of 3")? [Completeness, Spec §FR-004, US3 scenario 2]
-- [ ] CHK011 Is the "preview" promised in the add-widget list (US3 scenario 1) defined: a static image, sample figures, or live data? [Gap, Spec §US3]
+- [x] CHK009 Does re-basing on a default currency change also require a new thirty-one-day backfill for every selected currency against the new default? FR-008 ties backfill to "when a currency is added" only. [Gap, Spec §FR-008, §FR-010]
+- [x] CHK010 Are the contents of the reorder announcement for assistive technology specified (what is announced, e.g. "Weather moved to position 1 of 3")? [Completeness, Spec §FR-004, US3 scenario 2]
+- [x] CHK011 Is the "preview" promised in the add-widget list (US3 scenario 1) defined: a static image, sample figures, or live data? [Gap, Spec §US3]
 
 ## Requirement Clarity
 
 - [x] CHK012 Is "while the user is active" quantified consistently? FR-013 says "active in the last 24 hours" for the refresh loop, SC-004 says "while the user is active", and US2 says "while the user is around". [Clarity, Spec §FR-013, §SC-004]
-- [ ] CHK013 Is the typing "pause" before a place search given a duration? Research R5 uses 400 ms; the spec says only "after the user pauses typing". [Clarity, Spec §FR-013]
-- [ ] CHK014 Is "three-day outlook" defined as excluding today (today's high and low are shown separately) so that the four daily entries in `data-model.md` map unambiguously? [Clarity, Spec §FR-011, Data-model §weather_readings]
-- [ ] CHK015 Is "today" for weather high/low and for sunrise and sunset defined as today in the place's zone rather than the user's? [Ambiguity, Spec §FR-011, §FR-018]
+- [x] CHK013 Is the typing "pause" before a place search given a duration? Research R5 uses 400 ms; the spec says only "after the user pauses typing". [Clarity, Spec §FR-013]
+- [x] CHK014 Is "three-day outlook" defined as excluding today (today's high and low are shown separately) so that the four daily entries in `data-model.md` map unambiguously? [Clarity, Spec §FR-011, Data-model §weather_readings]
+- [x] CHK015 Is "today" for weather high/low and for sunrise and sunset defined as today in the place's zone rather than the user's? [Ambiguity, Spec §FR-011, §FR-018]
 - [x] CHK016 Does "days left" state whether today is included? Research R6 says "including today"; the spec does not. [Clarity, Spec §FR-016]
 - [x] CHK017 Is "the previous month's amount" for a fixed category defined as the sum of that category's expenses in the previous calendar month in the default currency? [Clarity, Spec §FR-017]
 - [x] CHK018 Is "fixed-kind category" defined? The baseline seeds Kind per expense (Fixed, Variable, One-off) and a default list of fixed categories; the spec does not say which attribute makes a category "fixed". [Ambiguity, Spec §FR-017, §US4]
-- [ ] CHK019 Are the percentage rounding rule (to one decimal: half-up or banker's) and the direction shown for a zero change specified? [Clarity, Spec §FR-008]
+- [x] CHK019 Are the percentage rounding rule (to one decimal: half-up or banker's) and the direction shown for a zero change specified? [Clarity, Spec §FR-008]
 - [x] CHK020 Is "mid-range phone" in SC-003 pinned to a device class or Lighthouse throttling profile so the one-second and 100 ms figures can be measured the same way twice? [Clarity, Spec §SC-003]
-- [ ] CHK021 Is "region" defined as the first-level administrative area (contract: `admin1`) for every country, including those where it is empty? [Clarity, Spec §FR-012, Contracts §Places]
+- [x] CHK021 Is "region" defined as the first-level administrative area (contract: `admin1`) for every country, including those where it is empty? [Clarity, Spec §FR-012, Contracts §Places]
 - [x] CHK022 Is "postcode" search a requirement with its own acceptance scenario, or only an example? US2 says "a city or postcode"; FR-012 says "typed search" only. [Ambiguity, Spec §US2, §FR-012]
 
 ## Requirement Consistency
@@ -42,10 +42,10 @@
 - [x] CHK024 Is the device-location result described consistently? Clarification Q3, FR-012 and US2 scenario 7 say "the nearest place name"; FR-014 says "approximate ('near <city>')" per ADR-0005. [Conflict, Spec §FR-012, §FR-014, §US2]
 - [x] CHK025 Do the error causes in FR-003 (source unreachable, place not found, rate not published, offline) match the `cause` vocabulary in `contracts/api.md` (`rate_unavailable | source_unreachable | source_limit_reached | place_not_found`)? "Source limit reached" appears only in the edge cases; "offline" appears only in the spec. [Consistency, Spec §FR-003, Contracts §Cross-cutting]
 - [x] CHK026 Do the Widget entity's per-type settings ("currency list; place and unit; zones; target date") match the five shipped kinds? "Zones" and "target date" belong to no listed widget, and the unit is a per-user preference per Assumptions and FR-011. [Consistency, Spec §Key Entities, §FR-011, §Assumptions]
-- [ ] CHK027 Are "Cached reading ... per currency pair" and "Rate history" describing the same store or two? Assumptions say no separate history store. [Duplication, Spec §Key Entities]
+- [x] CHK027 Are "Cached reading ... per currency pair" and "Rate history" describing the same store or two? Assumptions say no separate history store. [Duplication, Spec §Key Entities]
 - [x] CHK028 Does US3 scenario 3 ("place and unit for weather" in the widget's settings) agree with FR-011's per-user unit, i.e. is it stated that changing the unit in one widget's sheet changes it for all? [Consistency, Spec §US3, §FR-011]
-- [ ] CHK029 Are the widget states named identically across FR-003 (loading, empty, stale, error, unavailable), SC-005 and the contract's `state` field (`ready | empty | stale | error | unavailable`, loading being client-only)? [Consistency, Spec §FR-003, §SC-005, Contracts §Cross-cutting]
-- [ ] CHK030 Does the plan's route count ("nine routes" in Technical Context and data-model.md) match the ten rows in `contracts/api.md` (eight widget/place routes plus the extended `/me` and `/flags`)? [Consistency, Plan §Technical Context, Contracts]
+- [x] CHK029 Are the widget states named identically across FR-003 (loading, empty, stale, error, unavailable), SC-005 and the contract's `state` field (`ready | empty | stale | error | unavailable`, loading being client-only)? [Consistency, Spec §FR-003, §SC-005, Contracts §Cross-cutting]
+- [x] CHK030 Does the plan's route count ("nine routes" in Technical Context and data-model.md) match the ten rows in `contracts/api.md` (eight widget/place routes plus the extended `/me` and `/flags`)? [Consistency, Plan §Technical Context, Contracts]
 - [x] CHK031 Does the source client contract still describe only search and forecast after the reverse-geocoder revert, while `plan.md` §Source Code lists "client (search, reverse, forecast)" and "reverse lookup" in `services/places.ts`? [Consistency, Plan §Project Structure, Contracts §sources.md]
 
 ## Acceptance Criteria Quality
@@ -53,51 +53,51 @@
 - [x] CHK032 Can SC-001 ("zero mismatches across a month of daily checks") be verified in CI, or is it defined as an e2e-local/nightly outcome? Is the check that proves it named? [Measurability, Spec §SC-001]
 - [x] CHK033 Is SC-002 ("under one minute") tied to a method (usability session, scripted timing) and a starting state (rates already cached or not)? [Measurability, Spec §SC-002]
 - [x] CHK034 Is SC-004's sampling defined (who samples, how often, which place) so "99 % over a week" is reproducible? [Measurability, Spec §SC-004]
-- [ ] CHK035 Does every FR with a MUST have at least one acceptance scenario or edge case that exercises it? FR-007 (operator switch) and FR-014 (privacy page text) have edge-case or assumption coverage only. [Traceability, Spec §FR-007, §FR-014]
+- [x] CHK035 Does every FR with a MUST have at least one acceptance scenario or edge case that exercises it? FR-007 (operator switch) and FR-014 (privacy page text) have edge-case or assumption coverage only. [Traceability, Spec §FR-007, §FR-014]
 
 ## Scenario Coverage
 
 - [x] CHK036 Are recovery requirements stated for a failed thirty-one-day backfill (source unreachable at add time): is the widget added with "since <first date>" figures, added without changes, or refused? [Gap, Exception Flow, Spec §FR-008]
-- [ ] CHK037 Is the behaviour defined when a place stops being resolvable by the source after it was chosen (renamed, removed): keep the last reading, mark "place not found", or ask the user? [Gap, Recovery, Spec §FR-003]
+- [x] CHK037 Is the behaviour defined when a place stops being resolvable by the source after it was chosen (renamed, removed): keep the last reading, mark "place not found", or ask the user? [Gap, Recovery, Spec §FR-003]
 - [x] CHK038 Is the behaviour defined when a user has a sunrise widget but removes the weather widget and then adds a new weather widget with a different place: two places or one? [Coverage, Spec §FR-014, §FR-018]
-- [ ] CHK039 Are requirements written for the transition when the operator turns a kind back on: does the widget resume automatically on the next load? [Coverage, Spec §FR-007]
-- [ ] CHK040 Is the concurrent-edit rule ("last save wins") applied to settings changes as well as reorder, and to add/remove from two tabs (e.g. the cap reached in both)? [Coverage, Spec §Edge Cases, §FR-002]
+- [x] CHK039 Are requirements written for the transition when the operator turns a kind back on: does the widget resume automatically on the next load? [Coverage, Spec §FR-007]
+- [x] CHK040 Is the concurrent-edit rule ("last save wins") applied to settings changes as well as reorder, and to add/remove from two tabs (e.g. the cap reached in both)? [Coverage, Spec §Edge Cases, §FR-002]
 
 ## Edge Case Coverage
 
 - [x] CHK041 Is the spend pace "daily amount that would end exactly on budget" defined when the budget is already exceeded (zero, negative, or hidden) and on the last day of the month? [Edge Case, Spec §FR-016]
-- [ ] CHK042 Are requirements stated for a currency whose rate the source stops publishing after it was added (widget refuses on add only, per FR-010)? [Edge Case, Spec §FR-008, §FR-010]
-- [ ] CHK043 Is the case of a place with no `admin1` (region) or a country-level result covered in the "region and country" display rule? [Edge Case, Spec §FR-012]
-- [ ] CHK044 Are the edge cases for a place near the date line or in a zone without daylight-saving handled by the "place's local time" rule, and is polar day/night (no sunrise or sunset) covered for the sunrise widget? [Edge Case, Spec §FR-018]
+- [x] CHK042 Are requirements stated for a currency whose rate the source stops publishing after it was added (widget refuses on add only, per FR-010)? [Edge Case, Spec §FR-008, §FR-010]
+- [x] CHK043 Is the case of a place with no `admin1` (region) or a country-level result covered in the "region and country" display rule? [Edge Case, Spec §FR-012]
+- [x] CHK044 Are the edge cases for a place near the date line or in a zone without daylight-saving handled by the "place's local time" rule, and is polar day/night (no sunrise or sunset) covered for the sunrise widget? [Edge Case, Spec §FR-018]
 
 ## Non-Functional Requirements
 
-- [ ] CHK045 Is `GET /widgets` latency (plan: under 150 ms at eight widgets) a requirement or a plan target, and is it in the spec's success criteria? [Completeness, Plan §Performance Goals, Spec §SC-003]
-- [ ] CHK046 Are privacy requirements for `geocode_cache` stated (queries are shared across users; a typed query could be an address)? [Gap, Security/Privacy, Spec §FR-014, Data-model §geocode_cache]
+- [x] CHK045 Is `GET /widgets` latency (plan: under 150 ms at eight widgets) a requirement or a plan target, and is it in the spec's success criteria? [Completeness, Plan §Performance Goals, Spec §SC-003]
+- [x] CHK046 Are privacy requirements for `geocode_cache` stated (queries are shared across users; a typed query could be an address)? [Gap, Security/Privacy, Spec §FR-014, Data-model §geocode_cache]
 - [x] CHK047 Is the weather-source quota pause (`widgets.weather_paused_until`) described in the spec as an operator-visible state with its own copy, or only as a plan mechanism? [Completeness, Spec §Edge Cases, Data-model §flags]
 
 ## Dependencies & Assumptions
 
-- [ ] CHK048 Are the baseline prerequisites (Phase 2 month summary and category budgets for spend pace and fixed costs; Phase 4 privacy page for FR-014) named in the spec, not only in research.md's prerequisites table? [Dependency, Spec §Assumptions, Research §Owner decisions]
+- [x] CHK048 Are the baseline prerequisites (Phase 2 month summary and category budgets for spend pace and fixed costs; Phase 4 privacy page for FR-014) named in the spec, not only in research.md's prerequisites table? [Dependency, Spec §Assumptions, Research §Owner decisions]
 - [x] CHK049 Is the dependency of the Today page strip on spec 002 Slice A stated with what ships if 002 is delayed (month view strip alone)? [Dependency, Spec §FR-001, §Assumptions, Plan §Slice E]
-- [ ] CHK050 Is the assumption that a free public product counts as "non-commercial" for the weather source resolved and referenced (ADR-0005) rather than left as "part of the source ADR"? [Assumption, Spec §Assumptions]
+- [x] CHK050 Is the assumption that a free public product counts as "non-commercial" for the weather source resolved and referenced (ADR-0005) rather than left as "part of the source ADR"? [Assumption, Spec §Assumptions]
 
 ## Revision 2026-10-03: Requirement Completeness
 
 Items CHK051 onward review the text added on 2026-10-03 (reconciliation with spec 002 as built, five clarifications, FR-019).
 
 - [x] CHK051 Does FR-019 name, or point to a document that names, the "existing operator monitoring" the signals go through, so a reviewer can tell whether it exists today? [Clarity, Spec §FR-019]
-- [ ] CHK052 Is a retention period for the operator signal data stated in the spec, or is the plan's 90 days only a plan choice? [Gap, Spec §FR-019]
+- [x] CHK052 Is a retention period for the operator signal data stated in the spec, or is the plan's 90 days only a plan choice? [Gap, Spec §FR-019]
 - [x] CHK053 Does the spec state who may read the operator signals and whether they may be exposed without sign-in, given they describe usage of the product? [Gap, Security, Spec §FR-019]
 - [x] CHK054 Is there a requirement for what the user sees on the sunrise and sunset widget when the place has no sunrise or sunset that day (polar day or night)? The plan adds `polar`; the spec does not. [Gap, Spec §FR-018]
 - [x] CHK055 Is it specified whether a currency row showing "your default currency" counts toward the six-currency cap in FR-008? [Gap, Spec §FR-008, §FR-010]
 - [x] CHK056 Is an upper bound defined for how long changes may read "not available yet" before the widget reports a cause (e.g. the rate source never returns the history)? [Edge Case, Gap, Spec §FR-008]
-- [ ] CHK057 Is the effect of the user changing their time zone setting mid-month on spend pace and upcoming fixed costs specified? [Edge Case, Gap, Spec §FR-015]
+- [x] CHK057 Is the effect of the user changing their time zone setting mid-month on spend pace and upcoming fixed costs specified? [Edge Case, Gap, Spec §FR-015]
 
 ## Revision 2026-10-03: Requirement Clarity
 
-- [ ] CHK058 Is "users who can see the Today page" (FR-001) defined in terms a tester can set up: per user, per deployment, or both? [Clarity, Spec §FR-001]
-- [ ] CHK059 Is "catches up when the page is shown again" (FR-003) as precise as the clarification it came from ("if its figures are past their refresh window")? [Clarity, Spec §FR-003, Clarifications 2026-10-03]
+- [x] CHK058 Is "users who can see the Today page" (FR-001) defined in terms a tester can set up: per user, per deployment, or both? [Clarity, Spec §FR-001]
+- [x] CHK059 Is "catches up when the page is shown again" (FR-003) as precise as the clarification it came from ("if its figures are past their refresh window")? [Clarity, Spec §FR-003, Clarifications 2026-10-03]
 - [x] CHK060 Is "failed continuously for an hour" (FR-019) defined for an hour in which the source was not called at all? [Ambiguity, Spec §FR-019]
 - [x] CHK061 Is "a source's limit is reached" defined for the rates source as well as the weather source, or is it weather-only? [Ambiguity, Spec §FR-019]
 - [x] CHK062 Is "topmost weather widget" unambiguous given the arrangement is shared by two pages and a user can have up to eight widgets? [Clarity, Spec §FR-018]
@@ -109,7 +109,7 @@ Items CHK051 onward review the text added on 2026-10-03 (reconciliation with spe
 - [x] CHK065 Is "active" defined once and reused: FR-013 ("any signed-in request"), the Assumptions bullet ("active in the last 24 hours") and SC-004 ("while the user is active")? [Consistency, Spec §FR-013, §SC-004, §Assumptions]
 - [x] CHK066 Does the user-time-zone rule in FR-015 agree with SC-001's "an expense entered the same day", i.e. is that day also the user's zone day? [Consistency, Spec §FR-015, §SC-001]
 - [x] CHK067 Is the Today page strip's ordering rule (after the calendar and inbox panels) stated with the same strength (MUST) as the month view's ordering? [Consistency, Spec §FR-001]
-- [ ] CHK068 With place rows shared between widgets, does the export rule in FR-006 and FR-014 say whether a place appears once per widget or once per user? [Clarity, Spec §FR-006, §FR-014]
+- [x] CHK068 With place rows shared between widgets, does the export rule in FR-006 and FR-014 say whether a place appears once per widget or once per user? [Clarity, Spec §FR-006, §FR-014]
 
 ## Revision 2026-10-03: Acceptance Criteria Quality
 
@@ -119,13 +119,13 @@ Items CHK051 onward review the text added on 2026-10-03 (reconciliation with spe
 ## Revision 2026-10-03: Scenario Coverage
 
 - [x] CHK071 Is the reverse of the new edge case stated: a widget strip in an error state must not affect the Today page's calendar and inbox panels? [Coverage, Spec §Edge Cases]
-- [ ] CHK072 Do the user stories carry an acceptance scenario for the Today page surface (strip present when the Today page is on, month view only when off), or is it covered only by FR-001 and the edge cases? [Coverage, Spec §FR-001, §US3]
+- [x] CHK072 Do the user stories carry an acceptance scenario for the Today page surface (strip present when the Today page is on, month view only when off), or is it covered only by FR-001 and the edge cases? [Coverage, Spec §FR-001, §US3]
 
 ## Revision 2026-10-03: Dependencies & Assumptions
 
 - [x] CHK073 Are the 2026-10-03 clarification answers given by the agent flagged for owner confirmation, so they are not read as owner decisions under the constitution's "providers and product choices are the owner's call"? [Assumption, Spec §Clarifications 2026-10-03]
-- [ ] CHK074 Is FR-019's dependency on the uptime monitor's alert routing (still an open owner to-do in `docs/runbooks/uptime.md`) recorded in the spec's Assumptions, not only in the plan? [Dependency, Gap, Spec §FR-019]
-- [ ] CHK075 Does the spec state that the Today page strip cannot be observed by production users until the Today page's operator switch is on, so SC-002 and SC-007 are measured on the month view? [Dependency, Spec §Assumptions, §SC-002, §SC-007]
+- [x] CHK074 Is FR-019's dependency on the uptime monitor's alert routing (still an open owner to-do in `docs/runbooks/uptime.md`) recorded in the spec's Assumptions, not only in the plan? [Dependency, Gap, Spec §FR-019]
+- [x] CHK075 Does the spec state that the Today page strip cannot be observed by production users until the Today page's operator switch is on, so SC-002 and SC-007 are measured on the month view? [Dependency, Spec §Assumptions, §SC-002, §SC-007]
 
 ## Second clarify pass 2026-10-03: Requirement Clarity
 
@@ -133,7 +133,7 @@ Items CHK076 onward review the text changed by the second clarify pass (FR-008, 
 
 - [x] CHK076 Does the "within 20 minutes" alert bound in FR-019 state where the clock starts: at the first failed call, or once the 60-minute all-failed window is satisfied (which could put the alert up to 80 minutes after the first failure)? [Ambiguity, Spec §FR-019]
 - [x] CHK077 With one public status that says only "healthy" or "degraded", is it specified how the operator tells which source (weather or rates) and which condition (limit or failure) caused it? [Clarity, Spec §FR-019]
-- [ ] CHK078 Is "visible only in the operator's logs" specific enough to satisfy "the operator MUST be able to see, per day ..." — is the frequency (e.g. one summary a day) and how long those logs are kept stated? [Clarity, Spec §FR-019]
+- [x] CHK078 Is "visible only in the operator's logs" specific enough to satisfy "the operator MUST be able to see, per day ..." — is the frequency (e.g. one summary a day) and how long those logs are kept stated? [Clarity, Spec §FR-019]
 - [x] CHK079 Does SC-003's "within one second of the page appearing" now apply to the Today page as well as the month view, or only the new 100 ms clause? [Clarity, Spec §SC-003]
 
 ## Second clarify pass 2026-10-03: Requirement Consistency
@@ -146,16 +146,16 @@ Items CHK076 onward review the text changed by the second clarify pass (FR-008, 
 
 - [x] CHK083 Does SC-008 say where the rehearsal runs (staging or production), who runs it, and how often, so it can be signed off? [Measurability, Spec §SC-008]
 - [x] CHK084 Does SC-008 cover the rates source as well as the weather source, since FR-019 applies to both? [Coverage, Spec §SC-008, §FR-019]
-- [ ] CHK085 Is the Today page baseline for SC-003's 100 ms comparison defined (connected accounts or none, panels from cache or fresh)? [Measurability, Spec §SC-003]
+- [x] CHK085 Is the Today page baseline for SC-003's 100 ms comparison defined (connected accounts or none, panels from cache or fresh)? [Measurability, Spec §SC-003]
 
 ## Second clarify pass 2026-10-03: Edge Case Coverage
 
-- [ ] CHK086 Is the near-polar case covered where a sunrise happens but the sunset falls after local midnight (or the reverse), so "today's sunrise and sunset" spans two dates? [Edge Case, Gap, Spec §FR-018]
+- [x] CHK086 Is the near-polar case covered where a sunrise happens but the sunset falls after local midnight (or the reverse), so "today's sunrise and sunset" spans two dates? [Edge Case, Gap, Spec §FR-018]
 - [x] CHK087 Is the user told anything when changes have read "not available yet" for many days, or is indefinite silence intended? [Edge Case, Spec §FR-008, §Edge Cases]
 
 ## Second clarify pass 2026-10-03: Non-Functional Requirements
 
-- [ ] CHK088 Is the extra load on the rate source from daily history retries bounded (e.g. at most one retry per currency pair per day across all users) so it cannot grow with the number of users? [Gap, Spec §FR-008, §Assumptions]
+- [x] CHK088 Is the extra load on the rate source from daily history retries bounded (e.g. at most one retry per currency pair per day across all users) so it cannot grow with the number of users? [Gap, Spec §FR-008, §Assumptions]
 
 ## Notes
 

@@ -63,7 +63,7 @@ place (SC-004). Today page tests switch `panels.today` on, as spec 002's e2e sui
 and up). Nothing runtime-specific.
 
 **Project Type**: web application monorepo; this feature adds one strip component with five
-widget kinds, one settings sheet, one job family and nine routes.
+widget kinds, one settings sheet, one job family and ten routes.
 
 **Performance Goals**: strip shows cached figures within one second on a mid-range phone;
 month view load, and the time until the Today page's calendar and inbox panels appear, not
