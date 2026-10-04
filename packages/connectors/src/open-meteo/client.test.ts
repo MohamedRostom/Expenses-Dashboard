@@ -158,6 +158,15 @@ describe('OpenMeteoClient (real only)', () => {
     expect(String(g.mock.calls[0]![0])).toMatch(/^http:\/\/mocks:4000\/open-meteo\/v1\/search\?/);
     expect(String(g.mock.calls[1]![0])).toMatch(/^http:\/\/mocks:4000\/open-meteo\/v1\/forecast\?/);
   });
+
+  it('baseUrl trailing slashes are trimmed in linear time (CodeQL polynomial regex)', async () => {
+    const f = stub(searchEmpty);
+    await new OpenMeteoClient({ fetchImpl: asFetch(f), baseUrl: 'http://m///' }).search('x');
+    expect(String(f.mock.calls[0]![0])).toMatch(/^http:\/\/m\/v1\/search\?/);
+    // A quadratic trim takes many seconds on this and trips the test timeout.
+    const slashes = 'http://m' + '/'.repeat(200_000) + 'x';
+    expect(() => new OpenMeteoClient({ baseUrl: slashes })).not.toThrow();
+  });
 });
 
 describe('OpenMeteoFake controls', () => {

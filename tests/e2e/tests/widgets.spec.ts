@@ -12,7 +12,7 @@ import {
 const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 
 function uniqueEmail(tag: string): string {
-  return `e2e-${tag}-${Date.now()}-${Math.random().toString(36).slice(2)}@example.test`;
+  return `e2e-${tag}-${crypto.randomUUID()}@example.test`;
 }
 
 /**
@@ -359,7 +359,7 @@ type ApiWidget = {
   figures?: Record<string, unknown>;
 };
 
-const rnd = (n: number) => Math.floor(Math.random() * n);
+const rnd = (n: number) => crypto.getRandomValues(new Uint32Array(1))[0]! % n;
 const letters = (n: number) =>
   Array.from({ length: n }, () => 'abcdefghijklmnop'[rnd(16)]).join('');
 

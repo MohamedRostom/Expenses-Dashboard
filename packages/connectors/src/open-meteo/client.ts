@@ -60,7 +60,9 @@ export class OpenMeteoClient implements WeatherSource {
 
   constructor(opts: { fetchImpl?: typeof fetch; baseUrl?: string; now?: () => Date } = {}) {
     this.fetchImpl = opts.fetchImpl ?? fetch;
-    this.baseUrl = opts.baseUrl?.replace(/\/+$/, '');
+    let base = opts.baseUrl;
+    while (base?.endsWith('/')) base = base.slice(0, -1);
+    this.baseUrl = base;
     this.now = opts.now ?? (() => new Date());
   }
 
