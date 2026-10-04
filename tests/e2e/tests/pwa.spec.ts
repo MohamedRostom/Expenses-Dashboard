@@ -84,6 +84,11 @@ test('offline reload shows the last widget figures with the offline copy', async
     }),
   );
   await signUpAndVerify(page, `e2e-pwa-${Date.now()}@example.test`);
+  // The emailed verify link points at APP_ORIGIN (the dev server); come back to the built app.
+  // localhost cookies ignore the port, so the session carries over. Wait for the onboarding skip
+  // to land first, or the guard sends the built app back to /onboarding.
+  await page.waitForURL(/\/$/);
+  await page.goto('/');
   await expect(page.getByTestId('widget-frame')).toBeVisible();
   await page.evaluate(async () => {
     const nav = navigator as unknown as { serviceWorker: { ready: Promise<unknown> } };

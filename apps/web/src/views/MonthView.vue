@@ -201,6 +201,9 @@ async function onUndoDelete(id: string) {
       <Button @click="openAdd">Add expense</Button>
     </header>
 
+    <!-- The month fetch failed (e.g. offline): the strip still mounts once it has settled, as on
+         TodayView, so cached widget figures show (spec edge case "app is offline"). -->
+    <WidgetStrip v-if="!store.loading && !store.summary && store.error" />
     <Skeleton v-if="store.loading" height="12rem" />
     <!-- A pending/rejected queue is IndexedDB-backed, independent of the failed network summary
          fetch (store.error) — e.g. offline.spec.ts adds an expense while offline, where
