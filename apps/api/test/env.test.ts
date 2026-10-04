@@ -175,4 +175,17 @@ describe('parseEnv', () => {
       parseEnv({ ...required, STANDARDS_ALLOW_PRIVATE_HOSTS: 'true', NODE_ENV: 'production' }),
     ).not.toThrow();
   });
+
+  it('FLAGS_ON splits a comma list of flag keys, is unset by default, and is refused on production', () => {
+    expect(parseEnv(required).FLAGS_ON).toBeUndefined();
+    expect(
+      parseEnv({ ...required, FLAGS_ON: ' widgets.currency, ,widgets.weather ' }).FLAGS_ON,
+    ).toEqual(['widgets.currency', 'widgets.weather']);
+    expect(() =>
+      parseEnv({ ...required, FLAGS_ON: 'widgets.currency', FLY_APP_NAME: 'ros-desk-production' }),
+    ).toThrow(/FLAGS_ON/);
+    expect(() =>
+      parseEnv({ ...required, FLAGS_ON: 'widgets.currency', FLY_APP_NAME: 'ros-desk-pr-26' }),
+    ).not.toThrow();
+  });
 });

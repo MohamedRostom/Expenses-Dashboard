@@ -81,6 +81,7 @@ jobs:
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --strategy immediate --ha=false
+          --env FLAGS_ON=widgets.currency,widgets.weather,widgets.sunrise,widgets.spend_pace,widgets.fixed_costs,panels.today
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           gh pr comment ${{ github.event.number }} --edit-last --create-if-none

@@ -2,7 +2,7 @@ import { serve } from '@hono/node-server';
 import { serveStatic } from '@hono/node-server/serve-static';
 import { readFile } from 'node:fs/promises';
 import postgres from 'postgres';
-import { createDb } from '@desk/db';
+import { createDb, setGlobalFlag } from '@desk/db';
 import { runMigrations } from '@desk/db/migrate';
 import pkg from '../package.json' with { type: 'json' };
 import { createApp, type Clock } from './app.js';
@@ -32,6 +32,7 @@ const env = parseEnv(process.env);
 await runMigrations(env.DATABASE_URL);
 
 const { db } = createDb(env.DATABASE_URL);
+for (const key of env.FLAGS_ON ?? []) await setGlobalFlag(db, key, true);
 
 // Bridges postgres-js to the small `.query(sql, params)` port PgSessionStore/PgRateLimiter want
 // (ponytail: one client, two call shapes — cheaper than a second connection pool).

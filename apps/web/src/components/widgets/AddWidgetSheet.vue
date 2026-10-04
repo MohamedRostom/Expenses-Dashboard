@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Dialog, Button } from '@desk/ui';
+import { Dialog, Button, EmptyState } from '@desk/ui';
 import type { WidgetCreateT, WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { CURRENCY_CAP } from '@desk/core';
@@ -82,6 +82,11 @@ const PREVIEW: Record<WidgetKindT, string> = {
         </Button>
       </div>
     </div>
+    <EmptyState
+      v-else-if="!types.some((x) => x.enabled)"
+      title="No widgets available yet"
+      description="New widget types appear here as they are switched on."
+    />
     <ul v-else class="desk-add-widget-list">
       <li v-for="t in types.filter((x) => x.enabled)" :key="t.kind" class="desk-add-widget-item">
         <div>

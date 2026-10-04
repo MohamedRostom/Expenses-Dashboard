@@ -18,6 +18,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Fixed
 
+- PR preview deploys switch the `widgets.*` and `panels.today` flags on at startup (new `FLAGS_ON` env var, refused on production), so the add-widget sheet no longer opens empty on a preview; when no widget type is enabled the sheet now says "No widgets available yet" instead of showing nothing.
 - Widgets (spec 003 convergence, T080–T086):
   - A failed widget load now shows an error or offline state instead of "No widgets yet".
   - Spend pace shows the spend so far when no budget is set.

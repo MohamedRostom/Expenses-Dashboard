@@ -45,7 +45,7 @@ const flush = async () => {
   await nextTick();
 };
 
-async function mount(add: (b: WidgetCreateT) => Promise<void>, hasWeather = false) {
+async function mount(add: (b: WidgetCreateT) => Promise<void>, hasWeather = false, types = TYPES) {
   const { default: AddWidgetSheet } = await import('./AddWidgetSheet.vue');
   const { useSessionStore } = await import('../../stores/session.js');
   const pinia = createPinia();
@@ -54,8 +54,7 @@ async function mount(add: (b: WidgetCreateT) => Promise<void>, hasWeather = fals
   const el = document.createElement('div');
   document.body.appendChild(el);
   const app = createApp({
-    render: () =>
-      h(AddWidgetSheet, { open: true, types: TYPES, hasWeather, add, onClose: vi.fn() }),
+    render: () => h(AddWidgetSheet, { open: true, types, hasWeather, add, onClose: vi.fn() }),
   }).use(pinia);
   app.mount(el);
   await flush();
@@ -75,6 +74,16 @@ const addFor = (name: string) =>
 describe('AddWidgetSheet', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => (document.body.innerHTML = ''));
+
+  it('says so when no widget type is enabled, instead of an empty sheet', async () => {
+    await mount(
+      vi.fn(),
+      false,
+      TYPES.map((t) => ({ ...t, enabled: false })),
+    );
+    expect(body().querySelector('li')).toBeNull();
+    expect(body().textContent).toContain('No widgets available yet');
+  });
 
   it('adds kinds that need nothing immediately', async () => {
     const add = vi.fn(async () => {});
