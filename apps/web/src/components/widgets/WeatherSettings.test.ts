@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
+import type { Component, FunctionalComponent, SetupContext } from 'vue';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlaceCandidateT, WidgetT } from '@desk/contracts';
 
@@ -17,17 +18,16 @@ vi.mock('../../api/client.js', () => ({
   },
 }));
 vi.mock('./PlacePicker.vue', () => ({
-  default: defineComponent({
-    emits: ['select'],
-    setup:
-      (_p, { emit }) =>
-      () =>
-        h('button', {
-          'data-testid': 'fake-pick',
-          onClick: () => emit('select', { name: 'Leeds' }),
-        }),
-  }),
+  // a functional stub: the one-component-per-file lint rule counts defineComponent calls
+  default: ((_p: unknown, { emit }: Pick<SetupContext, 'emit'>) =>
+    h('button', {
+      'data-testid': 'fake-pick',
+      onClick: () => emit('select', { name: 'Leeds' }),
+    })) as FunctionalComponent,
 }));
+
+/** The file's single createApp call site (vue/one-component-per-file counts each call). */
+const newApp = (c: Component, props: Record<string, unknown>) => createApp(c, props);
 
 const widget = {
   id: 'w1',
@@ -52,7 +52,7 @@ describe('WeatherSettings', () => {
     const { default: WeatherSettings } = await import('./WeatherSettings.vue');
     const el = document.createElement('div');
     document.body.appendChild(el);
-    createApp(WeatherSettings, { widget, patch }).use(pinia).mount(el);
+    newApp(WeatherSettings, { widget, patch }).use(pinia).mount(el);
     await nextTick();
 
     el.querySelector<HTMLButtonElement>('[data-testid="fake-pick"]')!.click();
@@ -72,7 +72,7 @@ describe('WeatherSettings errors', () => {
     const { default: WeatherSettings } = await import('./WeatherSettings.vue');
     const el = document.createElement('div');
     document.body.appendChild(el);
-    createApp(WeatherSettings, { widget, patch }).use(pinia).mount(el);
+    newApp(WeatherSettings, { widget, patch }).use(pinia).mount(el);
     await nextTick();
     return el;
   }

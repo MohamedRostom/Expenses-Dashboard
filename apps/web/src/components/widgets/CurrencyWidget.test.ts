@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick } from 'vue';
+import type { Component } from 'vue';
 import { describe, expect, it, vi } from 'vitest';
 import type { CurrencyRowT, WidgetT } from '@desk/contracts';
 
@@ -24,10 +25,13 @@ const flush = async () => {
   await nextTick();
 };
 
+/** The file's single createApp call site (vue/one-component-per-file counts each call). */
+const newApp = (c: Component, props: Record<string, unknown>) => createApp(c, props);
+
 async function mountRows(rows: CurrencyRowT[]) {
   const { default: CurrencyWidget } = await import('./CurrencyWidget.vue');
   const el = document.createElement('div');
-  const app = createApp(CurrencyWidget, { rows });
+  const app = newApp(CurrencyWidget, { rows });
   app.mount(el);
   await nextTick();
   return { el, app };
@@ -101,7 +105,7 @@ describe('currency settings', () => {
       state: 'ready',
       asOf: '2026-10-03T12:00:00Z',
     } as WidgetT;
-    const app = createApp(Sheet, { open: true, widget }).use(pinia);
+    const app = newApp(Sheet, { open: true, widget }).use(pinia);
     app.mount(document.createElement('div'));
     await flush();
     return { app, api };

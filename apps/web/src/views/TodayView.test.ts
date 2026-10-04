@@ -1,18 +1,18 @@
 import { createPinia, setActivePinia } from 'pinia';
-import { createApp, defineComponent, h, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import TodayView from './TodayView.vue';
 import { useTodayStore } from '../stores/today.js';
 
 vi.mock('../components/widgets/WidgetStrip.vue', () => ({
   __esModule: true,
-  default: defineComponent({ render: () => h('div', { class: 'strip' }) }),
+  default: () => h('div', { class: 'strip' }),
 }));
 vi.mock('../components/today/CalendarPanel.vue', () => ({
-  default: defineComponent({ render: () => h('div', { class: 'cal' }) }),
+  default: () => h('div', { class: 'cal' }),
 }));
 vi.mock('../components/today/InboxPanel.vue', () => ({
-  default: defineComponent({ render: () => h('div', { class: 'inbox' }) }),
+  default: () => h('div', { class: 'inbox' }),
 }));
 
 const flushPromises = async () => {

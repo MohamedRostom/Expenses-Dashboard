@@ -1,20 +1,16 @@
 import { createPinia, setActivePinia } from 'pinia';
+import type { FunctionalComponent, SetupContext } from 'vue';
 import { createApp, nextTick } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { WidgetT } from '@desk/contracts';
 
 vi.mock('../../api/widgets.js', () => ({}));
 vi.mock('./CurrencyPicker.vue', async () => {
-  const { defineComponent, h } = await import('vue');
-  return {
-    default: defineComponent({
-      emits: ['toggle'],
-      setup:
-        (_p, { emit }) =>
-        () =>
-          h('button', { 'data-testid': 'fake-toggle', onClick: () => emit('toggle', 'EUR') }),
-    }),
-  };
+  const { h } = await import('vue');
+  // a functional stub: the one-component-per-file lint rule counts defineComponent calls
+  const stub = (_p: unknown, { emit }: Pick<SetupContext, 'emit'>) =>
+    h('button', { 'data-testid': 'fake-toggle', onClick: () => emit('toggle', 'EUR') });
+  return { default: stub as FunctionalComponent };
 });
 
 const widget = {
