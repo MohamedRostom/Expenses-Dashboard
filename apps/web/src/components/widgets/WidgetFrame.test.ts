@@ -118,3 +118,27 @@ describe('WidgetFrame offline copy', () => {
     expect(el.textContent).not.toContain("You're offline");
   });
 });
+
+describe('WidgetFrame empty state', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  const empty = (kind: WidgetT['kind']) =>
+    mount({ widget: widget({ kind, state: 'empty', figures: undefined } as Partial<WidgetT>) });
+
+  it('spend pace with no budget says so and links to Categories, not a skeleton', async () => {
+    const { el } = await empty('spend_pace');
+    expect(el.textContent).toContain('No budget set.');
+    expect(el.textContent).toContain('Set a budget in Categories');
+    expect(el.querySelector('[class*="skeleton"]')).toBeNull();
+  });
+
+  it('fixed costs with none says so', async () => {
+    const { el } = await empty('fixed_costs');
+    expect(el.textContent).toContain('No fixed-cost categories yet');
+    expect(el.querySelector('[class*="skeleton"]')).toBeNull();
+  });
+
+  it('weather keeps the loading look while the reading is pending', async () => {
+    const { el } = await empty('weather');
+    expect(el.querySelector('[class*="skeleton"]')).not.toBeNull();
+  });
+});

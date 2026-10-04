@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { Button, EmptyState, useToast } from '@desk/ui';
-import type { WidgetKindT, WidgetTypeT } from '@desk/contracts';
+import type { WidgetCreateT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import CurrencyWidget from './CurrencyWidget.vue';
@@ -61,13 +61,9 @@ function message(err: unknown, fallback: string) {
   return err instanceof ApiError ? err.message : fallback;
 }
 
-async function onAdd(kind: WidgetKindT) {
-  try {
-    await store.add({ kind });
-    adding.value = false;
-  } catch (err) {
-    toast.push(message(err, 'Failed to add widget.'), 'critical');
-  }
+async function onAdd(body: WidgetCreateT) {
+  await store.add(body); // rejections surface inside the sheet
+  adding.value = false;
 }
 
 async function onRemove(id: string, name: string) {
@@ -205,7 +201,13 @@ async function onDragEnd() {
 
     <p class="desk-widget-attribution"><slot name="attribution" /></p>
 
-    <AddWidgetSheet :open="adding" :types="catalogue" @close="adding = false" @add="onAdd" />
+    <AddWidgetSheet
+      :open="adding"
+      :types="catalogue"
+      :has-weather="store.widgets.some((w) => w.kind === 'weather')"
+      :add="onAdd"
+      @close="adding = false"
+    />
     <WidgetSettingsSheet
       :open="settingsId !== null"
       :widget="settingsWidget"

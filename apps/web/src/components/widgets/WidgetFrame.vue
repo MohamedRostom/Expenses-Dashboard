@@ -57,9 +57,12 @@ const banner = computed(() => {
   return null;
 });
 // state 'empty' with no figures is a reading that has not arrived yet: show the skeleton.
-const body = computed<'figures' | 'loading' | 'error'>(() => {
+// Spend pace and fixed costs have no external source: 'empty' there means nothing to show, not pending.
+const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   if (hasFigures.value) return 'figures';
-  return props.widget.state === 'error' ? 'error' : 'loading';
+  const { state, kind } = props.widget;
+  if (state === 'empty' && (kind === 'spend_pace' || kind === 'fixed_costs')) return 'nothing';
+  return state === 'error' ? 'error' : 'loading';
 });
 </script>
 
@@ -100,6 +103,14 @@ const body = computed<'figures' | 'loading' | 'error'>(() => {
     <p v-if="banner" class="desk-widget-banner" role="status">{{ banner }}</p>
     <div class="desk-widget-body">
       <slot v-if="body === 'figures'" />
+      <p v-else-if="body === 'nothing'" class="desk-widget-nothing">
+        {{ widget.kind === 'spend_pace' ? 'No budget set.' : 'No fixed-cost categories yet.' }}
+        <RouterLink to="/categories">{{
+          widget.kind === 'spend_pace'
+            ? 'Set a budget in Categories'
+            : 'Mark categories as fixed in Categories'
+        }}</RouterLink>
+      </p>
       <PanelState v-else-if="body === 'loading'" kind="loading" />
       <PanelState v-else kind="error" :code="widget.cause ?? 'server_error'" />
     </div>
@@ -180,6 +191,10 @@ const body = computed<'figures' | 'loading' | 'error'>(() => {
   margin: 0;
   font-size: 0.75rem;
   color: var(--color-warn);
+}
+.desk-widget-nothing {
+  margin: 0;
+  font-size: 0.85rem;
 }
 .desk-widget-body {
   flex: 1;

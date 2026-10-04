@@ -139,7 +139,7 @@ describe('WidgetStrip', () => {
   });
 
   it('shows a fixed-height loading frame for a widget with no figures yet', async () => {
-    const { el, app } = await mount([widget('a', { state: 'empty' })]);
+    const { el, app } = await mount([widget('a', { kind: 'weather', state: 'empty' })]);
     expect(el.querySelector('[data-testid="widget-frame"]')).not.toBeNull();
     expect(el.querySelector('.desk-skeleton, [class*="skeleton"]')).not.toBeNull();
     app.unmount();
