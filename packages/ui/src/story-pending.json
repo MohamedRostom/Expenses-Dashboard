@@ -1,8 +1,5 @@
 [
-  "packages/ui/src/charts/CategoryBars.vue",
   "packages/ui/src/charts/DataTable.vue",
-  "packages/ui/src/charts/TrendSparkline.vue",
-  "packages/ui/src/charts/YearBars.vue",
   "packages/ui/src/components/Button.vue",
   "packages/ui/src/components/Dialog.vue",
   "packages/ui/src/components/EmptyState.vue",

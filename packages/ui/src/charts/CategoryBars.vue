@@ -89,13 +89,13 @@ defineExpose({ barPct, tickPct, isOverBudget });
 .desk-category-bars {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   font-family: var(--font-sans);
 }
 .desk-category-bars-row {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .desk-category-bars-label {
   display: flex;
