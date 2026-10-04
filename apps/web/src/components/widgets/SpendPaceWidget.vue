@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import type { WidgetT } from '@desk/contracts';
-import { useSessionStore } from '../../stores/session.js';
-import { formatMoney } from '../../utils/format.js';
+import { formatDefaultMoney as money } from '../../utils/format.js';
 
 const props = defineProps<{
   figures: NonNullable<Extract<WidgetT, { kind: 'spend_pace' }>['figures']>;
 }>();
-const session = useSessionStore();
-const money = (minor: number) => formatMoney(minor, session.user?.defaultCurrency ?? 'GBP');
 const days = computed(() =>
   props.figures.daysLeft === 1 ? '1 day left' : `${props.figures.daysLeft} days left`,
 );

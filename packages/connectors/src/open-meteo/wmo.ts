@@ -10,7 +10,7 @@ export const WEATHER_ICONS = [
   'snow',
   'thunder',
 ] as const;
-export type WeatherIcon = (typeof WEATHER_ICONS)[number];
+type WeatherIcon = (typeof WEATHER_ICONS)[number];
 
 type Entry = { condition: string; icon: WeatherIcon };
 

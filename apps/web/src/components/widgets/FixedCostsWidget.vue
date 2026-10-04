@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import type { WidgetT } from '@desk/contracts';
-import { useSessionStore } from '../../stores/session.js';
-import { formatMoney } from '../../utils/format.js';
+import { formatDefaultMoney as money } from '../../utils/format.js';
 
 defineProps<{
   figures: NonNullable<Extract<WidgetT, { kind: 'fixed_costs' }>['figures']>;
 }>();
-const session = useSessionStore();
-const money = (minor: number) => formatMoney(minor, session.user?.defaultCurrency ?? 'GBP');
 </script>
 
 <template>
