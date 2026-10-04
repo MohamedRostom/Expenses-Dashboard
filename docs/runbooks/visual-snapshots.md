@@ -30,13 +30,18 @@ V=$(node -p "require('./tests/e2e/package.json').devDependencies['@playwright/te
 P=$(node -p "require('./package.json').packageManager.split('@')[1]")
 docker run --rm --ipc=host \
   -v "$PWD:/work" -v /work/node_modules -v /work/tests/e2e/node_modules -w /work \
-  -e E2E_BASE_URL=http://host.docker.internal:5173 \
-  -e MAILPIT_URL=http://host.docker.internal:8025 \
-  -e MOCKS_URL=http://host.docker.internal:4000 \
+  -e E2E_BASE_URL=http://localhost:5173 \
+  -e MAILPIT_URL=http://localhost:8025 \
+  -e MOCKS_URL=http://localhost:4000 \
   -e CI=true \
   mcr.microsoft.com/playwright:v$V-noble \
   bash -lc "npx -y pnpm@$P install --frozen-lockfile --filter @desk/e2e... && cd tests/e2e && npx playwright test --project=visual --update-snapshots"
 ```
+
+`--network host` (Docker Desktop 4.34+ with host networking enabled) makes the stack reachable
+as `localhost`. With `host.docker.internal` Vite rejects the Host header ("Blocked request") and
+the API's `APP_ORIGIN` (`http://localhost:5173`) would not match either. Add a spec filter such
+as `year` after `--project=visual` to render one file only.
 
 Drop `--update-snapshots` to compare only. The anonymous volumes keep the container's
 `node_modules` separate from the host's, so nothing the container installs leaks onto Windows.

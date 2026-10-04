@@ -2,6 +2,10 @@
 export { default as Button } from './components/Button.vue';
 export { default as Input } from './components/Input.vue';
 export { default as Select } from './components/Select.vue';
+export { default as Tabs } from './components/Tabs.vue';
+export { default as MenuButton } from './components/MenuButton.vue';
+export { default as ThemeToggle } from './components/ThemeToggle.vue';
+export { default as Kbd } from './components/Kbd.vue';
 export { default as Dialog } from './components/Dialog.vue';
 export { default as Toast } from './components/Toast.vue';
 export { default as Skeleton } from './components/Skeleton.vue';

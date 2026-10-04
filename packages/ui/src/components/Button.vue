@@ -1,12 +1,13 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    variant?: 'primary' | 'secondary' | 'danger';
+    variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
+    size?: 'sm' | 'md';
     disabled?: boolean;
     loading?: boolean;
     type?: 'button' | 'submit' | 'reset';
   }>(),
-  { variant: 'primary', disabled: false, loading: false, type: 'button' },
+  { variant: 'primary', size: 'md', disabled: false, loading: false, type: 'button' },
 );
 </script>
 
@@ -14,7 +15,7 @@ withDefaults(
   <button
     :type="type"
     class="desk-btn"
-    :class="variant"
+    :class="[variant, { sm: size === 'sm' }]"
     :disabled="disabled || loading"
     :aria-busy="loading"
   >
@@ -27,13 +28,21 @@ withDefaults(
 .desk-btn {
   font-family: var(--font-sans);
   font-size: 0.9rem;
-  padding: 0.5rem 1rem;
+  padding: var(--space-2) var(--space-4);
   border-radius: 6px;
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
+}
+.desk-btn:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-btn.sm {
+  font-size: var(--text-xs);
+  padding: var(--space-1) var(--space-3);
 }
 .desk-btn:disabled {
   cursor: not-allowed;
@@ -47,6 +56,10 @@ withDefaults(
   background: transparent;
   color: var(--color-fg);
   border-color: var(--color-fg);
+}
+.desk-btn.ghost {
+  background: transparent;
+  color: var(--color-fg);
 }
 .desk-btn.danger {
   background: var(--color-critical);
