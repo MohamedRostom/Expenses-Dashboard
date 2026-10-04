@@ -179,6 +179,18 @@ describe('widgets', () => {
     expect((await u.delete(`/widgets/${w.id}`)).status).toBe(404);
   });
 
+  it('choosing a place on add and on change audits place.chosen without coordinates', async () => {
+    const u = await h.asUser('w-place-audit@example.com');
+    const w = (await j(await u.post('/widgets', { kind: 'weather', place: LONDON }))).widget;
+    await u.patch(`/widgets/${w.id}`, { place: PARIS });
+    await u.post('/widgets', { kind: 'sunrise', place: PARIS }); // reuses the existing row
+    const chosen = (await h.db.select().from(auditLog).where(eq(auditLog.userId, u.userId))).filter(
+      (a) => a.action === 'place.chosen',
+    );
+    expect(chosen).toHaveLength(3);
+    expect(JSON.stringify(chosen.map((a) => a.details))).not.toMatch(/lat|lon/);
+  });
+
   it('PATCH /me temperatureUnit is returned by GET /me and GET /widgets', async () => {
     const u = await h.asUser('w-unit@example.com');
     expect((await u.patch('/me', { temperatureUnit: 'F' })).status).toBe(200);

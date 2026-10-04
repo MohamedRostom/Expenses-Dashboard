@@ -105,7 +105,10 @@ async function ensurePlace(q: Q, userId: string, place: PlaceCandidateT): Promis
         .limit(1)
     )[0]?.id;
   const existing = await find();
-  if (existing) return existing;
+  if (existing) {
+    await audit(q, userId, 'place.chosen', existing);
+    return existing;
+  }
   await q
     .insert(placesTable)
     .values({
@@ -118,7 +121,9 @@ async function ensurePlace(q: Q, userId: string, place: PlaceCandidateT): Promis
       lon,
     })
     .onConflictDoNothing();
-  return (await find())!;
+  const id = (await find())!;
+  await audit(q, userId, 'place.chosen', id); // the place id only, never coordinates
+  return id;
 }
 
 async function ownedPlaceId(q: Q, userId: string, id: string): Promise<string> {
