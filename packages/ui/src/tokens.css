@@ -1,5 +1,7 @@
+/* Light selector lists [data-theme='light'] first: palette.test.ts finds the light block by indexOf(':root {'). */
 /* Design tokens ported from the personal dashboard. Three theme states:
    bare :root = light; system dark unless the user chose light; explicit dark. */
+[data-theme='light'],
 :root {
   --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
@@ -11,6 +13,56 @@
      this token directly, not just a light background tint of it. Darkened to restore AA. */
   --color-warn: #8f5810;
   --color-critical: #a83a2e;
+  /* T014: roles named by specs/004-web-ui-refresh/contracts/tokens.md. Values are provisional
+     (chosen to pass the contract's contrast table) until the approved direction sets them (T028). */
+  --color-surface: #ffffff;
+  --color-surface-raised: #ffffff;
+  --color-border: #7a8594;
+  --color-fg-muted: #4a5663;
+  --color-accent-fg: #ffffff;
+  --color-focus: #1a5fb4;
+  --color-selection: #cfe8e0;
+  --shadow-raised: 0 1px 2px rgb(18 24 32 / 0.08), 0 1px 3px rgb(18 24 32 / 0.06);
+  --shadow-overlay: 0 8px 24px rgb(18 24 32 / 0.16), 0 2px 6px rgb(18 24 32 / 0.08);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-display: 2.5rem;
+  --leading-xs: 1rem;
+  --leading-sm: 1.25rem;
+  --leading-md: 1.5rem;
+  --leading-lg: 1.75rem;
+  --leading-xl: 2rem;
+  --leading-2xl: 2.25rem;
+  --leading-display: 3rem;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --target-min: 44px;
+  --content-max: 72rem;
+  --gutter: var(--space-4);
   /* T062: fixed eight-colour connected-account palette (FR-004, FR-024). Each value is checked
      by packages/ui/src/palette.test.ts to be >= 3:1 (WCAG 1.4.11 non-text contrast) against
      --color-bg in both themes. Names match the server's COLOUR_PALETTE ids
@@ -33,6 +85,16 @@
     /* The light-mode value darkened above would fail even worse here (~3.8:1 already, before
        darkening) against this dark background — needs a lighter, not darker, variant. */
     --color-warn: #d99a4e;
+    --color-critical: #e0665a;
+    --color-surface: #1a222c;
+    --color-surface-raised: #212b37;
+    --color-border: #5b6877;
+    --color-fg-muted: #a9b4c2;
+    --color-accent-fg: #121820;
+    --color-focus: #7fb2ff;
+    --color-selection: #1f3d36;
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+    --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
     --palette-teal: #5fd6b8;
     --palette-blue: #7fb2ff;
     --palette-violet: #c9a6ff;
@@ -43,11 +105,22 @@
     --palette-slate: #b9c6d4;
   }
 }
-:root[data-theme='dark'] {
+:root[data-theme='dark'],
+[data-theme='dark'] {
   --color-bg: #121820;
   --color-fg: #f2f4f7;
   --color-accent: #5fbf9f;
   --color-warn: #d99a4e;
+  --color-critical: #e0665a;
+  --color-surface: #1a222c;
+  --color-surface-raised: #212b37;
+  --color-border: #5b6877;
+  --color-fg-muted: #a9b4c2;
+  --color-accent-fg: #121820;
+  --color-focus: #7fb2ff;
+  --color-selection: #1f3d36;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3);
+  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
   --palette-teal: #5fd6b8;
   --palette-blue: #7fb2ff;
   --palette-violet: #c9a6ff;
@@ -56,4 +129,16 @@
   --palette-amber: #e8c25a;
   --palette-green: #8fdc8f;
   --palette-slate: #b9c6d4;
+}
+@media (min-width: 768px) {
+  :root {
+    --gutter: var(--space-8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+  }
 }

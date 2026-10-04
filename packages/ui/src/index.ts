@@ -18,3 +18,5 @@ export { default as YearBars } from './charts/YearBars.vue';
 export type { YearBarData } from './charts/YearBars.vue';
 export { PALETTE_COLOURS } from './palette.js';
 export { contrastRatio } from './contrast.js';
+export { defineStory, collectStories } from './stories.js';
+export type { Story, StoryCase } from './stories.js';

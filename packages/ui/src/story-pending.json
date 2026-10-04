@@ -1,0 +1,14 @@
+[
+  "packages/ui/src/charts/CategoryBars.vue",
+  "packages/ui/src/charts/DataTable.vue",
+  "packages/ui/src/charts/TrendSparkline.vue",
+  "packages/ui/src/charts/YearBars.vue",
+  "packages/ui/src/components/Button.vue",
+  "packages/ui/src/components/Dialog.vue",
+  "packages/ui/src/components/EmptyState.vue",
+  "packages/ui/src/components/ErrorState.vue",
+  "packages/ui/src/components/Input.vue",
+  "packages/ui/src/components/Select.vue",
+  "packages/ui/src/components/Skeleton.vue",
+  "packages/ui/src/components/Toast.vue"
+]
