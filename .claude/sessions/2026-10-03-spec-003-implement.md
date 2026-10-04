@@ -15,10 +15,10 @@ T066 run (2026-10-04, local compose stack): lint 0 errors; typecheck clean; core
 - Review hardening: bounded, IANA-validated places; widget jobs never rethrow, ensure is advisory-locked, dead `running` rows older than 10 min are replaced; widget routes answer 422; weather job backs off 10 min after three straight failures.
 - Lighthouse config unchanged (no new dependency); SC-003 timing in `widgets-perf.spec.ts`.
 - CI turns the `widgets.*` flags on in e2e-ci.
+- Weather outage backoff stays global (10 min after three straight failures), decided 2026-10-04: tested, and the `ponytail:` comment in `apps/api/src/services/weather.ts` names the per-row `next_attempt_at` upgrade if outages ever show one place starving others.
 
 ## Open questions for Rostom
 - `checklists/spec-quality.md` has 88 unchecked reviewer items; implementation proceeded without it.
-- Per-row weather backoff instead of the global 10-minute one?
 - Owner-only: run T037 (`widgets.local.spec.ts`) on `desk-local`, and SC-005, SC-007, SC-008 (`needs-rostom` in `docs/ROADMAP.md`).
 
 ## Exact next step
