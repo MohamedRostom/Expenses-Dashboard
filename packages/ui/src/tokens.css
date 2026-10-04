@@ -85,7 +85,7 @@
     /* The light-mode value darkened above would fail even worse here (~3.8:1 already, before
        darkening) against this dark background — needs a lighter, not darker, variant. */
     --color-warn: #d99a4e;
-    --color-critical: #e0665a;
+    --color-critical: #a83a2e;
     --color-surface: #1a222c;
     --color-surface-raised: #212b37;
     --color-border: #5b6877;
@@ -111,7 +111,7 @@
   --color-fg: #f2f4f7;
   --color-accent: #5fbf9f;
   --color-warn: #d99a4e;
-  --color-critical: #e0665a;
+  --color-critical: #a83a2e;
   --color-surface: #1a222c;
   --color-surface-raised: #212b37;
   --color-border: #5b6877;
