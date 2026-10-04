@@ -118,11 +118,7 @@ export default {
       weather: deps.weather,
       enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
     });
-    await ensureWidgetJobs(
-      db,
-      (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
-      new Date(),
-    );
+    await ensureWidgetJobs(db, new Date());
     await jobRunner.runDueJobs();
   },
 };

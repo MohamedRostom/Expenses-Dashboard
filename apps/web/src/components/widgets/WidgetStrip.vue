@@ -37,6 +37,8 @@ const enabledTypes = computed(() => catalogue.value.filter((t) => t.enabled));
 const settingsWidget = computed(() => store.widgets.find((w) => w.id === settingsId.value) ?? null);
 
 onMounted(async () => {
+  // The catalogue is independent of the widget list; fetch both at once.
+  const types = store.types().catch(() => []);
   try {
     await store.load();
   } catch {
@@ -46,11 +48,7 @@ onMounted(async () => {
   window.addEventListener('online', bump);
   window.addEventListener('offline', bump);
   store.start();
-  try {
-    catalogue.value = await store.types();
-  } catch {
-    catalogue.value = [];
-  }
+  catalogue.value = await types;
 });
 onUnmounted(() => {
   window.removeEventListener('online', bump);
@@ -189,7 +187,7 @@ async function onDragEnd() {
         @drag-move="onDragMove"
         @drag-end="onDragEnd"
         @settings="settingsId = w.id"
-        @remove="onRemove(w.id, w.kind.replace('_', ' '))"
+        @remove="onRemove(w.id, label(w.kind).toLowerCase())"
       >
         <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
         <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
@@ -238,8 +236,7 @@ async function onDragEnd() {
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
   gap: 0.75rem;
 }
-.desk-widget-offer,
-.desk-widget-placeholder {
+.desk-widget-offer {
   margin: 0;
   font-size: 0.85rem;
   opacity: 0.8;

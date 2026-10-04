@@ -102,13 +102,12 @@ export function widgetsRatesBackfillJob(
     }
     await recordSourceCall(db, 'frankfurter.range', true, now, logger);
     if (isUnsupported(outcome)) return;
-    for (const { date, rates } of outcome) {
+    const rows = outcome.flatMap(({ date, rates }) => {
       const rate = rates[quote];
-      if (rate === undefined) continue;
-      await db
-        .insert(fxRates)
-        .values({ rateDate: date, base, quote, rate, source: 'frankfurter' })
-        .onConflictDoNothing();
-    }
+      return rate === undefined
+        ? []
+        : [{ rateDate: date, base, quote, rate, source: 'frankfurter' }];
+    });
+    if (rows.length > 0) await db.insert(fxRates).values(rows).onConflictDoNothing();
   };
 }

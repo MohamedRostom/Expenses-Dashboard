@@ -17,10 +17,12 @@ import {
   CURRENCIES,
   WIDGET_KINDS,
   WIDGET_LIMIT,
+  roundCoord,
   settingsDescriptor,
   validateSettings,
 } from '@desk/core';
 import { ApiError } from '../lib/api-error.js';
+import { validationError } from '../lib/parse.js';
 import type { SessionUser } from '../middleware/session.js';
 import { enqueueIfShort } from '../jobs/widgets-rates-backfill.js';
 import { todayInTimeZone } from './capture.js';
@@ -54,7 +56,7 @@ const TYPE_INFO: Record<WidgetKindT, { name: string; description: string }> = {
 
 const convertible: ReadonlySet<string> = new Set(CURRENCIES.map((c) => c.code));
 
-const round2 = (n: number) => (Math.round(n * 100) / 100).toFixed(2);
+const round2 = (n: number) => roundCoord(n).toFixed(2);
 
 async function audit(q: Q, userId: string, action: string, subject: string, details?: object) {
   await q.insert(auditLog).values({
@@ -66,6 +68,15 @@ async function audit(q: Q, userId: string, action: string, subject: string, deta
   });
 }
 
+export const placeOf = (p: typeof placesTable.$inferSelect): PlaceCandidateT => ({
+  name: p.name,
+  admin1: p.admin1,
+  country: p.country,
+  lat: Number(p.lat),
+  lon: Number(p.lon),
+  timeZone: p.timeZone,
+});
+
 function toRow(
   w: typeof widgetsTable.$inferSelect,
   p: typeof placesTable.$inferSelect | null,
@@ -75,16 +86,7 @@ function toRow(
     kind: w.kind as WidgetKindT,
     position: w.position,
     settings: w.settings as Record<string, unknown>,
-    ...(p && {
-      place: {
-        name: p.name,
-        admin1: p.admin1,
-        country: p.country,
-        lat: Number(p.lat),
-        lon: Number(p.lon),
-        timeZone: p.timeZone,
-      },
-    }),
+    ...(p && { place: placeOf(p) }),
   };
 }
 
@@ -158,14 +160,7 @@ function check(
     previous,
     placeId,
   });
-  if (issues.length > 0) {
-    throw new ApiError(
-      'validation_failed',
-      'Invalid widget settings',
-      422,
-      Object.fromEntries(issues.map((i) => [i.path || '(root)', i.message])),
-    );
-  }
+  if (issues.length > 0) throw validationError(issues, 'Invalid widget settings');
 }
 
 const codesOf = (settings: unknown): string[] => {
@@ -353,22 +348,12 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
 
     /** GET /me/export: place details repeated per widget, never cached readings. */
     async exportFor(user: SessionUser) {
-      return (await select(db, user.id)).map(({ w, p }) => ({
-        kind: w.kind,
-        position: w.position,
-        settings: w.settings,
-        ...(p && {
-          place: {
-            name: p.name,
-            admin1: p.admin1,
-            country: p.country,
-            lat: Number(p.lat),
-            lon: Number(p.lon),
-          },
-        }),
-      }));
+      return (await select(db, user.id)).map(({ w, p }) => {
+        if (!p) return { kind: w.kind, position: w.position, settings: w.settings };
+        const { name, admin1, country, lat, lon } = placeOf(p);
+        const place = { name, admin1, country, lat, lon };
+        return { kind: w.kind, position: w.position, settings: w.settings, place };
+      });
     },
   };
 }
-
-export type WidgetsService = ReturnType<typeof createWidgetsService>;

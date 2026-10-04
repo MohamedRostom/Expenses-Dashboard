@@ -228,14 +228,8 @@ describe('widgets weather jobs', () => {
       await h.db.execute(
         sql`DELETE FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge')`,
       );
-      const real = async (name: string) => {
-        await h.db.execute(
-          sql`INSERT INTO jobs (name, payload, run_after) VALUES (${name}, '{}'::jsonb, now())`,
-        );
-        return 'id';
-      };
-      await ensureWidgetJobs(h.db, real, t0);
-      await ensureWidgetJobs(h.db, real, t0);
+      await ensureWidgetJobs(h.db, t0);
+      await ensureWidgetJobs(h.db, t0);
       const n = await rows(
         sql`SELECT name FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge') ORDER BY name`,
       );
@@ -292,10 +286,7 @@ describe('widgets weather jobs', () => {
     });
 
     it('two concurrent ensures leave exactly one queued row per name', async () => {
-      await Promise.all([
-        ensureWidgetJobs(h.db, realEnqueue, t0),
-        ensureWidgetJobs(h.db, realEnqueue, t0),
-      ]);
+      await Promise.all([ensureWidgetJobs(h.db, t0), ensureWidgetJobs(h.db, t0)]);
       expect((await queued()).map((r) => r['name']).sort()).toEqual([
         'widgets.purge',
         'widgets.weather_refresh',
@@ -308,11 +299,11 @@ describe('widgets weather jobs', () => {
           INSERT INTO jobs (name, payload, status, started_at)
           VALUES ('widgets.purge', '{}'::jsonb, 'running', ${new Date(t0.getTime() - ageMin * 60_000).toISOString()}::timestamptz)`);
       await running(2);
-      await ensureWidgetJobs(h.db, realEnqueue, t0);
+      await ensureWidgetJobs(h.db, t0);
       expect((await queued()).filter((r) => r['name'] === 'widgets.purge')).toHaveLength(0);
       await h.db.execute(sql`DELETE FROM jobs WHERE name = 'widgets.purge'`);
       await running(30);
-      await ensureWidgetJobs(h.db, realEnqueue, t0);
+      await ensureWidgetJobs(h.db, t0);
       expect((await queued()).filter((r) => r['name'] === 'widgets.purge')).toHaveLength(1);
     });
   });

@@ -266,6 +266,7 @@ export {
   type WidgetTypesResponseT,
   WidgetsRefreshResponse,
   type WidgetsRefreshResponseT,
+  WEATHER_ATTRIBUTION,
   HealthWidgetsResponse,
   type HealthWidgetsResponseT,
 } from './widgets.js';

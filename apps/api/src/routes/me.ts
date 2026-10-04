@@ -189,8 +189,8 @@ export function createMeRoutes(deps: MeRoutesDeps) {
   app.get('/me/export', async (c) => {
     const user = requireAuth(c);
 
-    const [categories, expenses, importBatches, [notion], connectedAccountRows] = await Promise.all(
-      [
+    const [categories, expenses, importBatches, [notion], connectedAccountRows, widgets] =
+      await Promise.all([
         db.select().from(categoriesTable).where(eq(categoriesTable.userId, user.id)),
         db.select().from(expensesTable).where(eq(expensesTable.userId, user.id)),
         db.select().from(importBatchesTable).where(eq(importBatchesTable.userId, user.id)),
@@ -206,32 +206,31 @@ export function createMeRoutes(deps: MeRoutesDeps) {
           })
           .from(connectedAccountsTable)
           .where(eq(connectedAccountsTable.userId, user.id)),
-      ],
-    );
+        widgetsService.exportFor(user),
+      ]);
 
     // ExportDocument (contracts) has no widgets field yet; the document is not re-parsed.
-    const doc: ExportDocumentT & { widgets: Awaited<ReturnType<typeof widgetsService.exportFor>> } =
-      {
-        exportedAt: clock.now().toISOString(),
-        user: toUserResponse(user),
-        categories,
-        expenses,
-        importBatches,
-        notion: notion
-          ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
-          : { connected: false, direction: null, databaseId: null },
-        connections: connectedAccountRows.map((row) => ({
-          provider: row.provider as 'google' | 'microsoft' | 'standards',
-          address: row.address,
-          label: row.label,
-          capabilities: row.capabilities as ('mail' | 'calendar')[],
-          status: row.pausedAt
-            ? 'paused'
-            : (row.status as 'connected' | 'reconnect_needed' | 'error'),
-        })),
-        widgets: await widgetsService.exportFor(user),
-        version: 1,
-      };
+    const doc: ExportDocumentT & { widgets: typeof widgets } = {
+      exportedAt: clock.now().toISOString(),
+      user: toUserResponse(user),
+      categories,
+      expenses,
+      importBatches,
+      notion: notion
+        ? { connected: true, direction: notion.direction, databaseId: notion.databaseId }
+        : { connected: false, direction: null, databaseId: null },
+      connections: connectedAccountRows.map((row) => ({
+        provider: row.provider as 'google' | 'microsoft' | 'standards',
+        address: row.address,
+        label: row.label,
+        capabilities: row.capabilities as ('mail' | 'calendar')[],
+        status: row.pausedAt
+          ? 'paused'
+          : (row.status as 'connected' | 'reconnect_needed' | 'error'),
+      })),
+      widgets,
+      version: 1,
+    };
 
     const stream = new ReadableStream({
       start(controller) {

@@ -60,8 +60,7 @@ export async function ensureRecurring(db: Db, name: string, now: Date) {
   });
 }
 
-// `_enqueue` is kept so node/worker/tick call sites stay unchanged; the insert is atomic in SQL now.
-export const ensureWidgetJobs = async (db: Db, _enqueue: Enqueue, now: Date) => {
+export const ensureWidgetJobs = async (db: Db, now: Date) => {
   await ensureRecurring(db, 'widgets.weather_refresh', now);
   await ensureRecurring(db, 'widgets.purge', now);
 };

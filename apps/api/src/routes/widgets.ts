@@ -48,15 +48,17 @@ export function createWidgetsRoutes(
     return rows.map((r) => ({ ...r, ...figures.get(r.id)! })) as WidgetsResponseT['widgets'];
   }
 
-  app.get('/widgets', async (c) => {
-    const user = requireAuth(c);
-    const flags = await resolveAllFlags(db, user.id);
-    const body: WidgetsResponseT = {
-      widgets: await present(user, await service.list(user), flags),
+  async function listBody(user: SessionUser, rows: WidgetRow[]): Promise<WidgetsResponseT> {
+    return {
+      widgets: await present(user, rows, await resolveAllFlags(db, user.id)),
       limit: WIDGET_LIMIT,
       temperatureUnit: user.temperatureUnit === 'F' ? 'F' : 'C',
     };
-    return c.json(body);
+  }
+
+  app.get('/widgets', async (c) => {
+    const user = requireAuth(c);
+    return c.json(await listBody(user, await service.list(user)));
   });
 
   app.get('/widgets/types', async (c) => {
@@ -80,13 +82,7 @@ export function createWidgetsRoutes(
   app.put('/widgets/order', async (c) => {
     const user = requireAuth(c);
     const { ids } = parse(OrderBody, await c.req.json());
-    const rows = await service.reorder(user, ids);
-    const body: WidgetsResponseT = {
-      widgets: await present(user, rows, await resolveAllFlags(db, user.id)),
-      limit: WIDGET_LIMIT,
-      temperatureUnit: user.temperatureUnit === 'F' ? 'F' : 'C',
-    };
-    return c.json(body);
+    return c.json(await listBody(user, await service.reorder(user, ids)));
   });
 
   app.post('/widgets/refresh', async (c) => {
@@ -102,7 +98,7 @@ export function createWidgetsRoutes(
     const user = requireAuth(c);
     const input = parse(WidgetPatch, await c.req.json());
     const row = await service.patch(user, c.req.param('id'), input);
-    await firstReading(user, row);
+    if (input.place || input.placeId) await firstReading(user, row);
     const [widget] = await present(user, [row], await resolveAllFlags(db, user.id));
     return c.json({ widget } as WidgetResponseT);
   });

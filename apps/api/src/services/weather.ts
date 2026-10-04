@@ -2,7 +2,12 @@ import { sql } from 'drizzle-orm';
 import { auditLog, type Db } from '@desk/db';
 import { SourcePaused, type WeatherSource } from '@desk/connectors/open-meteo';
 import type { Logger } from '../adapters/logger.js';
-import { pauseWeatherUntil, recordSourceCall, weatherPausedUntil } from './source-usage.js';
+import {
+  FAILING_AFTER,
+  pauseWeatherUntil,
+  recordSourceCall,
+  weatherPausedUntil,
+} from './source-usage.js';
 
 const STALE_MS = 3_600_000;
 const ACTIVE_MS = 24 * 3_600_000;
@@ -14,14 +19,13 @@ export type WeatherDeps = {
   logger: Logger;
 };
 
-const DEGRADED_FAILURES = 3;
 const DEGRADED_WINDOW_MS = 10 * 60_000;
 
 async function sourceDegraded(db: Db, now: Date): Promise<boolean> {
   const since = new Date(now.getTime() - DEGRADED_WINDOW_MS).toISOString();
   const rows = (await db.execute(sql`
     SELECT 1 FROM widget_source_state
-    WHERE source = 'open_meteo.forecast' AND consecutive_failures >= ${DEGRADED_FAILURES}
+    WHERE source = 'open_meteo.forecast' AND consecutive_failures >= ${FAILING_AFTER}
       AND last_failure_at > ${since}::timestamptz`)) as unknown as unknown[];
   return rows.length > 0;
 }

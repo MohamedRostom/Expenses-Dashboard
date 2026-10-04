@@ -15,6 +15,7 @@ import type { RateLimiter } from '../adapters/rate-limiter.js';
 import { ApiError } from '../lib/api-error.js';
 import type { SessionUser } from '../middleware/session.js';
 import { recordSourceCall, weatherPausedUntil } from './source-usage.js';
+import { placeOf } from './widgets.js';
 
 const CACHE_TTL_MS = 24 * 3600_000;
 const RADIUS_DEG = 0.05;
@@ -108,16 +109,7 @@ export function createPlacesService(deps: {
           results: PlaceCandidateT[];
         }[]
       ).flatMap((r) => r.results);
-      const own = (await db.select().from(places).where(eq(places.userId, user.id))).map(
-        (p): PlaceCandidateT => ({
-          name: p.name,
-          admin1: p.admin1,
-          country: p.country,
-          lat: Number(p.lat),
-          lon: Number(p.lon),
-          timeZone: p.timeZone,
-        }),
-      );
+      const own = (await db.select().from(places).where(eq(places.userId, user.id))).map(placeOf);
       const near = nearest([...own, ...cached], lat, lon, RADIUS_DEG);
       if (near) return { candidates: [near], approximate: false };
 

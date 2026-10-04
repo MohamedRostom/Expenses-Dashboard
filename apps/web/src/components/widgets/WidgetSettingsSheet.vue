@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { Dialog } from '@desk/ui';
+import { CURRENCY_CAP } from '@desk/core';
 import type { WidgetPatchT, WidgetT } from '@desk/contracts';
 import { useWidgetsStore } from '../../stores/widgets.js';
 import CurrencyPicker from './CurrencyPicker.vue';
 import WeatherSettings from './WeatherSettings.vue';
 import SunriseSettings from './SunriseSettings.vue';
 
-const CAP = 6;
 const props = defineProps<{ open: boolean; widget: WidgetT | null }>();
 defineEmits<{ close: [] }>();
 const store = useWidgetsStore();
@@ -18,9 +18,8 @@ function patch(body: WidgetPatchT) {
 }
 
 const error = ref('');
-const isCurrency = computed(() => props.widget?.kind === 'currency');
 const chosen = computed(() => (props.widget?.settings.currencies as string[] | undefined) ?? []);
-const atCap = computed(() => chosen.value.length >= CAP);
+const atCap = computed(() => chosen.value.length >= CURRENCY_CAP);
 
 async function toggle(code: string) {
   const next = chosen.value.includes(code)
@@ -46,9 +45,8 @@ async function addSecond() {
 
 <template>
   <Dialog :open="open && widget !== null" title="Widget settings" @close="$emit('close')">
-    <!-- Per-kind settings components (US2) fill this slot; only this widget's options. -->
-    <slot v-if="widget" :widget="widget" :patch="patch">
-      <div v-if="isCurrency">
+    <template v-if="widget">
+      <div v-if="widget.kind === 'currency'">
         <CurrencyPicker :chosen="chosen" @toggle="toggle" />
         <p v-if="atCap">
           A currency widget shows up to six currencies.
@@ -59,6 +57,6 @@ async function addSecond() {
       <WeatherSettings v-else-if="widget.kind === 'weather'" :widget="widget" :patch="patch" />
       <SunriseSettings v-else-if="widget.kind === 'sunrise'" :widget="widget" :patch="patch" />
       <p v-else>This widget has no options.</p>
-    </slot>
+    </template>
   </Dialog>
 </template>

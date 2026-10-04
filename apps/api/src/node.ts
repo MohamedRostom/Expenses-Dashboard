@@ -75,11 +75,9 @@ registerAllJobs({
   weather,
   enqueue: (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
 });
-void ensureWidgetJobs(
-  db,
-  (name, payload, opts) => jobRunner.enqueue(name, payload, opts),
-  new Date(),
-).catch((err) => console.error('widgets jobs: could not enqueue', err));
+void ensureWidgetJobs(db, new Date()).catch((err) =>
+  console.error('widgets jobs: could not enqueue', err),
+);
 registerJob(
   'feedback.digest',
   feedbackDigestJob({

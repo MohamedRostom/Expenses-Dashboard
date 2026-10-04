@@ -2,9 +2,9 @@
 import { computed, onMounted, ref } from 'vue';
 import { apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
+import { CURRENCY_CAP } from '@desk/core';
 import type { Currency } from '../currencyFilter.js';
 
-const CAP = 6;
 const props = defineProps<{ chosen: string[] }>();
 defineEmits<{ toggle: [code: string] }>();
 const session = useSessionStore();
@@ -12,7 +12,7 @@ const session = useSessionStore();
 const currencies = ref<Currency[]>([]);
 const error = ref('');
 const defaultCode = computed(() => session.user?.defaultCurrency ?? '');
-const atCap = computed(() => props.chosen.length >= CAP);
+const atCap = computed(() => props.chosen.length >= CURRENCY_CAP);
 
 onMounted(async () => {
   try {

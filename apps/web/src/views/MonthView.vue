@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue';
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { ExpenseResponseT, YearSummaryT } from '@desk/contracts';
 import {
@@ -34,6 +34,15 @@ const WidgetStrip = defineAsyncComponent(() => import('../components/widgets/Wid
 const route = useRoute();
 const router = useRouter();
 const store = useExpensesStore();
+// One-way: the strip mounts once the first month load settles (R7) and then stays mounted, so
+// month changes and reloads don't refetch widget figures that don't depend on the month.
+const settled = ref(false);
+watch(
+  () => store.loading,
+  (loading) => {
+    if (!loading) settled.value = true;
+  },
+);
 const toast = useToast();
 /** Recently soft-deleted rows this session, id -> description, so the undo banner has something
  * to show for a few seconds even though the row itself is already gone from store.expenses. */
@@ -201,9 +210,9 @@ async function onUndoDelete(id: string) {
       <Button @click="openAdd">Add expense</Button>
     </header>
 
-    <!-- The month fetch failed (e.g. offline): the strip still mounts once it has settled, as on
-         TodayView, so cached widget figures show (spec edge case "app is offline"). -->
-    <WidgetStrip v-if="!store.loading && !store.summary && store.error" />
+    <!-- Also mounts when the month fetch failed (e.g. offline), so cached widget figures show
+         (spec edge case "app is offline"). -->
+    <WidgetStrip v-if="settled" />
     <Skeleton v-if="store.loading" height="12rem" />
     <!-- A pending/rejected queue is IndexedDB-backed, independent of the failed network summary
          fetch (store.error) — e.g. offline.spec.ts adds an expense while offline, where
@@ -225,9 +234,6 @@ async function onUndoDelete(id: string) {
             store.summary.pendingRates === 1 ? '' : 's'
           }}
         </p>
-
-        <!-- Mounted only once the month data has resolved (R7): the strip never delays expenses. -->
-        <WidgetStrip />
 
         <section class="desk-month-view-tiles">
           <div class="desk-tile">

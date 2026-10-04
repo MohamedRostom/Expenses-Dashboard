@@ -3,10 +3,10 @@ import { ref, watch } from 'vue';
 import { Dialog, Button } from '@desk/ui';
 import type { WidgetCreateT, WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
+import { CURRENCY_CAP } from '@desk/core';
 import CurrencyPicker from './CurrencyPicker.vue';
 import PlacePicker from './PlacePicker.vue';
 
-const CAP = 6;
 const props = defineProps<{
   open: boolean;
   types: WidgetTypeT[];
@@ -51,7 +51,7 @@ function choose(kind: WidgetKindT) {
 function toggle(code: string) {
   codes.value = codes.value.includes(code)
     ? codes.value.filter((c) => c !== code)
-    : codes.value.length < CAP
+    : codes.value.length < CURRENCY_CAP
       ? [...codes.value, code]
       : codes.value;
 }

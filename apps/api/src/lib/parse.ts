@@ -5,8 +5,15 @@ import { ApiError } from './api-error.js';
 export function parse<T>(schema: ZodType<T>, input: unknown): T {
   const r = schema.safeParse(input);
   if (r.success) return r.data;
-  const details = Object.fromEntries(
-    r.error.issues.map((i) => [i.path.join('.') || '(root)', i.message]),
+  throw validationError(
+    r.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
   );
-  throw new ApiError('validation_failed', 'Validation failed', 422, details);
+}
+
+export function validationError(
+  issues: readonly { path: string; message: string }[],
+  message = 'Validation failed',
+): ApiError {
+  const details = Object.fromEntries(issues.map((i) => [i.path || '(root)', i.message]));
+  return new ApiError('validation_failed', message, 422, details);
 }

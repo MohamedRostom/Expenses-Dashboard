@@ -16,7 +16,7 @@ export const WidgetCause = z.enum([
 ]);
 export type WidgetCauseT = z.infer<typeof WidgetCause>;
 
-const ATTRIBUTION = 'Weather data by Open-Meteo.com';
+export const WEATHER_ATTRIBUTION = 'Weather data by Open-Meteo.com';
 const Direction = z.enum(['up', 'down', 'flat']);
 
 const CurrencyChange = z.object({ pct: z.number(), direction: Direction });
@@ -54,7 +54,7 @@ export const WeatherFigures = z.object({
   ),
   observedAt: z.string(),
   staleSince: z.string().optional(),
-  attribution: z.literal(ATTRIBUTION),
+  attribution: z.literal(WEATHER_ATTRIBUTION),
 });
 export const SunriseFigures = z.object({
   place: z.string(),
@@ -64,7 +64,7 @@ export const SunriseFigures = z.object({
   placeTimeZone: z.string(),
   showZone: z.boolean(),
   polar: z.enum(['day', 'night']).optional(),
-  attribution: z.literal(ATTRIBUTION),
+  attribution: z.literal(WEATHER_ATTRIBUTION),
 });
 export const SpendPaceFigures = z.object({
   spentMinor: z.number().int(),

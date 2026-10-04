@@ -3,7 +3,7 @@ import type { Db } from '@desk/db';
 import type { Logger } from '../adapters/logger.js';
 
 // FR-019: "failing" = the last three calls to a source failed.
-const FAILING_AFTER = 3;
+export const FAILING_AFTER = 3;
 const PAUSE_KEY = 'widgets.weather_paused_until';
 
 // LogEvent requires request fields; these lines are not per-request, so fixed placeholders.
@@ -67,15 +67,11 @@ export async function pauseWeatherUntil(db: Db, until: Date): Promise<void> {
 
 /** 'degraded' while the weather pause is in the future or any source is failing. */
 export async function sourceStatus(db: Db, now: Date): Promise<'ok' | 'degraded'> {
-  const rows = (await db.execute(sql`
-    SELECT
-      EXISTS (SELECT 1 FROM flags WHERE key = ${PAUSE_KEY} AND value IS NOT NULL
-              AND (value #>> '{}')::timestamptz > ${now.toISOString()}::timestamptz) AS paused,
-      EXISTS (SELECT 1 FROM widget_source_state WHERE consecutive_failures >= ${FAILING_AFTER}) AS failing`)) as unknown as {
-    paused: boolean;
-    failing: boolean;
-  }[];
-  return rows[0]?.paused || rows[0]?.failing ? 'degraded' : 'ok';
+  if (await weatherPausedUntil(db, now)) return 'degraded';
+  const rows = (await db.execute(
+    sql`SELECT 1 FROM widget_source_state WHERE consecutive_failures >= ${FAILING_AFTER} LIMIT 1`,
+  )) as unknown as unknown[];
+  return rows.length > 0 ? 'degraded' : 'ok';
 }
 
 /** One summary line per source: today's counts, current streak, cached place count. */

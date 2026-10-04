@@ -6,6 +6,7 @@ import type {
   WidgetT,
   WidgetTypeT,
 } from '@desk/contracts';
+import { WIDGET_LIMIT } from '@desk/core';
 import {
   createWidget,
   deleteWidget,
@@ -34,7 +35,7 @@ const polls = new WeakMap<object, Poll>();
 export const useWidgetsStore = defineStore('widgets', {
   state: () => ({
     widgets: [] as WidgetT[],
-    limit: 8,
+    limit: WIDGET_LIMIT,
     temperatureUnit: 'C' as TemperatureUnitT,
     loading: false,
     error: null as PanelErrorKind | null,

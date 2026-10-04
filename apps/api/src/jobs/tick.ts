@@ -31,11 +31,7 @@ registerAllJobs({
   weather: new OpenMeteoClient(env.OPEN_METEO_API_BASE ? { baseUrl: env.OPEN_METEO_API_BASE } : {}),
   enqueue: (name, payload, opts) => runner.enqueue(name, payload, opts),
 });
-await ensureWidgetJobs(
-  db,
-  (name, payload, opts) => runner.enqueue(name, payload, opts),
-  new Date(),
-);
+await ensureWidgetJobs(db, new Date());
 
 await runner.runDueJobs();
 await rawClient.end();

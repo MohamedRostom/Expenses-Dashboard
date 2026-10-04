@@ -1,14 +1,26 @@
 import { and, asc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
 import { categories, expenses, fxRates, weatherReadings, type Db } from '@desk/db';
-import type { CurrencyRowT, WidgetCauseT, WidgetStateT } from '@desk/contracts';
-import { fixedCosts, monthSummary, rateChanges, spendPace, type RateChange } from '@desk/core';
+import {
+  WEATHER_ATTRIBUTION,
+  type CurrencyRowT,
+  type WidgetCauseT,
+  type WidgetKindT,
+  type WidgetStateT,
+} from '@desk/contracts';
+import type { Forecast } from '@desk/connectors/open-meteo';
+import {
+  fixedCosts,
+  monthSummary,
+  rateChanges,
+  roundCoord,
+  spendPace,
+  type RateChange,
+} from '@desk/core';
 import { wmo } from '@desk/connectors/open-meteo/wmo';
 import type { SessionUser } from '../middleware/session.js';
 import { toCategoryRow, toExpenseRow } from '../routes/summary.js';
 import { todayInTimeZone } from './capture.js';
 import { weatherPausedUntil } from './source-usage.js';
-
-export type FigureKind = 'currency' | 'weather' | 'sunrise' | 'spend_pace' | 'fixed_costs';
 
 export type WidgetFigures = {
   state: WidgetStateT;
@@ -17,14 +29,23 @@ export type WidgetFigures = {
   figures?: unknown;
 };
 
-/** The user's day, computed once per request in their time zone (research R10). */
-export type FigureContext = {
+/** The user's day, computed once per request in their time zone (research R10). Lookups shared
+ * by several widgets are memoised here so a strip of N widgets runs each query once. */
+type FigureContext = {
   now: Date;
   /** YYYY-MM-DD in the user's time zone. */
   day: string;
   /** First and last day (YYYY-MM-DD) of the month containing `day`. */
   monthStart: string;
   monthEnd: string;
+  latestRateDate: () => Promise<string | null>;
+  pausedUntil: () => Promise<Date | null>;
+  rollups: () => ReturnType<typeof monthRollups>;
+};
+
+const once = <T>(f: () => Promise<T>) => {
+  let p: Promise<T> | undefined;
+  return () => (p ??= f());
 };
 
 type Built = { state: WidgetStateT; figures?: unknown; cause?: WidgetCauseT; asOf?: string };
@@ -44,11 +65,6 @@ const toChange = (c: RateChange | null) =>
 /** T030: rows from fx_rates for (code, default) up to the user's day, newest row as the rate. */
 const currency: Builder = async (db, user, widget, ctx) => {
   const codes = (widget.settings as { currencies?: string[] }).currencies ?? [];
-  // ponytail: "the provider's latest published date" = newest fx_rates date up to the user's day.
-  const [latest] = await db
-    .select({ d: max(fxRates.rateDate) })
-    .from(fxRates)
-    .where(lte(fxRates.rateDate, ctx.day));
   const rows: CurrencyRowT[] = [];
   let newest = '';
   // T072: one query for every non-default code, newest 31 rows per code.
@@ -105,23 +121,12 @@ const currency: Builder = async (db, user, widget, ctx) => {
     });
   }
   if (rows.every((r) => 'pending' in r)) return { state: 'error', cause: 'rate_unavailable' };
-  const stale = rows.some((r) => 'rateDate' in r && r.rateDate < (latest?.d ?? ''));
+  const latest = (await ctx.latestRateDate()) ?? '';
+  const stale = rows.some((r) => 'rateDate' in r && r.rateDate < latest);
   return { state: stale ? 'stale' : 'ready', figures: { rows }, ...(newest && { asOf: newest }) };
 };
 
-const ATTRIBUTION = 'Weather data by Open-Meteo.com' as const;
 const STALE_AFTER_MS = 3600_000;
-
-type Daily = {
-  date: string;
-  maxC: number;
-  minC: number;
-  weatherCode: number;
-  sunrise: string | null;
-  sunset: string | null;
-  daylightSeconds: number;
-};
-type Current = { temperatureC: number; weatherCode: number; observedAt: string };
 
 /** T044/T059: the shared reading for the widget's rounded place plus its state and cause. */
 async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContext) {
@@ -131,11 +136,11 @@ async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContex
     .from(weatherReadings)
     .where(
       and(
-        eq(weatherReadings.lat, place.lat.toFixed(2)),
-        eq(weatherReadings.lon, place.lon.toFixed(2)),
+        eq(weatherReadings.lat, roundCoord(place.lat).toFixed(2)),
+        eq(weatherReadings.lon, roundCoord(place.lon).toFixed(2)),
       ),
     );
-  const paused = await weatherPausedUntil(db, ctx.now);
+  const paused = await ctx.pausedUntil();
   const cause: WidgetCauseT | undefined = paused
     ? 'source_limit_reached'
     : r?.error
@@ -146,8 +151,8 @@ async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContex
   }
   const stale = ctx.now.getTime() - r.fetchedAt.getTime() > STALE_AFTER_MS;
   return {
-    current: r.current as Current,
-    daily: r.daily as Daily[],
+    current: r.current as Forecast['current'],
+    daily: r.daily as Forecast['daily'],
     state: (stale || cause ? 'stale' : 'ready') as WidgetStateT,
     ...(cause && { cause }),
     ...(stale && { staleSince: r.fetchedAt.toISOString() }),
@@ -179,7 +184,7 @@ const weather: Builder = async (db, _user, widget, ctx) => {
       })),
       observedAt: current.observedAt,
       ...(r.staleSince && { staleSince: r.staleSince }),
-      attribution: ATTRIBUTION,
+      attribution: WEATHER_ATTRIBUTION,
     },
   };
 };
@@ -208,13 +213,17 @@ const sunrise: Builder = async (db, user, widget, ctx) => {
       placeTimeZone: widget.place!.timeZone,
       showZone: widget.place!.timeZone !== user.timeZone,
       ...(polar && { polar }),
-      attribution: ATTRIBUTION,
+      attribution: WEATHER_ATTRIBUTION,
     },
   };
 };
 
 /** T059: the month rollups `/summary/month` serves, for the user's current and previous month. */
-async function monthRollups(db: Db, user: SessionUser, ctx: FigureContext) {
+async function monthRollups(
+  db: Db,
+  user: SessionUser,
+  ctx: { monthStart: string; monthEnd: string },
+) {
   const prevDay = new Date(Date.parse(`${ctx.monthStart}T00:00:00Z`) - 86400_000)
     .toISOString()
     .slice(0, 10);
@@ -245,8 +254,8 @@ async function monthRollups(db: Db, user: SessionUser, ctx: FigureContext) {
 const totals = (s: ReturnType<typeof monthSummary>) =>
   new Map(s.categories.filter((c) => c.spent > 0).map((c) => [c.id, c.spent]));
 
-const spend_pace: Builder = async (db, user, _widget, ctx) => {
-  const { cats, thisMonth } = await monthRollups(db, user, ctx);
+const spend_pace: Builder = async (_db, user, _widget, ctx) => {
+  const { cats, thisMonth } = await ctx.rollups();
   const figures = spendPace(
     thisMonth,
     cats.map((c) => c.budgetMinor),
@@ -258,8 +267,8 @@ const spend_pace: Builder = async (db, user, _widget, ctx) => {
   return { state, asOf: ctx.now.toISOString(), figures };
 };
 
-const fixed_costs: Builder = async (db, user, _widget, ctx) => {
-  const { categoryRows, thisMonth, previousMonth } = await monthRollups(db, user, ctx);
+const fixed_costs: Builder = async (_db, _user, _widget, ctx) => {
+  const { categoryRows, thisMonth, previousMonth } = await ctx.rollups();
   if (!categoryRows.some((c) => c.defaultKind === 'fixed')) return { state: 'empty' };
   const { remaining, totalExpectedMinor, allRecorded } = fixedCosts(
     categoryRows.map((c) => ({ ...c, defaultKind: c.defaultKind ?? '' })),
@@ -273,7 +282,7 @@ const fixed_costs: Builder = async (db, user, _widget, ctx) => {
   };
 };
 
-const builders: Record<FigureKind, Builder> = {
+const builders: Record<WidgetKindT, Builder> = {
   currency,
   weather,
   sunrise,
@@ -281,7 +290,7 @@ const builders: Record<FigureKind, Builder> = {
   fixed_costs,
 };
 
-export function monthWindow(day: string): { monthStart: string; monthEnd: string } {
+function monthWindow(day: string): { monthStart: string; monthEnd: string } {
   const [y, m] = day.split('-').map(Number) as [number, number];
   const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
   const ym = day.slice(0, 7);
@@ -298,15 +307,33 @@ export async function figuresFor(
   now: Date,
 ): Promise<Map<string, WidgetFigures>> {
   const day = todayInTimeZone(user.timeZone, now);
-  const ctx: FigureContext = { now, day, ...monthWindow(day) };
-  const out = new Map<string, WidgetFigures>();
-  for (const w of widgets) {
-    const built = await builders[w.kind as FigureKind](db, user, w, ctx);
-    out.set(w.id, {
-      ...built,
-      state: flags[`widgets.${w.kind}`] ? built.state : 'unavailable',
-      asOf: built.asOf ?? now.toISOString(),
-    });
-  }
-  return out;
+  const month = monthWindow(day);
+  const ctx: FigureContext = {
+    now,
+    day,
+    ...month,
+    // ponytail: "the provider's latest published date" = newest fx_rates date up to the user's day.
+    latestRateDate: once(async () => {
+      const [r] = await db
+        .select({ d: max(fxRates.rateDate) })
+        .from(fxRates)
+        .where(lte(fxRates.rateDate, day));
+      return r?.d ?? null;
+    }),
+    pausedUntil: once(() => weatherPausedUntil(db, now)),
+    rollups: once(() => monthRollups(db, user, month)),
+  };
+  const built = await Promise.all(
+    widgets.map((w) => builders[w.kind as WidgetKindT](db, user, w, ctx)),
+  );
+  return new Map(
+    widgets.map((w, i): [string, WidgetFigures] => [
+      w.id,
+      {
+        ...built[i]!,
+        state: flags[`widgets.${w.kind}`] ? built[i]!.state : 'unavailable',
+        asOf: built[i]!.asOf ?? now.toISOString(),
+      },
+    ]),
+  );
 }
