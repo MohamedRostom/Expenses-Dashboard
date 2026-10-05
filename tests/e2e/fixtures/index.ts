@@ -264,9 +264,18 @@ async function postControl(url: string, body: unknown): Promise<void> {
   }
 }
 
-/** Runs axe against the current page and throws with violation details if any serious/critical ones are found. */
-export async function axeCheck(page: Page): Promise<void> {
-  const results = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze();
+/**
+ * Runs axe against the current page (or only `include`, a CSS selector) and throws with violation
+ * details if any serious/critical ones are found. `disableRules` is for documented known gaps only.
+ */
+export async function axeCheck(
+  page: Page,
+  opts: { include?: string; disableRules?: string[] } = {},
+): Promise<void> {
+  let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']);
+  if (opts.include) builder = builder.include(opts.include);
+  if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules);
+  const results = await builder.analyze();
   const blocking = results.violations.filter(
     (v) => v.impact === 'serious' || v.impact === 'critical',
   );

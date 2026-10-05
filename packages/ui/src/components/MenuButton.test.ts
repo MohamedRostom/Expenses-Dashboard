@@ -27,6 +27,15 @@ describe('MenuButton', () => {
     expect(b.getAttribute('aria-label')).toBe('Panel actions');
     expect(el.querySelector('[role="menu"]')).toBeNull();
   });
+  it('label variant: the visible label is the accessible name (not aria-hidden)', async () => {
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    createApp(MenuButton, { items, label: 'Actions', variant: 'label' }).mount(el);
+    await nextTick();
+    const b = el.querySelector('button')!;
+    expect(b.querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(b.textContent?.trim()).toBe('Actions');
+  });
   it('click opens and focuses the first item; arrows move; Esc closes and refocuses the trigger', async () => {
     const el = mount();
     const b = el.querySelector('button')!;

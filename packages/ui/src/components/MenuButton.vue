@@ -70,7 +70,8 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside));
       @keydown="onTriggerKey"
     >
       <slot name="trigger"
-        ><span aria-hidden="true">{{ variant === 'icon' ? '...' : label }}</span></slot
+        ><span v-if="variant === 'icon'" aria-hidden="true">...</span
+        ><template v-else>{{ label }}</template></slot
       >
     </button>
     <ul v-if="open" :id="menuId" role="menu" class="desk-menu-list" :aria-label="label">

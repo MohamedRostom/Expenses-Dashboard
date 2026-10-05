@@ -19,6 +19,11 @@ const stories = ['components', 'charts'].flatMap((d) =>
     .map((f) => f.replace(/\.story\.ts$/, '')),
 );
 
+// Known gap, decided 2026-10-05: dark --color-critical (#a83a2e, ~2.8:1) stays unchanged in Phase 2
+// because the look must not change; the fix is a design decision at T028 (see packages/ui
+// tokens.test.ts known-gap case). Only colour contrast in the dark column of these blocks is skipped.
+const DARK_CRITICAL_GAP_T028 = ['Button', 'ErrorState', 'Input', 'Select', 'PanelFrame'];
+
 const viewports = [
   { name: 'mobile', width: 360, height: 800 },
   { name: 'desktop', width: 1280, height: 800 },
@@ -47,9 +52,14 @@ for (const block of stories) {
   test(`@visual ${block} axe in both themes`, async ({ page }) => {
     await page.goto(`/__ui#${block}`);
     await expect(page.locator(`section#${block}`)).toBeVisible();
+    // Scoped to this block's columns, so app chrome on the page (e.g. the feedback widget) and other
+    // blocks never fail this block's check.
     for (const theme of ['light', 'dark'] as const) {
-      await page.locator('html').evaluate((el, t) => el.setAttribute('data-theme', t), theme);
-      await axeCheck(page);
+      const knownGap = theme === 'dark' && DARK_CRITICAL_GAP_T028.includes(block);
+      await axeCheck(page, {
+        include: `section#${block} [data-theme-col="${theme}"]`,
+        disableRules: knownGap ? ['color-contrast'] : [],
+      });
     }
   });
 }
