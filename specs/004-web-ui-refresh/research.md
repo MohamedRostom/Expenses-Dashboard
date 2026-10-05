@@ -8,7 +8,7 @@ after the spec's second clarification session.
 ## R1. The direction document is a `DESIGN.md`
 
 - **Decision**: the design direction (spec US1, FR-001–FR-004) is written as
-  `docs/design/DESIGN.md` in the DESIGN.md convention popularised by the awesome-design-md
+  `DESIGN.md` in the DESIGN.md convention popularised by the awesome-design-md
   collection: a plain markdown file listing character, colour roles, type scale, spacing,
   radii, motion rules and component conventions, that an AI coding agent reads before
   generating UI. It carries the kept/adjusted/replaced table (FR-002) and the fallback variant

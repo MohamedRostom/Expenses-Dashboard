@@ -4,7 +4,7 @@ No database change. The "entities" of this feature are static artefacts that oth
 the direction document, the token file, the block inventory and the snapshot matrix. Their
 shapes are fixed here so tasks, tests and the catalogue agree.
 
-## Design direction (`docs/design/DESIGN.md`)
+## Design direction (`DESIGN.md`)
 
 Sections in this order, each mandatory:
 

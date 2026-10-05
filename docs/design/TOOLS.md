@@ -31,4 +31,4 @@ owner at the start of task T024.
 
 Every UI change records a **Design tools** section in its commit body or PR description: what
 ran, on what, the findings, and what was fixed or kept. The spec, the constitution and
-`docs/design/DESIGN.md` win over any tool's advice.
+`DESIGN.md` win over any tool's advice.

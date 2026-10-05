@@ -41,7 +41,7 @@ docker run --rm -v "$PWD:/work" -w /work/tests/e2e -e E2E_BASE_URL=http://host.d
    story); `tests/e2e/tests/visual.spec.ts` for `/__ui` and the four mock-ups at 2 × 2; axe on
    every catalogue cell; a build test asserting `dist/` contains no `catalogue` chunk when
    `VITE_UI_CATALOGUE` is unset. Seed `drift-pending.json` from the first drift run.
-3. Write `docs/design/DESIGN.md` (data-model.md §Design direction) and
+3. Write `DESIGN.md` (data-model.md §Design direction) and
    `docs/adr/ADR-0006-visual-identity.md` (proposal plus fallback); extend `tokens.css`;
    refresh the existing blocks and promote `PanelState`, `WidgetFrame` and `ForecastTile`;
    build `CatalogueView.vue` and the four mock-ups (three "after" plus the fallback month view) over
@@ -73,7 +73,7 @@ docker run --rm -v "$PWD:/work" -w /work/tests/e2e -e E2E_BASE_URL=http://host.d
 1. Failing tests: inventory check in `tokens.test.ts` lists every block in contracts/blocks.md
    with a story and every variant × state cell present in `/__ui`; drift scan extended to
    `apps/landing/src`.
-2. Contributor exercise: following `docs/design/DESIGN.md` §Building a new panel, add a
+2. Contributor exercise: following `DESIGN.md` §Building a new panel, add a
    throw-away `DemoPanel.vue` with title, list, loading and empty states from blocks only; time
    it (target under thirty minutes); its snapshot and axe cases pass first time; delete it.
    Timed with a person this is SC-006 and `needs-rostom`.

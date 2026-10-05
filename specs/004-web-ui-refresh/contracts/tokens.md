@@ -1,7 +1,7 @@
 # Token Contract: Web UI Refresh
 
 What every screen, block and the landing page may consume from `packages/ui/src/tokens.css`.
-Names are fixed here; values are set by the approved `docs/design/DESIGN.md` (the current
+Names are fixed here; values are set by the approved `DESIGN.md` (the current
 values remain until then). `packages/ui/src/tokens.test.ts` asserts the invariants at the end.
 
 ## Names

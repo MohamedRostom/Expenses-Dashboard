@@ -18,7 +18,7 @@ counts are a committed baseline file, and the people-based checks are `needs-ros
 
 ## Summary
 
-A design direction written as `docs/design/DESIGN.md` (with a proposed identity in ADR-0006 and a
+A design direction written as `DESIGN.md` (with a proposed identity in ADR-0006 and a
 refinement fallback), applied to the existing app screen by screen through an extended token
 file and a documented set of shared blocks in `packages/ui`, with a dev-only catalogue route that
 hosts the blocks and the coded "after" mock-ups. Quality is enforced by tests that already have
@@ -116,7 +116,7 @@ specs/004-web-ui-refresh/
 ### Source Code (repository root)
 
 ```text
-docs/design/DESIGN.md                        # the direction: character, scales, roles, motion, conventions, kept/adjusted/replaced, fallback
+DESIGN.md                                    # the direction (root; replaces the 2026-10-05 incumbent capture): character, scales, roles, motion, conventions, kept/adjusted/replaced, fallback
 docs/design/references/<name>.DESIGN.md     # the shortlisted references, copied with MIT notice
 docs/adr/ADR-0006-visual-identity.md         # proposed identity, decision, fallback
 
@@ -167,7 +167,7 @@ live where the baseline already puts them.
 | Slice | Spec stories | Ships | Gate |
 |-------|--------------|-------|------|
 | A0. Baselines | US2 prep | `journey-baseline.json` recorded on current `main`; `visual` project and CI job; `year.spec.ts` moved onto the global tolerance and re-baselined; `@playwright/test` pinned | journeys and existing snapshots green in the pinned image; merged **before** any token change |
-| A. Direction, tokens, mock-ups | US1 | design tools (installed 2026-10-04, research R11; `/impeccable init` with the owner and the baseline audit in T024), reference shortlist, `docs/design/DESIGN.md`, ADR-0006 draft, extended `tokens.css`, refreshed and promoted blocks, catalogue route, four coded mock-ups, `drift-pending.json` seeded with every unrefreshed file, `update-snapshots` job | owner approves DESIGN.md and decides ADR-0006 (SC-001), with a constitution amendment if the accepted identity replaces IBM Plex or the green accent; SC-002 run by the owner (`needs-rostom`); drift, contrast and inventory tests green; catalogue snapshots and axe green; production bundle has no catalogue chunk |
+| A. Direction, tokens, mock-ups | US1 | design tools (installed 2026-10-04, research R11; `/impeccable init` with the owner and the baseline audit in T024), reference shortlist, `DESIGN.md`, ADR-0006 draft, extended `tokens.css`, refreshed and promoted blocks, catalogue route, four coded mock-ups, `drift-pending.json` seeded with every unrefreshed file, `update-snapshots` job | owner approves DESIGN.md and decides ADR-0006 (SC-001), with a constitution amendment if the accepted identity replaces IBM Plex or the green accent; SC-002 run by the owner (`needs-rostom`); drift, contrast and inventory tests green; catalogue snapshots and axe green; production bundle has no catalogue chunk |
 | B1–B6. Core screens | US2 | one change each, in order: month view, add expense (`AddView` + `ExpenseForm`), categories (`CategoriesView` + `CategoryView`), settings, sign-in (`LoginView`), Today (`TodayView` + its panels, flags on in test) | per change: its files leave `drift-pending.json`; snapshots at 2 × 2; axe; journey counts ≤ baseline; Lighthouse ≥ 90 / ≥ 95 |
 | B0. Shell | US2 | `App.vue` header, navigation and feedback widget, so every later screen shares one header | same gates as B1 |
 | B7–B10. Grouped screens | US2 | B7 account: register, verify, forgot, reset, onboarding (`HelloView` not routed, left for the owner); B8 data: year, import, bin; B9 settings sub-screens: capture, connectors, connections (+ `StandardsForm`); B10 widgets: the strip, seven widgets and their sheets, behind their existing `widgets.*` flags | same gates; no flag changes state; after B10 `drift-pending.json` holds only `apps/landing` files |
