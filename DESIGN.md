@@ -1,29 +1,29 @@
 ---
 name: Desk (working name)
-description: A multi-currency expense tracker. Proposed identity "Security Print" (ADR-0006); the incumbent Ledger Desk is the fallback.
+description: A multi-currency expense tracker. Proposed identity "Concourse Board" (ADR-0006); the incumbent Ledger Desk is the fallback.
 colors:
-  intaglio-teal: "#1d3c46"
-  intaglio-teal-dark: "#2d6f72"
-  note-paper: "#eef1ec"
-  night-note: "#0f161b"
-  plate-ink: "#16202a"
-  plate-ink-dark: "#e8eee9"
-  ink-muted: "#485553"
-  ink-muted-dark: "#a4b2ae"
-  sheet: "#f9faf7"
-  sheet-raised: "#ffffff"
-  sheet-dark: "#162027"
-  sheet-raised-dark: "#1d2a32"
-  rule-line: "#6c7a77"
-  rule-line-dark: "#62736f"
-  focus-blue: "#4c84d9"
-  focus-blue-dark: "#9cc3ff"
-  selection-sage: "#dbe6e3"
-  selection-sage-dark: "#1f3a3d"
-  warn-amber: "#8f5810"
-  warn-amber-dark: "#d99a4e"
-  critical-red: "#a83a2e"
-  critical-red-dark: "#f0897c"
+  signal-green: "#0e3d2a"
+  signal-green-dark: "#2c7452"
+  daylight-steel: "#e8eaeb"
+  flap-black: "#0e1114"
+  board-ink: "#14171b"
+  letter-white: "#f2f2ee"
+  steel-mid: "#4b535b"
+  steel-light: "#a7adb3"
+  flap: "#f6f7f7"
+  flap-raised: "#ffffff"
+  flap-dark: "#171b20"
+  flap-raised-dark: "#1f242a"
+  frame-line: "#6a727a"
+  frame-line-dark: "#5d656e"
+  focus-blue: "#4d80da"
+  focus-blue-dark: "#a6caff"
+  selection-green: "#d8e6de"
+  selection-green-dark: "#20332b"
+  delay-amber: "#8a5a00"
+  delay-amber-dark: "#ffb000"
+  cancel-red: "#b00020"
+  cancel-red-dark: "#ff6b6b"
   palette-teal: "#0f6b56"
   palette-blue: "#1a5fb4"
   palette-violet: "#6a3fa0"
@@ -58,16 +58,17 @@ typography:
     lineHeight: "1.5rem"
   label:
     fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, sans-serif"
-    fontSize: "0.875rem"
+    fontSize: "0.75rem"
     fontWeight: 600
-    lineHeight: "1.25rem"
+    lineHeight: "1rem"
+    letterSpacing: "0.08em"
   figure:
     fontFamily: "ui-monospace, Cascadia Mono, Segoe UI Mono, Roboto Mono, Menlo, monospace"
     fontSize: "1.125rem"
     fontWeight: 500
     lineHeight: "1.75rem"
     fontFeature: "tnum"
-  serial:
+  figure-small:
     fontFamily: "ui-monospace, Cascadia Mono, Segoe UI Mono, Roboto Mono, Menlo, monospace"
     fontSize: "0.75rem"
     fontWeight: 400
@@ -91,59 +92,63 @@ spacing:
   "20": "80px"
   "24": "96px"
 components:
-  plate-header:
-    backgroundColor: "{colors.intaglio-teal}"
-    textColor: "{colors.sheet}"
+  board-header:
+    backgroundColor: "{colors.flap-raised}"
+    textColor: "{colors.board-ink}"
     padding: "12px 16px"
   button-primary:
-    backgroundColor: "{colors.intaglio-teal}"
-    textColor: "{colors.sheet}"
+    backgroundColor: "{colors.signal-green}"
+    textColor: "{colors.flap}"
     rounded: "{rounded.sm}"
     padding: "10px 16px"
     height: "44px"
   button-secondary:
     backgroundColor: "transparent"
-    textColor: "{colors.plate-ink}"
+    textColor: "{colors.board-ink}"
     rounded: "{rounded.sm}"
     padding: "10px 16px"
   button-ghost:
     backgroundColor: "transparent"
-    textColor: "{colors.plate-ink}"
+    textColor: "{colors.board-ink}"
     rounded: "{rounded.sm}"
     padding: "10px 12px"
   button-danger:
-    backgroundColor: "{colors.critical-red}"
-    textColor: "{colors.sheet}"
+    backgroundColor: "{colors.cancel-red}"
+    textColor: "{colors.flap}"
     rounded: "{rounded.sm}"
     padding: "10px 16px"
   input:
-    backgroundColor: "{colors.sheet-raised}"
-    textColor: "{colors.plate-ink}"
+    backgroundColor: "{colors.flap-raised}"
+    textColor: "{colors.board-ink}"
     rounded: "{rounded.sm}"
     padding: "10px 12px"
-  denomination:
-    backgroundColor: "{colors.plate-ink}"
-    textColor: "{colors.note-paper}"
+  departure-tile:
+    backgroundColor: "{colors.flap-raised}"
+    textColor: "{colors.board-ink}"
     typography: "{typography.display}"
     rounded: "{rounded.md}"
     padding: "16px"
   tile:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.plate-ink}"
+    backgroundColor: "{colors.flap}"
+    textColor: "{colors.board-ink}"
     typography: "{typography.figure}"
     rounded: "{rounded.md}"
     padding: "16px"
+  board-row:
+    textColor: "{colors.board-ink}"
+    typography: "{typography.figure}"
+    padding: "8px 12px"
   panel-frame:
-    backgroundColor: "{colors.sheet}"
-    textColor: "{colors.plate-ink}"
+    backgroundColor: "{colors.flap}"
+    textColor: "{colors.board-ink}"
     rounded: "{rounded.md}"
     padding: "16px"
   tab:
-    textColor: "{colors.ink-muted}"
+    textColor: "{colors.steel-mid}"
     typography: "{typography.label}"
     padding: "12px 4px"
   tab-selected:
-    textColor: "{colors.plate-ink}"
+    textColor: "{colors.board-ink}"
 ---
 
 # Design System: Desk (working name)
@@ -152,220 +157,219 @@ components:
 
 ## Overview
 
-**Creative North Star: "Security Print"**
+**Creative North Star: "Concourse Board"**
 
 State: Proposed (ADR-0006 open; fallback is the Ledger Desk, see ## Fallback)
 
-Desk treats every figure the way a banknote treats its value. The denomination is printed large, in one place, where the eye lands first, and around it runs the fine print that proves the note is genuine: a serial number, an issue date, an issuing authority. On Desk the denomination is the month's remaining budget, and the fine print is the serial line under each amount: its original currency and amount, the ECB rate used, the date of that rate and its source. Exactness is the product's first principle, and this direction makes it visible instead of keeping it in a details drawer.
+Desk reads like the departure board in a rail concourse. A thousand travellers read it in one glance because every row keeps the same columns, every figure sits in its own cell, and status is said once, in a fixed place, in a colour that means one thing: amber is delayed, red is cancelled. On Desk the rows are the month's entries ranked by date, the cells hold amounts in tabular figures, amber marks an expense whose rate is still pending, and red marks a category over budget. When a pending rate arrives, the converted amount flips into place, once.
 
-**Character: plain, exact, engraved, calm.** Plain because it is a daily tool used one-handed at a till. Exact because every number traces back to its rate. Engraved because figures are set like security print, in one tabular face with fine line work instead of fills and gradients. Calm because the screen answers one question first ("where does my month stand?") and holds everything else at a quieter level.
+**Character: legible, ordered, live, calm.** Legible from arm's length on a phone at a till. Ordered because columns never move, only their values. Live because the one motion on the screen is a value arriving. Calm because the board answers one question at a time and never shouts.
 
-The world lends four things and only these: a committed palette (an intaglio-teal plate for the shell and the primary action, on faintly sage note paper), a type pairing (system UI words, system mono figures), a working density, and one signature move, the serial line. It never supplies layout, navigation or controls. Those stay the standard web ones: a header with links, tabs, buttons, native inputs and a real `<table>`. There is no guilloche, rosette, portrait, watermark, microtext texture or engraved border anywhere. The owner's guardrails (2026-10-05) are not decorative, not dense at 360 px, and not sparse.
+The world lends four things and only these: the palette (flap black and steel, letter white, delay amber, cancel red, plus one signal green for action), the type (system mono figures in fixed cells, small spaced capitals for column heads and tile labels, readable mixed-case words), the density of a board, and one signature move, the arrival flip. It never supplies layout, navigation or controls: no icon tab bar, no flap-cell typing in inputs, no brushed-steel texture, no vent grids. Dark mode is the board at night and is the reference rendering; light mode is the same board in daylight, flaps on steel. The owner's guardrails (2026-10-05): not decorative, not dense at 360 px, not sparse.
 
 **Key Characteristics:**
-- An intaglio-teal plate: the shell header and the primary action share the one accent.
-- One denomination per screen, ink-reversed, at Display size. It is the only reversed plate.
-- Every figure in a system mono with tabular numerals, from the denomination down to a table cell.
-- The serial line (original amount, currency, rate, rate date, source) under each tile figure, revealed on focus in table rows.
-- Budget bars filled with fine diagonal line hatching, turning solid Critical Red when over budget, so the over state reads without colour.
+- Entries as board rows: fixed columns (date, item, category, amount), amounts right-aligned in tabular mono, a real sortable `<table>`.
+- A row lamp: a 4px leading bar in Delay Amber for a pending rate, in Cancel Red for an over-budget category. Status lives there and in its word, never as a series.
+- The departure tile: the month's remaining budget at Display size, the largest figure on the screen.
+- The arrival flip: a value that changes because new data arrived turns over once (`rotateX`, under 280ms); nothing else moves on its own.
+- Column heads and tile labels in small spaced capitals; everything a person reads at length in mixed case.
 - Lifted surfaces at two heights, crisp 2/4/8 px corners.
 
 ## Colors
 
-A restrained palette with a committed shell: neutrals tinted toward sage, one teal ink, and two status colours held in reserve.
+A restrained palette with status at full strength: steel neutrals, one signal green for action, amber and red with the board's meanings.
 
 ### Primary
-- **Intaglio Teal** (`intaglio-teal` light, `intaglio-teal-dark` dark; role `--color-accent`): the shell header (the plate), the primary button, the selected-tab underline, the hatching on budget bars and the current nav link's underline. Text on it is Sheet in light mode and Plate Ink dark in dark mode (`--color-accent-fg`). In dark mode the plate is a mid teal rather than a lighter mint, so the header does not glow.
+- **Signal Green** (`signal-green` light, `signal-green-dark` dark; `--color-accent`): the primary button, the current nav link's underline, the selected tab, and the fill of budget bars. Text on it is Flap (light) and Letter White (dark). It never means "on time"; it means "this is the action" and "this is spend".
 
 ### Neutral
-- **Note Paper** (`note-paper`, `--color-bg`): the light page ground, a cool off-white tinted faintly toward sage. Never warm cream.
-- **Night Note** (`night-note`, `--color-bg` dark): the dark page ground, a blue-green black.
-- **Plate Ink** (`plate-ink` / `plate-ink-dark`, `--color-fg`): body text and figures; also the ground of the one reversed denomination plate.
-- **Muted Ink** (`ink-muted` / `ink-muted-dark`, `--color-fg-muted`): labels, serial lines, "as of" stamps, unselected tabs.
-- **Sheet** (`sheet`, `sheet-raised`, `sheet-dark`, `sheet-raised-dark`; `--color-surface`, `--color-surface-raised`): lifted surfaces. Tiles and panels are Sheet; inputs, menus and dialogs are raised Sheet.
-- **Rule Line** (`rule-line` / `rule-line-dark`, `--color-border`): control borders, the tab baseline and table header rules.
-- **Focus Blue** (`focus-blue` / `focus-blue-dark`, `--color-focus`): the focus ring and nothing else. Its values were chosen so the ring reaches 3:1 on the page, on Sheet and on the teal plate, in both themes.
-- **Selection Sage** (`selection-sage` / `selection-sage-dark`, `--color-selection`): selected rows and selected text.
+- **Daylight Steel** (`daylight-steel`, `--color-bg`): the light ground, a cool steel grey.
+- **Flap Black** (`flap-black`, `--color-bg` dark): the night board ground.
+- **Board Ink / Letter White** (`board-ink`, `letter-white`; `--color-fg`): text and figures in light and dark.
+- **Steel Mid / Steel Light** (`steel-mid`, `steel-light`; `--color-fg-muted`): column heads, labels, "as of" stamps.
+- **Flap** (`flap`, `flap-raised`, `flap-dark`, `flap-raised-dark`; `--color-surface`, `--color-surface-raised`): tiles, panels and the header are flaps; inputs, menus and dialogs are raised flaps.
+- **Frame Line** (`frame-line` / `frame-line-dark`, `--color-border`): control borders, the header rule, table head rules.
+- **Focus Blue** (`focus-blue` / `focus-blue-dark`, `--color-focus`): the focus ring and nothing else; chosen to reach 3:1 on the ground, on a flap and on Signal Green in both themes.
+- **Selection Green** (`selection-green` / `selection-green-dark`, `--color-selection`): selected rows and text.
 
 ### Status
-- **Warn Amber** (`warn-amber` / `warn-amber-dark`, `--color-warn`): pending rate lookups, stale data, approaching budget.
-- **Critical Red** (`critical-red` / `critical-red-dark`, `--color-critical`): over budget, error titles, the danger button. The dark value is new: the old dark value equalled the light one and failed AA (2.8:1).
+- **Delay Amber** (`delay-amber` / `delay-amber-dark`, `--color-warn`): rate pending, stale data, approaching budget. The board's own amber in dark; darkened in light to pass AA as text.
+- **Cancel Red** (`cancel-red` / `cancel-red-dark`, `--color-critical`): over budget, errors, the danger button. Lightened in dark to pass AA.
 
 ### Account palette
-- **Eight account colours** (`palette-teal` to `palette-slate`) identify connected mail and calendar accounts; unchanged, each with its dark twin in `tokens.css`, each at least 3:1 on the page.
+- **Eight account colours** (`palette-teal` to `palette-slate`) identify connected mail and calendar accounts; unchanged.
 
 ### Named Rules
-**The One Ink Rule.** Intaglio Teal is the only accent. It marks the shell, the primary action, the current location and spend against budget, and nothing decorative.
+**The One Signal Rule.** Signal Green is the only accent: the primary action, the current location, spend. Nothing decorative is green.
 
-**The Status Is Not a Series Rule.** Warn Amber and Critical Red never appear as a chart series, category colour or account colour. When red shows up, something is over budget or broken.
+**The Status Is Not a Series Rule.** Delay Amber and Cancel Red appear only as a row lamp, a status word, an over-budget fill or an error, never as a chart series, category or account colour. On this board amber always means delayed and red always means cancelled or over.
 
-**The Focus Is Blue Rule.** The focus ring is Focus Blue, 2px, with a 2px offset, on every interactive element in both themes, including controls sitting on the teal plate.
+**The Focus Is Blue Rule.** The focus ring is Focus Blue, 2px, with a 2px offset, on every interactive element in both themes.
 
 ## Typography
 
 **Word Font:** the system UI stack (`system-ui, -apple-system, Segoe UI, Roboto, sans-serif`)
 **Figure Font:** the system mono stack (`ui-monospace, Cascadia Mono, Segoe UI Mono, Roboto Mono, Menlo, monospace`)
 
-**Character:** words are set in whatever the phone or desktop already uses for its own interface, which is the most legible face a user owns and costs no download. Figures are set in the platform's mono, which reads like a printed serial number and aligns digit for digit. IBM Plex was declared by the incumbent tokens but never loaded (no `@font-face` exists in the repo), so most users already see `system-ui`; this direction makes that honest instead of aspirational.
+**Character:** the board's figures sit in fixed cells, which a tabular mono gives on every platform without a download. The board's condensed capitals are translated, not copied: column heads and tile labels are small spaced capitals in the UI face, and everything read at length stays mixed case, because all-caps rows are slow to read on a phone. IBM Plex was declared by the incumbent tokens but never loaded (no `@font-face` exists in the repo), so most users already see `system-ui`.
 
 ### Hierarchy
-- **Display** (mono 600, 2.5rem/3rem, −0.02em, tabular): the denomination, once per screen. FR-011: no heading on the screen is larger.
-- **Headline** (600, 1.75rem/2.25rem, −0.02em): page headings, used sparingly; the month view has none above the denomination.
-- **Title** (600, 1.125rem/1.75rem): panel and section headings.
-- **Body** (400, 1rem/1.5rem): running text, form values, table cells.
-- **Label** (600, 0.875rem/1.25rem): tile labels, tabs, field labels, panel headers. Rank among labels is weight and colour, never another size.
-- **Figure** (mono 500, 1.125rem/1.75rem, tabular): tile values and amounts in rows (rows use Body size in the same face).
-- **Serial** (mono 400, 0.75rem/1rem, tabular, Muted Ink): the serial line and "as of" stamps. Currency codes stay in capitals as data, not as styling.
+- **Display** (mono 600, 2.5rem/3rem, −0.02em, tabular): the departure tile's figure, once per screen; nothing on the screen is larger (FR-011).
+- **Headline** (600, 1.75rem/2.25rem): page headings, sparingly; none above the departure tile.
+- **Title** (600, 1.125rem/1.75rem): panel headings.
+- **Body** (400, 1rem/1.5rem): running text, form values, the item column.
+- **Label** (600, 0.75rem/1rem, capitals, +0.08em tracking): column heads, tile labels, tabs. The tracking value is a new token, `--tracking-wide`, which T026 proposes and adds to contracts/tokens.md.
+- **Figure** (mono 500, 1.125rem/1.75rem, tabular): tile values; row amounts use the same face at Body size.
+- **Figure small** (mono 400, 0.75rem/1rem, tabular): "as of" stamps, rate lines.
 
 ### Named Rules
-**The Tabular Figures Rule.** Every amount, rate and date is set in the figure face with `font-variant-numeric: tabular-nums`, so columns of money align digit for digit. Amount inputs follow the same rule.
+**The Tabular Figures Rule.** Every amount, rate and date is set in the figure face with `font-variant-numeric: tabular-nums`, so columns align digit for digit. Amount inputs follow the same rule.
 
-**The One Numeral Face Rule.** The figure face runs from the Display denomination to the smallest serial line. No second numeral face, no proportional digits anywhere a number is read.
+**The Fixed Columns Rule.** A column's position and width never change when its values do. Values change; the board does not.
 
 ## Layout
 
-The spacing scale is a 4px base (4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96). Content is centred within `--content-max` (72rem). The gutter is 16px on phones and 32px from 768px.
+The spacing scale is a 4px base (4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96). Content is centred within `--content-max` (72rem); the gutter is 16px on phones and 32px from 768px.
 
-The grid reflows by whole columns, never by fractions: one column at 360, two at 768, and from 1024 the tiles sit in one row (the denomination spans two of the four tile columns) with category bars and the entries table side by side. Every month and every category bar shares one budget scale, so periods compare without rescaling.
+The board reflows by whole columns: at 360 the entries table drops to three columns (date, item with its category beneath, amount) and keeps them fixed; from 768 the category column returns; from 1024 tiles sit in one row (the departure tile spans two of four tile columns) and category bars sit beside the entries board. Every month and every category bar shares one budget scale.
 
-The shell is a plate header: month switcher, the wrapping row of nav links and the add action. No hamburger menu; links wrap at 360. Tap targets are 44px on phones; desktop controls at least 24px, dense table rows and menu items 32px. Dashboard widgets keep their fixed height (12rem). At 360 the first viewport shows the plate header, the denomination and the top of the category bars; whitespace never pushes the entries table further than one scroll.
+The header is a raised flap strip with the month switcher, the wrapping row of text links and the add action; no icon tab bar, no hamburger. Tap targets are 44px on phones; desktop controls at least 24px; dense board rows and menu items 32px. Widgets keep their fixed 12rem height. At 360 the first viewport shows the header, the departure tile, the two smaller tiles and the head of the entries board.
 
 ## Elevation & Depth
 
-Surfaces are lifted, like notes lying on a desk. Tiles, panels and widget frames are Sheet with the Raised shadow; menus, dialogs, sheets and toasts take the Overlay shadow. In dark mode the shadows deepen and Sheet steps lighter. Shadows are tinted toward Plate Ink in light mode, never pure black.
+Flaps lift off the board. Tiles, panels and widget frames are flaps on the Raised shadow; menus, dialogs, sheets and toasts take Overlay. In dark mode depth reads mostly from the flap steps (Flap, raised Flap) with deeper shadows. Light shadows are tinted toward Board Ink.
 
 ### Shadow Vocabulary
-- **Raised** (`0 1px 2px rgb(22 32 42 / 0.08), 0 1px 3px rgb(22 32 42 / 0.06)`; dark `0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3)`): tiles, panels, widget frames, a focused table row.
-- **Overlay** (`0 8px 24px rgb(22 32 42 / 0.16), 0 2px 6px rgb(22 32 42 / 0.08)`; dark `0 8px 24px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4)`): dialogs, sheets, menus, toasts.
+- **Raised** (`0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06)`; dark `0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35)`): tiles, panels, widget frames.
+- **Overlay** (`0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08)`; dark `0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45)`): dialogs, sheets, menus, toasts.
 
 ### Named Rules
-**The Two Heights Rule.** There are exactly two elevations, Raised and Overlay. No third shadow, no hairline-instead-of-shadow on tiles or panels.
-
-**The One Plate Rule.** Exactly one element per screen is ink-reversed: the denomination. Everything else that needs rank gets it from weight, colour or position.
+**The Two Heights Rule.** Exactly two elevations, Raised and Overlay. Board rows themselves are flat; only the frame around the board is raised.
 
 ## Shapes
 
-Corners are crisp: 2px on buttons, inputs and tabs (`--radius-sm`), 4px on tiles, panels and the denomination (`--radius-md`), 8px on dialogs and sheets (`--radius-lg`). Borders are 1px. Budget bars are square-ended SVG rectangles; their fill is a 45° line hatch (1px line, 4px pitch) in Intaglio Teal over a track of Plate Ink at 8%; over budget the fill is solid Critical Red. Spinners and status dots are the only circles.
+Corners are crisp: 2px on buttons, inputs and tabs (`--radius-sm`), 4px on tiles and panels (`--radius-md`), 8px on dialogs and sheets (`--radius-lg`). Borders are 1px. The departure tile's figure cell carries one 1px seam across its middle in Frame Line at 40%, the only flap-cell detail in the system. Budget bars are square-ended SVG rectangles, single-hue Signal Green, solid Cancel Red past the budget. Row lamps are 4px square-ended bars. Spinners and status dots are the only circles.
 
 ## Components
 
 Block conventions (every block in `packages/ui/src/components/`, contracts/blocks.md):
 
-- **Naming and props:** PascalCase blocks; visual choice through `variant`, `size` and `density` props only, never ad-hoc classes.
-- **State props:** `loading`, `empty`, `error` (`{ cause }`). Error copy comes from a `causeMessages` map keyed by cause; the last content stays visible under the message.
+- **Naming and props:** PascalCase blocks; visual choice only through `variant`, `size` and `density`.
+- **State props:** `loading`, `empty`, `error` (`{ cause }`), with copy from a `causeMessages` map; last content stays visible under an error.
 - **Focus:** `:focus-visible` outline `2px solid var(--color-focus)`, offset 2px.
-- **Targets:** `var(--target-min)` (44px) at phone; 32px only inside `DataTable` dense rows and `MenuButton` menus at desktop.
-- **Density dial:** `density="comfortable"` (default, phone) and `density="compact"` (desktop review); compact removes one spacing step from vertical padding and never shrinks type.
+- **Targets:** 44px at phone; 32px only in `DataTable` dense rows and `MenuButton` menus at desktop.
+- **Density dial:** `comfortable` (default, phone) and `compact` (desktop review); compact removes one spacing step of vertical padding, never type size.
 - **Figures:** any number renders in `--font-mono` with `tabular-nums`.
 
 ### Buttons
-Solid, square-shouldered, decisive. Primary is a teal plate with Sheet text; secondary is a 1px Plate Ink outline; ghost has no border; danger is Critical Red with Sheet text. 44px tall at phone, label 0.875rem 600. Loading keeps the width and shows an inline spinner with `aria-busy`. Pressed state translates 1px down.
+Square-shouldered and solid. Primary is Signal Green with Flap text; secondary a 1px Board Ink outline; ghost borderless; danger Cancel Red. 44px tall at phone, label in mixed case at 0.875rem 600 (buttons are read, not scanned). Loading keeps the width with an inline spinner and `aria-busy`; pressed moves 1px down.
 
 ### Inputs / Fields
-Raised Sheet field with a 1px Rule Line border, 2px radius, label above (Label role), error below in Critical Red linked by `aria-describedby`. The amount variant is right-aligned in the figure face with the currency code as a leading adornment.
+Raised flap, 1px Frame Line border, 2px radius, Label-role caption above, error below in Cancel Red via `aria-describedby`. The amount variant is right-aligned in the figure face with the currency code as a leading adornment.
 
 ### Select
-Native-backed, styled like Input, with a chevron drawn by the platform.
+Native-backed, styled like Input.
 
 ### Dialog (the sheet)
-Bottom sheet at phone, side panel from 1024, centred for confirmations. Raised Sheet, Overlay shadow, 8px radius on the free edges, scrim of Plate Ink at 40%.
+Bottom sheet at phone, side panel from 1024, centred for confirmations; raised flap on Overlay, 8px radius on free edges, Board Ink scrim at 40%.
 
 ### Toast
-Raised Sheet, Overlay shadow, a 4px leading rule in the variant's colour (teal for success, amber, red), undo as a ghost button.
+Raised flap on Overlay with a 4px leading lamp in its status colour (green for saved, amber, red), undo as a ghost button.
 
-### Tile and the Denomination (signature)
-A tile is a Sheet with label, figure and serial line. The `denomination` is the month's remaining budget, reversed against the page: `--color-fg` ground with a `--color-bg` Display figure (Plate Ink and Note Paper in light; in dark the plate turns light and the figure dark), its serial line ("of GBP 2,400.00 budget · 12 days left") beneath at 7.5:1. One per screen. An over-budget tile turns its figure Critical Red; the denomination switches to the over variant (plate ground `--color-critical`, figure `--color-bg`, 5.6:1 light and 7.5:1 dark, with a leading minus and the word "over" in its serial line so colour is never the only signal) and never stops being the one plate.
+### Tile and the Departure Tile (signature)
+A tile is a flap with a Label-role caption, a Figure and an optional small figure line ("as of 09:07"). The departure tile is the remaining budget at Display size on a raised flap with the one seam; its caption reads "LEFT THIS MONTH" and its line gives the budget and days left. Over budget, its figure turns Cancel Red, a leading minus is shown and the line says "over", so colour is never the only signal.
+
+### DataTable (the board)
+A real `<table>` with a caption: Label-role column heads over a Frame Line, rows separated by space, amounts right-aligned in the figure face, fixed column widths. A row with a pending rate carries the amber lamp and the word "rate pending" in its amount cell; when the rate arrives, the converted amount flips in. Rows sort by their header buttons with `aria-sort`.
+
+### Category Bars (chart)
+Hand-written SVG. Name left (truncated, full name in the accessible name), spent and budget right in the figure face, single-hue bar below, a 1px Board Ink tick at the budget, solid Cancel Red past it, and the red row lamp on the category. A table view is always one tab away.
 
 ### PanelFrame
-Titled Sheet with the Raised shadow: Title-role heading, optional `MenuButton`, body, and the Skeleton, EmptyState and ErrorState slots. Compact variant for widgets keeps the fixed 12rem height.
-
-### DataTable
-A real `<table>` with a caption. Header row in Label role over a Rule Line; rows separated by space, not by a rule under every row. Amount columns right-aligned in the figure face. A focused or hovered row lifts to Raised and reveals its serial line on a second line; other rows stay single-line (the signature move, borrowed as discipline from focus-driven reveal).
-
-### Category Bars (signature chart)
-Hand-written SVG. Category name left (truncated with the full name in the accessible name), spent and budget in the figure face right, bar below with the line hatch, a 1px Plate Ink tick at the budget, solid Critical Red past it. A table view is always one tab away.
+Titled flap on Raised: Title heading, optional `MenuButton`, body, and the Skeleton, EmptyState and ErrorState slots; the compact widget variant keeps 12rem.
 
 ### Tabs
-Underline tabs; Label role in Muted Ink, Plate Ink when selected with a 2px teal underline on a Rule Line baseline. 44px tall at phone.
+Label-role capitals in Steel Mid, Board Ink when selected with a 2px Signal Green underline on a Frame Line baseline; 44px tall at phone.
 
 ### Navigation
-Inside the plate header: a wrapping row of text links in Sheet colour at 0.875rem 600; the current page has a 2px Sheet underline. Sign out sits at the far end. No icon bar, no hamburger.
+In the header: a wrapping row of mixed-case text links at 0.875rem 600; the current page has a 2px Signal Green underline. Sign out at the far end. No icon bar, no hamburger.
 
 ### MenuButton, ThemeToggle, Skeleton, EmptyState, ErrorState, Kbd
-MenuButton is a ghost icon button opening an Overlay menu; ThemeToggle is a segmented radiogroup with the selected segment on raised Sheet; Skeleton blocks are Plate Ink at 6% with an opacity pulse (static under reduced motion); EmptyState and ErrorState use Title and Body roles with one action; Kbd is the serial role on raised Sheet with a 1px Rule Line.
+MenuButton is a ghost icon button opening an Overlay menu; ThemeToggle a segmented radiogroup; Skeleton blocks are blank flaps (Board Ink at 6%) that pulse in opacity, static under reduced motion; EmptyState and ErrorState use Title and Body with one action; Kbd is figure-small on a raised flap.
 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** give each screen exactly one denomination, and make it the largest figure on the screen.
+- **Do** keep columns fixed: values change, the board does not.
+- **Do** make the departure tile the largest figure on the screen, once.
+- **Do** say status twice, once as a lamp and once as a word.
+- **Do** flip a value only when new data arrives for it, once, under 280ms.
 - **Do** set every amount, rate and date in the figure face with tabular numerals.
-- **Do** show the serial line on tiles and reveal it on focus in rows, so provenance is one glance away.
-- **Do** keep Intaglio Teal to the shell, the primary action, the current location and spend.
+- **Do** keep column heads and labels in small spaced capitals and everything else in mixed case.
 - **Do** lift tiles and panels with Raised and use Overlay only above the page.
-- **Do** use the 2px Focus Blue ring with a 2px offset everywhere, including on the plate.
-- **Do** give every panel skeleton, empty and error states with copy chosen by cause.
 - **Do** define colours as tokens in all three theme states.
 
 ### Don't:
-- **Don't** add guilloche, rosettes, watermarks, portraits, microtext textures or engraved borders. The world lends type, palette, density and the serial line, nothing else.
-- **Don't** reverse a second element to ink; the denomination is the only plate.
-- **Don't** add a chart library, a third shadow, a second accent or a second numeral face.
-- **Don't** reuse Warn Amber or Critical Red as a series, category or account colour.
-- **Don't** rule every table row; separate rows with space.
-- **Don't** use teal for focus; focus is always blue.
+- **Don't** add brushed steel, vent grids, flap textures, a split-flap font or per-character flips. The world lends type, palette, density and the arrival flip only.
+- **Don't** use an icon tab bar or set inputs and buttons in flap cells.
+- **Don't** use amber or red for anything but delayed, pending, over budget or broken.
+- **Don't** add a chart library, a third shadow, a second accent or a second figure face.
+- **Don't** animate on load, on scroll, or a value the user did not cause to change.
+- **Don't** use green for focus; focus is always blue.
 
 ## References
 
 At most three, used for principles and scales only; no logo, illustration, icon or brand asset is copied. Full reasoning in `docs/design/SHORTLIST.md`.
 
 1. **Linear** (`docs/design/references/linear.DESIGN.md`). Licence: MIT (awesome-design-md collection, copyright 2026 VoltAgent), covering the text, not Linear's marks.
-   - A small-step type ramp with weight capped at 600 and negative tracking only at display sizes.
-   - A stepped dark surface ladder (Sheet, raised Sheet).
+   - A stepped dark surface ladder, which becomes the flap steps of the night board.
+   - Weight capped at 600 and a small-step type ramp.
    - 44px touch controls.
 2. **Stripe** (`docs/design/references/stripe.DESIGN.md`). Licence: MIT (awesome-design-md collection, copyright 2026 VoltAgent), covering the text, not Stripe's marks.
-   - `tnum` on every money cell as a signature convention.
+   - `tnum` on every money cell.
    - Level 1 and Level 2 shadow recipes, which confirm Raised and Overlay.
-   - Calm status colour: no red or green fills on neutral surfaces except the over-budget bar.
+   - Status said in words as well as colour.
 3. **Supabase** (`docs/design/references/supabase.DESIGN.md`). Licence: MIT (awesome-design-md collection, copyright 2026 VoltAgent), covering the text, not Supabase's marks.
-   - One chromatic accent per screen.
-   - Dark text on the accent fill where the accent is light, light text where it is dark, chosen per theme.
-   - Small control radii (2px and 4px here) with a hairline only on inputs, never on cards.
+   - One chromatic accent per screen, a green.
+   - Light and dark designed together, with the accent's text colour chosen per theme.
+   - Small control radii (2px and 4px here).
 
 ## Decisions
 
-One row per design-system decision in CLAUDE.md and per decision from the 2026-10-05 capture. `replaced` rows and the Focus Blue adjustment take effect only if ADR-0006 is accepted; on rejection every row reverts to `kept` except the dark Critical Red fix, and ## Fallback applies.
+One row per design-system decision in CLAUDE.md and per decision from the 2026-10-05 capture. `replaced` rows and the Focus Blue and warn adjustments take effect only if ADR-0006 is accepted; on rejection every row reverts to `kept` except the dark critical AA fix, and ## Fallback applies.
 
 | Decision | Value |
 |----------|-------|
-| Type family: IBM Plex Sans (body) and IBM Plex Mono (numbers) | replaced (ADR-0006): system UI stack for words, system mono stack for figures. Plex was declared but never loaded, so this matches what users already see and costs no font download. Needs the constitution Principle VI amendment in T028 |
-| Green accent `#1f6e5a` light / `#5fbf9f` dark | replaced (ADR-0006): Intaglio Teal `#1d3c46` light / `#2d6f72` dark, as the shell plate and the one accent. Needs the Principle VI amendment in T028 |
-| Backgrounds `#f2f4f7` light / `#121820` dark | replaced (ADR-0006): Note Paper `#eef1ec` / Night Note `#0f161b`, tinted toward the teal |
-| Status colour warn (`#a8641a`, already `#8f5810` light for AA) | kept: `#8f5810` light, `#d99a4e` dark |
-| Status colour critical `#a83a2e` | adjusted: light `#a83a2e` kept; dark `#f0897c` (the old dark value equalled light and measured 2.8:1, failing AA) |
-| Three theme states (bare `:root`, guarded system dark, explicit dark) | kept |
-| Charts are hand-written SVG, single hue, budget ticks, red when over, table view | kept; the single-hue fill becomes a line hatch drawn with an SVG pattern, no library |
-| Status colours are never chart series | kept |
-| Lifted surfaces with two elevations (capture 2026-10-05) | kept: Raised and Overlay, tinted toward Plate Ink in light mode |
-| Focus ring in its own blue (capture 2026-10-05) | adjusted: `#4c84d9` light / `#9cc3ff` dark, so the ring reaches 3:1 on the page, on Sheet and on the teal plate (the old pair could not reach 3:1 on the accent) |
-| Ledger Desk character and North Star (capture 2026-10-05) | replaced (ADR-0006): "Security Print"; the Ledger Desk becomes ## Fallback |
+| Type family: IBM Plex Sans (body) and IBM Plex Mono (numbers) | replaced (ADR-0006): system UI stack for words, system mono stack for figures; Plex was declared but never loaded. Needs the constitution Principle VI amendment in T028 |
+| Green accent `#1f6e5a` light / `#5fbf9f` dark | replaced (ADR-0006): Signal Green `#0e3d2a` light / `#2c7452` dark, still a green and still the only accent. Needs the Principle VI amendment in T028 |
+| Backgrounds `#f2f4f7` light / `#121820` dark | replaced (ADR-0006): Daylight Steel `#e8eaeb` / Flap Black `#0e1114` |
+| Status colour warn (`#a8641a`, already `#8f5810` light for AA) | adjusted: Delay Amber `#8a5a00` light / `#ffb000` dark, the board's amber, still AA as text |
+| Status colour critical `#a83a2e` | adjusted: Cancel Red `#b00020` light / `#ff6b6b` dark; the old dark value equalled light and measured 2.8:1, failing AA |
+| Three theme states (bare `:root`, guarded system dark, explicit dark) | kept; dark is the reference rendering, light the daylight board |
+| Charts are hand-written SVG, single hue, budget ticks, red when over, table view | kept |
+| Status colours are never chart series | kept; status gains the row lamp, which is a state marker, not a series |
+| Lifted surfaces with two elevations (capture 2026-10-05) | kept: Raised and Overlay; board rows stay flat inside a raised frame |
+| Focus ring in its own blue (capture 2026-10-05) | adjusted: `#4d80da` light / `#a6caff` dark, reaching 3:1 on the ground, a flap and Signal Green |
+| Ledger Desk character and North Star (capture 2026-10-05) | replaced (ADR-0006): "Concourse Board"; the Ledger Desk becomes ## Fallback |
 
 ## Motion
 
-Motion is feedback and state change only. Nothing loops except the skeleton pulse, and nothing animates on page load.
+Motion says one thing: a value arrived. Nothing animates on load, on scroll or on hover beyond a colour change.
 
-- **What animates:** `opacity` and `transform` only. A toast enters (opacity plus 8px translate, `--motion-base`) and leaves (`--motion-fast`, `--ease-exit`); a sheet slides in from its edge (`--motion-slow`); a menu fades and scales from 0.98 (`--motion-fast`); the serial line on a focused row fades in with a 4px rise (`--motion-fast`); a pressed button moves 1px down (`--motion-fast`); tab underline and link colour change over `--motion-fast`.
-- **What never animates:** table layout, row height, column width, text size, bar length on data arrival, the denomination's value, and anything the user did not cause.
-- **Tokens:** `--motion-fast` 120ms, `--motion-base` 200ms, `--motion-slow` 280ms (the FR-007 ceiling); `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)` for entering, `--ease-exit` `cubic-bezier(0.4, 0, 1, 1)` for leaving.
-- **Reduced motion:** all three durations become 0ms; the skeleton stops pulsing and shows at 6% steady; nothing is replaced by a different animation.
-- Informed by the Magic UI MCP's motion patterns (ideas only, no code or dependency): of its catalogue only fade-in, short slide and number-ticker ideas fit, and the number ticker is rejected because a changing figure must never look like it is still settling.
+- **The arrival flip (signature):** when a pending amount receives its rate, or a tile's figure changes because data refreshed, the figure's cell turns over once: `transform: rotateX(90deg)` to `0` over `--motion-base` with `--ease-standard`, `transform-origin` at the cell's seam. One flip per value per update; never per character, never on first render, never in a loop.
+- **Other state changes:** toast enters with opacity and an 8px translate (`--motion-base`) and leaves on `--motion-fast` with `--ease-exit`; a sheet slides from its edge (`--motion-slow`); a menu fades and scales from 0.98 (`--motion-fast`); a pressed button moves 1px (`--motion-fast`); tab and link colour over `--motion-fast`.
+- **What never animates:** column width, row height, table layout, text size, bar length on data arrival, sorting, and anything the user did not cause.
+- **Tokens:** `--motion-fast` 120ms, `--motion-base` 200ms, `--motion-slow` 280ms (the FR-007 ceiling); `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`, `--ease-exit` `cubic-bezier(0.4, 0, 1, 1)`.
+- **Reduced motion:** durations are 0ms, so the flip becomes an instant swap and the skeleton holds still; nothing is replaced by another effect.
+- Informed by the Magic UI MCP's motion patterns (ideas only, no code or dependency): its flip and ticker patterns were weighed and cut down to a single whole-cell flip, because a per-character cascade on money reads as a value that is still settling.
 
 ## Taste dials
 
-From `Skill: design-taste-frontend` (design read: daily-use finance product UI for one person on phone and desktop, trust-first, native CSS tokens and Desk's own Vue blocks), cross-checked against the `ui-ux-pro-max` run recorded in `docs/design/SHORTLIST.md`, whose "Exaggerated Minimalism" and landing-page pattern were rejected for an app screen.
+From `Skill: design-taste-frontend` (design read: daily-use finance product UI for one person on phone and desktop, trust-first, native CSS tokens and Desk's own Vue blocks), cross-checked against the `ui-ux-pro-max` run recorded in `docs/design/SHORTLIST.md`, whose landing-page pattern and second accent were rejected.
 
-- **Variance: 3.** A symmetric whole-column grid with one deliberate exception, the double-width denomination, because a money screen must be predictable before it is interesting.
-- **Motion intensity: 3.** State changes and feedback only, never on load, because a figure that moves reads as a figure that is not final.
-- **Visual density: 5.** A daily-app density between the owner's two guardrails: comfortable at 360 (44px targets, one figure per tile), compact at desktop review where rows drop to 32px but type never shrinks.
+- **Variance: 3.** A fixed-column board is symmetric by nature; the only exception is the double-width departure tile.
+- **Motion intensity: 3.** One signature flip on data arrival plus feedback, because the board's life is its values, not its chrome.
+- **Visual density: 5.** Board rows are denser than cards but stay readable at 360: three columns, 44px rows on the phone, 32px compact rows at desktop.
 
 ## Mock-ups
 
@@ -379,7 +383,7 @@ Coded mock-ups on the dev-only catalogue route (built in T027; preview deploymen
 
 ## Fallback
 
-The refinement variant, applied if ADR-0006 is rejected: the incumbent capture of 2026-10-05, "The Ledger Desk", refined. Every Decisions row is `kept` except dark Critical Red, an AA fix that applies either way. The Focus Blue adjustment belongs to the teal plate and does not carry over; the fallback keeps the capture's Focus Blue. The capture's five named rules apply unchanged: One Ink (Ledger Green), Status Is Not a Series, Focus Is Blue, Tabular Figures (IBM Plex Mono declared, system mono as delivered), Two Heights.
+The refinement variant, applied if ADR-0006 is rejected: the incumbent capture of 2026-10-05, "The Ledger Desk", refined. Every Decisions row is `kept` except dark Critical Red, an AA fix that applies either way; the Focus Blue and status-colour adjustments belong to the board and do not carry over. The capture's five named rules apply unchanged: One Ink (Ledger Green), Status Is Not a Series, Focus Is Blue, Tabular Figures, Two Heights.
 
 Fallback values (normative frontmatter if the fallback is chosen):
 
@@ -398,15 +402,16 @@ Fallback values (normative frontmatter if the fallback is chosen):
 | `--color-critical` | `#a83a2e` | `#f0897c` |
 | `--color-selection` | `#cfe8e0` | `#1f3d36` |
 
-Type: IBM Plex Sans and Mono as declared, on the same seven-step scale as above. Radii 4px, 8px, 12px. Shadows as in the capture.
+Type: IBM Plex Sans and Mono as declared, on the seven-step scale above. Radii 4px, 8px, 12px. Shadows as in the capture.
 
-What the fallback changes, and only this: tiles, panel frames and widget frames move from the 12% hairline to Raised; menus, dialogs and toasts sit on Overlay and the two stray third shadows go; the primary tile figure takes the Display role (FR-011); every off-scale literal (0.9rem, 0.85rem, 0.8rem, 0.6rem, 6px) maps onto the scale; motion follows ## Motion; every panel gets its designed skeleton, empty and error states; tap targets reach 44px at phone. One known gap stays in the fallback: the Focus Blue ring on a Ledger Green fill measures under 3:1, so focus on the primary button relies on the 2px offset placing the ring on the page ground.
+What the fallback changes, and only this: tiles, panel frames and widget frames move from the 12% hairline to Raised; menus, dialogs and toasts sit on Overlay and the two stray third shadows go; the primary tile figure takes the Display role (FR-011); every off-scale literal (0.9rem, 0.85rem, 0.8rem, 0.6rem, 6px) maps onto the scale; motion follows ## Motion without the arrival flip; every panel gets its designed skeleton, empty and error states; tap targets reach 44px at phone. One known gap stays: Focus Blue on a Ledger Green fill is under 3:1, so focus on the primary button relies on the 2px offset placing the ring on the page ground.
 
 ## Building a new panel
 
 Stub; completed in T046 (User Story 3).
 
-1. Start from `PanelFrame` with a Title-role heading and the three state slots filled (Skeleton, EmptyState with one action, ErrorState with a `causeMessages` map).
-2. Put every figure in `Tile` or `DataTable` so it inherits the figure face, tabular numerals and the serial line.
-3. Lay out with spacing tokens and whole grid columns only; no colour, type or motion rule in the screen file.
-4. Add a `.story.ts` beside any new block and a `SCREENS` entry in `tests/e2e/tests/visual.spec.ts`.
+1. Start from `PanelFrame` with a Title heading and the three state slots filled (Skeleton, EmptyState with one action, ErrorState with a `causeMessages` map).
+2. Put every figure in `Tile` or `DataTable` so it inherits the figure face, tabular numerals, fixed columns and the arrival flip.
+3. Say status with a row lamp and a word, never colour alone.
+4. Lay out with spacing tokens and whole columns only; no colour, type or motion rule in the screen file.
+5. Add a `.story.ts` beside any new block and a `SCREENS` entry in `tests/e2e/tests/visual.spec.ts`.
