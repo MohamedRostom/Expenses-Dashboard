@@ -42,6 +42,8 @@ describe('catalogue bundle', () => {
     expect(html).not.toMatch(banned);
   }, 240_000);
 
-  // enabled by T021 (the catalogue view does not exist yet)
-  it.todo('emits a catalogue chunk when VITE_UI_CATALOGUE is true');
+  it('emits a catalogue chunk when VITE_UI_CATALOGUE is true', async () => {
+    const { files } = await buildWith('true');
+    expect(files.filter((f) => /catalogue/i.test(f)).length).toBeGreaterThan(0);
+  }, 240_000);
 });

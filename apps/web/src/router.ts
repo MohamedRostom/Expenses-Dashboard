@@ -78,6 +78,15 @@ const routes: RouteRecordRaw[] = [
   },
 ];
 
+// Dev/preview only (research R5): the literal comparison lets Vite drop the branch and the chunk.
+if (import.meta.env.VITE_UI_CATALOGUE === 'true') {
+  routes.push({
+    path: '/__ui',
+    name: 'ui-catalogue',
+    component: () => import('./catalogue/CatalogueView.vue'),
+  });
+}
+
 export const router = createRouter({
   history: createWebHistory(),
   routes,
