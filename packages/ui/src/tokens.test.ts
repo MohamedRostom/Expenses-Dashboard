@@ -10,15 +10,18 @@ const css = readFileSync(join(here, 'tokens.css'), 'utf-8').replace(/\/\*[\s\S]*
 
 // --- tokens.css parsing -------------------------------------------------------------------
 type Tokens = Map<string, string>;
-const rules = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({
-  selector: selector!.replace(/\s+/g, ' ').trim(),
-  tokens: new Map(
-    [...body!.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()]),
-  ) as Tokens,
-}));
-function rule(selector: string): Tokens {
-  const found = rules.find((r) => r.selector === selector);
-  if (!found) throw new Error(`no rule "${selector}" in tokens.css`);
+function parseRules(text: string) {
+  return [...text.matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({
+    selector: selector!.replace(/\s+/g, ' ').trim(),
+    tokens: new Map(
+      [...body!.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [m[1]!, m[2]!.trim()]),
+    ) as Tokens,
+  }));
+}
+const rules = parseRules(css);
+function rule(selector: string, from = rules): Tokens {
+  const found = from.find((r) => r.selector === selector);
+  if (!found) throw new Error(`no rule "${selector}"`);
   return found.tokens;
 }
 const light = rule("[data-theme='light'], :root");
@@ -57,6 +60,7 @@ const names = [
   ...sizes.map((s) => `--leading-${s}`),
   '--tracking-tight',
   '--tracking-normal',
+  '--tracking-wide',
   ...[1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20, 24].map((n) => `--space-${n}`),
   '--radius-sm',
   '--radius-md',
@@ -81,26 +85,26 @@ describe('token contract', () => {
   });
 });
 
+// The contract also lists --color-focus on --color-accent at 3:1, but that is unreachable with the
+// current accents (bg:accent is ~5.5:1 light and ~8:1 dark; one colour would need >= 9:1 between
+// them). Left out for tokens.css until T028 sets the values; the proposed identity asserts it.
+const pairs: [string, string, number][] = [
+  ['fg', 'bg', 4.5],
+  ['fg', 'surface', 4.5],
+  ['fg', 'surface-raised', 4.5],
+  ['fg-muted', 'bg', 4.5],
+  ['fg-muted', 'surface', 4.5],
+  ['accent-fg', 'accent', 4.5],
+  ['accent', 'bg', 3],
+  ['warn', 'bg', 4.5],
+  ['warn', 'surface', 4.5],
+  ['critical', 'bg', 4.5],
+  ['critical', 'surface', 4.5],
+  ['focus', 'bg', 3],
+  ['focus', 'surface', 3],
+  ['border', 'bg', 3],
+];
 describe('contrast pairs (WCAG 2.2 AA)', () => {
-  // The contract also lists --color-focus on --color-accent at 3:1, but that is unreachable with the
-  // current accents (bg:accent is ~5.5:1 light and ~8:1 dark; one colour would need >= 9:1 between
-  // them). Left out until T028 sets the values; flagged in the T011 hand-off.
-  const pairs: [string, string, number][] = [
-    ['fg', 'bg', 4.5],
-    ['fg', 'surface', 4.5],
-    ['fg', 'surface-raised', 4.5],
-    ['fg-muted', 'bg', 4.5],
-    ['fg-muted', 'surface', 4.5],
-    ['accent-fg', 'accent', 4.5],
-    ['accent', 'bg', 3],
-    ['warn', 'bg', 4.5],
-    ['warn', 'surface', 4.5],
-    ['critical', 'bg', 4.5],
-    ['critical', 'surface', 4.5],
-    ['focus', 'bg', 3],
-    ['focus', 'surface', 3],
-    ['border', 'bg', 3],
-  ];
   const themes: [string, Tokens][] = [
     ['light', light],
     ['system dark', systemDark],
@@ -127,6 +131,48 @@ describe('contrast pairs (WCAG 2.2 AA)', () => {
           resolve(tokens, `--color-${bg}`),
         );
         expect(ratio).toBeGreaterThanOrEqual(min);
+      },
+    );
+  }
+});
+
+// T026: the proposed identity (ADR-0006, DESIGN.md "Concourse Board") lives only in this file,
+// scoped under [data-identity='proposed'], until T028 deletes it or moves it into tokens.css.
+const PROPOSED = 'apps/web/src/catalogue/proposed-tokens.css';
+describe('proposed identity tokens (T026)', () => {
+  const path = join(root, PROPOSED);
+  it('exists', () => expect(existsSync(path)).toBe(true));
+  if (!existsSync(path)) return;
+  const p = parseRules(readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, ''));
+  const scoped = "[data-identity='proposed']";
+  const pLight = rule(scoped, p);
+  const blocks: [string, Tokens][] = [
+    ['light', pLight],
+    [
+      'forced light',
+      rule(`:root [data-theme='light'] ${scoped}, :root ${scoped}[data-theme='light']`, p),
+    ],
+    ['system dark', rule(`:root:not([data-theme='light']) ${scoped}`, p)],
+    [
+      'explicit dark',
+      rule(
+        `:root[data-theme='dark'] ${scoped}, :root [data-theme='dark'] ${scoped}, :root ${scoped}[data-theme='dark']`,
+        p,
+      ),
+    ],
+  ];
+  it('every rule is scoped under the proposed wrapper', () =>
+    expect(p.filter((r) => !r.selector.includes(scoped))).toEqual([]));
+  it('forced light repeats the light values', () => expect(blocks[1]![1]).toEqual(pLight));
+  for (const [theme, tokens] of blocks) {
+    it.each([...colours, ...shadows])(`${theme}: %s is defined`, (n) =>
+      expect(tokens.has(n)).toBe(true),
+    );
+    it.each([...pairs, ['focus', 'accent', 3] as [string, string, number]])(
+      `${theme}: %s on %s >= %f`,
+      (fg, bg, min) => {
+        const get = (n: string) => tokens.get(`--color-${n}`) ?? pLight.get(`--color-${n}`)!;
+        expect(contrastRatio(get(fg), get(bg))).toBeGreaterThanOrEqual(min);
       },
     );
   }
@@ -185,6 +231,7 @@ function styleLines(file: string): [number, string][] {
 const driftFiles = ['apps/web/src', 'apps/landing/src', 'packages/ui/src/components']
   .flatMap((d) => [...walk(join(root, d), '.vue'), ...walk(join(root, d), '.css')])
   .map(repoPath)
+  .filter((f) => f !== PROPOSED) // a token source, like tokens.css; deleted in T028
   .sort();
 function driftHits(path: string): string[] {
   return styleLines(join(root, path)).flatMap(([n, l]) =>

@@ -10,7 +10,7 @@ values remain until then). `packages/ui/src/tokens.test.ts` asserts the invarian
 Font        --font-sans  --font-mono
 Type        --text-xs  --text-sm  --text-md  --text-lg  --text-xl  --text-2xl  --text-display
             --leading-xs … --leading-display   (one line height per size)
-            --tracking-tight  --tracking-normal
+            --tracking-tight  --tracking-normal  --tracking-wide (0.08em, small spaced capitals; added T026)
 Spacing     --space-1 (4px) --space-2 (8px) --space-3 (12px) --space-4 (16px) --space-5 (20px)
             --space-6 (24px) --space-8 (32px) --space-10 (40px) --space-12 (48px)
             --space-16 (64px) --space-20 (80px) --space-24 (96px)

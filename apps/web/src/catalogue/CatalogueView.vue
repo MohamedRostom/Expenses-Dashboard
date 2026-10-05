@@ -2,6 +2,7 @@
 import { h, type Component, type VNode } from 'vue';
 import * as ui from '@desk/ui';
 import { collectStories, type Story, type StoryCase } from '@desk/ui';
+import './proposed-tokens.css'; // ADR-0006 proposal, catalogue only (T026); removed in T028
 
 // Dev-only block catalogue (research R5). Block id = story title = story file base name.
 // DOM contract: tests/e2e/tests/visual.spec.ts.
