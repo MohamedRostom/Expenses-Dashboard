@@ -1,0 +1,517 @@
+/* T027: the Concourse Board pieces shared by the three proposed mock-ups (DESIGN.md, ADR-0006).
+   Tokens only (drift ratchet). The `.desk-*` rules preview what T031–T042 do to each block when
+   it is restyled; until then they apply only inside [data-identity='proposed']. Deleted with the
+   mock-ups' proposed wrapper in T028. */
+
+[data-identity='proposed'] {
+  min-height: 100dvh;
+  caret-color: var(--color-accent);
+  accent-color: var(--color-accent);
+}
+[data-identity='proposed'] ::selection {
+  background: var(--color-selection);
+  color: var(--color-fg);
+}
+[data-identity='proposed'] :focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+
+/* Page frame */
+.mk-main {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+@media (min-width: 768px) {
+  .mk-main {
+    --gutter: var(--space-8);
+    padding-top: var(--space-6);
+  }
+}
+.mk-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Type roles */
+.mk-label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+.mk-title {
+  margin: 0;
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+}
+.mk-figure,
+.mk-display,
+.mk-fig-small,
+.mk-num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mk-figure {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 500;
+}
+.mk-display {
+  /* Display role; shrinks with the phone viewport so six-digit sums stay inside the tile. */
+  font-size: min(var(--text-display), 10.5vw);
+  line-height: var(--leading-display);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.mk-fig-small {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
+}
+/* Words at small size (tile lines, status words); figures inside them take .mk-num. */
+.mk-note {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
+}
+.mk-status-word {
+  display: block;
+  font-weight: 600;
+}
+
+/* Flaps: tiles and panels, Raised */
+.mk-flap {
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  padding: var(--space-4);
+}
+.mk-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.mk-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Tiles row: departure tile plus two tiles */
+.mk-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.mk-tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.mk-tile--departure {
+  grid-column: 1 / -1;
+  background: var(--color-surface-raised);
+  gap: var(--space-2);
+}
+@media (max-width: 767px) {
+  .mk-tile:not(.mk-tile--departure) {
+    padding: var(--space-3);
+  }
+}
+@media (min-width: 1024px) {
+  .mk-tiles {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .mk-tile--departure {
+    grid-column: span 2;
+  }
+}
+/* The one flap-cell detail: the departure figure sits in a flap cell whose seam shows only at
+   its hinges (the side margins), never across the glyphs, so it can't read as a strikethrough. */
+.mk-cell {
+  position: relative;
+  align-self: flex-start;
+  max-width: 100%;
+  perspective: 600px;
+}
+.mk-cell--seam {
+  padding: var(--space-1) var(--space-3);
+  margin-inline: calc(-1 * var(--space-3));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.mk-cell--seam::before,
+.mk-cell--seam::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+.mk-cell--seam::before {
+  left: 0;
+}
+.mk-cell--seam::after {
+  right: 0;
+}
+.mk-critical {
+  color: var(--color-critical);
+}
+.mk-warn {
+  color: var(--color-warn);
+}
+
+/* The arrival flip: one whole-cell turn when a value changes after first render. Durations are
+   tokens, so reduced motion (0ms) makes it an instant swap. */
+.mk-flip {
+  display: inline-block;
+  transform-origin: 50% 50%;
+  animation: mk-flip-in var(--motion-base) var(--ease-standard);
+}
+@keyframes mk-flip-in {
+  from {
+    transform: rotateX(90deg);
+  }
+  to {
+    transform: rotateX(0);
+  }
+}
+
+/* Row lamps: a status marker beside a row, always paired with a word. */
+.mk-lamp {
+  display: block;
+  width: var(--space-1);
+  align-self: stretch;
+}
+/* In a board row the lamp spans the row's height whatever the row's content. */
+.mk-board td.mk-col-lamp {
+  position: relative;
+}
+.mk-board .mk-lamp {
+  position: absolute;
+  inset-block: var(--space-1);
+  left: var(--space-2);
+}
+.mk-lamp--warn {
+  background: var(--color-warn);
+}
+.mk-lamp--critical {
+  background: var(--color-critical);
+}
+
+/* The board: entries as fixed-column rows */
+.mk-board-frame {
+  padding: var(--space-2) 0;
+  overflow: hidden;
+}
+.mk-board {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.mk-board th {
+  text-align: left;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+}
+.mk-board td {
+  padding: var(--space-2) var(--space-3);
+  vertical-align: middle;
+  height: var(--target-min);
+}
+.mk-board tbody tr + tr td {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 25%, transparent);
+}
+.mk-board .mk-col-lamp {
+  width: var(--space-3);
+  padding: 0 0 0 var(--space-2);
+}
+.mk-board .mk-col-date {
+  width: 4.25em;
+  padding-inline: 0 var(--space-2);
+}
+.mk-board .mk-col-cat {
+  display: none;
+}
+.mk-board .mk-col-amount {
+  width: 6.5em;
+  text-align: right;
+  padding-left: var(--space-2);
+}
+.mk-board td.mk-col-date {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  white-space: nowrap;
+}
+.mk-item {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+/* At phone width the item may take two lines so the part that tells rows apart survives. */
+.mk-item-name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+}
+.mk-item-cat {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mk-item-cat {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
+}
+.mk-board td.mk-col-amount {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.mk-amount-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+@media (min-width: 768px) {
+  .mk-board .mk-col-date {
+    width: var(--space-16);
+  }
+  .mk-board .mk-col-amount {
+    width: 7.5em;
+  }
+  .mk-board .mk-col-cat {
+    display: table-cell;
+    width: 30%;
+  }
+  .mk-board td.mk-col-cat {
+    color: var(--color-fg-muted);
+    font-size: var(--text-sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .mk-item-cat {
+    display: none;
+  }
+}
+/* Compact density at desktop review: 32 px rows (DESIGN.md §Components, density dial). */
+@media (min-width: 1024px) {
+  .mk-board td {
+    height: var(--space-8);
+    padding-block: 0;
+    line-height: var(--leading-sm);
+  }
+  .mk-item-name {
+    display: block;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+}
+
+/* Category bars on one shared scale */
+.mk-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.mk-bar-row {
+  display: grid;
+  grid-template-columns: var(--space-1) minmax(0, 1fr);
+  column-gap: var(--space-3);
+}
+.mk-bar-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+.mk-bar-line {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+.mk-bar-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mk-bar-figs {
+  flex: none;
+  font-size: var(--text-sm);
+}
+.mk-bar-svg {
+  display: block;
+  width: 100%;
+  height: var(--space-2);
+  overflow: visible;
+}
+.mk-bar-base {
+  stroke: var(--color-border);
+  stroke-width: 1;
+}
+.mk-bar-fill {
+  fill: var(--color-accent);
+}
+.mk-bar-fill--over {
+  fill: var(--color-critical);
+}
+.mk-bar-tick {
+  stroke: var(--color-fg);
+  stroke-width: 1;
+}
+
+/* Two-column board from 1024 px: entries and category bars side by side (FR-008) */
+.mk-columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+@media (min-width: 1024px) {
+  .mk-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  /* The budget scale stays in view beside a long board. */
+  .mk-columns > .mk-panel:last-child {
+    position: sticky;
+    top: var(--space-4);
+  }
+}
+
+/* Block previews: what the restyle in T031–T042 brings each block to (DESIGN.md §Components). */
+[data-identity='proposed'] .desk-btn.desk-btn {
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  min-height: var(--target-min);
+  justify-content: center;
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+[data-identity='proposed'] .desk-btn.desk-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+[data-identity='proposed'] .desk-btn.primary.primary {
+  color: var(--color-accent-fg);
+}
+[data-identity='proposed'] .desk-btn.ghost.ghost {
+  padding-inline: var(--space-3);
+}
+@media (min-width: 1024px) {
+  [data-identity='proposed'] .desk-btn.desk-btn {
+    min-height: var(--space-10);
+  }
+}
+[data-identity='proposed'] .desk-field.desk-field {
+  gap: var(--space-2);
+}
+[data-identity='proposed'] .desk-field-label.desk-field-label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+[data-identity='proposed'] .desk-input.desk-input,
+[data-identity='proposed'] .desk-select.desk-select {
+  box-sizing: border-box;
+  width: 100%;
+  font-size: var(--text-md);
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-color: var(--color-border);
+  background: var(--color-surface-raised);
+}
+[data-identity='proposed'] .desk-input.amount.amount {
+  text-align: right;
+}
+[data-identity='proposed'] .desk-input[type='date'].desk-input {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+/* Skeleton: a blank flap (Board Ink at 6%) that pulses in opacity, still under reduced motion,
+   instead of the shipped block's moving shimmer. */
+[data-identity='proposed'] .desk-skeleton.desk-skeleton {
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  background-size: auto;
+  animation: mk-pulse calc(var(--motion-slow) * 5) var(--ease-standard) infinite alternate;
+}
+@keyframes mk-pulse {
+  to {
+    opacity: 0.5;
+  }
+}
+[data-identity='proposed'] .desk-input.invalid.invalid,
+[data-identity='proposed'] .desk-select.invalid.invalid {
+  border-color: var(--color-critical);
+}
+[data-identity='proposed'] .desk-field-error.desk-field-error {
+  font-size: var(--text-sm);
+}
+[data-identity='proposed'] .desk-tab.desk-tab {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  min-height: var(--target-min);
+}
+[data-identity='proposed'] .desk-tabpanel.desk-tabpanel {
+  padding-top: var(--space-4);
+}
+[data-identity='proposed'] .desk-empty-desc.desk-empty-desc,
+[data-identity='proposed'] .desk-error-desc.desk-error-desc {
+  font-size: var(--text-sm);
+  opacity: 1;
+  color: var(--color-fg-muted);
+  max-width: 40ch;
+}
+[data-identity='proposed'] .desk-data-table.desk-data-table {
+  font-size: var(--text-sm);
+}
+[data-identity='proposed'] .desk-data-table th,
+[data-identity='proposed'] .desk-data-table td {
+  border-color: color-mix(in srgb, var(--color-border) 25%, transparent);
+  padding: var(--space-2) var(--space-3);
+}
+[data-identity='proposed'] .desk-data-table thead th {
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  border-color: var(--color-border);
+}
+[data-identity='proposed'] .desk-data-table td {
+  text-align: right;
+}

@@ -248,7 +248,7 @@ Flaps lift off the board. Tiles, panels and widget frames are flaps on the Raise
 
 ## Shapes
 
-Corners are crisp: 2px on buttons, inputs and tabs (`--radius-sm`), 4px on tiles and panels (`--radius-md`), 8px on dialogs and sheets (`--radius-lg`). Borders are 1px. The departure tile's figure cell carries one 1px seam across its middle in Frame Line at 40%, the only flap-cell detail in the system. Budget bars are square-ended SVG rectangles, single-hue Signal Green, solid Cancel Red past the budget. Row lamps are 4px square-ended bars. Spinners and status dots are the only circles.
+Corners are crisp: 2px on buttons, inputs and tabs (`--radius-sm`), 4px on tiles and panels (`--radius-md`), 8px on dialogs and sheets (`--radius-lg`). Borders are 1px. The departure tile's figure sits in a flap cell (Flap on the raised tile) whose 1px Frame Line seam shows only at its two hinges, the cell's side margins, never across the glyphs, so a figure never reads as struck through; it is the only flap-cell detail in the system (revised in T027 after the mock-up showed a full-width seam reading as a strikethrough). Budget bars are square-ended SVG rectangles, single-hue Signal Green, solid Cancel Red past the budget. Row lamps are 4px square-ended bars. Spinners and status dots are the only circles.
 
 ## Components
 

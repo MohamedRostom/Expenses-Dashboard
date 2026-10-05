@@ -79,3 +79,19 @@ export const edge = {
     note: `Busy day entry ${i + 1}`,
   })) satisfies FixtureExpense[],
 };
+
+/** T027 mock-ups: the month's overall budget, in minor units (£2,200.00). */
+export const monthBudget = 220000;
+
+/** T027 mock-ups: one foreign-currency entry whose rate is still pending, for the arrival flip.
+ * `amountDefault` is what it converts to once the rate arrives. */
+export const pendingRateEntry = {
+  id: 'exp-pending',
+  date: `${month}-30`,
+  category: 'Transport',
+  note: 'Airport train',
+  amountOriginal: 5200,
+  currencyOriginal: 'USD',
+  rate: 0.7462,
+  amountDefault: 3880,
+} as const;

@@ -85,6 +85,25 @@ if (import.meta.env.VITE_UI_CATALOGUE === 'true') {
     name: 'ui-catalogue',
     component: () => import('./catalogue/CatalogueView.vue'),
   });
+  // T027 mock-ups (FR-004); same dev/preview-only branch, so production ships none of them.
+  routes.push(
+    {
+      path: '/__ui/mockups/month-view',
+      component: () => import('./catalogue/mockups/MonthViewMock.vue'),
+    },
+    {
+      path: '/__ui/mockups/add-expense',
+      component: () => import('./catalogue/mockups/AddExpenseMock.vue'),
+    },
+    {
+      path: '/__ui/mockups/settings',
+      component: () => import('./catalogue/mockups/SettingsMock.vue'),
+    },
+    {
+      path: '/__ui/mockups/month-view-fallback',
+      component: () => import('./catalogue/mockups/MonthViewFallbackMock.vue'),
+    },
+  );
 }
 
 export const router = createRouter({

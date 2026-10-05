@@ -17,7 +17,7 @@ export default defineConfig({
   projects: [
     {
       name: 'ci',
-      grepInvert: /@local|@visual/,
+      grepInvert: /@local|@visual|@manual/,
       use: {
         ...devices['Desktop Edge'],
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
@@ -34,6 +34,16 @@ export default defineConfig({
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
       },
     },
+    // Spec 004 T027: one-off screenshot capture, run by hand (tests/before.spec.ts header).
+    {
+      name: 'manual',
+      grep: /@manual/,
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge', // run by hand on Rostom's machine, which has no bundled Chromium
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+      },
+    },
     {
       name: 'local',
       grep: /@local/,
@@ -46,7 +56,7 @@ export default defineConfig({
     // T092: mobile device projects for the responsive/PWA/onboarding specs (@mobile-tagged).
     {
       name: 'pixel-7',
-      grepInvert: /@local|@visual/,
+      grepInvert: /@local|@visual|@manual/,
       grep: /@mobile/,
       use: {
         ...devices['Pixel 7'],
@@ -56,7 +66,7 @@ export default defineConfig({
     },
     {
       name: 'iphone-14',
-      grepInvert: /@local|@visual/,
+      grepInvert: /@local|@visual|@manual/,
       grep: /@mobile/,
       use: {
         ...devices['iPhone 14'],

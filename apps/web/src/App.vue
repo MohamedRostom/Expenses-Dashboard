@@ -39,7 +39,8 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
     <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
   </nav>
   <RouterView />
-  <FeedbackWidget />
+  <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
+  <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />
   <Toast />
 </template>
 
