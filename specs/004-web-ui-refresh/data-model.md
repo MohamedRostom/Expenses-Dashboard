@@ -6,32 +6,52 @@ shapes are fixed here so tasks, tests and the catalogue agree.
 
 ## Design direction (`DESIGN.md`)
 
-Sections in this order, each mandatory:
+The file lives at the repository root and follows the DESIGN.md format that impeccable and its
+detector read (decided 2026-10-05). It opens with YAML frontmatter, whose only top-level keys are
+`name`, `description`, `colors`, `typography`, `rounded`, `spacing` and `components`. The
+frontmatter is normative, and every colour in it equals a value in `packages/ui/src/tokens.css`
+(or in `proposed-tokens.css` while the state is Proposed). The eight canonical sections follow,
+with these exact headings and in this order, because the tooling parses the headings:
 
-1. **Character**: three or four words, one paragraph on why they fit a daily-use finance tool
-   on a phone.
-2. **References**: at most three, each with source (`docs/design/references/<name>.DESIGN.md`),
-   licence (MIT notice from awesome-design-md; no brand asset copied) and one line per thing
-   borrowed.
-3. **Decisions table**: one row per existing decision from CLAUDE.md "Design system" (IBM Plex
-   Sans/Mono, accent `#1f6e5a`/`#5fbf9f`, backgrounds `#f2f4f7`/`#121820`, warn `#a8641a`,
-   critical `#a83a2e`, three theme states, hand-written SVG charts, status colours never as
-   chart series) with `kept | adjusted (new value, reason) | replaced (ADR-0006)`.
-4. **Scales**: the token values (see contracts/tokens.md), light and dark.
-5. **Motion rules**: what animates (opacity, transform), what never does (table layout, text
-   size), durations per token, easing, reduce-motion behaviour.
-6. **Block conventions**: naming, prop shape, state props (`loading`, `empty`, `error` with
-   `cause`), focus ring, minimum target size, density dial.
-7. **Taste dials**: variance, motion intensity, visual density as recorded from the taste
-   skill, each with the chosen value and one sentence of reasoning.
-8. **Mock-ups**: links to `/__ui/mockups/month-view`, `/__ui/mockups/add-expense`,
-   `/__ui/mockups/settings`, `/__ui/mockups/month-view-fallback` and the "before" screenshots.
-9. **Fallback**: the refinement variant (every decision `kept`; only scales, motion, states
-   and consistency change) used if ADR-0006 is rejected.
-10. **Building a new panel**: the thirty-minute walkthrough (User Story 3).
+1. `## Overview`: the Creative North Star and the **character** (three or four words, plus one
+   paragraph on why they fit a daily-use finance tool on a phone), the key characteristics, and
+   a `State:` line.
+2. `## Colors`, 3. `## Typography`, 4. `## Layout`, 5. `## Elevation & Depth` and
+   6. `## Shapes`: together these are the **scales**, meaning the token values from
+   contracts/tokens.md in light and dark, with named rules.
+7. `## Components`: the **block conventions**, covering naming, prop shape, state props
+   (`loading`, `empty`, `error` with `cause`), the focus ring, minimum target size and the
+   density dial, plus one entry per block.
+8. `## Do's and Don'ts`.
 
-State: `Draft → Proposed (ADR-0006 open) → Approved | Approved-fallback`. Slice B starts only
-in one of the two approved states.
+Then come the spec 004 sections, in this order, each mandatory:
+
+9. `## References`: at most three, each with its source
+   (`docs/design/references/<name>.DESIGN.md`), its licence (the MIT notice from
+   awesome-design-md; no brand asset is copied) and one line per thing borrowed.
+10. `## Decisions`: one row per existing decision from CLAUDE.md "Design system" (IBM Plex
+    Sans/Mono, accent `#1f6e5a`/`#5fbf9f`, backgrounds `#f2f4f7`/`#121820`, warn `#a8641a`
+    (already adjusted to `#8f5810` in light for AA), critical `#a83a2e`, three theme states,
+    hand-written SVG charts, status colours never used as chart series). It also has one row
+    per decision taken in the 2026-10-05 capture: lifted surfaces with two elevations, the focus
+    ring in its own blue, and the Ledger Desk character. Each row is valued
+    `kept | adjusted (new value, reason) | replaced (ADR-0006)`.
+11. `## Motion`: what animates (opacity, transform) and what never does (table layout, text
+    size), the duration of each token, easing, and reduce-motion behaviour.
+12. `## Taste dials`: variance, motion intensity and visual density as recorded from the taste
+    skill, each with the chosen value and one sentence of reasoning.
+13. `## Mock-ups`: links to `/__ui/mockups/month-view`, `/__ui/mockups/add-expense`,
+    `/__ui/mockups/settings`, `/__ui/mockups/month-view-fallback` and the "before" screenshots.
+14. `## Fallback`: the refinement variant, used if ADR-0006 is rejected. Every decision is
+    `kept`, and the incumbent capture's named rules apply unchanged; only scales, motion,
+    states and consistency change.
+15. `## Building a new panel`: the thirty-minute walkthrough (User Story 3).
+
+Whenever DESIGN.md is regenerated, `.impeccable/design.json` (the impeccable sidecar holding
+shadows, motion, tonal ramps and component snippets) is regenerated in the same change.
+
+State: `Captured (incumbent, 2026-10-05) → Draft → Proposed (ADR-0006 open) → Approved |
+Approved-fallback`. Slice B starts only in one of the two approved states.
 
 ## Tokens (`packages/ui/src/tokens.css`)
 

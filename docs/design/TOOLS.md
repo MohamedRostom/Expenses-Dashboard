@@ -13,8 +13,10 @@ dependency and none appears in a `package.json`. Installed 2026-10-04.
 | ui-ux-pro-max | plugin | Claude Code plugin, already installed | via the plugin marketplace |
 | Magic UI MCP | `@magicuidesign/mcp` 2.0.0 | user-scope MCP server in `~/.claude.json` | `claude mcp add --scope user magicui -- npx -y @magicuidesign/mcp@2.0.0` |
 
-`/impeccable init` (design context: audience, use case, brand personality) runs once with the
-owner at the start of task T024.
+`/impeccable init` and `/impeccable document` ran with the owner on 2026-10-05. Together they
+wrote the root `PRODUCT.md` (product truth), the root `DESIGN.md` (the incumbent system, "The
+Ledger Desk") and `.impeccable/design.json` (its sidecar). In this monorepo, run impeccable
+helper commands from `apps/web` or `apps/landing` so they resolve those root files.
 
 ## When each tool runs
 
