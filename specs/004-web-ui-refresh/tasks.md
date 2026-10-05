@@ -101,7 +101,7 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
 
 ### Tests (write first, watch them fail)
 
-- [ ] T022 [P] [US1] Write a failing unit test `packages/ui/src/design-doc.test.ts` that reads the root `DESIGN.md` and checks, without adding a YAML dependency (parse only the frontmatter's top-level keys and its `colors` block):
+- [x] T022 [P] [US1] Write a failing unit test `packages/ui/src/design-doc.test.ts` that reads the root `DESIGN.md` and checks, without adding a YAML dependency (parse only the frontmatter's top-level keys and its `colors` block):
   - The frontmatter's top-level keys are a subset of `name`, `description`, `colors`, `typography`, `rounded`, `spacing` and `components`.
   - Every `colors` value appears in `packages/ui/src/tokens.css`, or in `apps/web/src/catalogue/proposed-tokens.css` while the `State:` line says Proposed.
   - The eight canonical headings (`## Overview` … `## Do's and Don'ts`) appear with those exact spellings and in that order, followed by the seven spec sections of data-model.md §Design direction in order.
