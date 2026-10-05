@@ -1,0 +1,262 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-05T00:00:00Z",
+  "title": "Design System: Desk (working name)",
+  "extensions": {
+    "colorMeta": {
+      "ledger-green": {
+        "role": "primary",
+        "displayName": "Ledger Green",
+        "canonical": "#1f6e5a",
+        "tonalRamp": [
+          "#0b2a22",
+          "#123f33",
+          "#185545",
+          "#1f6e5a",
+          "#3a8a74",
+          "#5fbf9f",
+          "#a3dcc8",
+          "#e2f4ee"
+        ]
+      },
+      "ledger-green-dark": {
+        "role": "primary",
+        "displayName": "Ledger Green (dark)",
+        "canonical": "#5fbf9f"
+      },
+      "grey-paper": {
+        "role": "neutral",
+        "displayName": "Grey Paper",
+        "canonical": "#f2f4f7",
+        "tonalRamp": [
+          "#121820",
+          "#212b37",
+          "#41505f",
+          "#5b6877",
+          "#7a8594",
+          "#a9b4c2",
+          "#d5dbe2",
+          "#f2f4f7"
+        ]
+      },
+      "night-desk": { "role": "neutral", "displayName": "Night Desk", "canonical": "#121820" },
+      "ink": { "role": "neutral", "displayName": "Ink", "canonical": "#121820" },
+      "ink-muted": { "role": "neutral", "displayName": "Muted Ink", "canonical": "#4a5663" },
+      "sheet": { "role": "neutral", "displayName": "Sheet", "canonical": "#ffffff" },
+      "rule-line": { "role": "neutral", "displayName": "Rule Line", "canonical": "#7a8594" },
+      "focus-blue": { "role": "neutral", "displayName": "Focus Blue", "canonical": "#1a5fb4" },
+      "selection-mint": {
+        "role": "neutral",
+        "displayName": "Selection Mint",
+        "canonical": "#cfe8e0"
+      },
+      "warn-amber": {
+        "role": "status",
+        "displayName": "Warn Amber",
+        "canonical": "#8f5810",
+        "tonalRamp": [
+          "#2e1c05",
+          "#4f3009",
+          "#70440c",
+          "#8f5810",
+          "#b5732a",
+          "#d99a4e",
+          "#ecc79a",
+          "#f9ecdc"
+        ]
+      },
+      "critical-red": {
+        "role": "status",
+        "displayName": "Critical Red",
+        "canonical": "#a83a2e",
+        "tonalRamp": [
+          "#33110d",
+          "#561d17",
+          "#7a2a21",
+          "#a83a2e",
+          "#c4604f",
+          "#dc8e80",
+          "#efc3bb",
+          "#fbebe8"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The single headline figure or page title; once per screen at most."
+      },
+      "headline": { "displayName": "Headline", "purpose": "Page headings." },
+      "title": { "displayName": "Title", "purpose": "Panel and section headings." },
+      "body": { "displayName": "Body", "purpose": "Running text, form values, table cells." },
+      "label": { "displayName": "Label", "purpose": "Panel-frame headings, tabs, field labels." },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Every money amount, rate and count; Plex Mono, tabular numerals."
+      },
+      "figure-small": {
+        "displayName": "Figure (small)",
+        "purpose": "As-of stamps and dense amounts."
+      }
+    },
+    "shadows": [
+      {
+        "name": "raised",
+        "value": "0 1px 2px rgb(18 24 32 / 0.08), 0 1px 3px rgb(18 24 32 / 0.06)",
+        "purpose": "Tiles, panels and widget frames at rest. Dark: 0 1px 2px rgb(0 0 0 / 0.4), 0 1px 3px rgb(0 0 0 / 0.3)."
+      },
+      {
+        "name": "overlay",
+        "value": "0 8px 24px rgb(18 24 32 / 0.16), 0 2px 6px rgb(18 24 32 / 0.08)",
+        "purpose": "Dialogs, menus, toasts. Dark: 0 8px 24px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "motion-fast",
+        "value": "120ms",
+        "purpose": "Colour and border transitions (tabs, links). 0ms under reduced motion."
+      },
+      {
+        "name": "motion-base",
+        "value": "200ms",
+        "purpose": "Default state change. 0ms under reduced motion."
+      },
+      {
+        "name": "motion-slow",
+        "value": "280ms",
+        "purpose": "Larger enter transitions. 0ms under reduced motion."
+      },
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Default easing for entering and state changes."
+      },
+      { "name": "ease-exit", "value": "cubic-bezier(0.4, 0, 1, 1)", "purpose": "Elements leaving." }
+    ],
+    "breakpoints": [
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a screen.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Add expense</button>",
+      "css": ".ds-btn { font-family: var(--font-sans); font-size: 0.9rem; padding: var(--space-2) var(--space-4); border-radius: 6px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2); } .ds-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-btn-primary { background: var(--color-accent); color: var(--color-bg); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined alternative action.",
+      "html": "<button class=\"ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn-secondary { font-family: var(--font-sans); font-size: 0.9rem; padding: var(--space-2) var(--space-4); border-radius: 6px; background: transparent; color: var(--color-fg); border: 1px solid var(--color-fg); cursor: pointer; } .ds-btn-secondary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmation only.",
+      "html": "<button class=\"ds-btn-danger\">Delete for good</button>",
+      "css": ".ds-btn-danger { font-family: var(--font-sans); font-size: 0.9rem; padding: var(--space-2) var(--space-4); border-radius: 6px; border: 1px solid transparent; background: var(--color-critical); color: var(--color-bg); cursor: pointer; } .ds-btn-danger:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Amount Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field; the amount variant uses tabular Plex Mono.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Amount</span><input class=\"ds-input ds-input-amount\" value=\"12.50\" inputmode=\"decimal\"></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: var(--space-1); font-family: var(--font-sans); color: var(--color-fg); } .ds-field-label { font-size: 0.85rem; } .ds-input { font-family: var(--font-sans); padding: var(--space-2); border-radius: 6px; border: 1px solid var(--color-fg); background: var(--color-bg); color: var(--color-fg); } .ds-input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-input-amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }"
+    },
+    {
+      "name": "Tile",
+      "kind": "card",
+      "refersTo": "tile",
+      "description": "One labelled figure on a raised sheet.",
+      "html": "<div class=\"ds-tile\"><span class=\"ds-tile-label\">Spent this month</span><span class=\"ds-tile-value\">£1,284.60</span><p class=\"ds-tile-basis\">of £1,600 budget</p></div>",
+      "css": ".ds-tile { display: flex; flex-direction: column; gap: 0.25rem; padding: 0.75rem; background: var(--color-surface); border-radius: 8px; box-shadow: var(--shadow-raised); max-width: 20rem; font-family: var(--font-sans); color: var(--color-fg); } .ds-tile-label { font-size: 0.8rem; color: var(--color-fg-muted); } .ds-tile-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 1.25rem; } .ds-tile-basis { font-size: 0.75rem; color: var(--color-fg-muted); margin: 0; }"
+    },
+    {
+      "name": "Category Bar",
+      "kind": "custom",
+      "refersTo": "category-bars",
+      "description": "Signature chart row: single-hue fill, budget tick, red only when over.",
+      "html": "<div class=\"ds-bar\"><div class=\"ds-bar-label\"><span>Groceries</span><span class=\"ds-bar-amt\">£212.40 / £250</span></div><svg class=\"ds-bar-svg\" viewBox=\"0 0 100 10\" preserveAspectRatio=\"none\"><rect class=\"ds-bar-track\" width=\"100\" height=\"10\"/><rect class=\"ds-bar-fill\" width=\"85\" height=\"10\"/><line class=\"ds-bar-tick\" x1=\"100\" x2=\"100\" y1=\"0\" y2=\"10\"/></svg></div>",
+      "css": ".ds-bar { display: flex; flex-direction: column; gap: var(--space-1); font-family: var(--font-sans); } .ds-bar-label { display: flex; justify-content: space-between; font-size: 0.85rem; color: var(--color-fg); } .ds-bar-amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; } .ds-bar-svg { width: 100%; height: 0.75rem; } .ds-bar-track { fill: var(--color-fg); opacity: 0.08; } .ds-bar-fill { fill: var(--color-accent); } .ds-bar-tick { stroke: var(--color-fg); stroke-width: 0.6; }"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Underline tabs, accent marks the selected one.",
+      "html": "<div class=\"ds-tablist\" role=\"tablist\"><button class=\"ds-tab ds-tab-selected\" role=\"tab\" aria-selected=\"true\">Month</button><button class=\"ds-tab\" role=\"tab\">Year</button></div>",
+      "css": ".ds-tablist { display: flex; gap: var(--space-4); border-bottom: 1px solid var(--color-border); } .ds-tab { font-family: var(--font-sans); font-size: var(--text-sm); padding: var(--space-2) var(--space-1); background: transparent; color: var(--color-fg-muted); border: 0; border-bottom: 2px solid transparent; cursor: pointer; transition: color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard); } .ds-tab:hover { color: var(--color-fg); } .ds-tab-selected { color: var(--color-fg); border-bottom-color: var(--color-accent); } .ds-tab:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Main Nav",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Wrapping row of text links; accent on active.",
+      "html": "<nav class=\"ds-nav\"><a class=\"ds-nav-active\" href=\"#\">Month</a><a href=\"#\">Year</a><a href=\"#\">Categories</a><a href=\"#\">Settings</a></nav>",
+      "css": ".ds-nav { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; padding: 0.75rem 1rem; font-family: var(--font-sans); font-size: 0.9rem; } .ds-nav a { color: var(--color-fg); text-decoration: none; opacity: 0.75; } .ds-nav a:hover, .ds-nav a.ds-nav-active { opacity: 1; color: var(--color-accent); } .ds-nav a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ledger Desk",
+    "overview": "Desk is an accountant's well-kept desk. The paper is plain and cool grey. The numbers are written in a monospaced hand and stand in tidy columns, and one green ink marks what matters: the main action, the active page, and how much of a budget has been spent. Nothing on the desk is decorative, and every object earns its place by holding a figure, a choice or a status.\n\nThe pieces you touch feel tactile and confident. Actions are solid filled shapes, inputs have firm outlines, and surfaces lift off the paper rather than being drawn onto it. The density is that of a working tool: compact on desktop where the month is reviewed, and roomier on the phone, where tap targets grow to 44px for the quick add at the moment of payment. Colour is rationed: green for the one accent, amber and red only for warning and over-budget, and an eight-colour palette reserved for telling connected accounts apart.\n\nThree theme states are built in. Light is the default; the system dark scheme applies unless the user chose light; and an explicit dark choice wins over both. Motion is short (120–280ms), uses a single easing curve, and drops to zero under reduced motion.",
+    "keyCharacteristics": [
+      "IBM Plex Sans for words, IBM Plex Mono with tabular numerals for every figure.",
+      "A single accent, Ledger Green, at roughly 10% of a screen or less.",
+      "Surfaces lift off the page with soft, close shadows.",
+      "Charts are hand-written SVG in one hue, with a tick mark for each budget and a red fill only when over budget.",
+      "Every panel has designed skeleton, empty and error states, and the error copy depends on the error code."
+    ],
+    "rules": [
+      {
+        "name": "The One Ink Rule",
+        "body": "Ledger Green is the only accent. It marks the primary action, the current location and spend against budget, and nothing decorative.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Is Not a Series Rule",
+        "body": "Warn Amber and Critical Red never appear as a chart series, category colour or account colour. When red shows up, something is over budget or broken.",
+        "section": "colors"
+      },
+      {
+        "name": "The Focus Is Blue Rule",
+        "body": "The focus ring is Focus Blue, 2px, with a 2px offset, on every interactive element and in both themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Every amount, rate and date is set in Plex Mono with `font-variant-numeric: tabular-nums`, so columns of money align digit for digit. Amount inputs follow the same rule.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Heights Rule",
+        "body": "There are exactly two elevations, raised and overlay. Don't invent a third shadow.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do set every amount, rate and date in Plex Mono with tabular numerals.",
+      "Do keep Ledger Green to the primary action, the current location and spend fill.",
+      "Do lift tiles, panels and widget frames with the Raised shadow, and use Overlay only for things above the page.",
+      "Do use the 2px Focus Blue outline with a 2px offset on every interactive element.",
+      "Do give every panel a skeleton, an empty state and an error state, with error copy chosen by error code.",
+      "Do define colours as tokens in all three theme states (bare `:root`, system dark guarded by `:not([data-theme='light'])`, and explicit `[data-theme='dark']`).",
+      "Do keep tap targets at 44px on phones."
+    ],
+    "donts": [
+      "Don't add a chart library. Charts stay hand-written SVG in one hue, with budget ticks and a table view.",
+      "Don't reuse Warn Amber or Critical Red as a chart series, category colour or account colour.",
+      "Don't set money in proportional digits, Plex Sans or any other font.",
+      "Don't add a third shadow height or a second accent colour.",
+      "Don't use Ledger Green for focus. Focus is always blue."
+    ]
+  }
+}
