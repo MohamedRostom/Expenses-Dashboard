@@ -110,7 +110,7 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
   - `## Decisions` has one row per CLAUDE.md design-system decision, and one per 2026-10-05 capture decision, each valued `kept`, `adjusted` or `replaced`.
 
   It runs red against today's incumbent capture, which has no spec sections.
-- [ ] T023 [P] [US1] Extend `tests/e2e/tests/visual.spec.ts`: `/__ui/mockups/month-view`, `/__ui/mockups/add-expense`, `/__ui/mockups/settings` and `/__ui/mockups/month-view-fallback` at 360 × 800 and 1280 × 800 in both themes, each also with `?state=loading|empty|error`, and the month view with `?fixture=edge` (long name truncated with its full value in the accessible name, six-digit amount inside its tile, thirty-entry day keeps table alignment, no horizontal overflow); viewport snapshots plus element snapshots of panels below the fold; axe in both themes; the month-view mock-up's primary tile figure has the largest computed font size on the page (FR-011)
+- [x] T023 [P] [US1] Extend `tests/e2e/tests/visual.spec.ts`: `/__ui/mockups/month-view`, `/__ui/mockups/add-expense`, `/__ui/mockups/settings` and `/__ui/mockups/month-view-fallback` at 360 × 800 and 1280 × 800 in both themes, each also with `?state=loading|empty|error`, and the month view with `?fixture=edge` (long name truncated with its full value in the accessible name, six-digit amount inside its tile, thirty-entry day keeps table alignment, no horizontal overflow); viewport snapshots plus element snapshots of panels below the fold; axe in both themes; the month-view mock-up's primary tile figure has the largest computed font size on the page (FR-011)
 
 ### Implementation
 
