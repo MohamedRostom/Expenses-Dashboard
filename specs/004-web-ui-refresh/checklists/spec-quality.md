@@ -10,92 +10,92 @@
 
 ## Requirement Completeness
 
-- [ ] CHK001 Are desktop layout requirements stated? FR-008 fixes the phone layout (360 px, no sideways scroll, 44 px targets) but nothing defines the desktop rules the mock-ups must follow (content max width, columns, whether dense rows may use smaller targets as `contracts/blocks.md` allows). [Gap, Spec §FR-008, Contracts blocks §Common rules] — addressed 2026-09-17 in FR-008, reviewer to confirm
-- [ ] CHK002 Is the list of error causes that every panel's copy must name defined for this feature, or is it inherited from each panel's own spec? FR-006 requires cause-specific copy without saying where the cause list lives. [Completeness, Spec §FR-006]
-- [ ] CHK003 Are font requirements defined for the case where ADR-0006 replaces the type family (self-hosted, no layout shift, allowed by the strict CSP, licence)? Only the reference-system licence edge case is written. [Gap, Spec §FR-016, §Edge Cases]
-- [ ] CHK004 Are icon requirements (set, licence, size, accessible names) specified? `contracts/blocks.md` refers to icon-only controls and icon names from `packages/ui`; the spec never mentions icons. [Gap, Contracts blocks §Inventory]
-- [ ] CHK005 Does the spec require a fallback mock-up set? FR-002 demands a fallback variant and the clarification says it is "drafted alongside", but FR-004 asks for mock-ups of the proposal only. [Gap, Spec §FR-002, §FR-004, §Clarifications] — addressed 2026-09-17 in FR-004, reviewer to confirm
-- [ ] CHK006 Are requirements stated for the half-refreshed product during the screen-by-screen rollout (shared header, navigation and sheets appearing in two looks at once)? The edge case calls it "acceptable" without constraining it. [Gap, Spec §FR-017, §Edge Cases]
-- [ ] CHK007 Is the offline state, which spec 003 adds to every widget, included in the set of states every panel must have (loading, empty, error)? [Coverage, Spec §FR-006, Spec 003 §FR-003]
-- [ ] CHK008 Are the hand-written charts inside the refresh scope (restyled to the new tokens) or excluded? "Hand-written charts" is listed only as a rule that survives ADR-0006. [Completeness, Spec §FR-016, §Assumptions]
-- [ ] CHK009 Is it explicit that the F6 items that are new behaviour (command palette, keyboard shortcuts, PWA install prompt) are out of this feature even though the roadmap groups them with "Premium UI"? "Out of scope: new features" implies it; the F6 overlap is not named. [Boundary, Spec §Assumptions, ROADMAP Phase 4]
+- [x] CHK001 Are desktop layout requirements stated? FR-008 fixes the phone layout (360 px, no sideways scroll, 44 px targets) but nothing defines the desktop rules the mock-ups must follow (content max width, columns, whether dense rows may use smaller targets as `contracts/blocks.md` allows). [Gap, Spec §FR-008, Contracts blocks §Common rules] — addressed 2026-09-17 in FR-008, reviewer to confirm
+- [x] CHK002 Is the list of error causes that every panel's copy must name defined for this feature, or is it inherited from each panel's own spec? FR-006 requires cause-specific copy without saying where the cause list lives. [Completeness, Spec §FR-006]
+- [x] CHK003 Are font requirements defined for the case where ADR-0006 replaces the type family (self-hosted, no layout shift, allowed by the strict CSP, licence)? Only the reference-system licence edge case is written. [Gap, Spec §FR-016, §Edge Cases]
+- [x] CHK004 Are icon requirements (set, licence, size, accessible names) specified? `contracts/blocks.md` refers to icon-only controls and icon names from `packages/ui`; the spec never mentions icons. [Gap, Contracts blocks §Inventory]
+- [x] CHK005 Does the spec require a fallback mock-up set? FR-002 demands a fallback variant and the clarification says it is "drafted alongside", but FR-004 asks for mock-ups of the proposal only. [Gap, Spec §FR-002, §FR-004, §Clarifications] — addressed 2026-09-17 in FR-004, reviewer to confirm
+- [x] CHK006 Are requirements stated for the half-refreshed product during the screen-by-screen rollout (shared header, navigation and sheets appearing in two looks at once)? The edge case calls it "acceptable" without constraining it. [Gap, Spec §FR-017, §Edge Cases]
+- [x] CHK007 Is the offline state, which spec 003 adds to every widget, included in the set of states every panel must have (loading, empty, error)? [Coverage, Spec §FR-006, Spec 003 §FR-003]
+- [x] CHK008 Are the hand-written charts inside the refresh scope (restyled to the new tokens) or excluded? "Hand-written charts" is listed only as a rule that survives ADR-0006. [Completeness, Spec §FR-016, §Assumptions]
+- [x] CHK009 Is it explicit that the F6 items that are new behaviour (command palette, keyboard shortcuts, PWA install prompt) are out of this feature even though the roadmap groups them with "Premium UI"? "Out of scope: new features" implies it; the F6 overlap is not named. [Boundary, Spec §Assumptions, ROADMAP Phase 4]
 
 ## Requirement Clarity
 
-- [ ] CHK010 Is "the primary figure of each tile is the most prominent element" given a measurable definition (largest type size on the screen, first in reading order, both)? [Clarity, Spec §FR-011, US2 scenario 1]
-- [ ] CHK011 Is "secondary information de-emphasised" quantified (a named type size and the muted colour role) so a reviewer can fail it? [Ambiguity, Spec §US2]
-- [ ] CHK012 Is "above the fold on a phone" defined by a viewport (360 × 800 as in the snapshot matrix)? [Clarity, Spec §FR-014, Data-model §Snapshot matrix]
-- [ ] CHK013 Is "accessible full value" for truncated content defined (visible on focus, in a tooltip, in the accessible name)? [Clarity, Spec §Edge Cases]
-- [ ] CHK014 Is "no large pure-white surfaces" in the dark theme quantified (a maximum luminance for surfaces, or a percentage of the viewport)? [Clarity, Spec §Edge Cases]
-- [ ] CHK015 Is the "throttled mobile profile" named (the Lighthouse mobile preset already used by the baseline budget)? [Clarity, Spec §SC-004]
-- [ ] CHK016 Is the screen reader and browser for the keyboard-only test named, so SC-003 is repeatable? [Clarity, Spec §SC-003]
-- [ ] CHK017 Is the "contributor" in SC-006 characterised (familiar with the codebase or a first-time contributor), since the thirty-minute target depends on it? [Clarity, Spec §SC-006]
-- [ ] CHK018 Does "regenerated whenever those screens change" say how a change is detected and who triggers regeneration, or is that left to the plan's workflow? [Clarity, Spec §US4 scenario 2, Research R10]
-- [ ] CHK019 Are the token allow-list exceptions in `contracts/tokens.md` (`0`, `1px` borders, `100%`, `transparent`) part of FR-005's "no ad-hoc value", so the drift test and the requirement agree on what passes? [Clarity, Spec §FR-005, Contracts tokens §Consumption rules]
+- [x] CHK010 Is "the primary figure of each tile is the most prominent element" given a measurable definition (largest type size on the screen, first in reading order, both)? [Clarity, Spec §FR-011, US2 scenario 1]
+- [x] CHK011 Is "secondary information de-emphasised" quantified (a named type size and the muted colour role) so a reviewer can fail it? [Ambiguity, Spec §US2]
+- [x] CHK012 Is "above the fold on a phone" defined by a viewport (360 × 800 as in the snapshot matrix)? [Clarity, Spec §FR-014, Data-model §Snapshot matrix]
+- [x] CHK013 Is "accessible full value" for truncated content defined (visible on focus, in a tooltip, in the accessible name)? [Clarity, Spec §Edge Cases]
+- [x] CHK014 Is "no large pure-white surfaces" in the dark theme quantified (a maximum luminance for surfaces, or a percentage of the viewport)? [Clarity, Spec §Edge Cases]
+- [x] CHK015 Is the "throttled mobile profile" named (the Lighthouse mobile preset already used by the baseline budget)? [Clarity, Spec §SC-004]
+- [x] CHK016 Is the screen reader and browser for the keyboard-only test named, so SC-003 is repeatable? [Clarity, Spec §SC-003]
+- [x] CHK017 Is the "contributor" in SC-006 characterised (familiar with the codebase or a first-time contributor), since the thirty-minute target depends on it? [Clarity, Spec §SC-006]
+- [x] CHK018 Does "regenerated whenever those screens change" say how a change is detected and who triggers regeneration, or is that left to the plan's workflow? [Clarity, Spec §US4 scenario 2, Research R10]
+- [x] CHK019 Are the token allow-list exceptions in `contracts/tokens.md` (`0`, `1px` borders, `100%`, `transparent`) part of FR-005's "no ad-hoc value", so the drift test and the requirement agree on what passes? [Clarity, Spec §FR-005, Contracts tokens §Consumption rules]
 
 ## Requirement Consistency
 
-- [ ] CHK020 Do FR-016 ("approved before any screen changes") and the data-model state machine agree on whether proposed-identity tokens and mock-ups may exist in the catalogue and on preview deployments before ADR-0006 is accepted? The Assumptions say the existing system "stays in force" while the mock-ups must render the proposal. [Conflict, Spec §FR-016, §Assumptions, Data-model §Design direction] — addressed 2026-09-17 in FR-016, reviewer to confirm
-- [ ] CHK021 Are the mock-up screens (month view, add expense, settings) consistent with the screens the start gate requires (adds categories with budgets) and with the five core flows (adds sign-in and edit budget)? [Consistency, Spec §FR-004, §FR-017, §SC-005] — addressed 2026-09-17 in FR-004, reviewer to confirm
-- [ ] CHK022 Is "tap targets at least 44 px" applied to desktop as well? FR-008 states it for 360 px only, while `contracts/blocks.md` allows 32 px dense rows on desktop and the WCAG note calls 44 px a deliberate stricter choice. [Consistency, Spec §FR-008, §Assumptions, Contracts blocks] — addressed 2026-09-17 in FR-008, reviewer to confirm
-- [ ] CHK023 Is one term used for the shared elements ("building blocks", "blocks", "components") and for the document ("direction", "design direction", "design system", "DESIGN.md") across spec, plan and contracts? [Consistency, Terminology]
-- [ ] CHK024 Are the functional requirements numbered in reading order? FR-017 (Rollout) sits before FR-014 (Landing page), which hurts traceability from tasks. [Consistency, Spec §Requirements]
-- [ ] CHK025 Does FR-007 ("disabled entirely" under reduce-motion) agree with the clarification wording ("no motion that cannot be turned off") and with the token contract (durations set to 0 ms), or does one of them permit residual motion? [Consistency, Spec §FR-007, §Clarifications, Contracts tokens §Motion]
-- [ ] CHK026 Does "no new runtime dependency" (Assumptions) intentionally leave dev-time dependencies open, given the plan commits to none at all? [Assumption, Spec §Assumptions, Plan §Technical Context]
+- [x] CHK020 Do FR-016 ("approved before any screen changes") and the data-model state machine agree on whether proposed-identity tokens and mock-ups may exist in the catalogue and on preview deployments before ADR-0006 is accepted? The Assumptions say the existing system "stays in force" while the mock-ups must render the proposal. [Conflict, Spec §FR-016, §Assumptions, Data-model §Design direction] — addressed 2026-09-17 in FR-016, reviewer to confirm
+- [x] CHK021 Are the mock-up screens (month view, add expense, settings) consistent with the screens the start gate requires (adds categories with budgets) and with the five core flows (adds sign-in and edit budget)? [Consistency, Spec §FR-004, §FR-017, §SC-005] — addressed 2026-09-17 in FR-004, reviewer to confirm
+- [x] CHK022 Is "tap targets at least 44 px" applied to desktop as well? FR-008 states it for 360 px only, while `contracts/blocks.md` allows 32 px dense rows on desktop and the WCAG note calls 44 px a deliberate stricter choice. [Consistency, Spec §FR-008, §Assumptions, Contracts blocks] — addressed 2026-09-17 in FR-008, reviewer to confirm
+- [x] CHK023 Is one term used for the shared elements ("building blocks", "blocks", "components") and for the document ("direction", "design direction", "design system", "DESIGN.md") across spec, plan and contracts? [Consistency, Terminology]
+- [x] CHK024 Are the functional requirements numbered in reading order? FR-017 (Rollout) sits before FR-014 (Landing page), which hurts traceability from tasks. [Consistency, Spec §Requirements]
+- [x] CHK025 Does FR-007 ("disabled entirely" under reduce-motion) agree with the clarification wording ("no motion that cannot be turned off") and with the token contract (durations set to 0 ms), or does one of them permit residual motion? [Consistency, Spec §FR-007, §Clarifications, Contracts tokens §Motion]
+- [x] CHK026 Does "no new runtime dependency" (Assumptions) intentionally leave dev-time dependencies open, given the plan commits to none at all? [Assumption, Spec §Assumptions, Plan §Technical Context]
 
 ## Acceptance Criteria Quality
 
-- [ ] CHK027 Are the people-based criteria (SC-001 review rounds, SC-002 four of five outsiders, SC-008 three outsiders) marked as release gates or as informational, and is who recruits and runs them stated? [Measurability, Spec §SC-001, §SC-002, §SC-008]
-- [ ] CHK028 Is the "before" baseline for SC-005 (taps and keystrokes per core flow) defined: which journeys, recorded when, and stored where? [Measurability, Spec §SC-005]
-- [ ] CHK029 Can "one type scale, one spacing rhythm, consistent controls" (US2) be objectively verified beyond the drift test, for example by the catalogue inventory check? [Measurability, Spec §US2, §SC-007]
-- [ ] CHK030 Is the owner's approval of the direction (US1 scenario 4) recorded somewhere traceable (ADR status, PR approval), so "approved" is a checkable state? [Traceability, Spec §US1, Data-model §State]
+- [x] CHK027 Are the people-based criteria (SC-001 review rounds, SC-002 four of five outsiders, SC-008 three outsiders) marked as release gates or as informational, and is who recruits and runs them stated? [Measurability, Spec §SC-001, §SC-002, §SC-008]
+- [x] CHK028 Is the "before" baseline for SC-005 (taps and keystrokes per core flow) defined: which journeys, recorded when, and stored where? [Measurability, Spec §SC-005]
+- [x] CHK029 Can "one type scale, one spacing rhythm, consistent controls" (US2) be objectively verified beyond the drift test, for example by the catalogue inventory check? [Measurability, Spec §US2, §SC-007]
+- [x] CHK030 Is the owner's approval of the direction (US1 scenario 4) recorded somewhere traceable (ADR status, PR approval), so "approved" is a checkable state? [Traceability, Spec §US1, Data-model §State]
 
 ## Scenario and Edge Case Coverage
 
-- [ ] CHK031 Are requirements stated for the landing page showing "both themes" when a visitor's browser has one theme: side by side, or following the visitor's theme? [Coverage, Spec §FR-014]
-- [ ] CHK032 Are requirements defined for a screen that must ship (a baseline feature PR) while its blocks are not yet refreshed: does it use old blocks, wait, or use new blocks with old tokens? [Coverage, Spec §Edge Cases, §FR-017]
-- [ ] CHK033 Are requirements defined for the case where the proposed identity fails a contrast pair or the Lighthouse budget in the mock-ups: adjust the proposal, or fall back? [Exception Flow, Gap, Spec §FR-009, §SC-004]
-- [ ] CHK034 Are the low-impact edge cases (long category name, six-digit amount, thirty entries in a day, OLED at night) each tied to a testable outcome rather than only described? [Coverage, Spec §Edge Cases]
+- [x] CHK031 Are requirements stated for the landing page showing "both themes" when a visitor's browser has one theme: side by side, or following the visitor's theme? [Coverage, Spec §FR-014]
+- [x] CHK032 Are requirements defined for a screen that must ship (a baseline feature PR) while its blocks are not yet refreshed: does it use old blocks, wait, or use new blocks with old tokens? [Coverage, Spec §Edge Cases, §FR-017]
+- [x] CHK033 Are requirements defined for the case where the proposed identity fails a contrast pair or the Lighthouse budget in the mock-ups: adjust the proposal, or fall back? [Exception Flow, Gap, Spec §FR-009, §SC-004]
+- [x] CHK034 Are the low-impact edge cases (long category name, six-digit amount, thirty entries in a day, OLED at night) each tied to a testable outcome rather than only described? [Coverage, Spec §Edge Cases]
 
 ## Dependencies and Assumptions
 
-- [ ] CHK035 Are the baseline artefacts the plan assumes (`PanelState.vue`, `packages/ui` base components from baseline T027, `tests/e2e/fixtures/index.ts`, `lighthouserc.json`, `apps/landing` scaffold) named as prerequisites in the spec's Assumptions, or only in the plan? [Dependency, Plan §Technical Context, Research §Owner decisions]
-- [ ] CHK036 Is the licence assumption for the reference DESIGN.md files (MIT for the collection, no claim over brand identity) validated against the constraint that no brand asset is reused, and is "principles and scales only" precise enough to review? [Assumption, Spec §Edge Cases, Research R2]
-- [ ] CHK037 Is the assumption that the six tools alter only the owner's local configuration and never the shipped product recorded where `/speckit-tasks` will see it, so no tool output is committed by accident? [Assumption, Spec §Design workflow, Research R11]
+- [x] CHK035 Are the baseline artefacts the plan assumes (`PanelState.vue`, `packages/ui` base components from baseline T027, `tests/e2e/fixtures/index.ts`, `lighthouserc.json`, `apps/landing` scaffold) named as prerequisites in the spec's Assumptions, or only in the plan? [Dependency, Plan §Technical Context, Research §Owner decisions]
+- [x] CHK036 Is the licence assumption for the reference DESIGN.md files (MIT for the collection, no claim over brand identity) validated against the constraint that no brand asset is reused, and is "principles and scales only" precise enough to review? [Assumption, Spec §Edge Cases, Research R2]
+- [x] CHK037 Is the assumption that the six tools alter only the owner's local configuration and never the shipped product recorded where `/speckit-tasks` will see it, so no tool output is committed by accident? [Assumption, Spec §Design workflow, Research R11]
 
 ## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Completeness
 
-- [ ] CHK038 Does the spec name the screens in scope, or point at a canonical list, so that "every signed-in screen" in FR-017 has a boundary a reviewer can check, including screens added by other features while the refresh is in progress? [Completeness, Spec §FR-017]
-- [ ] CHK039 Is placement stated for the parts that are not routes (`HelloView`, the feedback widget, version history, month compare) in the core and grouped changes, or is it left implicit? [Completeness, Spec §FR-017, Plan §Phase Delivery Map]
-- [ ] CHK040 Does the spec say how flagged screens are put into the test environment (flags on), and whether their snapshots and audits gate a merge while the flag is off in production? [Gap, Spec §Edge Cases, §FR-017]
-- [ ] CHK041 Is it stated whether a screen added by another feature (for example a spec 005 fix) after its area's refresh change has merged must be built refreshed from the start? [Coverage, Spec §Edge Cases]
-- [ ] CHK042 Is the shrinking-to-zero path for the drift check (the pending-files list) reflected in the spec, or only in the plan, given SC-007 states only the end state? [Gap, Spec §SC-007, Research R12]
+- [x] CHK038 Does the spec name the screens in scope, or point at a canonical list, so that "every signed-in screen" in FR-017 has a boundary a reviewer can check, including screens added by other features while the refresh is in progress? [Completeness, Spec §FR-017]
+- [x] CHK039 Is placement stated for the parts that are not routes (`HelloView`, the feedback widget, version history, month compare) in the core and grouped changes, or is it left implicit? [Completeness, Spec §FR-017, Plan §Phase Delivery Map]
+- [x] CHK040 Does the spec say how flagged screens are put into the test environment (flags on), and whether their snapshots and audits gate a merge while the flag is off in production? [Gap, Spec §Edge Cases, §FR-017]
+- [x] CHK041 Is it stated whether a screen added by another feature (for example a spec 005 fix) after its area's refresh change has merged must be built refreshed from the start? [Coverage, Spec §Edge Cases]
+- [x] CHK042 Is the shrinking-to-zero path for the drift check (the pending-files list) reflected in the spec, or only in the plan, given SC-007 states only the end state? [Gap, Spec §SC-007, Research R12]
 
 ## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Clarity
 
-- [ ] CHK043 Is "the pinned browser container CI uses" in FR-018 specific enough to review without the plan (who pins it, and how its version is kept equal to the test library's)? [Clarity, Spec §FR-018]
-- [ ] CHK044 Is the 0.5 % tolerance stated per image and over a defined area (viewport, full page or element)? A full-page shot of a long screen dilutes a local change below the threshold. [Ambiguity, Spec §FR-018]
-- [ ] CHK045 Are "taps, keystrokes and screens" defined (does typing nine characters count as nine; is an opened sheet a screen)? [Clarity, Spec §FR-010, §SC-005]
+- [x] CHK043 Is "the pinned browser container CI uses" in FR-018 specific enough to review without the plan (who pins it, and how its version is kept equal to the test library's)? [Clarity, Spec §FR-018]
+- [x] CHK044 Is the 0.5 % tolerance stated per image and over a defined area (viewport, full page or element)? A full-page shot of a long screen dilutes a local change below the threshold. [Ambiguity, Spec §FR-018]
+- [x] CHK045 Are "taps, keystrokes and screens" defined (does typing nine characters count as nine; is an opened sheet a screen)? [Clarity, Spec §FR-010, §SC-005]
 
 ## Re-check after the 2026-10-04 clarifications and re-plan: Requirement Consistency
 
-- [ ] CHK046 Does the SC-005 journey list ("add expense") match US2's independent test ("add an expense in a foreign currency"), so the baseline file and the acceptance test record the same flow? [Consistency, Spec §SC-005, §US2]
-- [ ] CHK047 Do FR-004 (mock-ups for month view, add expense, settings, fallback month view) and FR-017 (six screens, one change each, including categories, sign-in and Today) agree, and is the absence of a Today mock-up stated as intentional? [Consistency, Spec §FR-004, §FR-017, §Clarifications]
-- [ ] CHK048 Does the 2026-10-04 clarification ("baseline recorded before the token change merges") fit FR-017's "tokens land in one change" without implying an extra pre-token change the spec does not name? [Consistency, Spec §Clarifications 2026-10-04, §FR-017, Plan Slice A0]
-- [ ] CHK049 Does FR-018 ("applies to every visual snapshot in the suite") override a tolerance written in another spec's tasks (spec 001's year-view snapshots), and does the spec say so explicitly? [Conflict, Spec §FR-018]
-- [ ] CHK050 Do the Assumptions (SC-006 is `needs-rostom`) and the plan (the agent may run the contributor exercise and record it) agree on who satisfies SC-006? [Conflict, Spec §Assumptions, §SC-006, Plan §Phase Delivery Map]
-- [ ] CHK051 Is the landing-page edge case ("ships with the working name behind a switch and is not published") consistent with the landing page already being built and deployed to staging in Phase 4? Is "published" defined (production only, or any public URL)? [Conflict, Spec §Edge Cases, §FR-015, Research §Owner decisions]
+- [x] CHK046 Does the SC-005 journey list ("add expense") match US2's independent test ("add an expense in a foreign currency"), so the baseline file and the acceptance test record the same flow? [Consistency, Spec §SC-005, §US2]
+- [x] CHK047 Do FR-004 (mock-ups for month view, add expense, settings, fallback month view) and FR-017 (six screens, one change each, including categories, sign-in and Today) agree, and is the absence of a Today mock-up stated as intentional? [Consistency, Spec §FR-004, §FR-017, §Clarifications]
+- [x] CHK048 Does the 2026-10-04 clarification ("baseline recorded before the token change merges") fit FR-017's "tokens land in one change" without implying an extra pre-token change the spec does not name? [Consistency, Spec §Clarifications 2026-10-04, §FR-017, Plan Slice A0]
+- [x] CHK049 Does FR-018 ("applies to every visual snapshot in the suite") override a tolerance written in another spec's tasks (spec 001's year-view snapshots), and does the spec say so explicitly? [Conflict, Spec §FR-018]
+- [x] CHK050 Do the Assumptions (SC-006 is `needs-rostom`) and the plan (the agent may run the contributor exercise and record it) agree on who satisfies SC-006? [Conflict, Spec §Assumptions, §SC-006, Plan §Phase Delivery Map]
+- [x] CHK051 Is the landing-page edge case ("ships with the working name behind a switch and is not published") consistent with the landing page already being built and deployed to staging in Phase 4? Is "published" defined (production only, or any public URL)? [Conflict, Spec §Edge Cases, §FR-015, Research §Owner decisions]
 
 ## Re-check after the 2026-10-04 clarifications and re-plan: Acceptance Criteria Quality
 
-- [ ] CHK052 Is the "results are recorded" condition for done given a location and a format (date, pass or fail, who ran it) in `docs/ROADMAP.md`? [Measurability, Spec §Assumptions]
-- [ ] CHK053 Does SC-003 state a pass condition for the screen-reader pass (which flows, and what counts as completing them) beyond naming NVDA and VoiceOver? [Measurability, Spec §SC-003]
+- [x] CHK052 Is the "results are recorded" condition for done given a location and a format (date, pass or fail, who ran it) in `docs/ROADMAP.md`? [Measurability, Spec §Assumptions]
+- [x] CHK053 Does SC-003 state a pass condition for the screen-reader pass (which flows, and what counts as completing them) beyond naming NVDA and VoiceOver? [Measurability, Spec §SC-003]
 
 ## Re-check after the 2026-10-04 clarifications and re-plan: Edge Cases, Dependencies and Assumptions
 
-- [ ] CHK054 Is the conflict handled when an accessibility fix (for example a focus trap that needs Esc) would raise a journey count that FR-010 forbids to rise, and does the spec say which requirement wins? [Conflict, Edge Case, Spec §FR-009, §FR-010]
-- [ ] CHK055 Is a bulk re-baseline (a browser or font update that changes every image) allowed, and how is it reviewed so it cannot hide a real regression? [Edge Case, Gap, Spec §FR-018]
-- [ ] CHK056 Are the environment assumptions behind FR-018 (Docker available locally, host networking on the CI runner) recorded, with the CI workflow as the fallback when local Docker is unavailable? [Assumption, Research R6, Plan §Technical Context]
+- [x] CHK054 Is the conflict handled when an accessibility fix (for example a focus trap that needs Esc) would raise a journey count that FR-010 forbids to rise, and does the spec say which requirement wins? [Conflict, Edge Case, Spec §FR-009, §FR-010]
+- [x] CHK055 Is a bulk re-baseline (a browser or font update that changes every image) allowed, and how is it reviewed so it cannot hide a real regression? [Edge Case, Gap, Spec §FR-018]
+- [x] CHK056 Are the environment assumptions behind FR-018 (Docker available locally, host networking on the CI runner) recorded, with the CI workflow as the fallback when local Docker is unavailable? [Assumption, Research R6, Plan §Technical Context]
 
 ## Notes
 
