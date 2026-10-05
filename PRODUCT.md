@@ -52,7 +52,7 @@ Four claims, all of them true of the shipped code:
 - The name is "Desk (working name)". Do not invent another one.
 - The voice is plain, exact and calm. Error copy is specific to the error code, never one generic banner.
 - Every panel has designed skeleton, empty and error states (constitution VI, "Finished Surfaces").
-- The visual identity is governed by `docs/design/DESIGN.md` once written, and any new identity needs the owner's approval in ADR-0006 (spec 004). This file sets no visual direction.
+- The visual identity is governed by the root `DESIGN.md` (the incumbent system, captured 2026-10-05; spec 004 T028 replaces it with the approved direction), and any new identity needs the owner's approval in ADR-0006 (spec 004). This file sets no visual direction.
 
 ## Evidence on Hand
 
