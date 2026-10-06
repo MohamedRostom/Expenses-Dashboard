@@ -62,6 +62,11 @@ test.describe('@mockup behaviour', () => {
       .click();
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toBeHidden();
+    await expect(page.getByTestId('add-expense')).toBeFocused();
+    await page.getByTestId('add-expense').click();
+    await expect(dialog).toBeVisible();
     await dialog.getByLabel('Amount').fill('12.34');
     await dialog.getByLabel('Category').selectOption({ index: 1 });
     await dialog.getByLabel('Note').fill('Mockup test lunch');

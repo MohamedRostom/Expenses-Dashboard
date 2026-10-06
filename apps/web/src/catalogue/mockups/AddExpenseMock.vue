@@ -4,12 +4,13 @@
  * work: it validates, adds the row to the shared mock list (integer pence) and closes. No API.
  * Query: `?state=loading|empty|error`, `?live=off`. DOM contract: tests/e2e/tests/visual.spec.ts.
  * Loaded directly it shows the pending-rate demo; opened from the board it starts blank. */
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button, Input, Select, Skeleton } from '@desk/ui';
 import '../proposed-tokens.css';
 import './board.css';
 import MonthViewMock from './MonthViewMock.vue';
+import { useDialog } from './useDialog.js';
 import { categoryNames } from '../fixtures.js';
 import {
   addExpense,
@@ -80,7 +81,18 @@ const originalLabel = computed(() =>
     : '',
 );
 
-const close = () => closeAddExpense(router, route.query);
+const sheet = ref<HTMLElement | null>(null);
+// The opener (the header button) is gone after the route round-trip: land on the month view's own.
+async function close() {
+  await closeAddExpense(router, route.query);
+  await nextTick();
+  dialog.restore();
+}
+const dialog = useDialog(sheet, {
+  close,
+  fallback: () =>
+    document.querySelector<HTMLElement>('[data-mockup="month-view"] [data-testid="add-expense"]'),
+});
 function submit() {
   submitted.value = true;
   const p = parsed.value;
@@ -105,11 +117,14 @@ function submit() {
       <div class="ae-scrim" @click="close" />
       <Transition name="mk-sheet" appear>
         <section
+          ref="sheet"
           class="ae-sheet"
           role="dialog"
           aria-modal="true"
           aria-labelledby="ae-title"
+          tabindex="-1"
           data-mockup-panel="sheet"
+          @keydown="dialog.onKey"
         >
           <header class="ae-head">
             <h1 id="ae-title" class="ae-title">Add expense</h1>

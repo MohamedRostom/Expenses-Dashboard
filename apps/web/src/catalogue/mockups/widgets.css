@@ -1,6 +1,6 @@
 /* T027a: widget frame, strip, matrix and sheets for the proposed mock-ups (DESIGN.md §Components,
    §Layout, §Motion). Tokens only. Every duration is a --motion-* token; nothing loops here (the
-   skeleton pulse is the ui Skeleton's). Deleted with the other mock-up files in T028. */
+   skeleton pulse is overridden in board.css). Deleted with the other mock-up files in T028. */
 
 /* The frame: a flap on Raised with a fixed 12rem height in every state. */
 .wg-frame {

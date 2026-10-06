@@ -232,3 +232,23 @@ describe('live', () => {
     expect(['rate', 'weather', 'pace'].map(live)).toEqual(snap);
   });
 });
+
+describe('settle-in', () => {
+  it('a widget added after load does not replay mk-settle', async () => {
+    await mount();
+    const frames = () => [...document.querySelectorAll<HTMLElement>('[data-widget]')];
+    expect(frames().every((f) => f.classList.contains('mk-settle'))).toBe(true);
+    const absent = WIDGET_KINDS.find((k) => !DEFAULT_STRIP.includes(k))!;
+    (document.querySelector('[data-testid="add-widget"]') as HTMLElement).click();
+    await nextTick();
+    await nextTick();
+    const btn = [...document.querySelectorAll<HTMLElement>('.wg-sheet-list button')].find((b) =>
+      b.textContent?.includes(WIDGET_NAMES[absent]),
+    )!;
+    btn.click();
+    await nextTick();
+    await nextTick();
+    const added = document.querySelector<HTMLElement>(`[data-widget="${absent}"]`)!;
+    expect(added.classList.contains('mk-settle')).toBe(false);
+  });
+});

@@ -475,8 +475,8 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-/* Skeleton: a blank flap (Board Ink at 6%) that pulses in opacity, still under reduced motion,
-   instead of the shipped block's moving shimmer. */
+/* Skeleton: a blank flap (Board Ink at 6%) that pulses in opacity (it holds still under
+   reduced motion: the duration becomes 0ms), instead of the shipped block's moving shimmer. */
 [data-identity='proposed'] .desk-skeleton.desk-skeleton {
   background: color-mix(in srgb, var(--color-fg) 6%, transparent);
   background-size: auto;

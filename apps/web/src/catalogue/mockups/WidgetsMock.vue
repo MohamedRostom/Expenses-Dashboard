@@ -32,6 +32,8 @@ const stripState = computed<WidgetState>(() => {
 });
 
 const items = ref<WidgetKind[]>([...DEFAULT_STRIP]);
+// Only the widgets present at load settle in; one added later just enters (mk-list-enter).
+const initial = new Set<WidgetKind>(items.value);
 const sheet = ref<Sheet | null>(
   query('sheet') === 'add-widget' || query('sheet') === 'widget-settings'
     ? (query('sheet') as Sheet)
@@ -103,6 +105,7 @@ function onUp(e: PointerEvent) {
 }
 
 function remove(kind: WidgetKind) {
+  initial.delete(kind);
   items.value = items.value.filter((k) => k !== kind);
   announce.value = `${WIDGET_NAMES[kind]} removed`;
   void nextTick(() =>
@@ -161,7 +164,7 @@ function openSettings(kind: WidgetKind) {
                 controls
                 :first="i === 0"
                 :last="i === items.length - 1"
-                :index="i"
+                :index="initial.has(kind) ? i : undefined"
                 :dragging="dragIndex === i"
                 :over="overIndex === i && dragIndex !== null && dragIndex !== i"
                 @earlier="step(i, -1)"

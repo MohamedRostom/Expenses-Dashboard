@@ -45,4 +45,21 @@ describe('sheet', () => {
     expect(amount().value).toBe('');
     m.unmount();
   });
+
+  it('is a real dialog: focus goes in, Escape closes, focus returns to Add expense', async () => {
+    const m = await mountAt('/__ui/mockups/month-view?live=off');
+    const opener = () => m.el.querySelector('[data-testid="add-expense"]') as HTMLElement;
+    opener().focus();
+    opener().click();
+    await new Promise((r) => setTimeout(r, 20));
+    await flush();
+    const dialog = document.querySelector('[role="dialog"]') as HTMLElement;
+    expect(dialog.contains(document.activeElement)).toBe(true);
+    dialog.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await new Promise((r) => setTimeout(r, 20));
+    await flush();
+    expect(m.router.currentRoute.value.path).toContain('month-view');
+    expect(document.activeElement).toBe(opener());
+    m.unmount();
+  });
 });

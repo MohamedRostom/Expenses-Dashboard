@@ -128,13 +128,24 @@ watch(spent, (v) => !props.backdrop && (seen.spent = v), { immediate: true });
 const flip = computed(() => flips.value > 0);
 
 // Bars grow only while a month change is in flight, never on first render or a live refresh.
+// The flag clears when a bar's animation ends; the fallback covers a month with no bars and
+// reduced motion, where nothing animates and --motion-slow is 0ms.
 const growing = ref(false);
 let growTimer: ReturnType<typeof setTimeout> | undefined;
+const stopGrowing = () => {
+  clearTimeout(growTimer);
+  growing.value = false;
+};
 watch(monthIndex, () => {
   growing.value = true;
   clearTimeout(growTimer);
-  growTimer = setTimeout(() => (growing.value = false), 280);
+  const ms = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--motion-slow'),
+  );
+  growTimer = setTimeout(stopGrowing, ms || 0);
 });
+const onBarEnd = (e: AnimationEvent) =>
+  (e.target as Element).classList.contains('mk-bar-fill') && stopGrowing();
 
 // Remove with undo: the toast holds the last removal for a few seconds.
 const toast = ref<{ id: string; note: string } | null>(null);
@@ -158,7 +169,11 @@ onBeforeUnmount(() => {
 
 <template>
   <div data-identity="proposed">
-    <div :data-mockup="attr('month-view')" :class="{ 'mk-growing': growing }">
+    <div
+      :data-mockup="attr('month-view')"
+      :class="{ 'mk-growing': growing }"
+      @animationend="onBarEnd"
+    >
       <BoardHeader current="month" show-month />
       <main class="mk-main">
         <h1 v-if="!backdrop" class="mk-sr">{{ month.label }}</h1>

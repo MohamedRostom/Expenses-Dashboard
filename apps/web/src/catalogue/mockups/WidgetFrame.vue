@@ -34,7 +34,7 @@ const props = withDefaults(
     first?: boolean;
     last?: boolean;
     /** Settle-in step (0..5); omit for no settle-in. */
-    index?: number;
+    index?: number | undefined;
     dragging?: boolean;
     over?: boolean;
     /** A static matrix cell: tagged data-sample, so only strip widgets answer to data-widget. */
