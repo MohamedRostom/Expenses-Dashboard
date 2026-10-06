@@ -7,9 +7,9 @@ export interface MockAccount {
   colour: string;
 }
 export const ACCOUNTS: MockAccount[] = [
-  { id: 'a1', label: 'Personal Gmail', colour: '#3b6fb6' },
-  { id: 'a2', label: 'Work Outlook', colour: '#6b4fa3' },
-  { id: 'a3', label: 'Fastmail', colour: '#2a7f86' },
+  { id: 'a1', label: 'Personal Gmail', colour: 'var(--palette-blue)' },
+  { id: 'a2', label: 'Work Outlook', colour: 'var(--palette-violet)' },
+  { id: 'a3', label: 'Fastmail', colour: 'var(--palette-teal)' },
 ];
 export const acct = (id: string) => ACCOUNTS.find((a) => a.id === id)!;
 

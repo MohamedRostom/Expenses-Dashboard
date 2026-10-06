@@ -138,6 +138,7 @@ test.describe('@mockup behaviour', () => {
     await page.goto(url('today'));
     const inbox = page.locator('[data-mockup-panel="inbox"]');
     const mark = inbox.getByRole('button', { name: /mark.*read/i });
+    await expect(mark.first()).toBeVisible(); // the route chunk is lazy; count() does not wait
     const n = await mark.count();
     expect(n).toBeGreaterThan(0);
     await mark.first().click();

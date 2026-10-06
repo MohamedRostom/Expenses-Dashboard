@@ -32,3 +32,6 @@ tests/e2e/test-accounts.local.yaml
 archify-demo/
 .claude/skills/cerebrofy-*/
 specs/*/.spec-context*
+
+# vite-plugin-pwa dev service worker output
+dev-dist/
