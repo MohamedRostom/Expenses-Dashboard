@@ -164,7 +164,9 @@ for (const route of mockupRoutes) {
   for (const state of statesFor(route)) {
     test(`@visual mockup ${route} ${state} axe in both themes`, async ({ page }) => {
       for (const theme of themes) {
-        await page.emulateMedia({ colorScheme: theme });
+        // Reduced motion: axe must not sample text mid settle-in, when it is still part transparent.
+        // Colours are identical either way.
+        await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
         await page.goto(mockupUrl(route, state));
         await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
         // Same known gap as DARK_CRITICAL_GAP_T028 above: dark critical red (~2.8:1) is decided at
@@ -281,7 +283,7 @@ for (const sheet of ['add-widget', 'widget-settings']) {
 
   test(`@visual mockup widgets sheet ${sheet} axe in both themes`, async ({ page }) => {
     for (const theme of themes) {
-      await page.emulateMedia({ colorScheme: theme });
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' }); // see the axe loop above
       await page.goto(mockupUrl('widgets', 'default', { sheet }));
       await expect(page.getByRole('dialog')).toBeVisible();
       await axeCheck(page); // whole page: the sheet may render outside the mock-up root

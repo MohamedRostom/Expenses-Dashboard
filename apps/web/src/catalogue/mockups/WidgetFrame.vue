@@ -177,8 +177,8 @@ const spentScale = computed(() => PACE.spentMinor / PACE.budgetMinor);
                   :class="{ 'mk-flip': dayChanged > 0 }"
                   :data-live="lv('pace')"
                   >Day {{ day }} of {{ PACE.monthDays }}</span
-                ><span v-if="perDay !== null" class="mk-widget-meta mk-num">
-                  , {{ money(perDay) }} a day to stay on budget</span
+                ><span v-if="perDay !== null" class="mk-widget-meta mk-num"
+                  >, {{ money(perDay) }} a day to stay on budget</span
                 >
               </p>
             </div>
