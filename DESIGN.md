@@ -233,6 +233,8 @@ The spacing scale is a 4px base (4, 8, 12, 16, 20, 24, 32, 40, 48, 64, 80, 96). 
 
 The board reflows by whole columns: at 360 the entries table drops to three columns (date, item with its category beneath, amount) and keeps them fixed; from 768 the category column returns; from 1024 tiles sit in one row (the departure tile spans two of four tile columns) and category bars sit beside the entries board. Every month and every category bar shares one budget scale.
 
+Between those column steps the board is fluid (T027a): the Display figure scales with `clamp()` from 2rem at 360 to 2.5rem at 1280 (`--text-display-fluid`), the gutter from 16px to 32px (`--gutter-fluid`), and tiles, panels and widgets lay out by container queries on their own width rather than the viewport, so the same widget reads correctly in a 360 strip, a two-up row or a wide column. Whole-column changes still happen at fixed steps, so a column never slides.
+
 The header is a raised flap strip with the month switcher, the wrapping row of text links and the add action; no icon tab bar, no hamburger. Tap targets are 44px on phones; desktop controls at least 24px; dense board rows and menu items 32px. Widgets keep their fixed 12rem height. At 360 the first viewport shows the header, the departure tile, the two smaller tiles and the head of the entries board.
 
 ## Elevation & Depth
@@ -304,6 +306,7 @@ MenuButton is a ghost icon button opening an Overlay menu; ThemeToggle a segment
 - **Do** make the departure tile the largest figure on the screen, once.
 - **Do** say status twice, once as a lamp and once as a word.
 - **Do** flip a value only when new data arrives for it, once, under 280ms.
+- **Do** keep every single animation under 280ms and switch all of it off under reduced motion.
 - **Do** set every amount, rate and date in the figure face with tabular numerals.
 - **Do** keep column heads and labels in small spaced capitals and everything else in mixed case.
 - **Do** lift tiles and panels with Raised and use Overlay only above the page.
@@ -314,7 +317,7 @@ MenuButton is a ghost icon button opening an Overlay menu; ThemeToggle a segment
 - **Don't** use an icon tab bar or set inputs and buttons in flap cells.
 - **Don't** use amber or red for anything but delayed, pending, over budget or broken.
 - **Don't** add a chart library, a third shadow, a second accent or a second figure face.
-- **Don't** animate on load, on scroll, or a value the user did not cause to change.
+- **Don't** animate on scroll, loop anything but the skeleton pulse, count figures up, or settle a page in more than once per load.
 - **Don't** use green for focus; focus is always blue.
 
 ## References
@@ -354,13 +357,18 @@ One row per design-system decision in CLAUDE.md and per decision from the 2026-1
 
 ## Motion
 
-Motion says one thing: a value arrived. Nothing animates on load, on scroll or on hover beyond a colour change.
+Motion says what changed and where it went. The arrival flip stays the signature; around it, the board settles in once on load, sheets and menus travel from their source, lists make room for what was added or removed, and a tile lifts slightly under a pointer. Raised from intensity 3 to 5 by the owner after reviewing the T027 mock-ups (2026-10-06, T027a).
 
 - **The arrival flip (signature):** when a pending amount receives its rate, or a tile's figure changes because data refreshed, the figure's cell turns over once: `transform: rotateX(90deg)` to `0` over `--motion-base` with `--ease-standard`, `transform-origin` at the cell's seam. One flip per value per update; never per character, never on first render, never in a loop.
 - **Other state changes:** toast enters with opacity and an 8px translate (`--motion-base`) and leaves on `--motion-fast` with `--ease-exit`; a sheet slides from its edge (`--motion-slow`); a menu fades and scales from 0.98 (`--motion-fast`); a pressed button moves 1px (`--motion-fast`); tab and link colour over `--motion-fast`.
-- **What never animates:** column width, row height, table layout, text size, bar length on data arrival, sorting, and anything the user did not cause.
-- **Tokens:** `--motion-fast` 120ms, `--motion-base` 200ms, `--motion-slow` 280ms (the FR-007 ceiling); `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`, `--ease-exit` `cubic-bezier(0.4, 0, 1, 1)`.
-- **Reduced motion:** durations are 0ms, so the flip becomes an instant swap and the skeleton holds still; nothing is replaced by another effect.
+- **Settle-in on first load (T027a):** each panel and tile fades from 0 and rises 8px over `--motion-base`, staggered by `--motion-stagger` (40ms) in reading order, at most six steps, so the whole page has settled by 440ms from paint and no single animation passes 280ms. It runs once per page load, never on a re-render, never on scroll.
+- **Lists (T027a):** an added row or widget enters with opacity and an 8px drop over `--motion-base`; a removed one collapses over `--motion-fast` with `--ease-exit`; the others glide to their new places (FLIP) over `--motion-base`. Widget reorder glides the same way, by drag or by the keyboard move buttons. Sorting a table still never animates (fixed columns).
+- **Bars on a month change (T027a):** when the user switches month, category bars and the spend-pace track grow from their old length to the new one over `--motion-slow`. Bars never animate on first render or when data refreshes on its own.
+- **Hover lift (T027a):** a tile or widget the pointer rests on rises 1px and its Raised shadow deepens one step over `--motion-fast`, only under `@media (hover: hover)`. Nothing else moves on hover.
+- **Live values (T027a):** a figure that changes while the user watches (a rate arriving, the weather refreshing, the spend-pace marker advancing) uses the arrival flip; a gauge marker slides to its new position over `--motion-base`. No count-up, no ticker, no looping animation, apart from the skeleton pulse.
+- **What never animates:** column width, row height, table layout, text size, sorting, scrolling, and any looping effect except the skeleton pulse.
+- **Tokens:** `--motion-fast` 120ms, `--motion-base` 200ms, `--motion-slow` 280ms (the FR-007 ceiling), `--motion-stagger` 40ms; `--ease-standard` `cubic-bezier(0.2, 0, 0, 1)`, `--ease-exit` `cubic-bezier(0.4, 0, 1, 1)`.
+- **Reduced motion:** every duration and the stagger are 0ms, so the flip becomes an instant swap, items appear in their final places and the skeleton holds still; nothing is replaced by another effect.
 - Informed by the Magic UI MCP's motion patterns (ideas only, no code or dependency): its flip and ticker patterns were weighed and cut down to a single whole-cell flip, because a per-character cascade on money reads as a value that is still settling.
 
 ## Taste dials
@@ -368,7 +376,7 @@ Motion says one thing: a value arrived. Nothing animates on load, on scroll or o
 From `Skill: design-taste-frontend` (design read: daily-use finance product UI for one person on phone and desktop, trust-first, native CSS tokens and Desk's own Vue blocks), cross-checked against the `ui-ux-pro-max` run recorded in `docs/design/SHORTLIST.md`, whose landing-page pattern and second accent were rejected.
 
 - **Variance: 3.** A fixed-column board is symmetric by nature; the only exception is the double-width departure tile.
-- **Motion intensity: 3.** One signature flip on data arrival plus feedback, because the board's life is its values, not its chrome.
+- **Motion intensity: 5** (raised from 3 by the owner, 2026-10-06, T027a). The signature flip, a one-time settle-in, list and sheet travel, bar growth on a month change, and a 1px hover lift; the board's life is still its values, so nothing loops or scrolls into view.
 - **Visual density: 5.** Board rows are denser than cards but stay readable at 360: three columns, 44px rows on the phone, 32px compact rows at desktop.
 
 ## Mock-ups
@@ -379,6 +387,9 @@ Coded mock-ups on the dev-only catalogue route (built in T027; preview deploymen
 - Add expense, proposed: `/__ui/mockups/add-expense`
 - Settings, proposed: `/__ui/mockups/settings`
 - Month view, fallback (Ledger Desk refined): `/__ui/mockups/month-view-fallback`
+- Today, proposed: `/__ui/mockups/today` (calendar and inbox panels plus the widget strip; T027a)
+- Widgets, proposed: `/__ui/mockups/widgets` (every widget in its default, loading, empty, error and stale states, plus the add-widget and widget-settings sheets; T027a)
+- Every proposed mock-up is interactive over fixtures (switch month, add or remove an expense or widget, reorder, open sheets, switch theme) and plays simulated live data unless `?live=off`; the visual baselines load with `?live=off`.
 - "Before" screenshots of the shipped screens: `docs/design/before/*.png` (T027)
 
 ## Fallback

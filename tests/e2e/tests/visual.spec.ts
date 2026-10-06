@@ -65,24 +65,59 @@ for (const block of stories) {
   });
 }
 
-// T023 / FR-011: the four mock-up routes under `/__ui/mockups/<route>` (built at T027, red until then).
+// T023 / FR-011 / T027a: the six mock-up routes under `/__ui/mockups/<route>` (built at T027, red until then).
 //
-// DOM contract for the mock-ups (T027):
-//   [data-mockup="<route>"]        on each mock-up root (month-view, add-expense, settings, month-view-fallback)
+// SHARED DOM CONTRACT for the mock-ups (also relied on by mockups.spec.ts):
+//   [data-mockup="<route>"]        on each mock-up root (month-view, add-expense, settings, today,
+//                                  widgets, month-view-fallback); today and widgets sit inside
+//                                  [data-identity="proposed"] like the other proposed routes
 //   [data-mockup-panel="<id>"]     on each panel (below-the-fold content gets an element snapshot per panel)
+//     today:   strip, calendar, inbox
+//     widgets: strip (interactive) and matrix (static, 5 widgets x 5 states, always rendered)
 //   [data-tile-primary="figure"]   on the primary tile figure (Display role, tabular-nums, the largest text)
 //   data-testid="category-name" (truncated with an ellipsis, full name as accessible name or title),
 //   data-testid="entry-amount" (right-aligned cells), data-testid="tile-amount" (inside its tile)
-//   [data-identity="proposed"]     wraps the three proposed mock-ups; month-view-fallback has no such wrapper
-// Query strings: `?state=loading|empty|error` on every route, `?fixture=edge` on the month view only.
-// Theme comes from `prefers-color-scheme` (emulateMedia), not from a data-theme contract.
+//   [data-identity="proposed"]     wraps the five proposed mock-ups; month-view-fallback has no such wrapper
+// Query strings: `?state=loading|empty|error` on every route, `?state=stale` on widgets only,
+//   `?fixture=edge` on the month view, `?state=rate-arrives` (existing), `?sheet=add-widget|widget-settings`
+//   on widgets, `?live=off` stops all simulation on proposed routes (the settle-in still plays;
+//   animations:'disabled' fast-forwards it). Every proposed-route visual test merges live=off.
+// Theme: visual tests use `prefers-color-scheme` (emulateMedia). Interactively,
+//   data-testid="theme-toggle" is a radiogroup (Light, Dark, System) in the header that sets
+//   data-theme on the [data-identity="proposed"] wrapper; nothing is stored.
+// Month switcher: month-prev, month-next, month-label testids (month-view and settings).
+// Expenses: an add-expense button opens a role="dialog" sheet (fields Amount, Category, Note; submit
+//   "Add expense"). Rows are data-testid="entry-row", each with an entry-remove button
+//   aria-label="Remove <note>".
+// Widgets: data-widget="currency|weather|sunrise|spend-pace|fixed-costs"; buttons aria-label
+//   "Move <Name> earlier"/"Move <Name> later", testids widget-remove, widget-settings and a strip-level
+//   add-widget. Reorder by pointer drag or by the move buttons (focus stays on the equivalent button).
+// Live figures carry data-live="rate|weather|pace" and get class mk-flip when they change.
 // No mock-up makes an `/api` call and none needs auth, so no psql() or login helpers here.
 
-const mockupRoutes = ['month-view', 'add-expense', 'settings', 'month-view-fallback'] as const;
-const mockupStates = ['default', 'loading', 'empty', 'error'] as const;
+const mockupRoutes = [
+  'month-view',
+  'add-expense',
+  'settings',
+  'today',
+  'widgets',
+  'month-view-fallback',
+] as const;
+const baseStates = ['default', 'loading', 'empty', 'error'] as const;
 const themes = ['light', 'dark'] as const;
-const mockupUrl = (route: string, query = '') => `/__ui/mockups/${route}${query}`;
-const stateQuery = (s: string) => (s === 'default' ? '' : `?state=${s}`);
+const statesFor = (route: string): readonly string[] =>
+  route === 'widgets' ? [...baseStates, 'stale'] : baseStates;
+// Proposed routes get live=off merged into the query; the fallback route does not.
+const mockupQ = (route: string, state = 'default', extra: Record<string, string> = {}) => {
+  const q = new URLSearchParams();
+  if (state !== 'default') q.set('state', state);
+  for (const [k, v] of Object.entries(extra)) q.set(k, v);
+  if (route !== 'month-view-fallback') q.set('live', 'off');
+  const str = q.toString();
+  return str ? `?${str}` : '';
+};
+const mockupUrl = (route: string, state = 'default', extra: Record<string, string> = {}) =>
+  `/__ui/mockups/${route}${mockupQ(route, state, extra)}`;
 
 function trackApi(page: Page): string[] {
   const apiCalls: string[] = [];
@@ -93,14 +128,14 @@ function trackApi(page: Page): string[] {
 }
 
 for (const route of mockupRoutes) {
-  for (const state of mockupStates) {
+  for (const state of statesFor(route)) {
     for (const theme of themes) {
       for (const vp of viewports) {
         test(`@visual mockup ${route} ${state} ${theme} ${vp.name}`, async ({ page }) => {
           const apiCalls = trackApi(page);
           await page.emulateMedia({ colorScheme: theme });
           await page.setViewportSize({ width: vp.width, height: vp.height });
-          await page.goto(mockupUrl(route, stateQuery(state)));
+          await page.goto(mockupUrl(route, state));
           await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
           await expect(page).toHaveScreenshot(`mockup-${route}-${state}-${theme}-${vp.name}.png`);
           expect(apiCalls).toEqual([]);
@@ -126,11 +161,11 @@ for (const route of mockupRoutes) {
     }
   }
 
-  for (const state of mockupStates) {
+  for (const state of statesFor(route)) {
     test(`@visual mockup ${route} ${state} axe in both themes`, async ({ page }) => {
       for (const theme of themes) {
         await page.emulateMedia({ colorScheme: theme });
-        await page.goto(mockupUrl(route, stateQuery(state)));
+        await page.goto(mockupUrl(route, state));
         await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
         // Same known gap as DARK_CRITICAL_GAP_T028 above: dark critical red (~2.8:1) is decided at
         // T028. Only colour contrast, only in dark, only for the fallback route and error states.
@@ -150,7 +185,7 @@ for (const theme of themes) {
       const apiCalls = trackApi(page);
       await page.emulateMedia({ colorScheme: theme });
       await page.setViewportSize({ width: vp.width, height: vp.height });
-      await page.goto(mockupUrl('month-view', '?fixture=edge'));
+      await page.goto(mockupUrl('month-view', 'default', { fixture: 'edge' }));
       await expect(page.locator('[data-mockup="month-view"]')).toBeVisible();
 
       // edge.longCategory: apps/web/src/catalogue/fixtures.ts
@@ -222,5 +257,34 @@ for (const theme of themes) {
     });
     expect(r.rivals).toEqual([]);
     expect(r.fvn).toContain('tabular-nums');
+  });
+}
+
+// T027a: widgets sheets, both themes and viewports, plus axe with the sheet open.
+for (const sheet of ['add-widget', 'widget-settings']) {
+  for (const theme of themes) {
+    for (const vp of viewports) {
+      test(`@visual mockup widgets sheet ${sheet} ${theme} ${vp.name}`, async ({ page }) => {
+        const apiCalls = trackApi(page);
+        await page.emulateMedia({ colorScheme: theme });
+        await page.setViewportSize({ width: vp.width, height: vp.height });
+        await page.goto(mockupUrl('widgets', 'default', { sheet }));
+        await expect(page.locator('[data-mockup="widgets"]')).toBeVisible();
+        await expect(page.getByRole('dialog')).toBeVisible();
+        await expect(page).toHaveScreenshot(
+          `mockup-widgets-sheet-${sheet}-${theme}-${vp.name}.png`,
+        );
+        expect(apiCalls).toEqual([]);
+      });
+    }
+  }
+
+  test(`@visual mockup widgets sheet ${sheet} axe in both themes`, async ({ page }) => {
+    for (const theme of themes) {
+      await page.emulateMedia({ colorScheme: theme });
+      await page.goto(mockupUrl('widgets', 'default', { sheet }));
+      await expect(page.getByRole('dialog')).toBeVisible();
+      await axeCheck(page); // whole page: the sheet may render outside the mock-up root
+    }
   });
 }
