@@ -29,10 +29,12 @@ function noApi(page: Page): string[] {
   return calls;
 }
 
-const order = (page: Page) =>
-  page
-    .locator('[data-mockup-panel="strip"] [data-widget]')
-    .evaluateAll((els) => els.map((e) => e.getAttribute('data-widget')!));
+// Waits for the lazy route chunk: the strip is empty until the mock-up has rendered.
+const order = async (page: Page) => {
+  const widgets = page.locator('[data-mockup-panel="strip"] [data-widget]');
+  await expect(widgets.first()).toBeVisible();
+  return widgets.evaluateAll((els) => els.map((e) => e.getAttribute('data-widget')!));
+};
 
 const tileAmount = (page: Page, label: string) =>
   page.locator('[data-tile]', { hasText: label }).locator('[data-testid="tile-amount"]').first();
@@ -274,7 +276,10 @@ test.describe('@mockup motion', () => {
       await page.goto(url(route));
       await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
       const all = await timings(page);
-      const tooLong = all.filter((t) => t.ms.some((d) => d > 280) || t.delay.some((d) => d > 200));
+      // The skeleton pulse is the one allowed loop (DESIGN.md §Motion), so its cycle is exempt.
+      const tooLong = all.filter(
+        (t) => !t.skeleton && (t.ms.some((d) => d > 280) || t.delay.some((d) => d > 200)),
+      );
       expect(tooLong.map((t) => `${t.el} ${t.ms} delay ${t.delay}`)).toEqual([]);
       const infinite = all.filter((t) => t.iter.includes('infinite') && !t.skeleton);
       expect(infinite.map((t) => t.el)).toEqual([]);
@@ -284,6 +289,9 @@ test.describe('@mockup motion', () => {
 
 test.describe('@mockup fluid', () => {
   for (const route of proposed) {
+    // Display belongs to the departure tile only (DESIGN.md §Typography), so only the month view
+    // and the add-expense sheet (month view as backdrop) have one; every route has the gutter.
+    const hasDisplay = route === 'month-view' || route === 'add-expense';
     test(`@mockup display size and gutter on ${route}`, async ({ page }) => {
       const px = (sel: string, prop: string) =>
         page
@@ -295,16 +303,21 @@ test.describe('@mockup fluid', () => {
         await page.goto(url(route));
         await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
         return {
-          d: await px('.mk-display', 'font-size'),
+          d: hasDisplay ? await px('.mk-display', 'font-size') : 0,
           g: await px('.mk-main', 'padding-inline-start'),
         };
       };
-      expect(await at(360)).toEqual({ d: 32, g: 16 });
+      const z = (n: number) => (hasDisplay ? n : 0);
+      expect(await at(360)).toEqual({ d: z(32), g: 16 });
       const m = await at(820);
-      expect(m.d).toBeGreaterThan(32);
-      expect(m.d).toBeLessThan(40);
+      if (hasDisplay) {
+        expect(m.d).toBeGreaterThan(32);
+        expect(m.d).toBeLessThan(40);
+      } else {
+        await expect(page.locator('.mk-display')).toHaveCount(0);
+      }
       expect(m.g).toBe(32);
-      expect(await at(1280)).toEqual({ d: 40, g: 32 });
+      expect(await at(1280)).toEqual({ d: z(40), g: 32 });
     });
 
     test(`@mockup no horizontal overflow on ${route}`, async ({ page }) => {
