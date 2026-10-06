@@ -49,7 +49,7 @@ const sessions = computed(() => [
 <template>
   <div data-identity="proposed">
     <div data-mockup="settings">
-      <BoardHeader current="settings" />
+      <BoardHeader current="settings" show-month />
       <main class="mk-main st">
         <h1 class="st-title">Settings</h1>
 

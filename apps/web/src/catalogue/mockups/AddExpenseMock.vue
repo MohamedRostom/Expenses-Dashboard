@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /** T027 / FR-004: the add-expense sheet in the proposed identity, over the month board. Same
- * fields and order as components/ExpenseForm.vue (FR-010: no workflow change). Static; no API.
- * Query: `?state=loading|empty|error`. DOM contract: tests/e2e/tests/visual.spec.ts. */
+ * fields and order as components/ExpenseForm.vue (FR-010: no workflow change). T027a makes it
+ * work: it validates, adds the row to the shared mock list (integer pence) and closes. No API.
+ * Query: `?state=loading|empty|error`, `?live=off`. DOM contract: tests/e2e/tests/visual.spec.ts.
+ * Loaded directly it shows the pending-rate demo; opened from the board it starts blank. */
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button, Input, Select, Skeleton } from '@desk/ui';
@@ -9,21 +11,45 @@ import '../proposed-tokens.css';
 import './board.css';
 import MonthViewMock from './MonthViewMock.vue';
 import { categoryNames } from '../fixtures.js';
+import {
+  addExpense,
+  closeAddExpense,
+  month,
+  parseAmount,
+  sheetBlank,
+  toDefault,
+} from './mockExpenses.js';
 
 const route = useRoute();
 const router = useRouter();
 const state = computed(() => String(route.query['state'] ?? 'default'));
-const blank = computed(() => state.value === 'empty');
+// Read once: the flag belongs to this opening of the sheet.
+const blank = state.value === 'empty' || sheetBlank.value;
+sheetBlank.value = false;
 
-const description = ref(blank.value ? '' : 'Airport train');
-const amount = ref(blank.value || state.value === 'error' ? '' : '52.00');
-const currency = ref(blank.value ? 'GBP' : 'USD');
-const date = ref('2026-09-30');
-const category = ref(blank.value || state.value === 'error' ? '' : 'Transport');
+const description = ref(blank ? '' : 'Airport train');
+const amount = ref(blank || state.value === 'error' ? '' : '52.00');
+const currency = ref(blank ? 'GBP' : 'USD');
+const date = ref(`${month.value.key}-${String(month.value.days).padStart(2, '0')}`);
+const category = ref(blank || state.value === 'error' ? '' : 'Transport');
 const paidWith = ref('Card');
-const kind = ref(blank.value ? '' : 'Variable');
+const kind = ref(blank ? '' : 'Variable');
 const notes = ref('');
 const showRate = ref(false);
+const submitted = ref(false);
+
+const parsed = computed(() => parseAmount(amount.value));
+const amountError = computed(() => {
+  if (state.value === 'error') return 'Enter an amount, for example 52.00';
+  return submitted.value && 'error' in parsed.value ? parsed.value.error : '';
+});
+const categoryError = computed(() =>
+  state.value === 'error' || (submitted.value && !category.value) ? 'Choose a category' : '',
+);
+// A foreign-currency entry saves now and converts when the rate is published.
+const showPreview = computed(
+  () => state.value !== 'error' && currency.value !== 'GBP' && 'minor' in parsed.value,
+);
 
 const currencyOptions = ['GBP', 'USD', 'EUR'].map((c) => ({ value: c, label: c }));
 const categoryOptions = [
@@ -39,7 +65,35 @@ const kindOptions = [
   ...['Fixed', 'Variable', 'One-off'].map((v) => ({ value: v, label: v })),
 ];
 
-const close = () => router.push('/__ui/mockups/month-view');
+const dateLabel = computed(() =>
+  new Date(date.value).toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'UTC',
+  }),
+);
+const originalLabel = computed(() =>
+  'minor' in parsed.value
+    ? new Intl.NumberFormat('en-GB', { style: 'currency', currency: currency.value }).format(
+        parsed.value.minor / 100,
+      )
+    : '',
+);
+
+const close = () => closeAddExpense(router, route.query);
+function submit() {
+  submitted.value = true;
+  const p = parsed.value;
+  if ('error' in p || !category.value) return;
+  addExpense({
+    date: date.value,
+    category: category.value,
+    amount: toDefault(p.minor, currency.value),
+    // the row is named by its note, then its description
+    note: notes.value.trim() || description.value.trim() || category.value,
+  });
+  close();
+}
 </script>
 
 <template>
@@ -49,91 +103,89 @@ const close = () => router.push('/__ui/mockups/month-view');
     </div>
     <div data-mockup="add-expense" class="ae">
       <div class="ae-scrim" @click="close" />
-      <section
-        class="ae-sheet"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="ae-title"
-        data-mockup-panel="sheet"
-      >
-        <header class="ae-head">
-          <h1 id="ae-title" class="ae-title">Add expense</h1>
-          <button type="button" class="ae-close" aria-label="Close" @click="close">
-            <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
-          </button>
-        </header>
+      <Transition name="mk-sheet" appear>
+        <section
+          class="ae-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ae-title"
+          data-mockup-panel="sheet"
+        >
+          <header class="ae-head">
+            <h1 id="ae-title" class="ae-title">Add expense</h1>
+            <button type="button" class="ae-close" aria-label="Close" @click="close">
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8" /></svg>
+            </button>
+          </header>
 
-        <form class="ae-form" novalidate @submit.prevent>
-          <p v-if="state === 'error'" class="ae-alert" role="alert">
-            <span class="mk-lamp mk-lamp--critical" />
-            <span>
-              <strong>Not saved.</strong> Enter the amount and choose a category, then add it again.
-              Nothing you typed was lost.
-            </span>
-          </p>
+          <form class="ae-form" novalidate @submit.prevent="submit">
+            <p v-if="state === 'error'" class="ae-alert" role="alert">
+              <span class="mk-lamp mk-lamp--critical" />
+              <span>
+                <strong>Not saved.</strong> Enter the amount and choose a category, then add it
+                again. Nothing you typed was lost.
+              </span>
+            </p>
 
-          <Input v-model="description" label="Description" />
+            <Input v-model="description" label="Description" />
 
-          <div class="ae-row">
-            <Input
-              v-model="amount"
-              label="Amount"
-              variant="amount"
-              :error="state === 'error' ? 'Enter an amount, for example 52.00' : ''"
+            <div class="ae-row">
+              <Input v-model="amount" label="Amount" variant="amount" :error="amountError" />
+              <Select v-model="currency" label="Currency" :options="currencyOptions" />
+            </div>
+
+            <p v-if="state === 'loading'" class="ae-preview" role="status">
+              Checking the rate for <span class="mk-num">{{ dateLabel }}</span>
+            </p>
+            <p v-else-if="showPreview" class="ae-preview" role="status">
+              <strong class="mk-warn">Rate pending.</strong> No ECB rate for {{ currency }} on
+              <span class="mk-num">{{ dateLabel }}</span> yet. Desk saves
+              <span class="mk-num">{{ originalLabel }}</span> now and converts it when the rate is
+              published.
+            </p>
+
+            <Input v-model="date" label="Date" type="date" />
+
+            <div v-if="state === 'loading'" class="ae-skeleton-field" aria-busy="true">
+              <span class="mk-label">Category</span>
+              <Skeleton height="2.75rem" />
+              <span class="mk-sr">Loading categories</span>
+            </div>
+            <Select
+              v-else
+              v-model="category"
+              label="Category"
+              :options="categoryOptions"
+              :error="categoryError"
             />
-            <Select v-model="currency" label="Currency" :options="currencyOptions" />
-          </div>
 
-          <p v-if="state === 'loading'" class="ae-preview" role="status">
-            Checking the rate for <span class="mk-num">30 Sep</span>
-          </p>
-          <p v-else-if="!blank && state !== 'error'" class="ae-preview" role="status">
-            <strong class="mk-warn">Rate pending.</strong> No ECB rate for USD on
-            <span class="mk-num">30 Sep</span> yet. Desk saves
-            <span class="mk-num">US$52.00</span> now and converts it when the rate is published.
-          </p>
+            <div class="ae-row ae-row--even">
+              <Select v-model="paidWith" label="Paid with" :options="paidWithOptions" />
+              <Select v-model="kind" label="Kind" :options="kindOptions" />
+            </div>
 
-          <Input v-model="date" label="Date" type="date" />
+            <Input v-model="notes" label="Notes (optional)" />
 
-          <div v-if="state === 'loading'" class="ae-skeleton-field" aria-busy="true">
-            <span class="mk-label">Category</span>
-            <Skeleton height="2.75rem" />
-            <span class="mk-sr">Loading categories</span>
-          </div>
-          <Select
-            v-else
-            v-model="category"
-            label="Category"
-            :options="categoryOptions"
-            :error="state === 'error' ? 'Choose a category' : ''"
-          />
+            <div>
+              <Button variant="ghost" size="sm" @click="showRate = !showRate">
+                {{ showRate ? 'Hide manual rate' : 'Set manual rate' }}
+              </Button>
+              <Input
+                v-if="showRate"
+                class="ae-rate"
+                label="Rate override"
+                variant="amount"
+                placeholder="e.g. 0.7462"
+              />
+            </div>
 
-          <div class="ae-row ae-row--even">
-            <Select v-model="paidWith" label="Paid with" :options="paidWithOptions" />
-            <Select v-model="kind" label="Kind" :options="kindOptions" />
-          </div>
-
-          <Input v-model="notes" label="Notes (optional)" />
-
-          <div>
-            <Button variant="ghost" size="sm" @click="showRate = !showRate">
-              {{ showRate ? 'Hide manual rate' : 'Set manual rate' }}
-            </Button>
-            <Input
-              v-if="showRate"
-              class="ae-rate"
-              label="Rate override"
-              variant="amount"
-              placeholder="e.g. 0.7462"
-            />
-          </div>
-
-          <div class="ae-actions">
-            <Button type="submit" :disabled="state === 'loading'">Add expense</Button>
-            <Button variant="secondary" @click="close">Cancel</Button>
-          </div>
-        </form>
-      </section>
+            <div class="ae-actions">
+              <Button type="submit" :disabled="state === 'loading'">Add expense</Button>
+              <Button variant="secondary" @click="close">Cancel</Button>
+            </div>
+          </form>
+        </section>
+      </Transition>
     </div>
   </div>
 </template>
@@ -278,6 +330,13 @@ const close = () => router.push('/__ui/mockups/month-view');
     justify-content: flex-start;
     margin: 0 calc(-1 * var(--space-6)) calc(-1 * var(--space-6));
     padding: var(--space-4) var(--space-6);
+  }
+}
+/* The sheet enters from its own edge: the bottom at phone, the right from 1024. */
+@media (min-width: 1024px) {
+  .mk-sheet-enter-from,
+  .mk-sheet-leave-to {
+    transform: translateX(100%);
   }
 }
 </style>

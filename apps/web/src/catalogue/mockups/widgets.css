@@ -343,8 +343,3 @@
     transition: none;
   }
 }
-
-/* The matrix is a static panel: its loading cells hold still (the strip's skeleton still pulses). */
-[data-identity='proposed'] .wg-frame[data-sample] .desk-skeleton.desk-skeleton {
-  animation: none;
-}

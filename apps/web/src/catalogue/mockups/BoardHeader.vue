@@ -2,12 +2,22 @@
 /** T027: the raised-flap header shared by the proposed mock-ups (DESIGN.md §Navigation). Links go
  * to the other mock-ups where one exists; it never touches the session or the API. */
 import { ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { Button } from '@desk/ui';
 import { useMockTheme, type MockTheme } from './useMockTheme.js';
+import {
+  canNext,
+  canPrev,
+  month,
+  nextMonth,
+  openAddExpense,
+  prevMonth,
+  shiftMonth,
+} from './mockExpenses.js';
 
 defineProps<{ current: 'month' | 'settings'; showMonth?: boolean }>();
 const router = useRouter();
+const route = useRoute();
 const root = ref<Element | null>(null);
 const { mode, set } = useMockTheme(root);
 const themes: { id: MockTheme; label: string }[] = [
@@ -31,14 +41,28 @@ const links = [
   <header ref="root" class="mk-header">
     <div class="mk-header-inner">
       <div v-if="showMonth" class="mk-switcher">
-        <button type="button" class="mk-icon-btn" aria-label="Previous month, August 2026">
+        <button
+          type="button"
+          class="mk-icon-btn"
+          data-testid="month-prev"
+          :disabled="!canPrev"
+          :aria-label="`Previous month${prevMonth ? ', ' + prevMonth.label : ''}`"
+          @click="shiftMonth(-1)"
+        >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" /></svg>
         </button>
         <span class="mk-month">
-          <span class="mk-month-long">September 2026</span>
-          <span class="mk-month-short">Sep 2026</span>
+          <span class="mk-month-long" data-testid="month-label">{{ month.label }}</span>
+          <span class="mk-month-short">{{ month.short }}</span>
         </span>
-        <button type="button" class="mk-icon-btn" aria-label="Next month, October 2026">
+        <button
+          type="button"
+          class="mk-icon-btn"
+          data-testid="month-next"
+          :disabled="!canNext"
+          :aria-label="`Next month${nextMonth ? ', ' + nextMonth.label : ''}`"
+          @click="shiftMonth(1)"
+        >
           <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5" /></svg>
         </button>
       </div>
@@ -67,7 +91,9 @@ const links = [
           {{ t.label }}
         </button>
       </div>
-      <Button class="mk-add" @click="router.push('/__ui/mockups/add-expense')">Add expense</Button>
+      <Button class="mk-add" data-testid="add-expense" @click="openAddExpense(router, route.query)"
+        >Add expense</Button
+      >
     </div>
   </header>
 </template>
@@ -124,6 +150,10 @@ const links = [
 }
 .mk-icon-btn:hover {
   background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+}
+.mk-icon-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 .mk-icon-btn svg {
   width: var(--space-4);
