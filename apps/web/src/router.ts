@@ -103,6 +103,14 @@ if (import.meta.env.VITE_UI_CATALOGUE === 'true') {
       path: '/__ui/mockups/month-view-fallback',
       component: () => import('./catalogue/mockups/MonthViewFallbackMock.vue'),
     },
+    {
+      path: '/__ui/mockups/today',
+      component: () => import('./catalogue/mockups/TodayMock.vue'),
+    },
+    {
+      path: '/__ui/mockups/widgets',
+      component: () => import('./catalogue/mockups/WidgetsMock.vue'),
+    },
   );
 }
 

@@ -1,11 +1,20 @@
 <script setup lang="ts">
 /** T027: the raised-flap header shared by the proposed mock-ups (DESIGN.md §Navigation). Links go
  * to the other mock-ups where one exists; it never touches the session or the API. */
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { Button } from '@desk/ui';
+import { useMockTheme, type MockTheme } from './useMockTheme.js';
 
 defineProps<{ current: 'month' | 'settings'; showMonth?: boolean }>();
 const router = useRouter();
+const root = ref<Element | null>(null);
+const { mode, set } = useMockTheme(root);
+const themes: { id: MockTheme; label: string }[] = [
+  { id: 'light', label: 'Light' },
+  { id: 'dark', label: 'Dark' },
+  { id: 'system', label: 'System' },
+];
 
 const links = [
   { id: 'month', label: 'Month', to: '/__ui/mockups/month-view' },
@@ -19,7 +28,7 @@ const links = [
 </script>
 
 <template>
-  <header class="mk-header">
+  <header ref="root" class="mk-header">
     <div class="mk-header-inner">
       <div v-if="showMonth" class="mk-switcher">
         <button type="button" class="mk-icon-btn" aria-label="Previous month, August 2026">
@@ -45,6 +54,19 @@ const links = [
         >
         <button type="button" class="mk-nav-link mk-signout">Sign out</button>
       </nav>
+      <div class="mk-theme" role="radiogroup" aria-label="Theme" data-testid="theme-toggle">
+        <button
+          v-for="t in themes"
+          :key="t.id"
+          type="button"
+          role="radio"
+          class="mk-theme-opt"
+          :aria-checked="mode === t.id"
+          @click="set(t.id)"
+        >
+          {{ t.label }}
+        </button>
+      </div>
       <Button class="mk-add" @click="router.push('/__ui/mockups/add-expense')">Add expense</Button>
     </div>
   </header>
@@ -65,7 +87,8 @@ const links = [
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas:
     'switch add'
-    'nav nav';
+    'nav nav'
+    'theme theme';
   align-items: center;
   column-gap: var(--space-3);
 }
@@ -113,6 +136,32 @@ const links = [
 .mk-add {
   grid-area: add;
 }
+.mk-theme {
+  grid-area: theme;
+  justify-self: end;
+  display: inline-flex;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+.mk-theme-opt {
+  min-height: var(--target-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  background: transparent;
+  color: var(--color-fg-muted);
+  font: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+.mk-theme-opt:hover {
+  color: var(--color-fg);
+}
+.mk-theme-opt[aria-checked='true'] {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+}
 .mk-nav {
   grid-area: nav;
   display: flex;
@@ -158,10 +207,13 @@ const links = [
 }
 @media (min-width: 1024px) {
   .mk-header-inner {
-    grid-template-columns: auto minmax(0, 1fr) auto;
-    grid-template-areas: 'switch nav add';
+    grid-template-columns: auto minmax(0, 1fr) auto auto;
+    grid-template-areas: 'switch nav theme add';
     column-gap: var(--space-8);
     padding-block: var(--space-1);
+  }
+  .mk-theme {
+    justify-self: auto;
   }
   .mk-nav {
     margin-top: 0;

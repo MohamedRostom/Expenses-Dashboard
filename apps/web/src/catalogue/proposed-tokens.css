@@ -86,3 +86,16 @@
   --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
 }
+/* T027a: motion and fluid-layout tokens for the mock-ups (DESIGN.md §Motion, §Layout). Own rule so
+   the colour blocks above stay identical across themes. Fluid values are linear clamps:
+   display 2rem at 360 to 2.5rem at 1280; gutter 16px at 360 to 32px at 768. */
+:root [data-identity='proposed'] {
+  --motion-stagger: 40ms;
+  --text-display-fluid: clamp(2rem, 1.804rem + 0.8696vw, 2.5rem);
+  --gutter-fluid: clamp(1rem, 0.1176rem + 3.9216vw, 2rem);
+}
+@media (prefers-reduced-motion: reduce) {
+  :root [data-identity='proposed'] {
+    --motion-stagger: 0ms;
+  }
+}

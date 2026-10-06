@@ -178,6 +178,44 @@ describe('proposed identity tokens (T026)', () => {
   }
 });
 
+// T027a: motion and fluid-layout tokens exist only in the proposed file until T028 promotes them.
+describe('proposed motion and fluid tokens (T027a)', () => {
+  const path = join(root, PROPOSED);
+  const raw = existsSync(path) ? readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '') : '';
+  const p = parseRules(raw);
+  const all = new Map(p.flatMap((r) => [...r.tokens]).reverse()); // first rule wins; reduced block is last
+  /** Resolves `clamp(min, a rem + b vw, max)` at a viewport width, in rem (16px). */
+  function clampRem(value: string, vw: number): number {
+    const m = value.match(
+      /^clamp\(\s*([\d.]+)rem\s*,\s*([\d.]+)rem\s*\+\s*([\d.]+)vw\s*,\s*([\d.]+)rem\s*\)$/,
+    );
+    if (!m) throw new Error(`not a clamp(rem, rem + vw, rem): ${value}`);
+    const [lo, a, b, hi] = m.slice(1).map(Number) as [number, number, number, number];
+    return Math.min(hi, Math.max(lo, a + (b * vw) / 100 / 16));
+  }
+  it('--motion-stagger is 40ms', () => expect(all.get('--motion-stagger')).toBe('40ms'));
+  it('--text-display-fluid is 2rem at 360 and 2.5rem at 1280', () => {
+    const v = all.get('--text-display-fluid')!;
+    expect(v).toMatch(/^clamp\(2rem,/);
+    expect(clampRem(v, 360)).toBeCloseTo(2, 2);
+    expect(clampRem(v, 1280)).toBeCloseTo(2.5, 2);
+  });
+  it('--gutter-fluid is 1rem at 360 and 2rem at 768', () => {
+    const v = all.get('--gutter-fluid')!;
+    expect(v).toMatch(/^clamp\(1rem,/);
+    expect(clampRem(v, 360)).toBeCloseTo(1, 2);
+    expect(clampRem(v, 768)).toBeCloseTo(2, 2);
+  });
+  it('reduced motion sets --motion-stagger to 0ms', () => {
+    const block = raw.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*$/)?.[0] ?? '';
+    expect(parseRules(block).some((r) => r.tokens.get('--motion-stagger') === '0ms')).toBe(true);
+  });
+  it.each(['--motion-stagger', '--text-display-fluid', '--gutter-fluid'])(
+    '%s is absent from tokens.css',
+    (n) => expect(css).not.toContain(n),
+  );
+});
+
 describe('motion contract', () => {
   it('reduced motion zeroes the three durations', () => {
     for (const n of ['--motion-fast', '--motion-base', '--motion-slow'])
