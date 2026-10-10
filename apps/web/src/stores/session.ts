@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import type { AccentId } from '@desk/contracts';
 import { apiFetch, ApiError } from '../api/client.js';
 
 // Local/minimal shape — packages/contracts/src/me.ts will supersede this in a later task.
@@ -8,7 +9,7 @@ export interface User {
   defaultCurrency: string;
   theme: 'light' | 'dark' | 'system';
   /** Accent preset id from UserResponse (spec 004 US5). */
-  accent?: string;
+  accent?: AccentId;
   timeZone: string;
   onboardingCompletedAt?: string | null;
   /** From UserResponse; false until the address is confirmed (FR-001). */

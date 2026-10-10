@@ -92,6 +92,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
 
     const patch: Partial<typeof usersTable.$inferInsert> = {};
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
+    if (patchBody.accent !== undefined) patch.accent = patchBody.accent;
     if (patchBody.timeZone !== undefined) patch.timeZone = patchBody.timeZone;
     if (patchBody.temperatureUnit !== undefined) patch.temperatureUnit = patchBody.temperatureUnit;
     if (patchBody.onboardingCompletedAt !== undefined) {
