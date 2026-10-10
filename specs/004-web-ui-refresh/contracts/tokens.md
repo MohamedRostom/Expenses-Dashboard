@@ -54,6 +54,18 @@ Layout      --target-min (44px)  --content-max (72rem)  --gutter (--space-4 at p
 | `--color-focus` | `--color-bg`, `--color-surface`, `--color-accent` | 3:1 |
 | `--color-border` | `--color-bg` | 3:1 |
 
+## Accent presets (FR-019)
+
+`:root[data-accent=ID]` (light), `:root:not([data-theme="light"])[data-accent=ID]` (system dark, inside the media query) and `:root[data-theme="dark"][data-accent=ID]` (explicit dark) override `--color-accent`, `--color-accent-fg` and `--color-selection` only; nested-wrapper forms (`[data-accent=ID][data-theme=light|dark]`) share the same rules. Both dark blocks are identical. No new token names. Every preset passes the contrast pairs above in all three states, `--color-fg` on `--color-selection` >= 4.5:1, and has a hue outside 0 to 60 degrees.
+
+| Preset | Light accent | Dark accent |
+|---|---|---|
+| `concourse-blue` | `#11325f` | `#2368c7` |
+| `platform-teal` | `#083a38` | `#117471` |
+| `violet` | `#432664` | `#8451bd` |
+| `slate` | `#2a333c` | `#586b7e` |
+| `plum` | `#511f4b` | `#a63f99` |
+
 ## Consumption rules (drift test)
 
 Allowed in `apps/web/src`, `apps/landing/src`, `packages/ui/src/components`:

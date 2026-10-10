@@ -127,6 +127,95 @@
   --palette-green: #8fdc8f;
   --palette-slate: #b9c6d4;
 }
+/* User-selectable accent presets (FR-019). After the theme blocks so they win; the bare [data-accent]
+   forms serve a nested wrapper (catalogue row). signal-green is the default and needs no block. */
+:root[data-accent='concourse-blue'],
+[data-accent='concourse-blue'][data-theme='light'] {
+  --color-accent: #11325f;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d8dfe9;
+}
+:root[data-accent='platform-teal'],
+[data-accent='platform-teal'][data-theme='light'] {
+  --color-accent: #083a38;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d7eae9;
+}
+:root[data-accent='violet'],
+[data-accent='violet'][data-theme='light'] {
+  --color-accent: #432664;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #e0dbe6;
+}
+:root[data-accent='slate'],
+[data-accent='slate'][data-theme='light'] {
+  --color-accent: #2a333c;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #dee0e3;
+}
+:root[data-accent='plum'],
+[data-accent='plum'][data-theme='light'] {
+  --color-accent: #511f4b;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #e6dbe4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light'])[data-accent='concourse-blue'] {
+    --color-accent: #2368c7;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #1d2734;
+  }
+  :root:not([data-theme='light'])[data-accent='platform-teal'] {
+    --color-accent: #117471;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #1d3534;
+  }
+  :root:not([data-theme='light'])[data-accent='violet'] {
+    --color-accent: #8451bd;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #282130;
+  }
+  :root:not([data-theme='light'])[data-accent='slate'] {
+    --color-accent: #586b7e;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #26292c;
+  }
+  :root:not([data-theme='light'])[data-accent='plum'] {
+    --color-accent: #a63f99;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #30212e;
+  }
+}
+:root[data-theme='dark'][data-accent='concourse-blue'],
+[data-accent='concourse-blue'][data-theme='dark'] {
+  --color-accent: #2368c7;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #1d2734;
+}
+:root[data-theme='dark'][data-accent='platform-teal'],
+[data-accent='platform-teal'][data-theme='dark'] {
+  --color-accent: #117471;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #1d3534;
+}
+:root[data-theme='dark'][data-accent='violet'],
+[data-accent='violet'][data-theme='dark'] {
+  --color-accent: #8451bd;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #282130;
+}
+:root[data-theme='dark'][data-accent='slate'],
+[data-accent='slate'][data-theme='dark'] {
+  --color-accent: #586b7e;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #26292c;
+}
+:root[data-theme='dark'][data-accent='plum'],
+[data-accent='plum'][data-theme='dark'] {
+  --color-accent: #a63f99;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #30212e;
+}
 @media (min-width: 768px) {
   :root {
     --gutter: var(--space-8);
