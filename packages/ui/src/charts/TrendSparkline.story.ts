@@ -15,4 +15,5 @@ export default defineStory({
     },
   ],
   states: [{ name: 'empty', props: { points: [] } }],
+  usage: '<TrendSparkline :points="lastSixMonths" />',
 });

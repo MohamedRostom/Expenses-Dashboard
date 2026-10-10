@@ -1,7 +1,14 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import { useToast, type ToastMessage } from '../composables/useToast.js';
 
+const props = defineProps<{
+  /** Catalogue mode: renders in place, from `messages` instead of the shared queue. */
+  inline?: boolean;
+  messages?: ToastMessage[];
+}>();
 const { toasts, dismiss, pause, resume } = useToast();
+const shown = computed(() => props.messages ?? toasts);
 
 // Timer pauses while hovered or focused; resumes only when neither holds it.
 const held = new Map<number, { hover: boolean; focus: boolean }>();
@@ -21,10 +28,10 @@ function undo(t: ToastMessage) {
 </script>
 
 <template>
-  <Teleport to="body">
-    <div class="desk-toast-stack">
+  <Teleport to="body" :disabled="inline">
+    <div class="desk-toast-stack" :class="{ 'desk-toast-stack--inline': inline }">
       <div
-        v-for="t in toasts"
+        v-for="t in shown"
         :key="t.id"
         class="desk-toast"
         :class="t.variant"
@@ -87,5 +94,11 @@ function undo(t: ToastMessage) {
 .desk-toast:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+/* Catalogue example: sits in the flow of its cell. */
+.desk-toast-stack--inline {
+  position: static;
+  z-index: auto;
+  align-items: flex-start;
 }
 </style>

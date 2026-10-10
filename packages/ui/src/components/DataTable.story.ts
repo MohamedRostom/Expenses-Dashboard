@@ -15,6 +15,7 @@ export default defineStory({
   ],
   states: [
     { name: 'sortable', props: { categories, caption: 'Spend by category', sortable: true } },
+    { name: 'loading', props: { categories: [], caption: 'Spend by category', loading: true } },
     { name: 'empty', props: { categories: [], caption: 'Spend by category' } },
   ],
   usage: '<DataTable :categories="rows" caption="Spend by category" sortable dense />',

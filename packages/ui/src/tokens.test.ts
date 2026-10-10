@@ -346,17 +346,6 @@ describe('block inventory (contracts/blocks.md)', () => {
   const charts = ['CategoryBars', 'TrendSparkline', 'YearBars'];
   const dir = (b: string) => join(here, charts.includes(b) ? 'charts' : 'components');
 
-  // Variants/states the contract lists but the component does not implement yet (reported to the
-  // main session, not a story problem). The ratchet below fails when one is fixed, so remove it.
-  const unsupported: Record<string, string[]> = {
-    PanelFrame: ['variant:compact'],
-    Skeleton: ['variant:row'],
-    EmptyState: ['variant:inline'],
-    ErrorState: ['variant:inline'],
-    Dialog: ['state:loading'],
-    DataTable: ['state:loading'],
-  };
-
   it('parses every inventory row', () => {
     expect(inventory.map((i) => i.block)).toHaveLength(15);
   });
@@ -376,31 +365,17 @@ describe('block inventory (contracts/blocks.md)', () => {
       ...row.variants.filter((v) => !has(story.variants, v)).map((v) => `variant:${v}`),
       ...row.states.filter((v) => !has(story.states, v)).map((v) => `state:${v}`),
     ];
-    expect(missing).toEqual(unsupported[row.block] ?? []);
+    expect(missing).toEqual([]);
   });
 
-  // Stories without a usage string yet; T045 writes them and deletes this list (the `.rejects`
-  // below goes red for any block that gains usage while still listed).
-  const usageMissingUntilT045 = [
-    'Button',
-    'Input',
-    'Select',
-    'Toast',
-    'Tabs',
-    'MenuButton',
-    'ThemeToggle',
-    'Kbd',
-  ];
-  it.each(inventory.map((i) => [i.block] as const))('%s has a usage example', async (block) => {
-    const story = await loadStory(block);
-    const run = async () => {
+  it.each([...inventory.map((i) => i.block), ...charts].map((b) => [b] as const))(
+    '%s has a usage example',
+    async (block) => {
+      const story = await loadStory(block);
       expect(story.usage ?? '').not.toBe('');
       expect(story.usage).toContain(`<${block}`);
-    };
-    // T045: drop the list and always `await run()`
-    if (usageMissingUntilT045.includes(block)) await expect(run()).rejects.toThrow();
-    else await run();
-  });
+    },
+  );
 
   it('every story file belongs to the inventory or the three charts', () => {
     const known = new Set([...inventory.map((i) => i.block), ...charts]);

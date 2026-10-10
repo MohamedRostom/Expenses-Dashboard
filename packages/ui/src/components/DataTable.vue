@@ -1,6 +1,7 @@
 <script setup lang="ts">
 /** Accessible table alternative to CategoryBars — CLAUDE.md: "table view always available". */
 import { computed, ref } from 'vue';
+import Skeleton from './Skeleton.vue';
 import type { CategoryBarData } from '../charts/CategoryBars.vue';
 
 const props = defineProps<{
@@ -12,6 +13,8 @@ const props = defineProps<{
   /** Headers become buttons with aria-sort; click toggles ascending/descending. */
   sortable?: boolean;
   dense?: boolean;
+  /** Skeleton rows replace the data; the table is marked busy. */
+  loading?: boolean;
 }>();
 
 type SortKey = 'name' | 'spent' | 'budget' | 'remaining';
@@ -61,7 +64,10 @@ function remaining(c: CategoryBarData): string {
 </script>
 
 <template>
-  <table :class="['desk-data-table', { 'desk-data-table--dense': dense }]">
+  <table
+    :class="['desk-data-table', { 'desk-data-table--dense': dense }]"
+    :aria-busy="loading ? 'true' : undefined"
+  >
     <caption v-if="caption">
       {{
         caption
@@ -82,7 +88,12 @@ function remaining(c: CategoryBarData): string {
         </th>
       </tr>
     </thead>
-    <tbody>
+    <tbody v-if="loading">
+      <tr v-for="n in 3" :key="n">
+        <td v-for="m in COLUMNS.length" :key="m"><Skeleton /></td>
+      </tr>
+    </tbody>
+    <tbody v-else>
       <tr v-for="c in rows" :key="c.id">
         <th scope="row">{{ c.name }}</th>
         <td>{{ formatMinor(c.spent) }}</td>

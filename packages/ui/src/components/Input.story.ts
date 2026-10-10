@@ -13,4 +13,5 @@ export default defineStory({
     { name: 'invalid', props: { error: 'Enter a valid value' } },
     { name: 'disabled', props: { disabled: true } },
   ],
+  usage: '<Input v-model="amount" label="Amount" variant="amount" :error="amountError" />',
 });

@@ -30,12 +30,12 @@ same change; **new** = written in Slice A.
 | `Button` (exists) | actions | `primary`, `secondary`, `ghost`, `danger`; sizes `sm`, `md` | default, hover, active, disabled, `loading` (spinner, keeps width) | native button; `aria-busy` when loading | all screens |
 | `Input` (exists) | text, number, amount | `text`, `amount` (currency adornment, tabular), `search` | default, focus, invalid (`aria-invalid`, message linked by `aria-describedby`), disabled | native input | add expense, settings, auth |
 | `Select` (exists) | single choice | native-backed | default, invalid, disabled | native select | add expense, categories |
-| `Dialog` (exists; the "sheet") | modal, bottom sheet on phone, side panel on desktop | `center`, `bottom`, `side` | open, closing, `loading` | `role="dialog"`, `aria-modal`, focus trap, Esc closes, focus returns | add expense, widget settings |
+| `Dialog` (exists; the "sheet") | modal, bottom sheet on phone, side panel on desktop | `center`, `bottom`, `side` | open, closing | `role="dialog"`, `aria-modal`, focus trap, Esc closes, focus returns | add expense, widget settings |
 | `Toast` (exists) | transient confirmation with undo | `info`, `success`, `warn`, `critical` | visible, leaving | `role="status"` (or `alert` for critical), undo button focusable, 6 s dismiss paused on hover/focus | saves, deletes |
-| `PanelFrame` (promote: `PanelState.vue` + `WidgetFrame.vue`) | titled panel with header actions | `default`, `compact` | `loading` (Skeleton), `empty` (EmptyState), `error` (ErrorState) | `role="region"` with `aria-labelledby` | month view, today, widgets |
+| `PanelFrame` (promote: `PanelState.vue` + `WidgetFrame.vue`) | titled panel with header actions | `default` | `loading` (Skeleton), `empty` (EmptyState), `error` (ErrorState) | `role="region"` with `aria-labelledby` | month view, today, widgets |
 | `Skeleton` (exists) | placeholder shapes | `text`, `tile`, `row`, `chart` | animating, static (reduce-motion) | `aria-hidden` | inside PanelFrame |
-| `EmptyState` (exists) | explains an empty panel and offers the next action | `default`, `inline` | with/without action | heading level passed in | every panel |
-| `ErrorState` (exists) | names the cause and offers retry | `default`, `inline` | with/without retry | `role="alert"` on first render only | every panel |
+| `EmptyState` (exists) | explains an empty panel and offers the next action | `default` | with/without action | heading level passed in | every panel |
+| `ErrorState` (exists) | names the cause and offers retry | `default` | with/without retry | `role="alert"` on first render only | every panel |
 | `Tile` (promote: `ForecastTile.vue`) | one primary figure with label and trend | `default`, `critical` (over budget) | `loading`, ready | figure is the first text node | month view, widgets |
 | `DataTable` (exists, moves from `charts/`) | aligned rows of entries | `default`, `dense` | `loading` rows, empty, with a caption | `<table>` with `<caption>`, sortable headers as buttons with `aria-sort` | entries, categories |
 | `Tabs` (new) | switch between views | `underline` | selected, focus | `role="tablist"`, arrow-key navigation, `aria-selected` | month/year, settings sections |
@@ -46,6 +46,8 @@ same change; **new** = written in Slice A.
 The hand-written charts (`CategoryBars`, `TrendSparkline`, `YearBars`) stay in
 `packages/ui/src/charts/`, keep their SVG implementation, and are restyled on the tokens; each
 gets a story like a block.
+
+Note (2026-10-10): PanelFrame `compact`, EmptyState `inline`, ErrorState `inline` and Dialog `loading` were removed from this inventory as unbuilt and unneeded (YAGNI); Skeleton `row` and DataTable `loading` were built because the screens need them for loading states.
 
 ## Catalogue story contract
 

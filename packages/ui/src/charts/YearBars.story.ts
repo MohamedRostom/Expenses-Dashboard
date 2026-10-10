@@ -15,4 +15,5 @@ export default defineStory({
     { name: 'over budget', props: { months: months(true), currency: 'GBP' } },
   ],
   states: [{ name: 'empty', props: { months: [], currency: 'GBP' } }],
+  usage: '<YearBars :months="year" currency="GBP" />',
 });

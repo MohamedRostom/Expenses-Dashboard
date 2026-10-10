@@ -14,4 +14,5 @@ export default defineStory({
     { name: 'label', props: { variant: 'label', label: 'Actions', items } },
   ],
   states: [{ name: 'closed' }],
+  usage: '<MenuButton variant="icon" label="Panel actions" :items="items" @select="onAction" />',
 });

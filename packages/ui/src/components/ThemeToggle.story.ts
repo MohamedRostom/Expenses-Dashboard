@@ -9,4 +9,5 @@ export default defineStory({
     { name: 'light', props: { modelValue: 'light' } },
     { name: 'dark', props: { modelValue: 'dark' } },
   ],
+  usage: '<ThemeToggle v-model="theme" />',
 });

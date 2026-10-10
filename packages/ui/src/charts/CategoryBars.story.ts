@@ -13,4 +13,5 @@ export default defineStory({
     { name: 'over budget', props: { categories: categories(52000), currency: 'GBP' } },
   ],
   states: [{ name: 'empty', props: { categories: [], currency: 'GBP' } }],
+  usage: '<CategoryBars :categories="categories" currency="GBP" />',
 });

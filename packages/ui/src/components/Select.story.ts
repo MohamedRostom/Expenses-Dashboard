@@ -21,4 +21,6 @@ export default defineStory({
     { name: 'invalid', props: { error: 'Choose a category' } },
     { name: 'disabled', props: { disabled: true } },
   ],
+  usage:
+    '<Select v-model="category" label="Category" :options="categories" :error="categoryError" />',
 });

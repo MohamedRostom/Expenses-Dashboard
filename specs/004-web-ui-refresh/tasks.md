@@ -169,12 +169,12 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
 
 ### Tests (write first, watch them fail)
 
-- [ ] T043 [P] [US3] Extend `packages/ui/src/tokens.test.ts`: every block in contracts/blocks.md §Inventory exists in `packages/ui/src/components` with a story whose variants and states match the inventory columns, every chart has a story, and every story has a non-empty `usage` string
-- [ ] T044 [P] [US3] Extend `tests/e2e/tests/visual.spec.ts`: each story's `usage` example renders in the catalogue as a live cell plus its source in a `<pre>`, element-snapshotted at both widths in both themes
+- [x] T043 [P] [US3] Extend `packages/ui/src/tokens.test.ts`: every block in contracts/blocks.md §Inventory exists in `packages/ui/src/components` with a story whose variants and states match the inventory columns, every chart has a story, and every story has a non-empty `usage` string
+- [x] T044 [P] [US3] Extend `tests/e2e/tests/visual.spec.ts`: each story's `usage` example renders in the catalogue as a live cell plus its source in a `<pre>`, element-snapshotted at both widths in both themes
 
 ### Implementation
 
-- [ ] T045 [US3] Add `usage` to every `packages/ui/src/components/*.story.ts` and `packages/ui/src/charts/*.story.ts`, render it in `apps/web/src/catalogue/CatalogueView.vue` (live example, source block, jump links), and add a catalogue index listing each block with its purpose from the inventory
+- [x] T045 [US3] Add `usage` to every `packages/ui/src/components/*.story.ts` and `packages/ui/src/charts/*.story.ts`, render it in `apps/web/src/catalogue/CatalogueView.vue` (live example, source block, jump links), and add a catalogue index listing each block with its purpose from the inventory
 - [ ] T046 [US3] Complete `DESIGN.md` §Building a new panel (pick `PanelFrame`, choose states, wire `causeMessages`, add a story, run the tests)
 - [ ] T047 [US3] Run the contributor exercise from quickstart.md Slice C with a throw-away `apps/web/src/components/DemoPanel.vue` built from blocks only, its snapshot and axe cases passing first time; record the time in DESIGN.md §Building a new panel, then delete the file; the timed run with a person other than the agent is SC-006 and `needs-rostom`, recorded in `docs/ROADMAP.md`
 

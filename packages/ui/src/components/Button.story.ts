@@ -15,4 +15,5 @@ export default defineStory({
     { name: 'disabled', props: { disabled: true } },
     { name: 'loading', props: { loading: true } },
   ],
+  usage: '<Button variant="primary" :loading="saving" @click="save">Save expense</Button>',
 });
