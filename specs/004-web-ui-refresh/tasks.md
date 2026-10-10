@@ -202,6 +202,30 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
 
 ---
 
+## Phase 6b: User Story 5 - Users choose their accent colour (Priority: P3)
+
+**Goal**: the accent (`--color-accent`, `--color-accent-fg`, `--color-selection`) becomes a per-user choice from at most six named presets, Signal Green the default, stored on the account and applied in all three theme states, behind the `appearance.accent` flag (FR-019, added 2026-10-10 at the owner's request).
+
+**Independent Test**: with the flag on, pick a non-default preset in Settings; the primary button, selected tab, nav underline and budget bars change at once in both themes, axe stays clean, and the choice is applied on a second browser context after sign-in (SC-009).
+
+### Tests (write first, watch them fail)
+
+- [ ] T054 [P] [US5] Extend `packages/ui/src/tokens.test.ts`: read the preset list from `ACCENT_IDS` (T057); for every id except `signal-green` assert `packages/ui/src/tokens.css` has an override for `--color-accent`, `--color-accent-fg` and `--color-selection` in each of the three theme states (`:root[data-accent='<id>']`, `:root:not([data-theme='light'])[data-accent='<id>']` inside the dark media query, `:root[data-theme='dark'][data-accent='<id>']`), the two dark blocks equal; for every preset in light and dark run the existing contrast pairs (accent-fg on accent ≥ 4.5, accent vs bg and vs surface ≥ 3, focus vs accent ≥ 3, fg on selection ≥ 4.5); assert no preset's hue (HSL) falls between 0° and 60° (amber, orange, red stay status colours) and `ACCENT_IDS.length <= 6`
+- [ ] T055 [P] [US5] Extend `apps/api/src/routes/me.test.ts` (Testcontainers): `GET /me` returns `accent: 'signal-green'` for a new user; `PATCH /me` with each `ACCENT_IDS` value stores it and returns it; an unknown id or a hex value returns 400 with the validation error code; user B's `PATCH` never changes user A's accent (ownership matrix row for the new field)
+- [ ] T056 [P] [US5] Write `tests/e2e/tests/accent.spec.ts`: with `appearance.accent` on, Settings shows a radio group named "Accent colour" whose options each carry a visible text name; choosing a preset changes the computed `background-color` of the primary `Button` on `/settings` and `/` without reload and sets `data-accent` on `<html>`; a second browser context signed in as the same user gets the same `data-accent` on first load; axe clean on `/` and `/settings` for every preset in light and dark; arrow keys move the selection; with the flag off the group is absent and `data-accent` is not set; one `@visual` element snapshot of the Settings accent group at 360 and 1280 in both themes
+
+### Implementation
+
+- [ ] T057 [US5] Data and contract: export `ACCENT_IDS` (`as const`, `signal-green` first) and `AccentId` from `packages/contracts/src/me.ts`; add `accent: z.enum(ACCENT_IDS)` to the user shape in `packages/contracts/src/auth.ts` and `.optional()` to the patch body in `me.ts`; add `packages/db/migrations/0011_user_accent.sql` (`ALTER TABLE users ADD COLUMN accent text NOT NULL DEFAULT 'signal-green'` plus a `CHECK` on the allowed ids) and `accent` in `packages/db/src/schema.ts` next to `theme`; add the `appearance.accent` row (off) wherever the `widgets.*` flags are seeded; regenerate `packages/contracts/openapi.json` (`pnpm --filter @desk/contracts generate:openapi`)
+- [ ] T058 [US5] API: return and patch `accent` in `apps/api/src/routes/me.ts` beside `theme` (lines ~59 and ~92); T055 green
+- [ ] T059 [US5] Preset values (design work; run `Skill: impeccable` (colorize) and `Skill: ui-ux-pro-max` within DESIGN.md, no new token names): pick the presets (suggested starting set, owner may change: Signal Green, Concourse Blue, Platform Teal, Violet, Slate, Plum) with light and dark values for `--color-accent`, `--color-accent-fg`, `--color-selection`, written as `[data-accent]` blocks in `packages/ui/src/tokens.css` after the theme blocks so they win on specificity; record them in DESIGN.md frontmatter (`accent-<id>` and `accent-<id>-dark`), §Colors and contracts/tokens.md; add a `/__ui` catalogue row showing `Button`, `Tabs` and a budget bar in each preset in both themes; T054 green; `needs-rostom`: the owner approves the swatches on the preview `/__ui` before the flag is turned on anywhere but dev and preview
+- [ ] T060 [US5] Web: add `applyAccent(accent)` to `apps/web/src/views/theme.ts` (sets `data-accent` on `document.documentElement`, removes it for `signal-green` or when the flag is off) with cases in `theme.test.ts`; call it wherever `applyTheme` is called on session load in `apps/web/src/stores/session.ts`; in `apps/web/src/views/SettingsView.vue` add an "Accent colour" radio group (native radios styled as swatches, text name beside each, 44 px targets at 360, focus ring visible on every swatch) shown only when `appearance.accent` is on, saving through the existing `PATCH /me` path with optimistic apply and revert on error; T056 green; Design tools per CLAUDE.md (impeccable detect at 360 and 1280 on `/settings`, `impeccable-finish-reviewer`), "Design tools" section in the commit
+- [ ] T061 [US5] Docs: DESIGN.md §Colors "The One Signal Rule" becomes one accent at a time, Signal Green by default, user-selectable from the presets; add a dated addendum to `docs/adr/ADR-0006-visual-identity.md` (owner request 2026-10-10, presets not free entry, why); fold into the not-yet-merged constitution 1.2.0 amendment the wording "one accent (Signal Green by default, user-selectable from the presets in `DESIGN.md`)" in place of "one green accent" and update its Sync Impact Report; update CLAUDE.md's design section; `CHANGELOG.md` line; `docs/ROADMAP.md` row for the `appearance.accent` flag (off in production until T042 is merged, the owner has approved T059's swatches and SC-009 passes)
+
+**Checkpoint**: US5 independent test passes in ci with the flag on; T054–T056 green; production flag stays off until every screen is refreshed (T042) so no screen still uses the accent as text.
+
+---
+
 ## Phase 7: Polish & Cross-Cutting Concerns
 
 **Purpose**: docs, the people-based results, and the final run.
@@ -221,13 +245,15 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
 - **US2 (Phase 4)**: after T028 (direction approved or fallback chosen). T029 and T030 in parallel first; T031 first among screens; then T032 → T033 → T034 → T035 → T036 → T037 in order (one change each); T038 after T037 (owner, non-blocking); T039–T042 after T037, in any order, one change each
 - **US3 (Phase 5)**: after Phase 2; T043 and T044 in parallel; T045 → T046 → T047; may run alongside US2 provided story edits do not touch screen files
 - **US4 (Phase 6)**: after T032 and T033 (screenshots need the refreshed month view and add-expense sheet); T048–T050 in parallel; T051 last
-- **Polish (Phase 7)**: T052 after US4; T053 last
+- **US5 (Phase 6b)**: T054–T056 in parallel any time after T028; T057 → T058; T059 after T054 (owner approves the swatches); T060 after T035 (Settings refreshed), T057 and T059; T061 last. The production flag waits for T042
+- **Polish (Phase 7)**: T052 after US4 and US5; T053 last
 
 ### User Story Dependencies
 
 - **US1 (P1)**: needs only Phase 2 → MVP (direction and mock-ups are the first reviewable deliverable)
 - **US2 (P1)**: needs US1 approved (ADR-0006 accepted or fallback chosen)
 - **US3 (P2)**: needs only Phase 2
+- **US5 (P3)**: needs US1 approved (T028) for the tests and tokens, US2's B4 (T035) for the Settings control, and all of US2 (T042) before the flag is turned on in production
 - **US4 (P3)**: needs US2's B1 and B2; publication waits for ADR-0002 and the owner's `LANDING_ENABLED`
 
 ### Within Each User Story
