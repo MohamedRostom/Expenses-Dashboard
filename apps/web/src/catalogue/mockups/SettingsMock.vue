@@ -5,7 +5,6 @@
 import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { Button, ErrorState, Input, Select, Skeleton, ThemeToggle } from '@desk/ui';
-import '../proposed-tokens.css';
 import './board.css';
 import BoardHeader from './BoardHeader.vue';
 import { user } from '../fixtures.js';
@@ -47,7 +46,7 @@ const sessions = computed(() => [
 </script>
 
 <template>
-  <div data-identity="proposed">
+  <div data-mockup-root>
     <div data-mockup="settings">
       <BoardHeader current="settings" show-month />
       <main class="mk-main st">

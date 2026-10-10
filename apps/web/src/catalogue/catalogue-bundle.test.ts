@@ -35,9 +35,9 @@ async function buildWith(flag: string | undefined) {
 }
 
 describe('catalogue bundle', () => {
-  it('ships no catalogue, proposed-tokens or story file when VITE_UI_CATALOGUE is unset', async () => {
+  it('ships no catalogue or story file when VITE_UI_CATALOGUE is unset', async () => {
     const { files, html } = await buildWith(undefined);
-    const banned = /catalogue|proposed-tokens|\.story/i;
+    const banned = /catalogue|\.story/i;
     expect(files.filter((f) => banned.test(f))).toEqual([]);
     expect(html).not.toMatch(banned);
   }, 240_000);

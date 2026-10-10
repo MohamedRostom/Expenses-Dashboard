@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-05T00:00:00Z",
+  "generatedAt": "2026-10-10T00:00:00Z",
   "title": "Design System: Desk (working name)",
   "extensions": {
     "colorMeta": {
@@ -276,7 +276,7 @@
   ],
   "narrative": {
     "northStar": "Concourse Board",
-    "overview": "Desk reads like the departure board in a rail concourse. Every row keeps the same columns, every figure sits in its own cell, and status is said once, in a fixed place, in a colour that means one thing: amber is delayed, red is cancelled. On Desk the rows are the month’s entries ranked by date, amber marks an expense whose rate is still pending, and red marks a category over budget. When a pending rate arrives, the converted amount flips into place, once.\n\nThe world lends four things only: the palette (flap black and steel, letter white, delay amber, cancel red, one signal green for action), system mono figures in fixed cells with small spaced capitals for column heads, a board density, and the arrival flip. Layout, navigation and controls stay standard web ones: no icon tab bar, no brushed steel, no per-character flips.\n\nDark mode is the night board and the reference rendering; light mode is the daylight board. Surfaces lift at two heights, and motion is the flip plus feedback, dropping to zero under reduced motion. Proposed in ADR-0006; the Ledger Desk is the fallback.",
+    "overview": "Desk reads like the departure board in a rail concourse. Every row keeps the same columns, every figure sits in its own cell, and status is said once, in a fixed place, in a colour that means one thing: amber is delayed, red is cancelled. On Desk the rows are the month’s entries ranked by date, amber marks an expense whose rate is still pending, and red marks a category over budget. When a pending rate arrives, the converted amount flips into place, once.\n\nThe world lends four things only: the palette (flap black and steel, letter white, delay amber, cancel red, one signal green for action), system mono figures in fixed cells with small spaced capitals for column heads, a board density, and the arrival flip. Layout, navigation and controls stay standard web ones: no icon tab bar, no brushed steel, no per-character flips.\n\nDark mode is the night board and the reference rendering; light mode is the daylight board. Surfaces lift at two heights, and motion is the flip plus feedback, dropping to zero under reduced motion. Accepted in ADR-0006 on 2026-10-10.",
     "keyCharacteristics": [
       "Entries as board rows with fixed columns and tabular amounts, in a real sortable table.",
       "A row lamp: amber for a pending rate, red for an over-budget category, always with its word.",

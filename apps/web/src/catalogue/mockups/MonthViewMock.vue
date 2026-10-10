@@ -6,7 +6,6 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button, DataTable, ErrorState, EmptyState, Skeleton, Tabs } from '@desk/ui';
-import '../proposed-tokens.css';
 import './board.css';
 import BoardHeader from './BoardHeader.vue';
 import { edge, pendingRateEntry, type FixtureExpense } from '../fixtures.js';
@@ -168,7 +167,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div data-identity="proposed">
+  <div data-mockup-root>
     <div
       :data-mockup="attr('month-view')"
       :class="{ 'mk-growing': growing }"

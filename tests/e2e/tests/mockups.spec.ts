@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { expect, test, type Page } from '@playwright/test';
 
-// T027a: behaviour of the proposed-identity mock-ups (T027). Tagged @mockup, so the `ci` project runs
+// T027a: behaviour of the mock-ups (T027). Tagged @mockup, so the `ci` project runs
 // them (it only inverts @local|@visual|@manual) and the `visual` project does not. DOM contract: the
 // header comment of visual.spec.ts. Every test is on ?live=off unless it says otherwise and asserts
 // that no /api request is made. ASSUMPTIONS the foundation work must meet (not in the contract text):
@@ -11,7 +11,7 @@ import { expect, test, type Page } from '@playwright/test';
 //     each widget has a [data-widget-body] element (the container-query target, see Fluid below)
 //   - mk-display / mk-main are class names on the display figure and the main column
 
-const proposed = ['month-view', 'add-expense', 'settings', 'today', 'widgets'] as const;
+const routes = ['month-view', 'add-expense', 'settings', 'today', 'widgets'] as const;
 const url = (route: string, q = 'live=off') => `/__ui/mockups/${route}${q ? `?${q}` : ''}`;
 const NAMES: Record<string, string> = {
   currency: 'Currency',
@@ -165,7 +165,7 @@ test.describe('@mockup behaviour', () => {
     await page.getByTestId('month-next').click();
     await expect(label).not.toHaveText(before);
     await page.getByTestId('theme-toggle').getByRole('radio', { name: 'Dark' }).check();
-    await expect(page.locator('[data-identity="proposed"]')).toHaveAttribute('data-theme', 'dark');
+    await expect(page.locator('[data-mockup-root]')).toHaveAttribute('data-theme', 'dark');
     expect(api).toEqual([]);
   });
 
@@ -175,7 +175,7 @@ test.describe('@mockup behaviour', () => {
     const api = noApi(page);
     await page.emulateMedia({ colorScheme: 'light' });
     await page.goto(url('month-view'));
-    const wrap = page.locator('[data-identity="proposed"]');
+    const wrap = page.locator('[data-mockup-root]');
     const bg = () =>
       wrap.evaluate((e) => getComputedStyle(e).getPropertyValue('--color-bg').trim());
     const toggle = page.getByTestId('theme-toggle');
@@ -269,7 +269,7 @@ async function timings(page: Page): Promise<Timing[]> {
 }
 
 test.describe('@mockup motion', () => {
-  for (const route of proposed) {
+  for (const route of routes) {
     test(`@mockup reduced motion: no durations on ${route}`, async ({ page }) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await page.goto(url(route));
@@ -294,7 +294,7 @@ test.describe('@mockup motion', () => {
 });
 
 test.describe('@mockup fluid', () => {
-  for (const route of proposed) {
+  for (const route of routes) {
     // Display belongs to the departure tile only (DESIGN.md §Typography), so only the month view
     // and the add-expense sheet (month view as backdrop) have one; every route has the gutter.
     const hasDisplay = route === 'month-view' || route === 'add-expense';

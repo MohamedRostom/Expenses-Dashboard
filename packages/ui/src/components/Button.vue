@@ -50,7 +50,7 @@ withDefaults(
 }
 .desk-btn.primary {
   background: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-accent-fg);
 }
 .desk-btn.secondary {
   background: transparent;

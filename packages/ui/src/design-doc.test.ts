@@ -9,7 +9,6 @@ import { describe, expect, it } from 'vitest';
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const doc = readFileSync(join(root, 'DESIGN.md'), 'utf-8').replace(/\r\n/g, '\n');
 const tokensCss = readFileSync(join(root, 'packages/ui/src/tokens.css'), 'utf-8').toLowerCase();
-const proposedPath = join(root, 'apps/web/src/catalogue/proposed-tokens.css');
 
 const fm = doc.match(/^---\n([\s\S]*?)\n---\n/);
 const frontmatter = fm?.[1] ?? '';
@@ -80,12 +79,7 @@ describe('DESIGN.md (data-model.md §Design direction)', () => {
       m[1]!.toLowerCase(),
     );
     expect(values.length).toBeGreaterThan(0);
-    const state = section('Overview').match(/^State:\s*(\S+)/m)?.[1];
-    const sources =
-      state === 'Proposed' && existsSync(proposedPath)
-        ? tokensCss + readFileSync(proposedPath, 'utf-8').toLowerCase()
-        : tokensCss;
-    expect(values.filter((v) => !sources.includes(v))).toEqual([]);
+    expect(values.filter((v) => !tokensCss.includes(v))).toEqual([]);
   });
 
   it('has the eight canonical sections, then the seven spec sections, in order', () => {

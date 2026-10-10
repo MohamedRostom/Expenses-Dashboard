@@ -20,7 +20,6 @@ import {
   type WidgetKind,
   type WidgetState,
 } from '../fixtures-widgets.js';
-import '../proposed-tokens.css';
 import './board.css';
 import './widgets.css';
 
@@ -124,7 +123,7 @@ function openSettings(kind: WidgetKind) {
 </script>
 
 <template>
-  <div data-identity="proposed">
+  <div data-mockup-root>
     <div data-mockup="widgets">
       <BoardHeader current="month" />
       <main class="mk-main">

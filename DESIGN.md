@@ -1,6 +1,6 @@
 ---
 name: Desk (working name)
-description: A multi-currency expense tracker. Proposed identity "Concourse Board" (ADR-0006); the incumbent Ledger Desk is the fallback.
+description: A multi-currency expense tracker. Identity "Concourse Board" (ADR-0006, accepted 2026-10-10).
 colors:
   signal-green: "#0e3d2a"
   signal-green-dark: "#2c7452"
@@ -153,13 +153,13 @@ components:
 
 # Design System: Desk (working name)
 
-<!-- Spec 004 T025, 2026-10-05: the proposed direction. The frontmatter describes the proposed identity, whose values live in apps/web/src/catalogue/proposed-tokens.css (T026) until ADR-0006 is decided in T028. Shipped screens keep the incumbent values in packages/ui/src/tokens.css, recorded under ## Fallback. -->
+<!-- Spec 004 T025, 2026-10-05; approved 2026-10-10 (T028, ADR-0006 accepted). The frontmatter is normative and its values live in packages/ui/src/tokens.css. The incumbent Ledger Desk, not taken, is recorded under ## Fallback. -->
 
 ## Overview
 
 **Creative North Star: "Concourse Board"**
 
-State: Proposed (ADR-0006 open; fallback is the Ledger Desk, see ## Fallback)
+State: Approved (ADR-0006 accepted 2026-10-10; the Ledger Desk fallback was not taken)
 
 Desk reads like the departure board in a rail concourse. A thousand travellers read it in one glance because every row keeps the same columns, every figure sits in its own cell, and status is said once, in a fixed place, in a colour that means one thing: amber is delayed, red is cancelled. On Desk the rows are the month's entries ranked by date, the cells hold amounts in tabular figures, amber marks an expense whose rate is still pending, and red marks a category over budget. When a pending rate arrives, the converted amount flips into place, once.
 
@@ -383,18 +383,17 @@ From `Skill: design-taste-frontend` (design read: daily-use finance product UI f
 
 Coded mock-ups on the dev-only catalogue route (built in T027; preview deployments with `VITE_UI_CATALOGUE=true`):
 
-- Month view, proposed: `/__ui/mockups/month-view` (also `?state=loading|empty|error` and `?fixture=edge`)
-- Add expense, proposed: `/__ui/mockups/add-expense`
-- Settings, proposed: `/__ui/mockups/settings`
-- Month view, fallback (Ledger Desk refined): `/__ui/mockups/month-view-fallback`
-- Today, proposed: `/__ui/mockups/today` (calendar and inbox panels plus the widget strip; T027a)
-- Widgets, proposed: `/__ui/mockups/widgets` (every widget in its default, loading, empty, error and stale states, plus the add-widget and widget-settings sheets; T027a)
-- Every proposed mock-up is interactive over fixtures (switch month, add or remove an expense or widget, reorder, open sheets, switch theme) and plays simulated live data unless `?live=off`; the visual baselines load with `?live=off`.
+- Month view: `/__ui/mockups/month-view` (also `?state=loading|empty|error` and `?fixture=edge`)
+- Add expense: `/__ui/mockups/add-expense`
+- Settings: `/__ui/mockups/settings`
+- Today: `/__ui/mockups/today` (calendar and inbox panels plus the widget strip; T027a)
+- Widgets: `/__ui/mockups/widgets` (every widget in its default, loading, empty, error and stale states, plus the add-widget and widget-settings sheets; T027a)
+- Every Concourse Board mock-up is interactive over fixtures (switch month, add or remove an expense or widget, reorder, open sheets, switch theme) and plays simulated live data unless `?live=off`; the visual baselines load with `?live=off`.
 - "Before" screenshots of the shipped screens: `docs/design/before/*.png` (T027)
 
 ## Fallback
 
-The refinement variant, applied if ADR-0006 is rejected: the incumbent capture of 2026-10-05, "The Ledger Desk", refined. Every Decisions row is `kept` except dark Critical Red, an AA fix that applies either way; the Focus Blue and status-colour adjustments belong to the board and do not carry over. The capture's five named rules apply unchanged: One Ink (Ledger Green), Status Is Not a Series, Focus Is Blue, Tabular Figures, Two Heights.
+Not taken: ADR-0006 was accepted on 2026-10-10. Kept as the record of the alternative. The refinement variant that would have applied had ADR-0006 been rejected: the incumbent capture of 2026-10-05, "The Ledger Desk", refined. Every Decisions row is `kept` except dark Critical Red, an AA fix that applies either way; the Focus Blue and status-colour adjustments belong to the board and do not carry over. The capture's five named rules apply unchanged: One Ink (Ledger Green), Status Is Not a Series, Focus Is Blue, Tabular Figures, Two Heights.
 
 Fallback values (normative frontmatter if the fallback is chosen):
 

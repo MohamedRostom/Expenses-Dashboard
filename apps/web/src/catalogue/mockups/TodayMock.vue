@@ -18,7 +18,6 @@ import {
   acct,
   type MockMessage,
 } from '../fixtures-today.js';
-import '../proposed-tokens.css';
 import './board.css';
 import './widgets.css';
 import './today.css';
@@ -64,7 +63,7 @@ onBeforeUnmount(() => clearTimeout(timer));
 </script>
 
 <template>
-  <div data-identity="proposed">
+  <div data-mockup-root>
     <div data-mockup="today">
       <BoardHeader current="month" />
       <main class="mk-main">

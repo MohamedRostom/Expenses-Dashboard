@@ -1,7 +1,7 @@
 # ADR-0006: Visual identity "Concourse Board", with the Ledger Desk as fallback
 
-**Status:** Proposed
-**Date:** 2026-10-05
+**Status:** Accepted (2026-10-10)
+**Date:** 2026-10-05 (proposed), 2026-10-10 (accepted)
 **Deciders:** Rostom (owner)
 **Relates to:** `DESIGN.md`, `specs/004-web-ui-refresh/spec.md` (FR-001, FR-002, FR-016), `.specify/memory/constitution.md` Principle VI, `apps/web/.impeccable/surfaces/apps-web.md`
 
@@ -13,9 +13,9 @@ On 2026-10-05 the owner asked for a full replacement world rather than an extens
 
 Two facts found while doing this bear on the decision. IBM Plex is declared in `packages/ui/src/tokens.css` but never loaded: the repo has no `@font-face` and no font package, so almost every user already sees `system-ui`. And the incumbent dark `--color-critical` equals the light value and measures about 2.8:1 on the dark ground, failing AA.
 
-## Decision (proposed)
+## Decision
 
-Adopt "Concourse Board" as the visual identity of Desk, as written in `DESIGN.md`. The replaced decisions, which are the delta the owner approves:
+Accepted by the owner on 2026-10-10 after reviewing the catalogue and the mock-ups (T027, T027a) on the preview. Adopt "Concourse Board" as the visual identity of Desk, as written in `DESIGN.md`. The replaced decisions, which are the delta the owner approves:
 
 | Decision | Incumbent | Proposed |
 |----------|-----------|----------|
@@ -30,11 +30,11 @@ New rules the identity brings: fixed columns; a row lamp (4px amber bar for a pe
 
 ## Fallback
 
-If this ADR is rejected, `DESIGN.md` `## Fallback` applies: the Ledger Desk refined. Every decision is kept except the dark critical AA fix (`#f0897c`), and only hierarchy, spacing, motion, states and consistency change. No second direction round is needed.
+Not taken: the ADR was accepted. Recorded for history. If this ADR had been rejected, `DESIGN.md` `## Fallback` would have applied: the Ledger Desk refined. Every decision is kept except the dark critical AA fix (`#f0897c`), and only hierarchy, spacing, motion, states and consistency change. No second direction round is needed.
 
 ## Consequences
 
-- Accepting replaces the type family and the incumbent green accent (with another green), both named in constitution Principle VI, so T028 amends Principle VI in the same change (MINOR version bump, Sync Impact Report, "Last Amended" date, this ADR as the amendment's ADR) and updates the "Design system" section of `CLAUDE.md`. Only the owner merges it.
+- Accepting replaces the type family and the incumbent green accent (with another green), both named in constitution Principle VI, so T028 amends Principle VI in the same change (constitution 1.1.1 → 1.2.0, 2026-10-10, this ADR as the amendment's ADR) and updates the "Design system" section of `CLAUDE.md`. Only the owner merges it.
 - Until a decision, the proposed values exist only in `apps/web/src/catalogue/proposed-tokens.css` under `[data-identity="proposed"]` (T026), seen in the catalogue and the mock-ups on dev and preview; shipped screens keep `packages/ui/src/tokens.css`. At the decision that file and its wrappers are deleted either way (T028).
 - The look change needs no feature flag (constitution v1.1.1). Screens adopt it one change at a time in Slice B (T031 to T042).
 - The arrival flip needs a small piece of block logic (play the transition only when a rendered value changes after first render); it lives in `Tile` and `DataTable`, uses CSS transitions only, and adds no dependency.

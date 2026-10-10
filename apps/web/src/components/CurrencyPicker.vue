@@ -150,6 +150,6 @@ function onKeydown(e: KeyboardEvent) {
 .currency-picker-item:hover,
 .currency-picker-item-active {
   background: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-accent-fg);
 }
 </style>

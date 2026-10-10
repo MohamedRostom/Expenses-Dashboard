@@ -56,7 +56,6 @@ import { content } from '../content';
 }
 .tagline {
   margin: 0 0 1.5rem;
-  opacity: 0.85;
 }
 .cta-link {
   /* Was <a><Button>...</Button></a> — a <button> nested inside an <a> is invalid HTML (two
@@ -71,7 +70,7 @@ import { content } from '../content';
   border-radius: 6px;
   text-decoration: none;
   background: var(--color-accent);
-  color: var(--color-bg);
+  color: var(--color-accent-fg);
 }
 .steps ol {
   list-style: none;
@@ -88,7 +87,7 @@ import { content } from '../content';
 }
 .step-number {
   display: inline-block;
-  color: var(--color-accent);
+  color: var(--color-fg);
   font-family: var(--font-mono);
   font-weight: bold;
 }
@@ -98,7 +97,6 @@ import { content } from '../content';
 }
 .steps p {
   margin: 0;
-  opacity: 0.85;
 }
 .screenshots {
   display: flex;

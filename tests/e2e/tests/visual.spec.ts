@@ -20,11 +20,6 @@ const stories = ['components', 'charts'].flatMap((d) =>
     .map((f) => f.replace(/\.story\.ts$/, '')),
 );
 
-// Known gap, decided 2026-10-05: dark --color-critical (#a83a2e, ~2.8:1) stays unchanged in Phase 2
-// because the look must not change; the fix is a design decision at T028 (see packages/ui
-// tokens.test.ts known-gap case). Only colour contrast in the dark column of these blocks is skipped.
-const DARK_CRITICAL_GAP_T028 = ['Button', 'ErrorState', 'Input', 'Select', 'PanelFrame'];
-
 const viewports = [
   { name: 'mobile', width: 360, height: 800 },
   { name: 'desktop', width: 1280, height: 800 },
@@ -56,10 +51,8 @@ for (const block of stories) {
     // Scoped to this block's columns, so app chrome on the page (e.g. the feedback widget) and other
     // blocks never fail this block's check.
     for (const theme of ['light', 'dark'] as const) {
-      const knownGap = theme === 'dark' && DARK_CRITICAL_GAP_T028.includes(block);
       await axeCheck(page, {
         include: `section#${block} [data-theme-col="${theme}"]`,
-        disableRules: knownGap ? ['color-contrast'] : [],
       });
     }
   });
@@ -69,22 +62,21 @@ for (const block of stories) {
 //
 // SHARED DOM CONTRACT for the mock-ups (also relied on by mockups.spec.ts):
 //   [data-mockup="<route>"]        on each mock-up root (month-view, add-expense, settings, today,
-//                                  widgets, month-view-fallback); today and widgets sit inside
-//                                  [data-identity="proposed"] like the other proposed routes
+//                                  widgets); all sit inside [data-mockup-root]
 //   [data-mockup-panel="<id>"]     on each panel (below-the-fold content gets an element snapshot per panel)
 //     today:   strip, calendar, inbox
 //     widgets: strip (interactive) and matrix (static, 5 widgets x 5 states, always rendered)
 //   [data-tile-primary="figure"]   on the primary tile figure (Display role, tabular-nums, the largest text)
 //   data-testid="category-name" (truncated with an ellipsis, full name as accessible name or title),
 //   data-testid="entry-amount" (right-aligned cells), data-testid="tile-amount" (inside its tile)
-//   [data-identity="proposed"]     wraps the five proposed mock-ups; month-view-fallback has no such wrapper
+//   [data-mockup-root]             wraps the five mock-ups
 // Query strings: `?state=loading|empty|error` on every route, `?state=stale` on widgets only,
 //   `?fixture=edge` on the month view, `?state=rate-arrives` (existing), `?sheet=add-widget|widget-settings`
-//   on widgets, `?live=off` stops all simulation on proposed routes (the settle-in still plays;
-//   animations:'disabled' fast-forwards it). Every proposed-route visual test merges live=off.
+//   on widgets, `?live=off` stops all simulation on every mock-up route (the settle-in still plays;
+//   animations:'disabled' fast-forwards it). Every mock-up visual test merges live=off.
 // Theme: visual tests use `prefers-color-scheme` (emulateMedia). Interactively,
 //   data-testid="theme-toggle" is a radiogroup (Light, Dark, System) in the header that sets
-//   data-theme on the [data-identity="proposed"] wrapper; nothing is stored.
+//   data-theme on the [data-mockup-root] wrapper; nothing is stored.
 // Month switcher: month-prev, month-next, month-label testids (month-view and settings).
 // Expenses: an add-expense button opens a role="dialog" sheet (fields Amount, Category, Note; submit
 //   "Add expense"). Rows are data-testid="entry-row", each with an entry-remove button
@@ -95,24 +87,17 @@ for (const block of stories) {
 // Live figures carry data-live="rate|weather|pace" and get class mk-flip when they change.
 // No mock-up makes an `/api` call and none needs auth, so no psql() or login helpers here.
 
-const mockupRoutes = [
-  'month-view',
-  'add-expense',
-  'settings',
-  'today',
-  'widgets',
-  'month-view-fallback',
-] as const;
+const mockupRoutes = ['month-view', 'add-expense', 'settings', 'today', 'widgets'] as const;
 const baseStates = ['default', 'loading', 'empty', 'error'] as const;
 const themes = ['light', 'dark'] as const;
 const statesFor = (route: string): readonly string[] =>
   route === 'widgets' ? [...baseStates, 'stale'] : baseStates;
-// Proposed routes get live=off merged into the query; the fallback route does not.
+// Every route gets live=off merged into the query.
 const mockupQ = (route: string, state = 'default', extra: Record<string, string> = {}) => {
   const q = new URLSearchParams();
   if (state !== 'default') q.set('state', state);
   for (const [k, v] of Object.entries(extra)) q.set(k, v);
-  if (route !== 'month-view-fallback') q.set('live', 'off');
+  q.set('live', 'off');
   const str = q.toString();
   return str ? `?${str}` : '';
 };
@@ -169,12 +154,8 @@ for (const route of mockupRoutes) {
         await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
         await page.goto(mockupUrl(route, state));
         await expect(page.locator(`[data-mockup="${route}"]`)).toBeVisible();
-        // Same known gap as DARK_CRITICAL_GAP_T028 above: dark critical red (~2.8:1) is decided at
-        // T028. Only colour contrast, only in dark, only for the fallback route and error states.
-        const knownGap = theme === 'dark' && (route === 'month-view-fallback' || state === 'error');
         await axeCheck(page, {
           include: `[data-mockup="${route}"]`,
-          disableRules: knownGap ? ['color-contrast'] : [],
         });
       }
     });

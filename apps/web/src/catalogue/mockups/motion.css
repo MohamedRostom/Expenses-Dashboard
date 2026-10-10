@@ -1,4 +1,4 @@
-/* T027a: motion for the proposed mock-ups (DESIGN.md §Motion). Imported by board.css. Every duration
+/* T027a: motion for the mock-ups (DESIGN.md §Motion). Imported by board.css. Every duration
    is a --motion-* token (fast 120, base 200, slow 280, all 0ms under reduced motion); only
    transform and opacity animate; nothing loops here (the skeleton pulse lives in board.css). */
 

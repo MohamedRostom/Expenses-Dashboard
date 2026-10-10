@@ -43,7 +43,7 @@ const marks = () =>
 describe('TodayMock contract', () => {
   it('sits in the proposed wrapper with strip, calendar and inbox panels', async () => {
     await mount();
-    expect($('[data-identity="proposed"] [data-mockup="today"]')).not.toBeNull();
+    expect($('[data-mockup-root] [data-mockup="today"]')).not.toBeNull();
     for (const p of ['strip', 'calendar', 'inbox']) expect(panel(p)).toBeTruthy();
     expect(panel('strip').querySelectorAll('[data-widget]')).toHaveLength(3);
     expect($('.mk-display')).toBeNull();

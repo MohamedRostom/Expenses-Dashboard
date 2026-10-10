@@ -7,7 +7,6 @@
 import { computed, nextTick, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Button, Input, Select, Skeleton } from '@desk/ui';
-import '../proposed-tokens.css';
 import './board.css';
 import MonthViewMock from './MonthViewMock.vue';
 import { useDialog } from './useDialog.js';
@@ -109,7 +108,7 @@ function submit() {
 </script>
 
 <template>
-  <div data-identity="proposed">
+  <div data-mockup-root>
     <div class="ae-backdrop" inert aria-hidden="true">
       <MonthViewMock backdrop />
     </div>

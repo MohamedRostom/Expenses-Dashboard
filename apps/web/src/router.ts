@@ -100,10 +100,6 @@ if (import.meta.env.VITE_UI_CATALOGUE === 'true') {
       component: () => import('./catalogue/mockups/SettingsMock.vue'),
     },
     {
-      path: '/__ui/mockups/month-view-fallback',
-      component: () => import('./catalogue/mockups/MonthViewFallbackMock.vue'),
-    },
-    {
       path: '/__ui/mockups/today',
       component: () => import('./catalogue/mockups/TodayMock.vue'),
     },

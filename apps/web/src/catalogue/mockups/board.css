@@ -1,19 +1,22 @@
-/* T027: the Concourse Board pieces shared by the three proposed mock-ups (DESIGN.md, ADR-0006).
-   Tokens only (drift ratchet). The `.desk-*` rules preview what T031–T042 do to each block when
-   it is restyled; until then they apply only inside [data-identity='proposed']. Deleted with the
-   mock-ups' proposed wrapper in T028. */
+/* T027: the Concourse Board pieces shared by the mock-ups (DESIGN.md, ADR-0006). Tokens only
+   (drift ratchet). The `.desk-*` rules preview what T031–T042 do to each block when it is restyled;
+   until Slice B restyles the real components they are mock-up-only styling, applied inside
+   [data-mockup-root]. */
 @import './motion.css';
 
-[data-identity='proposed'] {
+[data-mockup-root] {
   min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
   caret-color: var(--color-accent);
   accent-color: var(--color-accent);
 }
-[data-identity='proposed'] ::selection {
+[data-mockup-root] ::selection {
   background: var(--color-selection);
   color: var(--color-fg);
 }
-[data-identity='proposed'] :focus-visible {
+[data-mockup-root] :focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -424,7 +427,7 @@
 }
 
 /* Block previews: what the restyle in T031–T042 brings each block to (DESIGN.md §Components). */
-[data-identity='proposed'] .desk-btn.desk-btn {
+[data-mockup-root] .desk-btn.desk-btn {
   border-radius: var(--radius-sm);
   font-size: var(--text-sm);
   font-weight: 600;
@@ -432,24 +435,24 @@
   justify-content: center;
   transition: transform var(--motion-fast) var(--ease-standard);
 }
-[data-identity='proposed'] .desk-btn.desk-btn:active:not(:disabled) {
+[data-mockup-root] .desk-btn.desk-btn:active:not(:disabled) {
   transform: translateY(1px);
 }
-[data-identity='proposed'] .desk-btn.primary.primary {
+[data-mockup-root] .desk-btn.primary.primary {
   color: var(--color-accent-fg);
 }
-[data-identity='proposed'] .desk-btn.ghost.ghost {
+[data-mockup-root] .desk-btn.ghost.ghost {
   padding-inline: var(--space-3);
 }
 @media (min-width: 1024px) {
-  [data-identity='proposed'] .desk-btn.desk-btn {
+  [data-mockup-root] .desk-btn.desk-btn {
     min-height: var(--space-10);
   }
 }
-[data-identity='proposed'] .desk-field.desk-field {
+[data-mockup-root] .desk-field.desk-field {
   gap: var(--space-2);
 }
-[data-identity='proposed'] .desk-field-label.desk-field-label {
+[data-mockup-root] .desk-field-label.desk-field-label {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   font-weight: 600;
@@ -457,8 +460,8 @@
   text-transform: uppercase;
   color: var(--color-fg-muted);
 }
-[data-identity='proposed'] .desk-input.desk-input,
-[data-identity='proposed'] .desk-select.desk-select {
+[data-mockup-root] .desk-input.desk-input,
+[data-mockup-root] .desk-select.desk-select {
   box-sizing: border-box;
   width: 100%;
   font-size: var(--text-md);
@@ -468,16 +471,16 @@
   border-color: var(--color-border);
   background: var(--color-surface-raised);
 }
-[data-identity='proposed'] .desk-input.amount.amount {
+[data-mockup-root] .desk-input.amount.amount {
   text-align: right;
 }
-[data-identity='proposed'] .desk-input[type='date'].desk-input {
+[data-mockup-root] .desk-input[type='date'].desk-input {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 /* Skeleton: a blank flap (Board Ink at 6%) that pulses in opacity (it holds still under
    reduced motion: the duration becomes 0ms), instead of the shipped block's moving shimmer. */
-[data-identity='proposed'] .desk-skeleton.desk-skeleton {
+[data-mockup-root] .desk-skeleton.desk-skeleton {
   background: color-mix(in srgb, var(--color-fg) 6%, transparent);
   background-size: auto;
   animation: mk-pulse calc(var(--motion-slow) * 5) var(--ease-standard) infinite alternate;
@@ -487,45 +490,45 @@
     opacity: 0.5;
   }
 }
-[data-identity='proposed'] .desk-input.invalid.invalid,
-[data-identity='proposed'] .desk-select.invalid.invalid {
+[data-mockup-root] .desk-input.invalid.invalid,
+[data-mockup-root] .desk-select.invalid.invalid {
   border-color: var(--color-critical);
 }
-[data-identity='proposed'] .desk-field-error.desk-field-error {
+[data-mockup-root] .desk-field-error.desk-field-error {
   font-size: var(--text-sm);
 }
-[data-identity='proposed'] .desk-tab.desk-tab {
+[data-mockup-root] .desk-tab.desk-tab {
   font-size: var(--text-xs);
   font-weight: 600;
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   min-height: var(--target-min);
 }
-[data-identity='proposed'] .desk-tabpanel.desk-tabpanel {
+[data-mockup-root] .desk-tabpanel.desk-tabpanel {
   padding-top: var(--space-4);
 }
-[data-identity='proposed'] .desk-empty-desc.desk-empty-desc,
-[data-identity='proposed'] .desk-error-desc.desk-error-desc {
+[data-mockup-root] .desk-empty-desc.desk-empty-desc,
+[data-mockup-root] .desk-error-desc.desk-error-desc {
   font-size: var(--text-sm);
   opacity: 1;
   color: var(--color-fg-muted);
   max-width: 40ch;
 }
-[data-identity='proposed'] .desk-data-table.desk-data-table {
+[data-mockup-root] .desk-data-table.desk-data-table {
   font-size: var(--text-sm);
 }
-[data-identity='proposed'] .desk-data-table th,
-[data-identity='proposed'] .desk-data-table td {
+[data-mockup-root] .desk-data-table th,
+[data-mockup-root] .desk-data-table td {
   border-color: color-mix(in srgb, var(--color-border) 25%, transparent);
   padding: var(--space-2) var(--space-3);
 }
-[data-identity='proposed'] .desk-data-table thead th {
+[data-mockup-root] .desk-data-table thead th {
   font-size: var(--text-xs);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--color-fg-muted);
   border-color: var(--color-border);
 }
-[data-identity='proposed'] .desk-data-table td {
+[data-mockup-root] .desk-data-table td {
   text-align: right;
 }

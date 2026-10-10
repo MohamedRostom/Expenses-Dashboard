@@ -47,7 +47,7 @@ const flush = async () => {
 describe('WidgetsMock contract', () => {
   it('sits in the proposed wrapper with a strip and a static matrix of 5 widgets x 5 states', async () => {
     await mount();
-    expect($('[data-identity="proposed"] [data-mockup="widgets"]')).not.toBeNull();
+    expect($('[data-mockup-root] [data-mockup="widgets"]')).not.toBeNull();
     expect(order()).toEqual(DEFAULT_STRIP);
     expect($$('[data-mockup-panel="matrix"] [data-sample]')).toHaveLength(25);
   });

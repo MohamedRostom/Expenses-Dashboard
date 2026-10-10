@@ -16,9 +16,7 @@ describe('settings mock', () => {
 
     const radios = [...m.el.querySelectorAll('[data-testid="theme-toggle"] [role="radio"]')];
     (radios.find((r) => r.textContent?.trim() === 'Dark') as HTMLElement).click();
-    expect(m.el.querySelector('[data-identity="proposed"]')!.getAttribute('data-theme')).toBe(
-      'dark',
-    );
+    expect(m.el.querySelector('[data-mockup-root]')!.getAttribute('data-theme')).toBe('dark');
     expect(m.el.querySelectorAll('[data-testid="add-expense"]')).toHaveLength(1);
     expect(m.el.querySelectorAll('[data-testid="theme-toggle"]')).toHaveLength(1);
     m.unmount();

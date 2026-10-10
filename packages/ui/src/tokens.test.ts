@@ -85,9 +85,6 @@ describe('token contract', () => {
   });
 });
 
-// The contract also lists --color-focus on --color-accent at 3:1, but that is unreachable with the
-// current accents (bg:accent is ~5.5:1 light and ~8:1 dark; one colour would need >= 9:1 between
-// them). Left out for tokens.css until T028 sets the values; the proposed identity asserts it.
 const pairs: [string, string, number][] = [
   ['fg', 'bg', 4.5],
   ['fg', 'surface', 4.5],
@@ -102,6 +99,7 @@ const pairs: [string, string, number][] = [
   ['critical', 'surface', 4.5],
   ['focus', 'bg', 3],
   ['focus', 'surface', 3],
+  ['focus', 'accent', 3],
   ['border', 'bg', 3],
 ];
 describe('contrast pairs (WCAG 2.2 AA)', () => {
@@ -110,80 +108,96 @@ describe('contrast pairs (WCAG 2.2 AA)', () => {
     ['system dark', systemDark],
     ['explicit dark', explicitDark],
   ];
-  // Known gap kept on purpose: dark --color-critical stays #a83a2e (~2.7:1) because Phase 2 must not
-  // change how screens look; the fix is a design decision for T028 (spec 004 FR-002). `it.fails`
-  // turns red once the value is fixed, so this exception cannot outlive the fix.
-  const knownGap = (theme: string, fg: string) => theme !== 'light' && fg === 'critical';
   for (const [theme, tokens] of themes) {
-    it.each(pairs.filter(([fg]) => knownGap(theme, fg)))(
-      `${theme}: %s on %s >= %f (known gap until T028)`,
-      (fg, bg, min) => {
-        expect(
-          contrastRatio(resolve(tokens, `--color-${fg}`), resolve(tokens, `--color-${bg}`)),
-        ).toBeLessThan(min);
-      },
-    );
-    it.each(pairs.filter(([fg]) => !knownGap(theme, fg)))(
-      `${theme}: %s on %s >= %f`,
-      (fg, bg, min) => {
-        const ratio = contrastRatio(
-          resolve(tokens, `--color-${fg}`),
-          resolve(tokens, `--color-${bg}`),
-        );
-        expect(ratio).toBeGreaterThanOrEqual(min);
-      },
-    );
+    it.each(pairs)(`${theme}: %s on %s >= %f`, (fg, bg, min) => {
+      const ratio = contrastRatio(
+        resolve(tokens, `--color-${fg}`),
+        resolve(tokens, `--color-${bg}`),
+      );
+      expect(ratio).toBeGreaterThanOrEqual(min);
+    });
   }
 });
 
-// T026: the proposed identity (ADR-0006, DESIGN.md "Concourse Board") lives only in this file,
-// scoped under [data-identity='proposed'], until T028 deletes it or moves it into tokens.css.
-const PROPOSED = 'apps/web/src/catalogue/proposed-tokens.css';
-describe('proposed identity tokens (T026)', () => {
-  const path = join(root, PROPOSED);
-  it('exists', () => expect(existsSync(path)).toBe(true));
-  if (!existsSync(path)) return;
-  const p = parseRules(readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, ''));
-  const scoped = "[data-identity='proposed']";
-  const pLight = rule(scoped, p);
-  const blocks: [string, Tokens][] = [
-    ['light', pLight],
-    [
-      'forced light',
-      rule(`:root [data-theme='light'] ${scoped}, :root ${scoped}[data-theme='light']`, p),
-    ],
-    ['system dark', rule(`:root:not([data-theme='light']) ${scoped}`, p)],
-    [
-      'explicit dark',
-      rule(
-        `:root[data-theme='dark'] ${scoped}, :root [data-theme='dark'] ${scoped}, :root ${scoped}[data-theme='dark']`,
-        p,
-      ),
-    ],
-  ];
-  it('every rule is scoped under the proposed wrapper', () =>
-    expect(p.filter((r) => !r.selector.includes(scoped))).toEqual([]));
-  it('forced light repeats the light values', () => expect(blocks[1]![1]).toEqual(pLight));
-  for (const [theme, tokens] of blocks) {
-    it.each([...colours, ...shadows])(`${theme}: %s is defined`, (n) =>
-      expect(tokens.has(n)).toBe(true),
+// Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10).
+const LIGHT: Record<string, string> = {
+  bg: '#e8eaeb',
+  surface: '#f6f7f7',
+  'surface-raised': '#ffffff',
+  border: '#6a727a',
+  fg: '#14171b',
+  'fg-muted': '#4b535b',
+  accent: '#0e3d2a',
+  'accent-fg': '#f6f7f7',
+  focus: '#4d80da',
+  warn: '#8a5a00',
+  critical: '#b00020',
+  selection: '#d8e6de',
+};
+const DARK: Record<string, string> = {
+  bg: '#0e1114',
+  surface: '#171b20',
+  'surface-raised': '#1f242a',
+  border: '#5d656e',
+  fg: '#f2f2ee',
+  'fg-muted': '#a7adb3',
+  accent: '#2c7452',
+  'accent-fg': '#f2f2ee',
+  focus: '#a6caff',
+  warn: '#ffb000',
+  critical: '#ff6b6b',
+  selection: '#20332b',
+};
+describe('Concourse Board identity values (ADR-0006)', () => {
+  it.each(Object.entries(LIGHT))('light --color-%s is %s', (n, v) =>
+    expect(light.get(`--color-${n}`)).toBe(v),
+  );
+  for (const [theme, tokens] of [
+    ['system dark', systemDark],
+    ['explicit dark', explicitDark],
+  ] as const)
+    it.each(Object.entries(DARK))(`${theme} --color-%s is %s`, (n, v) =>
+      expect(tokens.get(`--color-${n}`)).toBe(v),
     );
-    it.each([...pairs, ['focus', 'accent', 3] as [string, string, number]])(
-      `${theme}: %s on %s >= %f`,
-      (fg, bg, min) => {
-        const get = (n: string) => tokens.get(`--color-${n}`) ?? pLight.get(`--color-${n}`)!;
-        expect(contrastRatio(get(fg), get(bg))).toBeGreaterThanOrEqual(min);
-      },
+  it('uses system font stacks', () => {
+    expect(light.get('--font-sans')).toBe(
+      "system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
     );
-  }
+    expect(light.get('--font-mono')).toBe(
+      "ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace",
+    );
+  });
+  it('has 2/4/8px radii and 0.08em wide tracking', () => {
+    expect([light.get('--radius-sm'), light.get('--radius-md'), light.get('--radius-lg')]).toEqual([
+      '2px',
+      '4px',
+      '8px',
+    ]);
+    expect(light.get('--tracking-wide')).toBe('0.08em');
+  });
+  it('has the specified shadows', () => {
+    expect(light.get('--shadow-raised')).toBe(
+      '0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06)',
+    );
+    expect(light.get('--shadow-overlay')).toBe(
+      '0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08)',
+    );
+    for (const tokens of [systemDark, explicitDark]) {
+      expect(tokens.get('--shadow-raised')).toBe(
+        '0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35)',
+      );
+      expect(tokens.get('--shadow-overlay')).toBe(
+        '0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45)',
+      );
+    }
+  });
+  it('system dark and explicit dark agree on every colour and shadow', () => {
+    for (const n of [...colours, ...shadows])
+      expect(systemDark.get(n), n).toBe(explicitDark.get(n));
+  });
 });
 
-// T027a: motion and fluid-layout tokens exist only in the proposed file until T028 promotes them.
-describe('proposed motion and fluid tokens (T027a)', () => {
-  const path = join(root, PROPOSED);
-  const raw = existsSync(path) ? readFileSync(path, 'utf-8').replace(/\/\*[\s\S]*?\*\//g, '') : '';
-  const p = parseRules(raw);
-  const all = new Map(p.flatMap((r) => [...r.tokens]).reverse()); // first rule wins; reduced block is last
+describe('motion and fluid tokens', () => {
   /** Resolves `clamp(min, a rem + b vw, max)` at a viewport width, in rem (16px). */
   function clampRem(value: string, vw: number): number {
     const m = value.match(
@@ -193,26 +207,25 @@ describe('proposed motion and fluid tokens (T027a)', () => {
     const [lo, a, b, hi] = m.slice(1).map(Number) as [number, number, number, number];
     return Math.min(hi, Math.max(lo, a + (b * vw) / 100 / 16));
   }
-  it('--motion-stagger is 40ms', () => expect(all.get('--motion-stagger')).toBe('40ms'));
+  it('--motion-stagger is 40ms, 0ms under reduced motion', () => {
+    expect(light.get('--motion-stagger')).toBe('40ms');
+    expect(reduced.get('--motion-stagger')).toBe('0ms');
+  });
   it('--text-display-fluid is 2rem at 360 and 2.5rem at 1280', () => {
-    const v = all.get('--text-display-fluid')!;
+    const v = light.get('--text-display-fluid')!;
     expect(v).toMatch(/^clamp\(2rem,/);
     expect(clampRem(v, 360)).toBeCloseTo(2, 2);
     expect(clampRem(v, 1280)).toBeCloseTo(2.5, 2);
   });
   it('--gutter-fluid is 1rem at 360 and 2rem at 768', () => {
-    const v = all.get('--gutter-fluid')!;
+    const v = light.get('--gutter-fluid')!;
     expect(v).toMatch(/^clamp\(1rem,/);
     expect(clampRem(v, 360)).toBeCloseTo(1, 2);
     expect(clampRem(v, 768)).toBeCloseTo(2, 2);
   });
-  it('reduced motion sets --motion-stagger to 0ms', () => {
-    const block = raw.match(/@media \(prefers-reduced-motion: reduce\)\s*\{[\s\S]*$/)?.[0] ?? '';
-    expect(parseRules(block).some((r) => r.tokens.get('--motion-stagger') === '0ms')).toBe(true);
-  });
   it.each(['--motion-stagger', '--text-display-fluid', '--gutter-fluid'])(
-    '%s is absent from tokens.css',
-    (n) => expect(css).not.toContain(n),
+    '%s is present in tokens.css',
+    (n) => expect(css).toContain(n),
   );
 });
 
@@ -222,7 +235,9 @@ describe('motion contract', () => {
       expect(reduced.get(n)).toBe('0ms');
   });
   it('no duration exceeds 300ms', () => {
-    const durations = [...light].filter(([n]) => n.startsWith('--motion-'));
+    const durations = [...light].filter(([n]) =>
+      ['--motion-fast', '--motion-base', '--motion-slow'].includes(n),
+    );
     expect(durations.length).toBe(3);
     for (const [, v] of durations) expect(parseFloat(v)).toBeLessThanOrEqual(300);
   });
@@ -269,7 +284,6 @@ function styleLines(file: string): [number, string][] {
 const driftFiles = ['apps/web/src', 'apps/landing/src', 'packages/ui/src/components']
   .flatMap((d) => [...walk(join(root, d), '.vue'), ...walk(join(root, d), '.css')])
   .map(repoPath)
-  .filter((f) => f !== PROPOSED) // a token source, like tokens.css; deleted in T028
   .sort();
 function driftHits(path: string): string[] {
   return styleLines(join(root, path)).flatMap(([n, l]) =>
