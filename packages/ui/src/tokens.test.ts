@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './contrast.js';
@@ -313,5 +313,101 @@ describe('story inventory ratchet', () => {
   });
   it('no pending block already has a story', () => {
     expect(listed.filter((b) => !blocks.includes(b) || hasStory(b))).toEqual([]);
+  });
+});
+
+describe('block inventory (contracts/blocks.md)', () => {
+  const plain = (s: string) => s.replace(/[`*_]/g, '').replace(/\s+/g, ' ').trim();
+  const spec = readFileSync(join(root, 'specs/004-web-ui-refresh/contracts/blocks.md'), 'utf-8');
+  const table = spec.split('## Inventory')[1]!.split('\n## ')[0]!;
+  const inventory = table
+    .split(/\r?\n/)
+    .filter((l) => /^\| `/.test(l))
+    .map((l) => {
+      const cells = l
+        .split('|')
+        .slice(1, -1)
+        .map((c) => c.trim());
+      // backticked tokens, minus parenthesised remarks and anything after "sizes"
+      const tokens = (cell: string) =>
+        [
+          ...cell
+            .replace(/\([^)]*\)/g, '')
+            .split('sizes')[0]!
+            .matchAll(/`([^`]+)`/g),
+        ].map((m) => m[1]!);
+      return {
+        block: /`([^`]+)`/.exec(cells[0]!)![1]!,
+        purpose: plain(cells[1]!),
+        variants: tokens(cells[2]!),
+        states: tokens(cells[3]!),
+      };
+    });
+  const charts = ['CategoryBars', 'TrendSparkline', 'YearBars'];
+  const dir = (b: string) => join(here, charts.includes(b) ? 'charts' : 'components');
+
+  // Variants/states the contract lists but the component does not implement yet (reported to the
+  // main session, not a story problem). The ratchet below fails when one is fixed, so remove it.
+  const unsupported: Record<string, string[]> = {
+    PanelFrame: ['variant:compact'],
+    Skeleton: ['variant:row'],
+    EmptyState: ['variant:inline'],
+    ErrorState: ['variant:inline'],
+    Dialog: ['state:loading'],
+    DataTable: ['state:loading'],
+  };
+
+  it('parses every inventory row', () => {
+    expect(inventory.map((i) => i.block)).toHaveLength(15);
+  });
+  const loadStory = async (block: string) =>
+    (charts.includes(block)
+      ? await import(`./charts/${block}.story.ts`)
+      : await import(`./components/${block}.story.ts`)
+    ).default;
+  it.each(inventory.map((i) => [i.block, i] as const))('%s matches its row', async (_b, row) => {
+    expect(existsSync(join(here, 'components', `${row.block}.vue`))).toBe(true);
+    expect(existsSync(join(dir(row.block), `${row.block}.story.ts`))).toBe(true);
+    const story = await loadStory(row.block);
+    expect(story.title).toBe(row.block);
+    expect(plain(story.purpose ?? '')).toBe(row.purpose);
+    const has = (list: { name: string }[], v: string) => list.some((s) => s.name === v);
+    const missing = [
+      ...row.variants.filter((v) => !has(story.variants, v)).map((v) => `variant:${v}`),
+      ...row.states.filter((v) => !has(story.states, v)).map((v) => `state:${v}`),
+    ];
+    expect(missing).toEqual(unsupported[row.block] ?? []);
+  });
+
+  // Stories without a usage string yet; T045 writes them and deletes this list (the `.rejects`
+  // below goes red for any block that gains usage while still listed).
+  const usageMissingUntilT045 = [
+    'Button',
+    'Input',
+    'Select',
+    'Toast',
+    'Tabs',
+    'MenuButton',
+    'ThemeToggle',
+    'Kbd',
+  ];
+  it.each(inventory.map((i) => [i.block] as const))('%s has a usage example', async (block) => {
+    const story = await loadStory(block);
+    const run = async () => {
+      expect(story.usage ?? '').not.toBe('');
+      expect(story.usage).toContain(`<${block}`);
+    };
+    // T045: drop the list and always `await run()`
+    if (usageMissingUntilT045.includes(block)) await expect(run()).rejects.toThrow();
+    else await run();
+  });
+
+  it('every story file belongs to the inventory or the three charts', () => {
+    const known = new Set([...inventory.map((i) => i.block), ...charts]);
+    const files = ['components', 'charts']
+      .flatMap((d) => walk(join(here, d), '.story.ts'))
+      .map((f) => basename(f).replace('.story.ts', ''));
+    expect(files.filter((f) => !known.has(f))).toEqual([]);
+    expect(charts.every((c) => files.includes(c))).toBe(true);
   });
 });

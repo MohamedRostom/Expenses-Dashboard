@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Button',
+  purpose: 'actions',
   variants: [
     { name: 'primary', props: { variant: 'primary' } },
     { name: 'secondary', props: { variant: 'secondary' } },

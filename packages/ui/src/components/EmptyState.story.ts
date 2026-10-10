@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'EmptyState',
+  purpose: 'explains an empty panel and offers the next action',
   variants: [
     { name: 'default', props: { title: 'No expenses yet', description: 'Add your first one.' } },
   ],

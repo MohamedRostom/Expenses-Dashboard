@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'PanelFrame',
+  purpose: 'titled panel with header actions',
   variants: [
     {
       name: 'default',

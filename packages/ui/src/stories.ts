@@ -6,6 +6,8 @@ export interface StoryCase {
 
 export interface Story {
   title: string;
+  /** One line, equal to the Purpose column of contracts/blocks.md. */
+  purpose: string;
   variants: StoryCase[];
   states: StoryCase[];
   usage?: string;

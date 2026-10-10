@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Select',
+  purpose: 'single choice',
   variants: [
     {
       name: 'native',

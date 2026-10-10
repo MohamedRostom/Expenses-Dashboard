@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Dialog',
+  purpose: 'modal, bottom sheet on phone, side panel on desktop',
   variants: [
     { name: 'center', props: { open: true, title: 'Add widget', placement: 'center' } },
     { name: 'bottom', props: { open: true, title: 'Add widget', placement: 'bottom' } },

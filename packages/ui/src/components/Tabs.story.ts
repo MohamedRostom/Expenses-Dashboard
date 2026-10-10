@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Tabs',
+  purpose: 'switch between views',
   variants: [
     {
       name: 'underline',
