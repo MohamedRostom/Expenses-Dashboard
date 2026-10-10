@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- docs: DESIGN.md "Building a new panel" is a finished walkthrough (PanelFrame, the three states, figures, layout-only CSS, new-block story, checks), with a test that it is no longer a stub (T046).
 - ui: every catalogue story has a `usage` example, rendered at `/__ui` as a live cell per theme plus its source, under a new index of all blocks with their purpose; Dialog and Toast get an `inline` mode so they render in the catalogue, Skeleton gains a `row` shape and DataTable a `loading` state (skeleton rows, `aria-busy`), the dark column no longer occludes wide blocks at 360px (columns stack), and unbuilt `compact`/`inline`/Dialog `loading` entries are dropped from contracts/blocks.md (T045).
 - e2e: visual tests for catalogue usage examples (live cell per theme, source block, index links, inline Dialog/Toast, DataTable 360px layout), red until the catalogue renders them in T045 (T044).
 - ui: block-inventory test in `tokens.test.ts` (every block in contracts/blocks.md has a component and a story whose title, purpose, variants and states match; usage strings still pending until T045) and a required `purpose` on every story (T043).
