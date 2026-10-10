@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- e2e: visual tests for catalogue usage examples (live cell per theme, source block, index links, inline Dialog/Toast, DataTable 360px layout), red until the catalogue renders them in T045 (T044).
 - ui: block-inventory test in `tokens.test.ts` (every block in contracts/blocks.md has a component and a story whose title, purpose, variants and states match; usage strings still pending until T045) and a required `purpose` on every story (T043).
 - ui: Concourse Board identity (ADR-0006) is now the shipped token set; proposed-tokens, the data-identity wrapper and the fallback mock-up are gone (T028).
 - UI refresh direction, mock-ups round two (spec 004 T027a, dev and preview only): Today (`/__ui/mockups/today`) and widgets (`/__ui/mockups/widgets`, every widget in every state plus both sheets) mock-ups; every proposed mock-up is now interactive over fixtures (switch month, add and remove an expense with undo, add, remove and reorder widgets by drag or keyboard, theme toggle), plays simulated live data unless `?live=off`, lays out fluidly with container queries, and moves at DESIGN.md's raised motion intensity (settle-in, list glide, bar growth on a month change, hover lift), all under 280 ms and off under reduced motion.

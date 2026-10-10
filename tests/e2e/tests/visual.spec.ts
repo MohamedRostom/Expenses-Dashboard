@@ -271,3 +271,111 @@ for (const sheet of ['add-widget', 'widget-settings']) {
     }
   });
 }
+
+// T044: usage examples in the catalogue (red until T045 builds them).
+//
+// DOM contract, added to each story's section (and one index at the top of the page):
+//   <section id="<Block>" data-story="<Block>">
+//     ... existing theme columns ...
+//     <div data-usage="<Block>">
+//       <div data-theme-col="light"><div data-theme="light"><div data-usage-live>live cell</div></div></div>
+//       <div data-theme-col="dark"><div data-theme="dark"><div data-usage-live>live cell</div></div></div>
+//       <pre data-usage-source>...usage string...</pre>
+//     </div>
+//   </section>
+//   <nav data-catalogue-index> <a href="#<Block>" data-index-link>...</a> + purpose text per block </nav>
+test.describe('@visual usage examples (T044)', () => {
+  const usageThemes = ['light', 'dark'] as const;
+  const overlays = ['Dialog', 'Toast'];
+
+  for (const block of stories) {
+    for (const vp of viewports) {
+      for (const theme of usageThemes) {
+        test(`@visual usage ${block} ${theme} ${vp.name}`, async ({ page }) => {
+          const apiCalls: string[] = [];
+          page.on('request', (r) => {
+            if (new URL(r.url()).pathname.startsWith('/api')) apiCalls.push(r.url());
+          });
+          await page.setViewportSize({ width: vp.width, height: vp.height });
+          await page.goto(`/__ui#${block}`);
+          const live = page
+            .locator(`[data-usage="${block}"] [data-theme-col="${theme}"] [data-usage-live]`)
+            .first();
+          await expect(live).toBeVisible();
+          await expect(live).toHaveScreenshot(`usage-${block}-${theme}-${vp.name}.png`);
+          expect(apiCalls).toEqual([]);
+        });
+      }
+
+      test(`@visual usage source ${block} ${vp.name}`, async ({ page }) => {
+        await page.setViewportSize({ width: vp.width, height: vp.height });
+        await page.goto(`/__ui#${block}`);
+        const source = page.locator(`[data-usage="${block}"] pre[data-usage-source]`);
+        await expect(source).toBeVisible();
+        expect((await source.textContent())?.trim()).toContain(`<${block}`);
+        await expect(source).toHaveScreenshot(`usage-source-${block}-${vp.name}.png`);
+      });
+    }
+
+    test(`@visual usage ${block} axe in both themes`, async ({ page }) => {
+      await page.goto(`/__ui#${block}`);
+      await expect(page.locator(`[data-usage="${block}"]`)).toBeVisible();
+      for (const theme of usageThemes) {
+        await axeCheck(page, {
+          include: `[data-usage="${block}"] [data-theme-col="${theme}"]`,
+        });
+      }
+    });
+  }
+
+  for (const block of overlays.filter((b) => stories.includes(b))) {
+    test(`@visual usage ${block} renders inline`, async ({ page }) => {
+      await page.goto(`/__ui#${block}`);
+      for (const theme of usageThemes) {
+        const live = page
+          .locator(`[data-usage="${block}"] [data-theme-col="${theme}"] [data-usage-live]`)
+          .first();
+        await expect(live).toBeVisible();
+        const inside = live.locator(
+          block === 'Dialog' ? '[role="dialog"]' : '[role="status"], [role="alert"]',
+        );
+        await expect(inside.first()).toBeVisible();
+        const position = await inside.first().evaluate((el) => getComputedStyle(el).position);
+        expect(position).not.toBe('fixed');
+      }
+    });
+  }
+
+  test('@visual catalogue index links every block', async ({ page }) => {
+    await page.goto('/__ui');
+    const links = page.locator('[data-catalogue-index] a[data-index-link]');
+    await expect(links).toHaveCount(stories.length);
+    for (const block of stories) {
+      const link = page.locator(`[data-catalogue-index] a[data-index-link][href="#${block}"]`);
+      await expect(link).toHaveCount(1);
+      await expect(page.locator(`[data-catalogue-index]`)).toContainText(/\S/);
+    }
+    const last = stories[stories.length - 1]!;
+    await page.locator(`[data-catalogue-index] a[href="#${last}"]`).click();
+    await expect(page.locator(`section#${last}`)).toBeInViewport();
+  });
+
+  test('@visual DataTable columns do not overlap at 360px', async ({ page }) => {
+    await page.setViewportSize({ width: 360, height: 800 });
+    await page.goto('/__ui#DataTable');
+    const section = page.locator('section#DataTable');
+    const light = (await section.locator('[data-theme-col="light"]').first().boundingBox())!;
+    const dark = (await section.locator('[data-theme-col="dark"]').first().boundingBox())!;
+    const separate = dark.y >= light.y + light.height - 1 || dark.x >= light.x + light.width - 1;
+    expect(separate).toBe(true);
+    const header = section.locator('[data-theme-col="dark"] th', { hasText: 'Budget' }).first();
+    await header.scrollIntoViewIfNeeded();
+    await expect(header).toBeVisible();
+    const topmost = await header.evaluate((el) => {
+      const r = el.getBoundingClientRect();
+      const hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return hit === el || el.contains(hit);
+    });
+    expect(topmost).toBe(true);
+  });
+});
