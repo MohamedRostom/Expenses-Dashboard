@@ -20,6 +20,8 @@ function render(s: Story, v: StoryCase, st: StoryCase): VNode {
   const slot = slotLabel.has(s.title) ? { default: () => v.name } : undefined;
   return h((ui as unknown as Record<string, Component>)[s.title]!, props, slot);
 }
+// The usage example is the plain first variant: a story's first state (often 'empty') would hide it.
+const noState: StoryCase = { name: 'usage', props: {} };
 const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, p.st);
 </script>
 
@@ -59,7 +61,7 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
           <div v-for="t in themes" :key="t" :data-theme-col="t">
             <div :data-theme="t" class="cat-theme">
               <div data-usage-live class="cat-cell">
-                <Cell :s="s" :v="s.variants[0]!" :st="s.states[0]!" />
+                <Cell :s="s" :v="s.variants[0]!" :st="noState" />
               </div>
             </div>
           </div>
