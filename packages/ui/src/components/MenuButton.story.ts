@@ -8,9 +8,11 @@ const items = [
 
 export default defineStory({
   title: 'MenuButton',
+  purpose: 'icon button opening a small menu',
   variants: [
     { name: 'icon', props: { variant: 'icon', label: 'Panel actions', items } },
     { name: 'label', props: { variant: 'label', label: 'Actions', items } },
   ],
   states: [{ name: 'closed' }],
+  usage: '<MenuButton variant="icon" label="Panel actions" :items="items" @select="onAction" />',
 });

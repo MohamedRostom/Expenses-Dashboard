@@ -8,12 +8,14 @@ const categories = [
 
 export default defineStory({
   title: 'DataTable',
+  purpose: 'aligned rows of entries',
   variants: [
     { name: 'default', props: { categories, caption: 'Spend by category' } },
     { name: 'dense', props: { categories, caption: 'Spend by category', dense: true } },
   ],
   states: [
     { name: 'sortable', props: { categories, caption: 'Spend by category', sortable: true } },
+    { name: 'loading', props: { categories: [], caption: 'Spend by category', loading: true } },
     { name: 'empty', props: { categories: [], caption: 'Spend by category' } },
   ],
   usage: '<DataTable :categories="rows" caption="Spend by category" sortable dense />',

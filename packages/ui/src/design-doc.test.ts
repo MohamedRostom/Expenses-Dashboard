@@ -119,4 +119,20 @@ describe('DESIGN.md (data-model.md §Design direction)', () => {
       ).toBe(true);
     }
   });
+
+  // T046: the contributor walkthrough is complete, not a stub.
+  it('Building a new panel is a finished walkthrough', () => {
+    const text = section('Building a new panel');
+    expect(text).not.toContain('Stub; completed in T046');
+    for (const term of [
+      'PanelFrame',
+      'causeMessages',
+      '.story.ts',
+      'usage',
+      'pnpm --filter @desk/ui test',
+      '/__ui',
+    ]) {
+      expect(text, `missing "${term}"`).toContain(term);
+    }
+  });
 });

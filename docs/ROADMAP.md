@@ -153,6 +153,7 @@ Not scheduled; captured so Phase 1's OAuth design leaves room for it.
   - **`needs-rostom`:** SC-007 (three outsiders add a weather widget unaided and describe what Desk stores), the SC-005 screen-reader reorder pass, and the SC-008 alert rehearsal (runbook `docs/runbooks/widgets-weather-quota.md`, once alert routing in `docs/runbooks/uptime.md` is filled in). None of these has been run: no date, no result.
 - Web UI refresh (ADR-0006, spec `specs/004-web-ui-refresh/`): the "Concourse Board" visual identity across every signed-in screen and the landing page, one screen per change; a look change, so no flag (constitution 1.1.1).
   - **SC-001 (direction approved within two review rounds): met.** Rostom approved the direction on 2026-10-10 after reviewing the catalogue and the mock-ups on the preview; ADR-0006 accepted, constitution amended to 1.2.0.
+  - **`needs-rostom`:** SC-006 (a new contributor builds a panel from the documented blocks in under 30 minutes, timed by a person other than the agent; DESIGN.md §Building a new panel). Not yet run: the agent run recorded there is not SC-006.
   - **`needs-rostom`:** SC-002 (at least four of five outsiders pick the unlabeled "after" mock-ups as more finished; before screenshots in `docs/design/before/`, after at `/__ui/mockups/*`). Not yet run: no date, no result.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.
 - Receipt attachments (R2 storage) and OCR of amounts.

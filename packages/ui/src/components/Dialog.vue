@@ -1,10 +1,17 @@
 <script setup lang="ts">
-import { nextTick, ref, watch } from 'vue';
+import { nextTick, ref, useId, watch } from 'vue';
 
 const props = withDefaults(
-  defineProps<{ open: boolean; title?: string; placement?: 'center' | 'bottom' | 'side' }>(),
+  defineProps<{
+    open: boolean;
+    title?: string;
+    placement?: 'center' | 'bottom' | 'side';
+    /** Catalogue mode: renders in place as a non-modal example (no Teleport, no trap). */
+    inline?: boolean;
+  }>(),
   { placement: 'center' },
 );
+const titleId = useId();
 const emit = defineEmits<{ close: [] }>();
 
 const dialogEl = ref<HTMLElement | null>(null);
@@ -16,6 +23,7 @@ let lastFocused: HTMLElement | null = null;
 const FOCUSABLE = 'a[href], input, button, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 function onKeydown(e: KeyboardEvent): void {
+  if (props.inline) return;
   if (e.key === 'Escape') emit('close');
   if (e.key !== 'Tab' || !dialogEl.value) return;
   // Focus trap: Tab past the last focusable wraps to the first, Shift+Tab before the first to the last.
@@ -38,6 +46,7 @@ function onKeydown(e: KeyboardEvent): void {
 watch(
   () => props.open,
   async (isOpen) => {
+    if (props.inline) return;
     if (isOpen) {
       lastFocused = document.activeElement as HTMLElement | null;
       await nextTick();
@@ -53,11 +62,11 @@ watch(
 </script>
 
 <template>
-  <Teleport to="body">
+  <Teleport to="body" :disabled="inline">
     <div
       v-if="open"
       class="desk-dialog-backdrop"
-      :class="`desk-dialog-backdrop--${placement}`"
+      :class="[`desk-dialog-backdrop--${placement}`, { 'desk-dialog-backdrop--inline': inline }]"
       @click.self="$emit('close')"
       @keydown="onKeydown"
     >
@@ -66,12 +75,12 @@ watch(
         class="desk-dialog"
         :class="`desk-dialog--${placement}`"
         role="dialog"
-        aria-modal="true"
+        :aria-modal="inline ? 'false' : 'true'"
         :aria-label="title ? undefined : 'Dialog'"
-        :aria-labelledby="title ? 'desk-dialog-title' : undefined"
+        :aria-labelledby="title ? titleId : undefined"
         tabindex="-1"
       >
-        <h2 v-if="title" id="desk-dialog-title" class="desk-dialog-header">{{ title }}</h2>
+        <h2 v-if="title" :id="titleId" class="desk-dialog-header">{{ title }}</h2>
         <div class="desk-dialog-body">
           <slot />
         </div>
@@ -124,5 +133,13 @@ watch(
 .desk-dialog--side {
   height: 100%;
   border-radius: 0;
+}
+/* Catalogue example: sits in the flow of its cell instead of covering the viewport. */
+.desk-dialog-backdrop--inline {
+  position: relative;
+  inset: auto;
+  z-index: auto;
+  min-height: 16rem;
+  background: var(--color-surface);
 }
 </style>

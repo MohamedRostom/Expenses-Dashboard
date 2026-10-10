@@ -418,10 +418,13 @@ What the fallback changes, and only this: tiles, panel frames and widget frames 
 
 ## Building a new panel
 
-Stub; completed in T046 (User Story 3).
+A panel is a titled region that loads, may be empty, may fail, and otherwise shows figures. Build it only from the blocks listed in `specs/004-web-ui-refresh/contracts/blocks.md`; every block is shown, in each theme, variant and state, at `/__ui` (run the web app with `VITE_UI_CATALOGUE=true`, then open `/__ui`). Each catalogue entry has a purpose line and a copy-ready `usage` snippet.
 
-1. Start from `PanelFrame` with a Title heading and the three state slots filled (Skeleton, EmptyState with one action, ErrorState with a `causeMessages` map).
-2. Put every figure in `Tile` or `DataTable` so it inherits the figure face, tabular numerals, fixed columns and the arrival flip.
-3. Say status with a row lamp and a word, never colour alone.
-4. Lay out with spacing tokens and whole columns only; no colour, type or motion rule in the screen file.
-5. Add a `.story.ts` beside any new block and a `SCREENS` entry in `tests/e2e/tests/visual.spec.ts`.
+1. Make the panel one `<section role="region">` labelled by its own heading (`aria-labelledby`), with the heading level one below the screen's `h1`. `PanelFrame` is the same region with a `heading` and exactly one state body (`kind` loading, empty or error); it has no slot for loaded content, so a panel that shows data renders its figures itself, inside the region it owns.
+2. Fill the three states, never a blank panel. Loading is `Skeleton` in the shape of the content (`text`, `tile`, `row` or `chart`). Empty is `EmptyState` with exactly one action in its `action` slot. Error is `PanelFrame kind="error"` (or `ErrorState`) with its `code`; wording that differs from the built-in copy is kept in a `causeMessages` record in the screen file keyed by error code and passed as `title` and `description`. Never one generic string, and the last good content stays visible when a refresh fails.
+3. Put every figure in `Tile` or `DataTable` so it gets the figure face, tabular numerals, fixed columns and the arrival flip. Say status with a row lamp and a word, never colour alone.
+4. Keep the screen file to layout: spacing tokens, grid or flex, `gap`, `max-width`. No colour, type or motion rule belongs there; the drift scan fails the build if one appears.
+5. If no block fits, add a new block rather than styling in the screen: a component, plus a `.story.ts` beside it with `title`, `purpose`, `variants`, `states` and a `usage` snippet that contains `<Block`. The inventory test in `packages/ui/src/tokens.test.ts` requires all of them and the block's row in contracts/blocks.md.
+6. Check: `pnpm --filter @desk/ui test` (inventory and drift scan), `pnpm --filter @desk/web test`, `pnpm typecheck`, add a unit test beside the panel that mounts it in jsdom for each state and snapshots the markup (see `Tile.test.ts`), then look at the panel at 360 and 1280 wide in both themes. The visual and axe runs happen in CI's e2e job; add a `SCREENS` entry in `tests/e2e/tests/visual.spec.ts` for a new screen.
+
+Timing: agent run (not SC-006): built a panel from this section alone in 3 minutes, 1 attempt to green after the failing test, 2026-10-10. The timed run with a person other than the agent is SC-006 and is pending.

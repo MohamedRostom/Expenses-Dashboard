@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Button',
+  purpose: 'actions',
   variants: [
     { name: 'primary', props: { variant: 'primary' } },
     { name: 'secondary', props: { variant: 'secondary' } },
@@ -14,4 +15,5 @@ export default defineStory({
     { name: 'disabled', props: { disabled: true } },
     { name: 'loading', props: { loading: true } },
   ],
+  usage: '<Button variant="primary" :loading="saving" @click="save">Save expense</Button>',
 });

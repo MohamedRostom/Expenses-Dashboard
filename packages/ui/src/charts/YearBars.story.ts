@@ -9,9 +9,11 @@ const months = (over: boolean) =>
 
 export default defineStory({
   title: 'YearBars',
+  purpose: 'twelve months of spend against budget',
   variants: [
     { name: 'under budget', props: { months: months(false), currency: 'GBP' } },
     { name: 'over budget', props: { months: months(true), currency: 'GBP' } },
   ],
   states: [{ name: 'empty', props: { months: [], currency: 'GBP' } }],
+  usage: '<YearBars :months="year" currency="GBP" />',
 });

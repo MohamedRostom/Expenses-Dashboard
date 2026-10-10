@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'Tabs',
+  purpose: 'switch between views',
   variants: [
     {
       name: 'underline',
@@ -20,4 +21,5 @@ export default defineStory({
     { name: 'first selected' },
     { name: 'last selected', props: { modelValue: 'categories' } },
   ],
+  usage: `<Tabs v-model="view" label="Views" :tabs="[{ id: 'month', label: 'Month' }, { id: 'year', label: 'Year' }]" />`,
 });

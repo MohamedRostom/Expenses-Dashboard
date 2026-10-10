@@ -5,6 +5,7 @@ describe('defineStory', () => {
   it('returns the story unchanged', () => {
     const story = {
       title: 'Button',
+      purpose: 'actions',
       variants: [{ name: 'primary' }],
       states: [{ name: 'busy', props: { loading: true } }],
     };

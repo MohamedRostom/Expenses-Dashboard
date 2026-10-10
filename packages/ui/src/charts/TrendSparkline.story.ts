@@ -2,6 +2,7 @@ import { defineStory } from '../stories.js';
 
 export default defineStory({
   title: 'TrendSparkline',
+  purpose: 'monthly spend trend at a glance',
   variants: [
     {
       name: 'six months',
@@ -14,4 +15,5 @@ export default defineStory({
     },
   ],
   states: [{ name: 'empty', props: { points: [] } }],
+  usage: '<TrendSparkline :points="lastSixMonths" />',
 });

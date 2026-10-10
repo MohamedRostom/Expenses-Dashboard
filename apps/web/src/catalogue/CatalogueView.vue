@@ -8,8 +8,6 @@ import { collectStories, type Story, type StoryCase } from '@desk/ui';
 const stories: Story[] = collectStories();
 const themes = ['light', 'dark'] as const;
 
-// Teleported, viewport-fixed blocks cannot sit inside a catalogue cell; they are listed instead.
-const overlays = new Set(['Dialog', 'Toast']);
 // Blocks whose label is slot content.
 const slotLabel = new Set(['Button', 'Kbd']);
 
@@ -27,6 +25,14 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
 <template>
   <main class="cat">
     <h1>UI catalogue</h1>
+    <nav id="catalogue-index" data-catalogue-index aria-label="Blocks" class="cat-index">
+      <ul>
+        <li v-for="s in stories" :key="s.title">
+          <a :href="`#${s.title}`" data-index-link>{{ s.title }}</a>
+          <span class="cat-purpose">{{ s.purpose }}</span>
+        </li>
+      </ul>
+    </nav>
     <section
       v-for="s in stories"
       :id="s.title"
@@ -35,18 +41,29 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
       class="cat-block"
     >
       <h2>{{ s.title }}</h2>
+      <p class="cat-purpose">{{ s.purpose }} <a href="#catalogue-index">Back to index</a></p>
       <div class="cat-cols">
         <div v-for="t in themes" :key="t" :data-theme-col="t">
           <div :data-theme="t" class="cat-theme">
             <div v-for="c in cells(s)" :key="c.key" class="cat-cell">
               <p class="cat-label">{{ c.key }}</p>
-              <p v-if="overlays.has(s.title)" class="cat-label">
-                Overlay block: not rendered here.
-              </p>
-              <Cell v-else :s="s" :v="c.v" :st="c.st" />
+              <Cell :s="s" :v="c.v" :st="c.st" />
             </div>
           </div>
         </div>
+      </div>
+      <div :data-usage="s.title" class="cat-usage">
+        <h3>Usage</h3>
+        <div class="cat-cols">
+          <div v-for="t in themes" :key="t" :data-theme-col="t">
+            <div :data-theme="t" class="cat-theme">
+              <div data-usage-live class="cat-cell">
+                <Cell :s="s" :v="s.variants[0]!" :st="s.states[0]!" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <pre data-usage-source class="cat-source">{{ s.usage }}</pre>
       </div>
     </section>
   </main>
@@ -63,9 +80,43 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
 .cat-block {
   padding: var(--space-4) 0;
 }
+.cat-index ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1) var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+}
+.cat-purpose {
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+}
+.cat-source {
+  margin: var(--space-3) 0 0;
+  padding: var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  overflow-x: auto;
+  white-space: pre;
+}
 .cat-cols {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+/* Below 600px the two theme columns stack, so a wide block (DataTable) gets the full width
+   instead of the dark column occluding the light one; wide content scrolls inside its cell.
+   specs/004-web-ui-refresh/tasks.md Carry-forward, T045. */
+@media (max-width: 600px) {
+  .cat-cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.cat-cell {
+  min-width: 0;
+  overflow-x: auto;
 }
 .cat-theme {
   background: var(--color-bg);
