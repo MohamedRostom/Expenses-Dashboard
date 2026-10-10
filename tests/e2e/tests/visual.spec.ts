@@ -1,7 +1,8 @@
 /// <reference lib="dom" />
 import { readdirSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
-import { axeCheck } from '../fixtures/index.js';
+import AxeBuilder from '@axe-core/playwright';
+import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
 // T013 / research R5, R6: one visual block per UI story, rendered by the catalogue at `/__ui`.
 //
@@ -269,5 +270,289 @@ for (const sheet of ['add-widget', 'widget-settings']) {
       await expect(page.getByRole('dialog')).toBeVisible();
       await axeCheck(page); // whole page: the sheet may render outside the mock-up root
     }
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// T029 / spec 004: the screen harness. Every per-screen change (T031-T042) appends ONE entry to
+// SCREENS and nothing else. For each entry x {360, 1280} x {light, dark} it takes a viewport
+// snapshot, element snapshots of the `panels`, runs axe (with the WCAG 2.2 target-size rule), checks
+// target sizes and reduce-motion, and (opt in via `states`) snapshots forced loading/empty/error.
+//
+// Stack setup, not the test, turns the flags on (`pnpm flags set panels.* / widgets.* --global on`,
+// see ci.yml e2e-ci): enableWidgetFlags() uses psql/docker and the visual project runs in a
+// container, so it is never called from here. Signed-in entries sign up through Mailpit/the API
+// (signUpAndVerify) and seed through HTTP with the CSRF header, never psql().
+// Forced states are page.route mocks of the screen's own API calls; there is no ?state= query in
+// apps/web (decision 2026-10-10, see tasks.md T029).
+// ---------------------------------------------------------------------------------------------
+
+type ScreenState = 'default' | 'loading' | 'empty' | 'error';
+type SeedCtx = { email: string; categoryIds: string[] };
+type Screen = {
+  name: string;
+  route: string | ((ctx: SeedCtx) => string);
+  seed?: (page: Page, ctx: SeedCtx) => Promise<void>;
+  flags?: 'widgets' | 'panels';
+  /** CSS selectors for panels below the fold; each gets an element snapshot. */
+  panels?: string[];
+  signedIn?: boolean;
+  states?: ScreenState[];
+  /** Seed the edge fixture (apps/web/src/catalogue/fixtures.ts): 48-char category, six-digit amount, 30-entry day. */
+  edge?: boolean;
+  /** Per-state mocking. `setup` runs before navigation (page.route); `after` runs once the page has loaded. */
+  force?: Partial<
+    Record<
+      Exclude<ScreenState, 'default'>,
+      { setup?: (page: Page) => Promise<unknown>; after?: (page: Page) => Promise<unknown> }
+    >
+  >;
+};
+
+const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
+const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 chars
+
+export const SCREENS: Screen[] = [
+  {
+    name: 'login',
+    route: '/login',
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: (page) =>
+          page.route('**/auth/login', (route) =>
+            route.fulfill({
+              status: 401,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'invalid_credentials', message: 'Invalid email or password' },
+              }),
+            }),
+          ),
+        after: async (page) => {
+          await page.getByLabel('Email').fill('nobody@example.com');
+          await page.getByLabel('Password').fill('not-the-password-1');
+          await page.getByRole('button', { name: 'Sign in' }).click();
+          await expect(page.getByRole('alert')).toBeVisible();
+        },
+      },
+    },
+  },
+];
+
+/**
+ * Known gaps: a check that fails today because the screen is not refreshed yet. Each entry names the
+ * task that removes it; nothing is skipped silently. Keyed by screen name.
+ */
+type GapCheck = 'targets' | 'axe' | 'axe-target-size' | 'motion';
+const KNOWN_GAPS: Record<string, { check: GapCheck; task: string }[]> = {
+  // Login is refreshed at T036: 36px inputs/button and 20px links at 360, 20px links at 1280, and
+  // accent-coloured link text failing contrast. T036 removes these three entries.
+  login: [
+    { check: 'targets', task: 'T036' },
+    { check: 'axe', task: 'T036' },
+    { check: 'axe-target-size', task: 'T036' },
+  ],
+};
+const gap = (name: string, check: GapCheck) =>
+  KNOWN_GAPS[name]?.some((g) => g.check === check) ?? false;
+
+// The seed step: sign up through the UI/Mailpit/API (no psql), then seed through HTTP.
+async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
+  const ctx: SeedCtx = { email: '', categoryIds: [] };
+  if (screen.signedIn) {
+    ctx.email = `visual-${screen.name}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.com`;
+    await signUpAndVerify(page, ctx.email, PASSWORD);
+    if (screen.edge) {
+      const headers = await csrfHeaders(page);
+      const cat = await page.request.post('/categories', {
+        headers,
+        data: { name: EDGE_CATEGORY, colour: '#3a6ea5' },
+      });
+      expect(cat.ok()).toBe(true);
+      const categoryId = ((await cat.json()) as { category: { id: string } }).category.id;
+      ctx.categoryIds.push(categoryId);
+      const month = new Date().toISOString().slice(0, 7);
+      const post = (description: string, minor: number, day: string) =>
+        page.request.post('/expenses', {
+          headers,
+          data: {
+            description,
+            amount: { minor, currency: 'GBP' },
+            date: `${month}-${day}`,
+            categoryId,
+            paidWith: 'card',
+            kind: 'variable',
+          },
+        });
+      await post('Large amount', 12_345_678, '01');
+      for (let i = 0; i < 30; i++) await post(`Busy day entry ${i + 1}`, 300 + i * 125, '15');
+    }
+    await screen.seed?.(page, ctx);
+  }
+  return ctx;
+}
+
+const routeOf = (screen: Screen, ctx: SeedCtx) =>
+  typeof screen.route === 'function' ? screen.route(ctx) : screen.route;
+
+// Loading: every XHR/fetch is held open. Error: every GET fetch answers 500 in the app's envelope.
+const holdFetches = (page: Page) =>
+  page.route('**/*', (route) =>
+    route.request().resourceType() === 'fetch' ? new Promise<void>(() => {}) : route.fallback(),
+  );
+const failFetches = (page: Page) =>
+  page.route('**/*', (route) =>
+    route.request().resourceType() === 'fetch' && route.request().method() === 'GET'
+      ? route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'internal', message: 'Something went wrong' } }),
+        })
+      : route.fallback(),
+  );
+
+async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: ScreenState) {
+  if (state === 'loading') await holdFetches(page);
+  else if (state === 'error') await (screen.force?.error?.setup ?? failFetches)(page);
+  else if (state === 'empty') await screen.force?.empty?.setup?.(page);
+  await page.goto(routeOf(screen, ctx));
+  if (state !== 'loading') {
+    await page.waitForLoadState('networkidle');
+    if (state !== 'default') await screen.force?.[state]?.after?.(page);
+  }
+}
+
+/** Every visible, enabled focusable element must be at least `min` tall (32 in dense rows / menus). */
+async function targetFailures(page: Page, min: number): Promise<string[]> {
+  return page.evaluate((min) => {
+    const sel = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    const out: string[] = [];
+    for (const el of document.querySelectorAll<HTMLElement>(sel)) {
+      if ((el as HTMLButtonElement).disabled || (el as HTMLInputElement).type === 'hidden')
+        continue;
+      const r = el.getBoundingClientRect();
+      const cs = getComputedStyle(el);
+      if (r.width === 0 || r.height === 0 || cs.visibility === 'hidden' || cs.display === 'none')
+        continue;
+      const need = el.closest('.desk-data-table--dense, [role="menu"]') ? Math.min(min, 32) : min;
+      if (r.height + 0.5 < need) {
+        const name = el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 40) ?? '';
+        out.push(
+          `${el.tagName.toLowerCase()} "${name}" ${Math.round(r.width)}x${Math.round(r.height)} < ${need}`,
+        );
+      }
+    }
+    return out;
+  }, min);
+}
+
+const toSeconds = (list: string) =>
+  list.split(',').map((s) => (s.trim().endsWith('ms') ? parseFloat(s) / 1000 : parseFloat(s)));
+
+async function motionFailures(page: Page): Promise<string[]> {
+  const rows = await page.evaluate(() =>
+    [...document.querySelectorAll('*')].map((el) => {
+      const cs = getComputedStyle(el);
+      return [el.tagName.toLowerCase(), cs.transitionDuration, cs.animationDuration] as const;
+    }),
+  );
+  return rows
+    .filter(([, t, a]) => [...toSeconds(t), ...toSeconds(a)].some((n) => n > 0))
+    .map(([tag, t, a]) => `${tag} transition ${t} animation ${a}`);
+}
+
+test('@visual harness: SCREENS is non-empty and every entry is well formed', () => {
+  expect(SCREENS.length).toBeGreaterThan(0);
+  const names = new Set<string>();
+  for (const s of SCREENS) {
+    expect(s.name, 'name').toMatch(/^[a-z0-9-]+$/);
+    expect(names.has(s.name), `duplicate screen ${s.name}`).toBe(false);
+    names.add(s.name);
+    expect(typeof s.route === 'function' || s.route.startsWith('/'), `${s.name} route`).toBe(true);
+    for (const st of s.states ?? []) {
+      expect(['default', 'loading', 'empty', 'error']).toContain(st);
+    }
+    if (s.edge || s.seed) expect(s.signedIn, `${s.name}: seeding needs signedIn`).toBe(true);
+  }
+  for (const entries of Object.values(KNOWN_GAPS)) {
+    for (const g of entries) expect(g.task, 'a known gap names its task').toMatch(/^T\d+$/);
+  }
+});
+
+for (const screen of SCREENS) {
+  for (const vp of viewports) {
+    for (const theme of themes) {
+      test(`@visual screen ${screen.name} ${theme} ${vp.width}`, async ({ page }) => {
+        await page.emulateMedia({ colorScheme: theme });
+        await page.setViewportSize({ width: vp.width, height: vp.height });
+        const ctx = await prepare(page, screen);
+        await openScreen(page, screen, ctx, 'default');
+        await expect(page).toHaveScreenshot(`screen-${screen.name}-${theme}-${vp.width}.png`);
+        let i = 0;
+        for (const selector of screen.panels ?? []) {
+          i += 1;
+          const panel = page.locator(selector).first();
+          await panel.scrollIntoViewIfNeeded();
+          await expect(panel).toHaveScreenshot(
+            `screen-${screen.name}-panel${i}-${theme}-${vp.width}.png`,
+          );
+        }
+      });
+
+      for (const state of (screen.states ?? []).filter((s) => s !== 'default')) {
+        test(`@visual screen ${screen.name} ${state} ${theme} ${vp.width}`, async ({ page }) => {
+          await page.emulateMedia({ colorScheme: theme });
+          await page.setViewportSize({ width: vp.width, height: vp.height });
+          const ctx = await prepare(page, screen);
+          await openScreen(page, screen, ctx, state);
+          await expect(page).toHaveScreenshot(
+            `screen-${screen.name}-${state}-${theme}-${vp.width}.png`,
+          );
+        });
+      }
+    }
+
+    test(`@visual screen ${screen.name} targets ${vp.width}`, async ({ page }) => {
+      test.skip(
+        gap(screen.name, 'targets'),
+        `known gap: ${JSON.stringify(KNOWN_GAPS[screen.name])}`,
+      );
+      await page.setViewportSize({ width: vp.width, height: vp.height });
+      const ctx = await prepare(page, screen);
+      await openScreen(page, screen, ctx, 'default');
+      const min = vp.width <= 360 ? 44 : 24;
+      expect(await targetFailures(page, min), `targets under ${min}px`).toEqual([]);
+      if (vp.width <= 360) {
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+          'no horizontal scroll at 360',
+        ).toBe(true);
+      }
+    });
+  }
+
+  test(`@visual screen ${screen.name} axe incl. target-size in both themes`, async ({ page }) => {
+    const ctx = await prepare(page, screen);
+    for (const theme of themes) {
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: 'reduce' });
+      await openScreen(page, screen, ctx, 'default');
+      if (!gap(screen.name, 'axe')) await axeCheck(page);
+      if (gap(screen.name, 'axe-target-size')) continue;
+      // axeCheck's tag set (wcag2a/aa) leaves the WCAG 2.2 rule off; run it explicitly.
+      const res = await new AxeBuilder({ page }).withRules(['target-size']).analyze();
+      expect(
+        res.violations.flatMap((v) => v.nodes.map((n) => `${n.target.join(' ')}: ${n.html}`)),
+        'axe target-size (WCAG 2.2)',
+      ).toEqual([]);
+    }
+  });
+
+  test(`@visual screen ${screen.name} reduced motion`, async ({ page }) => {
+    test.skip(gap(screen.name, 'motion'), `known gap: ${JSON.stringify(KNOWN_GAPS[screen.name])}`);
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    const ctx = await prepare(page, screen);
+    await openScreen(page, screen, ctx, 'default');
+    expect(await motionFailures(page), 'non-zero transition/animation duration').toEqual([]);
   });
 }
