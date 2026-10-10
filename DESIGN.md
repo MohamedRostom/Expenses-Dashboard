@@ -4,6 +4,16 @@ description: A multi-currency expense tracker. Identity "Concourse Board" (ADR-0
 colors:
   signal-green: "#0e3d2a"
   signal-green-dark: "#2c7452"
+  accent-concourse-blue: "#11325f"
+  accent-concourse-blue-dark: "#2368c7"
+  accent-platform-teal: "#083a38"
+  accent-platform-teal-dark: "#117471"
+  accent-violet: "#432664"
+  accent-violet-dark: "#8451bd"
+  accent-slate: "#2a333c"
+  accent-slate-dark: "#586b7e"
+  accent-plum: "#511f4b"
+  accent-plum-dark: "#a63f99"
   daylight-steel: "#e8eaeb"
   flap-black: "#0e1114"
   board-ink: "#14171b"
@@ -181,6 +191,17 @@ A restrained palette with status at full strength: steel neutrals, one signal gr
 
 ### Primary
 - **Signal Green** (`signal-green` light, `signal-green-dark` dark; `--color-accent`): the primary button, the current nav link's underline, the selected tab, and the fill of budget bars. Text on it is Flap (light) and Letter White (dark). It never means "on time"; it means "this is the action" and "this is spend".
+
+### Accent presets (FR-019)
+Signal Green is the default. A user may pick one of five alternatives (`data-accent` on `<html>`), which override only `--color-accent`, `--color-accent-fg` and `--color-selection`; contrast pairs are asserted for every preset in all three theme states, and no preset hue falls in 0 to 60 degrees (the amber and red status range).
+
+| Preset | Light | Dark |
+|---|---|---|
+| `concourse-blue` | `#11325f` | `#2368c7` |
+| `platform-teal` | `#083a38` | `#117471` |
+| `violet` | `#432664` | `#8451bd` |
+| `slate` | `#2a333c` | `#586b7e` |
+| `plum` | `#511f4b` | `#a63f99` |
 
 ### Neutral
 - **Daylight Steel** (`daylight-steel`, `--color-bg`): the light ground, a cool steel grey.

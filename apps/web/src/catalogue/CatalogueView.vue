@@ -2,6 +2,7 @@
 import { h, type Component, type VNode } from 'vue';
 import * as ui from '@desk/ui';
 import { collectStories, type Story, type StoryCase } from '@desk/ui';
+import AccentPresets from './AccentPresets.vue';
 
 // Dev-only block catalogue (research R5). Block id = story title = story file base name.
 // DOM contract: tests/e2e/tests/visual.spec.ts.
@@ -66,6 +67,7 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
         <pre data-usage-source class="cat-source">{{ s.usage }}</pre>
       </div>
     </section>
+    <AccentPresets />
   </main>
 </template>
 

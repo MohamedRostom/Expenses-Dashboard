@@ -36,6 +36,7 @@ describe('router auth guard', () => {
       email: 'test@test.com',
       defaultCurrency: 'GBP',
       theme: 'light',
+      accent: 'signal-green',
       timeZone: 'UTC',
       onboardingCompletedAt: new Date().toISOString(),
     };
@@ -54,6 +55,7 @@ describe('router auth guard', () => {
       email: 'test@test.com',
       defaultCurrency: 'GBP',
       theme: 'light',
+      accent: 'signal-green',
       timeZone: 'UTC',
       onboardingCompletedAt: new Date().toISOString(),
     };
@@ -74,6 +76,7 @@ describe('router auth guard', () => {
       email: 'test@test.com',
       defaultCurrency: 'GBP',
       theme: 'light',
+      accent: 'signal-green',
       timeZone: 'UTC',
       onboardingCompletedAt: new Date().toISOString(),
     };
@@ -92,6 +95,7 @@ describe('router auth guard', () => {
       email: 'test@test.com',
       defaultCurrency: 'GBP',
       theme: 'light',
+      accent: 'signal-green',
       timeZone: 'UTC',
       onboardingCompletedAt: new Date().toISOString(),
     };

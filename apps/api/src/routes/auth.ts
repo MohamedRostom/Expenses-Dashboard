@@ -8,6 +8,7 @@ import {
   ForgotPasswordRequest,
   ResetPasswordRequest,
   type UserResponseT,
+  type AccentId,
 } from '@desk/contracts';
 import type { AppDeps, AppVariables } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
@@ -25,6 +26,7 @@ function toUserResponse(user: UserRow): UserResponseT {
     email: user.email,
     defaultCurrency: user.defaultCurrency,
     theme: user.theme,
+    accent: user.accent as AccentId,
     timeZone: user.timeZone,
     onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     emailVerified: user.emailVerifiedAt !== null,

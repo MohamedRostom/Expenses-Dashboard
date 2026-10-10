@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACCENT_IDS } from './accent.js';
 
 /** Shape of the `user` object returned by auth and /me endpoints. */
 export const UserResponse = z.object({
@@ -6,6 +7,7 @@ export const UserResponse = z.object({
   email: z.string(),
   defaultCurrency: z.string(),
   theme: z.string(),
+  accent: z.enum(ACCENT_IDS),
   timeZone: z.string(),
   onboardingCompletedAt: z.string().nullable(),
   /** False until the address is confirmed; Settings shows it and offers a resend (FR-001). */

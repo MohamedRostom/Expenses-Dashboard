@@ -4,6 +4,7 @@ export const user = {
   default_currency: 'GBP',
   time_zone: 'Europe/London',
   theme: 'system',
+  accent: 'signal-green',
 } as const;
 
 export const categoryNames = [

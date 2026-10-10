@@ -386,3 +386,81 @@ describe('block inventory (contracts/blocks.md)', () => {
     expect(charts.every((c) => files.includes(c))).toBe(true);
   });
 });
+
+// T054: user-selectable accent presets (FR-019). ACCENT_IDS is read by relative path because
+// packages/ui does not depend on @desk/contracts.
+describe('accent presets (FR-019)', () => {
+  const ids = [
+    ...readFileSync(join(root, 'packages/contracts/src/accent.ts'), 'utf-8').matchAll(
+      /'([a-z-]+)',/g,
+    ),
+  ].map((m) => m[1]!);
+  const presets = ids.filter((id) => id !== 'signal-green');
+  // A rule counts when its selector list contains the required selector (nested-wrapper forms may follow).
+  const accentRule = (selector: string): Tokens => {
+    const found = rules.find((r) =>
+      r.selector
+        .split(',')
+        .map((s) => s.trim())
+        .includes(selector),
+    );
+    if (!found) throw new Error(`no rule "${selector}"`);
+    return found.tokens;
+  };
+  const selectors = (id: string): [string, string, Tokens][] => [
+    ['light', `:root[data-accent='${id}']`, light],
+    ['system dark', `:root:not([data-theme='light'])[data-accent='${id}']`, systemDark],
+    ['explicit dark', `:root[data-theme='dark'][data-accent='${id}']`, explicitDark],
+  ];
+  const overridden = (base: Tokens, over: Tokens): Tokens => new Map([...base, ...over]);
+  const hue = (hex: string): number => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255) as [
+      number,
+      number,
+      number,
+    ];
+    const max = Math.max(r, g, b);
+    const d = max - Math.min(r, g, b);
+    if (d === 0) return 0;
+    const h = max === r ? ((g - b) / d) % 6 : max === g ? (b - r) / d + 2 : (r - g) / d + 4;
+    return (h * 60 + 360) % 360;
+  };
+
+  it('has at most six presets, signal-green first', () => {
+    expect(ids[0]).toBe('signal-green');
+    expect(ids.length).toBeLessThanOrEqual(6);
+    expect(presets.length).toBeGreaterThan(0);
+  });
+
+  for (const id of presets) {
+    describe(id, () => {
+      it.each(selectors(id))('%s overrides accent, accent-fg and selection', (_t, sel) => {
+        const over = accentRule(sel);
+        for (const n of ['--color-accent', '--color-accent-fg', '--color-selection']) {
+          expect(over.has(n), `${sel} ${n}`).toBe(true);
+        }
+      });
+      it('both dark blocks are equal', () => {
+        const sel = selectors(id);
+        expect([...accentRule(sel[1]![1])]).toEqual([...accentRule(sel[2]![1])]);
+      });
+      it.each(selectors(id))('%s keeps the contrast pairs', (_t, sel, base) => {
+        const t = overridden(base, accentRule(sel));
+        const c = (a: string, b: string) =>
+          contrastRatio(resolve(t, `--color-${a}`), resolve(t, `--color-${b}`));
+        expect(c('accent-fg', 'accent')).toBeGreaterThanOrEqual(4.5);
+        expect(c('accent', 'bg')).toBeGreaterThanOrEqual(3);
+        expect(c('accent', 'surface')).toBeGreaterThanOrEqual(3);
+        expect(c('focus', 'accent')).toBeGreaterThanOrEqual(3);
+        expect(c('fg', 'selection')).toBeGreaterThanOrEqual(4.5);
+      });
+      it.each(selectors(id))(
+        '%s accent hue stays out of 0-60 degrees (status colours)',
+        (_t, sel) => {
+          const h = hue(accentRule(sel).get('--color-accent')!);
+          expect(h < 0 || h > 60).toBe(true);
+        },
+      );
+    });
+  }
+});
