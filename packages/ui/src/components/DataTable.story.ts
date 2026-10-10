@@ -17,6 +17,18 @@ export default defineStory({
     { name: 'sortable', props: { categories, caption: 'Spend by category', sortable: true } },
     { name: 'loading', props: { categories: [], caption: 'Spend by category', loading: true } },
     { name: 'empty', props: { categories: [], caption: 'Spend by category' } },
+    // board: heads from columns; the rows are the default slot, which the catalogue leaves empty.
+    {
+      name: 'board',
+      props: {
+        caption: 'Entries, newest first',
+        columns: [
+          { key: 'date', label: 'Date', width: 'date' },
+          { key: 'item', label: 'Item' },
+          { key: 'amount', label: 'Amount', align: 'end', width: 'amount' },
+        ],
+      },
+    },
   ],
   usage: '<DataTable :categories="rows" caption="Spend by category" sortable dense />',
 });

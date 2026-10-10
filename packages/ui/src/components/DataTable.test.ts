@@ -51,3 +51,31 @@ describe('DataTable', () => {
     expect(el.querySelector('tbody th')?.textContent).toBe('Rent');
   });
 });
+
+describe('DataTable board mode (T032)', () => {
+  it('renders the given columns as heads and the default slot as the body', async () => {
+    const el = document.createElement('div');
+    createApp({
+      render: () =>
+        h(
+          DataTable,
+          {
+            categories: [],
+            caption: 'Entries',
+            columns: [
+              { key: 'date', label: 'Date' },
+              { key: 'amount', label: 'Amount', align: 'end' },
+            ],
+          },
+          { default: () => h('tr', [h('td', '15 Sep'), h('td', '£1.00')]) },
+        ),
+    }).mount(el);
+    await nextTick();
+    expect([...el.querySelectorAll('thead th')].map((t) => t.textContent)).toEqual([
+      'Date',
+      'Amount',
+    ]);
+    expect(el.querySelector('caption')?.textContent).toBe('Entries');
+    expect(el.querySelectorAll('tbody tr')).toHaveLength(1);
+  });
+});

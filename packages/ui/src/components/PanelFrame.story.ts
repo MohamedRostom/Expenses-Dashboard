@@ -10,6 +10,8 @@ export default defineStory({
     },
   ],
   states: [
+    // loaded: the heading over its flap; the body is the default slot, which the catalogue leaves empty.
+    { name: 'loaded', props: { heading: 'Spending' } },
     { name: 'loading', props: { kind: 'loading' } },
     { name: 'empty', props: { kind: 'empty', title: 'No expenses this month' } },
     { name: 'error', props: { kind: 'error', code: 'offline' } },

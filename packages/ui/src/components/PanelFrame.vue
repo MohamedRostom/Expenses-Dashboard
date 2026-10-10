@@ -209,7 +209,9 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   </template>
   <section v-else-if="heading" class="desk-panel-frame" :aria-labelledby="headingId" role="region">
     <h3 :id="headingId" class="desk-panel-frame-heading">{{ heading }}</h3>
-    <PanelFrame :kind="kind" :code="code" :title="title" :description="description">
+    <!-- Loaded content: a state (kind) always wins over the slot, so error and empty stay as they were. -->
+    <div v-if="!kind" class="desk-panel-frame-flap"><slot /></div>
+    <PanelFrame v-else :kind="kind" :code="code" :title="title" :description="description">
       <template v-if="$slots.action" #action><slot name="action" /></template>
     </PanelFrame>
   </section>
@@ -330,9 +332,24 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   min-height: 0;
   overflow: hidden;
 }
+.desk-panel-frame {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+}
+/* Title role heading over a raised flap; the flap has no side padding so a board can run edge to edge. */
 .desk-panel-frame-heading {
   margin: 0;
-  font-size: var(--text-sm);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
   font-weight: 600;
+}
+.desk-panel-frame-flap {
+  padding: var(--space-2) 0;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
+  overflow: hidden;
 }
 </style>

@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- Refresh: month view on the Concourse Board identity; category rows no longer print the currency twice; no sideways scroll at 360 wide (spec 004 T032).
 - Refresh: header, navigation and feedback button on the Concourse Board identity (spec 004 T031).
 - docs: contributor exercise run by the agent (a throw-away DemoPanel built from DESIGN.md §Building a new panel alone, then deleted); the section is corrected where it did not match PanelFrame (it has no slot for loaded content) and records the agent timing. SC-006, timed by a person, stays `needs-rostom` (T047).
 - docs: DESIGN.md "Building a new panel" is a finished walkthrough (PanelFrame, the three states, figures, layout-only CSS, new-block story, checks), with a test that it is no longer a stub (T046).

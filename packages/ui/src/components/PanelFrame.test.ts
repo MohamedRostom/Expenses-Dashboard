@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { describe, expect, it } from 'vitest';
 import PanelFrame from './PanelFrame.vue';
 
@@ -35,5 +35,35 @@ describe('PanelFrame', () => {
     const c = await text({ kind: 'error', code: 'place_not_found' });
     const d = await text({ kind: 'error', code: 'source_paused' });
     expect(new Set([a, b, c, d]).size).toBe(4);
+  });
+});
+
+describe('PanelFrame loaded content (T032)', () => {
+  it('with a heading and a default slot, renders the slot in a labelled region', async () => {
+    const el = document.createElement('div');
+    createApp({
+      render: () =>
+        h(PanelFrame, { heading: 'Entries' }, { default: () => h('p', { class: 'x' }, 'rows') }),
+    }).mount(el);
+    await nextTick();
+    const region = el.querySelector('section[role="region"]')!;
+    const heading = region.querySelector('h3')!;
+    expect(region.getAttribute('aria-labelledby')).toBe(heading.id);
+    expect(region.querySelector('.x')?.textContent).toBe('rows');
+  });
+
+  it('a kind still wins over the slot (existing states unchanged)', async () => {
+    const el = document.createElement('div');
+    createApp({
+      render: () =>
+        h(
+          PanelFrame,
+          { heading: 'Entries', kind: 'error', code: 'offline' },
+          { default: () => h('p', { class: 'x' }, 'rows') },
+        ),
+    }).mount(el);
+    await nextTick();
+    expect(el.querySelector('.x')).toBeNull();
+    expect(el.textContent).toContain("You're offline");
   });
 });

@@ -36,3 +36,25 @@ describe('Tile', () => {
     expect(el.querySelector('.desk-tile-value--critical')).not.toBeNull();
   });
 });
+
+describe('Tile primary figure (T032)', () => {
+  it('marks the primary figure and every figure as a tile amount', async () => {
+    const el = await mount({ label: 'Left this month', value: '£1.00', primary: true });
+    expect(el.querySelectorAll('[data-tile-primary="figure"]')).toHaveLength(1);
+    expect(el.querySelector('[data-tile-primary="figure"]')?.textContent).toBe('£1.00');
+    expect(el.querySelector('[data-tile]')).not.toBeNull();
+    const plain = await mount({ label: 'Spent', value: '£2.00' });
+    expect(plain.querySelector('[data-tile-primary]')).toBeNull();
+    expect(plain.querySelector('[data-testid="tile-amount"]')?.textContent).toBe('£2.00');
+  });
+
+  it('prints status words with their tone, after the note', async () => {
+    const el = await mount({
+      label: 'Spent',
+      value: '£2.00',
+      status: [{ text: '1 rate pending', tone: 'warn' }],
+    });
+    const w = el.querySelector('.desk-tile-status--warn');
+    expect(w?.textContent).toBe('1 rate pending');
+  });
+});

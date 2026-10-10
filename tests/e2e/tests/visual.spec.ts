@@ -301,6 +301,8 @@ type Screen = {
   targetExempt?: string;
   /** Runs after the default state has loaded (open a panel, press a key); every check sees its result. */
   afterLoad?: (page: Page) => Promise<unknown>;
+  /** page.route mocks for every state, set before navigation: pins what depends on today's date. */
+  mock?: (page: Page) => Promise<unknown>;
   states?: ScreenState[];
   /** Seed the edge fixture (apps/web/src/catalogue/fixtures.ts): 48-char category, six-digit amount, 30-entry day. */
   edge?: boolean;
@@ -322,13 +324,57 @@ export const SCREENS: Screen[] = [
     name: 'shell',
     route: '/',
     signedIn: true,
-    // The month switcher (26x25 prev/next) belongs to MonthView and is resized in T032, which
-    // removes this exemption. Everything else in the header and the Feedback panel is checked.
-    targetExempt: '[aria-label^="Previous month"], [aria-label^="Next month"]',
     panels: ['header.desk-header', '.feedback-form'],
     afterLoad: async (page) => {
       await page.getByRole('button', { name: 'Feedback' }).click();
       await expect(page.getByRole('button', { name: 'Close feedback' })).toBeVisible();
+    },
+  },
+  {
+    // T032: the month view. Edge fixture (48-char category, six-digit amount, 30-entry day); the
+    // category and entries panels sit below the fold at 360. Forced states mock the month fetch.
+    name: 'month',
+    route: '/',
+    signedIn: true,
+    edge: true,
+    panels: ['[data-panel="categories"]', '[data-panel="entries"]'],
+    // The forecast depends on the day of the month; pin it so baselines hold on any day.
+    mock: (page) =>
+      page.route('**/summary/forecast*', (route) =>
+        route.fulfill({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            month: new Date().toISOString().slice(0, 7),
+            currency: 'USD',
+            spentToDate: 12_409_053,
+            committedFixed: 0,
+            forecast: 38_468_064,
+            basis: ['spend to date', 'variable run-rate'],
+          }),
+        }),
+      ),
+    states: ['loading', 'empty', 'error'],
+    force: {
+      empty: {
+        setup: (page) =>
+          page.route('**/expenses?month=*', (route) =>
+            route.fulfill({
+              contentType: 'application/json',
+              body: JSON.stringify({
+                expenses: [],
+                summary: {
+                  month: new Date().toISOString().slice(0, 7),
+                  currency: 'GBP',
+                  spent: 0,
+                  budgeted: 0,
+                  remaining: 0,
+                  byCategory: [],
+                  pendingRates: 0,
+                },
+              }),
+            }),
+          ),
+      },
     },
   },
   {
@@ -390,13 +436,19 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
       expect(cat.ok()).toBe(true);
       const categoryId = ((await cat.json()) as { category: { id: string } }).category.id;
       ctx.categoryIds.push(categoryId);
+      // The user's own default currency, so every seeded amount counts toward the month's tiles
+      // (a foreign amount would wait for a rate and leave the tiles at zero).
+      const me = (await (await page.request.get('/me')).json()) as {
+        user: { defaultCurrency: string };
+      };
+      const currency = me.user.defaultCurrency;
       const month = new Date().toISOString().slice(0, 7);
       const post = (description: string, minor: number, day: string) =>
         page.request.post('/expenses', {
           headers,
           data: {
             description,
-            amount: { minor, currency: 'GBP' },
+            amount: { minor, currency },
             date: `${month}-${day}`,
             categoryId,
             paidWith: 'card',
@@ -431,6 +483,7 @@ const failFetches = (page: Page) =>
   );
 
 async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: ScreenState) {
+  await screen.mock?.(page);
   if (state === 'loading') await holdFetches(page);
   else if (state === 'error') await (screen.force?.error?.setup ?? failFetches)(page);
   else if (state === 'empty') await screen.force?.empty?.setup?.(page);
@@ -483,6 +536,76 @@ async function motionFailures(page: Page): Promise<string[]> {
   return rows
     .filter(([, t, a]) => [...toSeconds(t), ...toSeconds(a)].some((n) => n > 0))
     .map(([tag, t, a]) => `${tag} transition ${t} animation ${a}`);
+}
+
+// T032 edge and FR-011 assertions on the real month view (copied from the mock-up tests above).
+for (const vp of viewports) {
+  test(`@visual screen month edge fixture and primary figure ${vp.width}`, async ({ page }) => {
+    const screen = SCREENS.find((s) => s.name === 'month')!;
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    const ctx = await prepare(page, screen);
+    await openScreen(page, screen, ctx, 'default');
+
+    // Long category name: ellipsised, full value as title.
+    const name = page.locator('[data-testid="category-name"]', { hasText: EDGE_CATEGORY }).first();
+    await expect(name).toBeVisible();
+    const m = await name.evaluate((el) => ({
+      over: el.scrollWidth > el.clientWidth,
+      overflow: getComputedStyle(el).textOverflow,
+      label: el.getAttribute('title') ?? el.getAttribute('aria-label') ?? el.textContent,
+    }));
+    expect(m.over).toBe(true);
+    expect(m.overflow).toBe('ellipsis');
+    expect(m.label).toContain(EDGE_CATEGORY);
+
+    // Six-digit amount stays inside its tile.
+    const amounts = page.locator('[data-testid="tile-amount"]');
+    await expect(amounts.filter({ hasText: /\d{3},\d{3}\.\d{2}/ }).first()).toBeVisible();
+    for (const amount of await amounts.all()) {
+      const box = (await amount.boundingBox())!;
+      const tileBox = (await amount.locator('xpath=ancestor::*[@data-tile][1]').boundingBox())!;
+      expect(box.x).toBeGreaterThanOrEqual(tileBox.x);
+      expect(box.x + box.width).toBeLessThanOrEqual(tileBox.x + tileBox.width + 0.5);
+      expect(box.y + box.height).toBeLessThanOrEqual(tileBox.y + tileBox.height + 0.5);
+    }
+
+    // 30-entry day: amounts share one right edge.
+    const rights = await page
+      .locator('[data-testid="entry-amount"]')
+      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
+    expect(rights.length).toBeGreaterThanOrEqual(30);
+    expect(Math.max(...rights) - Math.min(...rights)).toBeLessThanOrEqual(1);
+
+    // No sideways scroll (the 13px overflow at 360).
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+      'no horizontal scroll',
+    ).toBe(true);
+
+    // FR-011: one primary figure, the largest text on the page, tabular numerals.
+    await expect(page.locator('[data-tile-primary="figure"]')).toHaveCount(1);
+    const r = await page.evaluate(() => {
+      const fig = document.querySelector('[data-tile-primary="figure"]')!;
+      const size = (el: Element) => parseFloat(getComputedStyle(el).fontSize);
+      const figSize = size(fig);
+      const rivals: string[] = [];
+      for (const el of document.body.querySelectorAll('*')) {
+        if (el === fig || fig.contains(el) || el.contains(fig)) continue;
+        const own = [...el.childNodes].some(
+          (n) => n.nodeType === Node.TEXT_NODE && (n.textContent ?? '').trim() !== '',
+        );
+        const rect = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        const visible =
+          rect.width > 0 && rect.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none';
+        if (own && visible && size(el) >= figSize)
+          rivals.push(`${el.tagName.toLowerCase()} ${size(el)}px`);
+      }
+      return { rivals, fvn: getComputedStyle(fig).fontVariantNumeric };
+    });
+    expect(r.rivals).toEqual([]);
+    expect(r.fvn).toContain('tabular-nums');
+  });
 }
 
 test('@visual harness: SCREENS is non-empty and every entry is well formed', () => {

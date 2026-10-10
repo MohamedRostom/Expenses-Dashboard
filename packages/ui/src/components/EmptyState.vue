@@ -28,7 +28,9 @@ defineProps<{ title: string; description?: string }>();
 }
 .desk-empty-desc {
   margin: 0;
-  opacity: 0.75;
-  font-size: 0.9rem;
+  max-width: 40ch;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 </style>

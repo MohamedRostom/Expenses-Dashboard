@@ -9,16 +9,19 @@ import {
   Dialog,
   EmptyState,
   ErrorState,
+  PanelFrame,
   Skeleton,
+  Tile,
   TrendSparkline,
   useToast,
+  type BoardColumn,
   type CategoryBarData,
   type TrendPoint,
 } from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 import { useExpensesStore } from '../stores/expenses.js';
 import { useShortcuts } from '../composables/useShortcuts.js';
-import { formatDate, formatMoney } from '../utils/format.js';
+import { formatMoney } from '../utils/format.js';
 import ExpenseForm from '../components/ExpenseForm.vue';
 import ForecastTile from '../components/ForecastTile.vue';
 import {
@@ -185,10 +188,62 @@ async function onUndoDelete(id: string) {
     toast.push(err instanceof ApiError ? err.message : 'Failed to restore expense.', 'critical');
   }
 }
+
+/** formatMoney prints "£4.25 GBP"; the board shows the figure with its code beneath (phone width). */
+function splitMoney(text: string) {
+  const i = text.lastIndexOf(' ');
+  return { figure: text.slice(0, i), code: text.slice(i + 1) };
+}
+const fmt = (minor: number) => formatMoney(minor, store.summary?.currency ?? 'GBP');
+const entryMoney = (e: { amountOriginal: number; currencyOriginal: string }) =>
+  splitMoney(formatMoney(e.amountOriginal, e.currencyOriginal));
+const dayFmt = new Intl.DateTimeFormat(undefined, { day: '2-digit', month: 'short' });
+function shortDay(date: string) {
+  const [y, m, d] = date.split('-').map(Number);
+  return dayFmt.format(new Date(y!, m! - 1, d));
+}
+/** A foreign amount whose rate has not arrived yet (the API leaves amountDefault empty). */
+const isRatePending = (e: ExpenseResponseT) =>
+  e.amountDefault === null && e.currencyOriginal !== store.summary?.currency;
+
+// "Left this month" is the one Display figure (FR-011). The code moves into the note so a
+// six-digit sum fits at 360; over budget, the figure goes red and the word "over" follows.
+const budgeted = computed(() => (store.summary?.budgeted ?? 0) > 0);
+const over = computed(() => budgeted.value && (store.summary?.remaining ?? 0) < 0);
+const leftNote = computed(
+  () =>
+    'remaining' +
+    (budgeted.value && store.summary
+      ? ` of ${splitMoney(fmt(store.summary.budgeted)).figure} ${store.summary.currency}`
+      : ''),
+);
+const overCategories = computed(
+  () => categoryBars.value.filter((c) => c.budget != null && c.spent > c.budget).length,
+);
+const spentStatus = computed(() => {
+  const out: { text: string; tone: 'warn' | 'critical' }[] = [];
+  const pending = store.summary?.pendingRates ?? 0;
+  if (pending > 0) out.push({ text: `${pending} rate pending`, tone: 'warn' });
+  if (overCategories.value > 0)
+    out.push({
+      text: `${overCategories.value} ${overCategories.value === 1 ? 'category' : 'categories'} over`,
+      tone: 'critical',
+    });
+  return out;
+});
+
+const entryColumns: BoardColumn[] = [
+  { key: 'date', label: 'Date', width: 'date' },
+  { key: 'item', label: 'Item' },
+  { key: 'category', label: 'Category', hideBelow: 'md' },
+  { key: 'amount', label: 'Amount', align: 'end', width: 'amount' },
+  { key: 'actions', label: 'Actions', srOnly: true, width: 'action' },
+];
 </script>
 
 <template>
   <main class="desk-month-view">
+    <h1 class="desk-sr-only">{{ monthLabel }}</h1>
     <div
       v-for="[id, description] in recentlyDeleted"
       :key="id"
@@ -196,13 +251,13 @@ async function onUndoDelete(id: string) {
       role="status"
     >
       <span>Deleted "{{ description }}".</span>
-      <button type="button" @click="onUndoDelete(id)">Undo</button>
+      <Button variant="ghost" size="sm" @click="onUndoDelete(id)">Undo</Button>
     </div>
     <header class="desk-month-view-header">
       <div class="desk-month-switcher">
-        <button type="button" aria-label="Previous month" @click="shiftMonth(-1)">‹</button>
+        <Button variant="secondary" aria-label="Previous month" @click="shiftMonth(-1)">‹</Button>
         <span class="desk-month-label">{{ monthLabel }}</span>
-        <button type="button" aria-label="Next month" @click="shiftMonth(1)">›</button>
+        <Button variant="secondary" aria-label="Next month" @click="shiftMonth(1)">›</Button>
       </div>
       <span v-if="pendingQueued.length > 0" class="desk-pending-badge" data-testid="pending-count">
         {{ pendingQueued.length }} pending
@@ -225,54 +280,39 @@ async function onUndoDelete(id: string) {
     />
     <template v-else-if="store.summary || pendingQueued.length > 0 || rejectedQueued.length > 0">
       <template v-if="store.summary">
-        <p
-          v-if="store.summary.pendingRates > 0"
-          class="desk-month-view-pending"
-          data-testid="pending-rates"
-        >
-          {{ store.summary.pendingRates }} pending rate lookup{{
-            store.summary.pendingRates === 1 ? '' : 's'
-          }}
-        </p>
-
-        <section class="desk-month-view-tiles">
-          <div class="desk-tile">
-            <span class="desk-tile-label">Spent</span>
-            <span class="desk-tile-value">{{
-              formatMoney(store.summary.spent, store.summary.currency)
-            }}</span>
-          </div>
-          <div class="desk-tile">
-            <span class="desk-tile-label">Budget</span>
-            <span class="desk-tile-value">{{
-              formatMoney(store.summary.budgeted, store.summary.currency)
-            }}</span>
-          </div>
-          <div class="desk-tile">
-            <span class="desk-tile-label">Remaining</span>
-            <span class="desk-tile-value">{{
-              formatMoney(store.summary.remaining, store.summary.currency)
-            }}</span>
-          </div>
+        <section class="desk-month-view-tiles" aria-label="Month summary">
+          <Tile
+            class="desk-tile desk-tile--primary"
+            primary
+            label="Left this month"
+            :value="splitMoney(fmt(store.summary.remaining)).figure"
+            :variant="over ? 'critical' : 'default'"
+            :note="leftNote"
+            :status="
+              over ? [{ text: `${fmt(-store.summary.remaining)} over`, tone: 'critical' }] : []
+            "
+          />
+          <Tile
+            class="desk-tile"
+            label="Spent"
+            :value="fmt(store.summary.spent)"
+            :note="`${store.expenses.length} ${store.expenses.length === 1 ? 'entry' : 'entries'}`"
+            :status="spentStatus"
+          />
+          <Tile class="desk-tile" label="Budget" :value="fmt(store.summary.budgeted)" />
+          <ForecastTile :month="store.currentMonth" />
         </section>
-
-        <ForecastTile :month="store.currentMonth" />
         <p
           v-if="estimatedPending > 0"
           class="desk-month-view-pending"
           data-testid="estimated-pending"
         >
-          + {{ formatMoney(estimatedPending, store.summary.currency) }} estimated, not yet synced
+          + {{ fmt(estimatedPending) }} estimated, not yet synced
         </p>
 
-        <section
-          v-if="trendPoints.length > 1"
-          class="desk-month-view-trend"
-          data-testid="trend-sparkline"
-        >
-          <span class="desk-tile-label">Trend</span>
-          <TrendSparkline :points="trendPoints" />
-        </section>
+        <PanelFrame v-if="trendPoints.length > 1" heading="Trend" data-testid="trend-sparkline">
+          <div class="desk-month-view-pad"><TrendSparkline :points="trendPoints" /></div>
+        </PanelFrame>
       </template>
 
       <EmptyState
@@ -282,75 +322,140 @@ async function onUndoDelete(id: string) {
         title="No expenses this month"
         description="Add one to get started."
       />
-      <template v-else>
-        <section v-if="store.summary" class="desk-month-view-breakdown">
-          <CategoryBars
-            :categories="categoryBars"
-            :currency="store.summary.currency"
-            :format-money="(m) => formatMoney(m, store.summary!.currency)"
-          />
+      <div v-else class="desk-month-view-columns">
+        <PanelFrame heading="Entries" data-panel="entries">
           <DataTable
-            :categories="categoryBars"
-            :format-money="(m) => formatMoney(m, store.summary!.currency)"
-          />
-        </section>
+            class="desk-entries-table"
+            caption="Entries, newest first"
+            :columns="entryColumns"
+          >
+            <tr
+              v-for="q in pendingQueued"
+              :key="q.id"
+              class="desk-entries-pending"
+              data-testid="pending-row"
+            >
+              <td class="desk-col--date">
+                <span class="desk-row-lamp desk-row-lamp--warn" />{{ shortDay(q.input.date) }}
+              </td>
+              <td>
+                <span class="desk-item">
+                  <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-status-word desk-status-word--warn">pending</span>
+                </span>
+              </td>
+              <td class="desk-col--md">
+                {{ q.input.categoryId ? (categoryNames[q.input.categoryId] ?? '—') : '—' }}
+              </td>
+              <td class="desk-col--amount">
+                <span class="desk-amount-fig">{{
+                  splitMoney(formatMoney(q.input.amount.minor, q.input.amount.currency)).figure
+                }}</span
+                >{{ ' ' }}<span class="desk-amount-code">{{ q.input.amount.currency }}</span>
+              </td>
+              <td class="desk-col--action"></td>
+            </tr>
+            <tr
+              v-for="q in rejectedQueued"
+              :key="q.id"
+              class="desk-entries-rejected"
+              data-testid="rejected-row"
+            >
+              <td class="desk-col--date">
+                <span class="desk-row-lamp desk-row-lamp--critical" />{{ shortDay(q.input.date) }}
+              </td>
+              <td>
+                <span class="desk-item">
+                  <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-status-word desk-status-word--critical"
+                    >failed: {{ q.reason ?? 'unknown error' }}</span
+                  >
+                  <span class="desk-item-actions">
+                    <Button variant="ghost" size="sm" @click="onRetryQueued(q.id)">Retry</Button>
+                    <Button variant="ghost" size="sm" @click="onDiscardQueued(q.id)"
+                      >Discard</Button
+                    >
+                  </span>
+                </span>
+              </td>
+              <td class="desk-col--md">
+                {{ q.input.categoryId ? (categoryNames[q.input.categoryId] ?? '—') : '—' }}
+              </td>
+              <td class="desk-col--amount">
+                <span class="desk-amount-fig">{{
+                  splitMoney(formatMoney(q.input.amount.minor, q.input.amount.currency)).figure
+                }}</span
+                >{{ ' ' }}<span class="desk-amount-code">{{ q.input.amount.currency }}</span>
+              </td>
+              <td class="desk-col--action"></td>
+            </tr>
+            <tr v-for="e in store.expenses" :key="e.id">
+              <td class="desk-col--date">
+                <span v-if="isRatePending(e)" class="desk-row-lamp desk-row-lamp--warn" />{{
+                  shortDay(e.date)
+                }}
+              </td>
+              <td>
+                <span class="desk-item">
+                  <span class="desk-item-name">{{ e.description }}</span>
+                  <span class="desk-item-cat">{{
+                    e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—'
+                  }}</span>
+                  <span v-if="isRatePending(e)" class="desk-status-word desk-status-word--warn"
+                    >rate pending</span
+                  >
+                </span>
+              </td>
+              <td class="desk-col--md">
+                {{ e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—' }}
+              </td>
+              <td class="desk-col--amount" data-testid="entry-amount">
+                <span class="desk-amount-fig">{{ entryMoney(e).figure }}</span
+                >{{ ' ' }}<span class="desk-amount-code">{{ entryMoney(e).code }}</span>
+              </td>
+              <td class="desk-col--action">
+                <Button
+                  variant="ghost"
+                  class="desk-row-action"
+                  aria-label="Edit"
+                  title="Edit"
+                  @click="openEdit(e)"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M2 14h3l8-8-3-3-8 8z" stroke-width="1.5" />
+                  </svg>
+                </Button>
+                <Button
+                  variant="ghost"
+                  class="desk-row-action"
+                  aria-label="Delete"
+                  title="Delete"
+                  @click="onDelete(e.id, e.description)"
+                >
+                  <svg viewBox="0 0 16 16" aria-hidden="true">
+                    <path d="M3 4h10M6 4V2h4v2M4.5 4l.5 10h6l.5-10" stroke-width="1.5" />
+                  </svg>
+                </Button>
+              </td>
+            </tr>
+          </DataTable>
+        </PanelFrame>
 
-        <div class="desk-entries-table-wrap">
-          <table class="desk-entries-table">
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Description</th>
-                <th scope="col">Category</th>
-                <th scope="col">Amount</th>
-                <th scope="col"><span class="desk-sr-only">Actions</span></th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="q in pendingQueued"
-                :key="q.id"
-                class="desk-entries-pending"
-                data-testid="pending-row"
-              >
-                <td>{{ formatDate(q.input.date) }}</td>
-                <td>{{ q.input.description }} <span class="desk-pending-badge">pending</span></td>
-                <td>{{ q.input.categoryId ? (categoryNames[q.input.categoryId] ?? '—') : '—' }}</td>
-                <td>{{ formatMoney(q.input.amount.minor, q.input.amount.currency) }}</td>
-                <td></td>
-              </tr>
-              <tr
-                v-for="q in rejectedQueued"
-                :key="q.id"
-                class="desk-entries-rejected"
-                data-testid="rejected-row"
-              >
-                <td>{{ formatDate(q.input.date) }}</td>
-                <td>
-                  {{ q.input.description }}
-                  <span class="desk-rejected-badge">failed: {{ q.reason ?? 'unknown error' }}</span>
-                </td>
-                <td>{{ q.input.categoryId ? (categoryNames[q.input.categoryId] ?? '—') : '—' }}</td>
-                <td>{{ formatMoney(q.input.amount.minor, q.input.amount.currency) }}</td>
-                <td class="desk-entries-actions">
-                  <button type="button" @click="onRetryQueued(q.id)">Retry</button>
-                  <button type="button" @click="onDiscardQueued(q.id)">Discard</button>
-                </td>
-              </tr>
-              <tr v-for="e in store.expenses" :key="e.id">
-                <td>{{ formatDate(e.date) }}</td>
-                <td>{{ e.description }}</td>
-                <td>{{ e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—' }}</td>
-                <td>{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
-                <td class="desk-entries-actions">
-                  <button type="button" @click="openEdit(e)">Edit</button>
-                  <button type="button" @click="onDelete(e.id, e.description)">Delete</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
+        <PanelFrame v-if="store.summary" heading="Categories" data-panel="categories">
+          <div class="desk-month-view-bars">
+            <CategoryBars
+              :categories="categoryBars"
+              :currency="store.summary.currency"
+              :format-money="fmt"
+            />
+            <DataTable
+              caption="Spending by category"
+              :categories="categoryBars"
+              :format-money="fmt"
+            />
+          </div>
+        </PanelFrame>
+      </div>
     </template>
 
     <Dialog
@@ -366,155 +471,111 @@ async function onUndoDelete(id: string) {
 <style scoped>
 .desk-sr-only {
   position: absolute;
+  font-size: var(--text-md);
   width: 1px;
   height: 1px;
-  padding: 0;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
-  border: 0;
 }
+/* Centred in the content column, on the same gutters as the header (DESIGN.md Layout). */
 .desk-month-view {
-  max-width: 60rem;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-6);
 }
 .desk-month-view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-month-switcher {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-family: var(--font-mono);
+  gap: var(--space-3);
 }
-.desk-month-switcher button {
-  background: none;
-  border: 1px solid var(--color-fg);
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--color-fg);
-  padding: 0.25rem 0.6rem;
+.desk-month-label {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-md);
 }
 .desk-month-view-pending {
-  font-size: 0.85rem;
-  color: var(--color-warn);
   margin: 0;
+  font-size: var(--text-sm);
+  color: var(--color-warn);
 }
 .desk-undo-banner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--color-accent) 12%, transparent);
-  font-size: 0.85rem;
-}
-.desk-undo-banner button {
-  background: none;
-  border: none;
-  color: var(--color-accent);
-  font: inherit;
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
+  gap: var(--space-4);
+  padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-sm);
 }
 .desk-pending-badge {
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-warn);
-  border: 1px solid var(--color-warn);
-  border-radius: 4px;
-  padding: 0.1rem 0.4rem;
 }
-.desk-entries-pending {
-  opacity: 0.75;
-}
-.desk-rejected-badge {
-  font-size: 0.75rem;
-  color: var(--color-critical);
-  border: 1px solid var(--color-critical);
-  border-radius: 4px;
-  padding: 0.1rem 0.4rem;
-}
+.desk-entries-pending,
 .desk-entries-rejected {
-  opacity: 0.85;
+  background: var(--color-surface);
 }
+/* Tiles: two-up on phones with the departure tile across; from 1024px one row of five columns. */
 .desk-month-view-tiles {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
 }
-.desk-tile {
+.desk-tile--primary,
+.desk-month-view-tiles > [data-testid='forecast-tile'] {
+  grid-column: 1 / -1;
+}
+.desk-month-view-pad {
+  padding: var(--space-2) var(--space-4);
+}
+.desk-month-view-bars {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.75rem;
-  border: 1px solid var(--color-fg);
-  border-color: color-mix(in srgb, var(--color-fg) 12%, transparent);
-  border-radius: 8px;
+  gap: var(--space-6);
+  padding: var(--space-2) var(--space-4);
 }
-.desk-tile-label {
-  font-size: 0.8rem;
-  opacity: 0.7;
-}
-.desk-tile-value {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-  font-size: 1.25rem;
-}
-.desk-month-view-trend {
+.desk-month-view-columns {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-6);
 }
-.desk-month-view-breakdown {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-.desk-entries-table-wrap {
-  overflow-x: auto;
-}
-.desk-entries-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-.desk-entries-table th,
-.desk-entries-table td {
-  text-align: left;
-  padding: 0.4rem 0.6rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-}
-.desk-entries-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.desk-entries-actions button {
-  background: none;
-  border: none;
-  color: var(--color-accent);
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.85rem;
-}
-@media (min-width: 40rem) {
-  .desk-month-view-breakdown {
-    flex-direction: row;
+@media (min-width: 768px) {
+  .desk-month-view {
+    padding-top: var(--space-6);
   }
-  .desk-month-view-breakdown > * {
-    flex: 1;
+}
+@media (min-width: 1024px) {
+  .desk-month-view-tiles {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: var(--space-4);
+  }
+  .desk-tile--primary {
+    grid-column: span 2;
+  }
+  .desk-month-view-tiles > [data-testid='forecast-tile'] {
+    grid-column: auto;
+  }
+  /* Entries board and category bars side by side. */
+  .desk-month-view-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    align-items: start;
   }
 }
 </style>
