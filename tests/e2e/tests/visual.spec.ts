@@ -297,6 +297,10 @@ type Screen = {
   /** CSS selectors for panels below the fold; each gets an element snapshot. */
   panels?: string[];
   signedIn?: boolean;
+  /** Elements owned by a LATER task (named in a comment at the entry), left out of the target-size check. */
+  targetExempt?: string;
+  /** Runs after the default state has loaded (open a panel, press a key); every check sees its result. */
+  afterLoad?: (page: Page) => Promise<unknown>;
   states?: ScreenState[];
   /** Seed the edge fixture (apps/web/src/catalogue/fixtures.ts): 48-char category, six-digit amount, 30-entry day. */
   edge?: boolean;
@@ -313,6 +317,20 @@ const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 chars
 
 export const SCREENS: Screen[] = [
+  {
+    // T031: the shared header and the open Feedback panel, on the signed-in month view.
+    name: 'shell',
+    route: '/',
+    signedIn: true,
+    // The month switcher (26x25 prev/next) belongs to MonthView and is resized in T032, which
+    // removes this exemption. Everything else in the header and the Feedback panel is checked.
+    targetExempt: '[aria-label^="Previous month"], [aria-label^="Next month"]',
+    panels: ['header.desk-header', '.feedback-form'],
+    afterLoad: async (page) => {
+      await page.getByRole('button', { name: 'Feedback' }).click();
+      await expect(page.getByRole('button', { name: 'Close feedback' })).toBeVisible();
+    },
+  },
   {
     name: 'login',
     route: '/login',
@@ -421,30 +439,35 @@ async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: Scree
     await page.waitForLoadState('networkidle');
     if (state !== 'default') await screen.force?.[state]?.after?.(page);
   }
+  if (state === 'default') await screen.afterLoad?.(page);
 }
 
 /** Every visible, enabled focusable element must be at least `min` tall (32 in dense rows / menus). */
-async function targetFailures(page: Page, min: number): Promise<string[]> {
-  return page.evaluate((min) => {
-    const sel = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
-    const out: string[] = [];
-    for (const el of document.querySelectorAll<HTMLElement>(sel)) {
-      if ((el as HTMLButtonElement).disabled || (el as HTMLInputElement).type === 'hidden')
-        continue;
-      const r = el.getBoundingClientRect();
-      const cs = getComputedStyle(el);
-      if (r.width === 0 || r.height === 0 || cs.visibility === 'hidden' || cs.display === 'none')
-        continue;
-      const need = el.closest('.desk-data-table--dense, [role="menu"]') ? Math.min(min, 32) : min;
-      if (r.height + 0.5 < need) {
-        const name = el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 40) ?? '';
-        out.push(
-          `${el.tagName.toLowerCase()} "${name}" ${Math.round(r.width)}x${Math.round(r.height)} < ${need}`,
-        );
+async function targetFailures(page: Page, min: number, exempt?: string): Promise<string[]> {
+  return page.evaluate(
+    ([min, exempt]) => {
+      const sel = 'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      const out: string[] = [];
+      for (const el of document.querySelectorAll<HTMLElement>(sel)) {
+        if ((el as HTMLButtonElement).disabled || (el as HTMLInputElement).type === 'hidden')
+          continue;
+        if (exempt && el.matches(exempt)) continue;
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el);
+        if (r.width === 0 || r.height === 0 || cs.visibility === 'hidden' || cs.display === 'none')
+          continue;
+        const need = el.closest('.desk-data-table--dense, [role="menu"]') ? Math.min(min, 32) : min;
+        if (r.height + 0.5 < need) {
+          const name = el.getAttribute('aria-label') ?? el.textContent?.trim().slice(0, 40) ?? '';
+          out.push(
+            `${el.tagName.toLowerCase()} "${name}" ${Math.round(r.width)}x${Math.round(r.height)} < ${need}`,
+          );
+        }
       }
-    }
-    return out;
-  }, min);
+      return out;
+    },
+    [min, exempt] as const,
+  );
 }
 
 const toSeconds = (list: string) =>
@@ -522,7 +545,10 @@ for (const screen of SCREENS) {
       const ctx = await prepare(page, screen);
       await openScreen(page, screen, ctx, 'default');
       const min = vp.width <= 360 ? 44 : 24;
-      expect(await targetFailures(page, min), `targets under ${min}px`).toEqual([]);
+      expect(
+        await targetFailures(page, min, screen.targetExempt),
+        `targets under ${min}px`,
+      ).toEqual([]);
       if (vp.width <= 360) {
         expect(
           await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),

@@ -4,6 +4,7 @@
 // pattern); shows the rate-limit message inline on a 429.
 import { computed, onUnmounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
+import { Button } from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 
 const MAX_LENGTH = 2000;
@@ -66,9 +67,9 @@ async function submit() {
 
 <template>
   <div class="feedback-widget">
-    <button type="button" class="feedback-toggle" @click="open = !open">
+    <Button class="feedback-toggle" @click="open = !open">
       {{ open ? 'Close feedback' : 'Feedback' }}
-    </button>
+    </Button>
     <form v-if="open" class="feedback-form" @submit.prevent="submit">
       <p v-if="!isOnline" class="feedback-offline" role="status">
         You're offline — feedback can't be sent right now.
@@ -85,10 +86,10 @@ async function submit() {
       </label>
       <p class="feedback-count" :class="{ over: remaining < 0 }">{{ remaining }} characters left</p>
       <label class="feedback-consent">
-        <input v-model="contactOk" type="checkbox" :disabled="!isOnline" />
-        OK to contact me about this
+        <input v-model="contactOk" type="checkbox" class="feedback-check" :disabled="!isOnline" />
+        <span class="feedback-consent-text">OK to contact me about this</span>
       </label>
-      <button type="submit" :disabled="!canSubmit || status.kind === 'sending'">Send</button>
+      <Button type="submit" :disabled="!canSubmit || status.kind === 'sending'">Send</Button>
       <p v-if="status.kind === 'sent'" role="status">Thanks — feedback sent.</p>
       <p v-if="status.kind === 'rate_limited'" role="alert">
         Too much feedback for now — try again in a bit.
@@ -101,46 +102,100 @@ async function submit() {
 <style scoped>
 .feedback-widget {
   position: fixed;
-  right: 1rem;
-  bottom: 1rem;
+  right: var(--space-4);
+  bottom: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
   font-family: var(--font-sans);
   z-index: 20;
 }
+/* A flap on the Raised shadow; the panel above it is an overlay. */
 .feedback-toggle {
-  border-radius: 999px;
-  padding: 0.5rem 1rem;
-  background: var(--color-accent);
-  color: white;
-  border: none;
+  order: 2;
+  box-shadow: var(--shadow-raised);
 }
 .feedback-form {
-  margin-top: 0.5rem;
+  order: 1;
+  margin-bottom: var(--space-2);
   width: 18rem;
-  max-width: calc(100vw - 2rem);
-  padding: 1rem;
-  border-radius: 0.75rem;
-  background: var(--color-bg);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: calc(100vw - 2 * var(--space-4));
+  box-sizing: border-box;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-fg);
+  box-shadow: var(--shadow-overlay);
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
+}
+.feedback-form textarea {
+  box-sizing: border-box;
+  width: 100%;
 }
 .feedback-offline {
   color: var(--color-warn);
   margin: 0;
 }
 .feedback-count {
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-xs);
+  color: var(--color-fg-muted);
   margin: 0;
 }
 .feedback-count.over {
   color: var(--color-critical);
 }
 .feedback-consent {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.9rem;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  font-size: var(--text-sm);
+}
+/* The real checkbox is stretched over the whole label (a 44px target) and hidden; the box is drawn. */
+.feedback-check {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.feedback-consent-text::before {
+  content: '';
+  display: inline-block;
+  box-sizing: border-box;
+  width: var(--space-5);
+  height: var(--space-5);
+  margin-right: var(--space-2);
+  vertical-align: middle;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-accent-fg);
+  line-height: var(--space-5);
+  text-align: center;
+}
+.feedback-check:checked + .feedback-consent-text::before {
+  content: '\2713';
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+.feedback-check:focus-visible + .feedback-consent-text::before {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.feedback-check:disabled + .feedback-consent-text {
+  opacity: 0.6;
+}
+@media (min-width: 1024px) {
+  .feedback-consent {
+    min-height: var(--space-6);
+  }
 }
 </style>

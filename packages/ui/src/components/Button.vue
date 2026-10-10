@@ -27,14 +27,22 @@ withDefaults(
 <style scoped>
 .desk-btn {
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+  min-height: var(--target-min);
   padding: var(--space-2) var(--space-4);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: var(--space-2);
+  transition: transform var(--motion-fast) var(--ease-standard);
+}
+.desk-btn:active:not(:disabled) {
+  transform: translateY(1px);
 }
 .desk-btn:focus-visible {
   outline: 2px solid var(--color-focus);
@@ -60,6 +68,7 @@ withDefaults(
 .desk-btn.ghost {
   background: transparent;
   color: var(--color-fg);
+  padding-inline: var(--space-3);
 }
 .desk-btn.danger {
   background: var(--color-critical);
@@ -78,7 +87,16 @@ withDefaults(
     transform: rotate(360deg);
   }
 }
+/* Desktop: pointer targets drop to 40px (DESIGN.md Layout; phone stays 44). */
+@media (min-width: 1024px) {
+  .desk-btn {
+    min-height: var(--space-10);
+  }
+}
 @media (prefers-reduced-motion: reduce) {
+  .desk-btn {
+    transition: none;
+  }
   .desk-btn-spinner {
     animation-duration: 1.5s;
   }

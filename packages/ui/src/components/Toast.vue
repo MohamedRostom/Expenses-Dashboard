@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import Button from './Button.vue';
 import { useToast, type ToastMessage } from '../composables/useToast.js';
 
 const props = defineProps<{
@@ -43,9 +44,15 @@ function undo(t: ToastMessage) {
         @focusout="hold(t.id, 'focus', false)"
       >
         {{ t.text }}
-        <button v-if="t.undo" type="button" class="desk-toast-undo" @click.stop="undo(t)">
+        <Button
+          v-if="t.undo"
+          variant="ghost"
+          size="sm"
+          class="desk-toast-undo"
+          @click.stop="undo(t)"
+        >
           Undo
-        </button>
+        </Button>
       </div>
     </div>
   </Teleport>
@@ -62,35 +69,30 @@ function undo(t: ToastMessage) {
   z-index: 200;
 }
 .desk-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   font-family: var(--font-sans);
-  background: var(--color-fg);
-  color: var(--color-bg);
-  padding: 0.6rem 1rem;
-  border-radius: 6px;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  background: var(--color-surface-raised);
+  color: var(--color-fg);
+  padding: var(--space-3) var(--space-4);
+  border-left: 4px solid var(--color-border);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 20%);
+  box-shadow: var(--shadow-overlay);
+}
+/* The 4px leading lamp carries the status: green saved, amber, red. */
+.desk-toast.success {
+  border-left-color: var(--color-accent);
 }
 .desk-toast.warn {
-  background: var(--color-warn);
+  border-left-color: var(--color-warn);
 }
 .desk-toast.critical {
-  background: var(--color-critical);
+  border-left-color: var(--color-critical);
 }
-.desk-toast.success {
-  background: var(--color-accent);
-  color: var(--color-accent-fg);
-}
-.desk-toast-undo {
-  margin-left: var(--space-3);
-  font: inherit;
-  font-weight: 600;
-  color: inherit;
-  background: none;
-  border: 0;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.desk-toast-undo:focus-visible,
 .desk-toast:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;

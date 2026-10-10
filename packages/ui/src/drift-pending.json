@@ -2,10 +2,8 @@
   "apps/landing/src/pages/index.vue",
   "apps/landing/src/pages/privacy.vue",
   "apps/landing/src/pages/terms.vue",
-  "apps/web/src/App.vue",
   "apps/web/src/components/CurrencyPicker.vue",
   "apps/web/src/components/ExpenseForm.vue",
-  "apps/web/src/components/FeedbackWidget.vue",
   "apps/web/src/components/MonthCompare.vue",
   "apps/web/src/components/VersionHistory.vue",
   "apps/web/src/components/connections/StandardsForm.vue",
@@ -41,7 +39,6 @@
   "apps/web/src/views/TodayView.vue",
   "apps/web/src/views/VerifyView.vue",
   "apps/web/src/views/YearView.vue",
-  "packages/ui/src/components/Button.vue",
   "packages/ui/src/components/DataTable.vue",
   "packages/ui/src/components/Dialog.vue",
   "packages/ui/src/components/EmptyState.vue",
@@ -49,6 +46,5 @@
   "packages/ui/src/components/Input.vue",
   "packages/ui/src/components/PanelFrame.vue",
   "packages/ui/src/components/Select.vue",
-  "packages/ui/src/components/Tile.vue",
-  "packages/ui/src/components/Toast.vue"
+  "packages/ui/src/components/Tile.vue"
 ]
