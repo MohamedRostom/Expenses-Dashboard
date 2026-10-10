@@ -176,7 +176,7 @@ Where the tools and the spec disagree (for example a taste skill preferring perp
 
 - [x] T045 [US3] Add `usage` to every `packages/ui/src/components/*.story.ts` and `packages/ui/src/charts/*.story.ts`, render it in `apps/web/src/catalogue/CatalogueView.vue` (live example, source block, jump links), and add a catalogue index listing each block with its purpose from the inventory
 - [x] T046 [US3] Complete `DESIGN.md` §Building a new panel (pick `PanelFrame`, choose states, wire `causeMessages`, add a story, run the tests)
-- [ ] T047 [US3] Run the contributor exercise from quickstart.md Slice C with a throw-away `apps/web/src/components/DemoPanel.vue` built from blocks only, its snapshot and axe cases passing first time; record the time in DESIGN.md §Building a new panel, then delete the file; the timed run with a person other than the agent is SC-006 and `needs-rostom`, recorded in `docs/ROADMAP.md`
+- [x] T047 [US3] Run the contributor exercise from quickstart.md Slice C with a throw-away `apps/web/src/components/DemoPanel.vue` built from blocks only, its snapshot and axe cases passing first time; record the time in DESIGN.md §Building a new panel, then delete the file; the timed run with a person other than the agent is SC-006 and `needs-rostom`, recorded in `docs/ROADMAP.md` Agent run done; SC-006 pending (needs-rostom).
 
 **Checkpoint**: US3 independent test passes; the inventory check and drift ratchet run in `pnpm test:unit`.
 
