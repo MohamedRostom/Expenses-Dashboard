@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ACCENT_IDS } from './accent.js';
 import { UserResponse as BaseUser } from './auth.js';
 import { Capability, ProviderId } from './connections.js';
 import { TemperatureUnit } from './widgets.js';
@@ -11,6 +12,7 @@ export type MeResponseT = z.infer<typeof MeResponse>;
 
 export const PatchMeRequest = z.object({
   theme: z.string().optional(),
+  accent: z.enum(ACCENT_IDS).optional(),
   defaultCurrency: z.string().length(3).optional(),
   timeZone: z.string().optional(),
   onboardingCompletedAt: z.string().nullable().optional(),

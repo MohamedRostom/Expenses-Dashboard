@@ -25,6 +25,7 @@ import {
   type SessionsResponseT,
   type ExportDocumentT,
   type ConfirmEmailResponseT,
+  type AccentId,
 } from '@desk/contracts';
 import type { AppVariables, JobsDep } from '../app.js';
 import type { SessionUser } from '../middleware/session.js';
@@ -57,6 +58,7 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     email: u.email,
     defaultCurrency: u.defaultCurrency,
     theme: u.theme,
+    accent: u.accent as AccentId,
     timeZone: u.timeZone,
     temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,

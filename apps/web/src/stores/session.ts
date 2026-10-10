@@ -7,6 +7,8 @@ export interface User {
   email: string;
   defaultCurrency: string;
   theme: 'light' | 'dark' | 'system';
+  /** Accent preset id from UserResponse (spec 004 US5). */
+  accent?: string;
   timeZone: string;
   onboardingCompletedAt?: string | null;
   /** From UserResponse; false until the address is confirmed (FR-001). */

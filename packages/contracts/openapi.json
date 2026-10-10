@@ -1886,6 +1886,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -1908,6 +1919,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -2741,6 +2753,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -2763,6 +2786,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -3844,6 +3868,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -3862,6 +3897,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -3892,6 +3928,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -3914,6 +3961,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4207,6 +4255,10 @@
           "theme": {
             "type": "string"
           },
+          "accent": {
+            "type": "string",
+            "enum": ["signal-green", "concourse-blue", "platform-teal", "violet", "slate", "plum"]
+          },
           "defaultCurrency": {
             "type": "string",
             "minLength": 3,
@@ -4244,6 +4296,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4266,6 +4329,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -5635,6 +5699,10 @@
           "theme": {
             "type": "string"
           },
+          "accent": {
+            "type": "string",
+            "enum": ["signal-green", "concourse-blue", "platform-teal", "violet", "slate", "plum"]
+          },
           "timeZone": {
             "type": "string"
           },
@@ -5653,6 +5721,7 @@
           "email",
           "defaultCurrency",
           "theme",
+          "accent",
           "timeZone",
           "onboardingCompletedAt",
           "emailVerified",
@@ -5690,6 +5759,17 @@
               "theme": {
                 "type": "string"
               },
+              "accent": {
+                "type": "string",
+                "enum": [
+                  "signal-green",
+                  "concourse-blue",
+                  "platform-teal",
+                  "violet",
+                  "slate",
+                  "plum"
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -5708,6 +5788,7 @@
               "email",
               "defaultCurrency",
               "theme",
+              "accent",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",

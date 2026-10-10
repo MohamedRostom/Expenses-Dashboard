@@ -10,6 +10,7 @@ const user = {
   email: 'a@b.com',
   defaultCurrency: 'GBP',
   theme: 'system',
+  accent: 'signal-green',
   timeZone: 'UTC',
 };
 
