@@ -287,7 +287,7 @@ for (const sheet of ['add-widget', 'widget-settings']) {
 // apps/web (decision 2026-10-10, see tasks.md T029).
 // ---------------------------------------------------------------------------------------------
 
-type ScreenState = 'default' | 'loading' | 'empty' | 'error';
+type ScreenState = 'default' | 'loading' | 'empty' | 'error' | 'offline';
 type SeedCtx = { email: string; categoryIds: string[] };
 type Screen = {
   name: string;
@@ -350,6 +350,118 @@ const seedCategory = async (page: Page, ctx: SeedCtx) => {
   expect(res.ok()).toBe(true);
   ctx.categoryIds.push(((await res.json()) as { category: { id: string } }).category.id);
 };
+
+// T037: a fixed /panels/today payload (a Google and a Microsoft account), built from the local
+// clock so "Today" and "Tomorrow" headings and the message times hold on any day.
+const at = (dayOffset: number, h: number, m: number) => {
+  const d = new Date();
+  d.setDate(d.getDate() + dayOffset);
+  d.setHours(h, m, 0, 0);
+  return d;
+};
+const ymd = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const mockToday = (page: Page) =>
+  page.route('**/panels/today', (route) => {
+    if (route.request().method() !== 'GET') return route.fallback();
+    const account = (
+      id: string,
+      provider: 'google' | 'microsoft',
+      label: string,
+      unread: number,
+      colour: string,
+    ) => ({
+      id,
+      provider,
+      label,
+      colour,
+      capabilities: ['calendar', 'mail'],
+      status: 'connected',
+      lastRefreshAt: new Date().toISOString(),
+      lastError: null,
+      stale: false,
+      purged: false,
+      unreadCount: unread,
+    });
+    const event = (
+      id: string,
+      acc: string,
+      title: string,
+      s: Date,
+      e: Date,
+      location: string | null,
+    ) => ({
+      id,
+      accountId: acc,
+      title,
+      startsAt: s.toISOString(),
+      endsAt: e.toISOString(),
+      allDay: false,
+      location,
+      tentative: false,
+      link: 'https://calendar.example.test/e/' + id,
+    });
+    const message = (
+      id: string,
+      acc: string,
+      name: string,
+      subject: string,
+      d: Date,
+      unread: boolean,
+    ) => ({
+      id,
+      accountId: acc,
+      fromName: name,
+      fromAddress: 'sender@example.test',
+      subject,
+      preview: 'A short preview of the message body that runs on long enough to be cut off.',
+      receivedAt: d.toISOString(),
+      unread,
+      link: 'https://mail.example.test/m/' + id,
+    });
+    return route.fulfill({
+      contentType: 'application/json',
+      body: JSON.stringify({
+        generatedAt: new Date().toISOString(),
+        accounts: [
+          account('a1', 'google', 'mo@example.test', 2, 'teal'),
+          account('a2', 'microsoft', 'work@example.test', 0, 'blue'),
+        ],
+        days: [
+          {
+            date: ymd(at(0, 0, 0)),
+            events: [
+              event('e1', 'a1', 'Standup', at(0, 9, 30), at(0, 9, 45), null),
+              event(
+                'e2',
+                'a2',
+                'Quarterly review with finance',
+                at(0, 14, 0),
+                at(0, 15, 30),
+                'Room 4',
+              ),
+            ],
+          },
+          {
+            date: ymd(at(1, 0, 0)),
+            events: [event('e3', 'a1', 'Dentist', at(1, 8, 15), at(1, 9, 0), null)],
+          },
+        ],
+        messages: [
+          message('m1', 'a1', 'Priya Raman', 'Invoice 4471 is ready', at(0, 8, 12), true),
+          message('m2', 'a2', 'Tomas Berg', 'Moving the review to Thursday', at(0, 7, 40), true),
+          message(
+            'm3',
+            'a1',
+            'Linden Library',
+            'Your hold is ready to collect',
+            at(0, 6, 5),
+            false,
+          ),
+        ],
+      }),
+    });
+  });
 
 export const SCREENS: Screen[] = [
   {
@@ -538,6 +650,37 @@ export const SCREENS: Screen[] = [
       await expect(page.getByRole('alert')).toBeVisible();
     },
   },
+  {
+    // T037: Today. The providers are mocked at the app's own endpoint (page.route on
+    // GET /panels/today with a fixed payload), not through mockProvider: the real connect flow
+    // waits on the API's 30s job tick and its dates would move the baselines. Dates are built from
+    // the local clock but only "Today"/"Tomorrow" headings and fixed hours are shown.
+    name: 'today',
+    route: '/today',
+    signedIn: true,
+    flags: 'panels',
+    panels: ['[data-panel="calendar"]', '[data-panel="inbox"]'],
+    mock: mockToday,
+    states: ['loading', 'empty', 'error', 'offline'],
+    force: {
+      empty: {
+        setup: (page) =>
+          page.route('**/panels/today', (route) =>
+            route.request().method() === 'GET'
+              ? route.fulfill({
+                  contentType: 'application/json',
+                  body: JSON.stringify({
+                    days: [],
+                    messages: [],
+                    accounts: [],
+                    generatedAt: new Date().toISOString(),
+                  }),
+                })
+              : route.fallback(),
+          ),
+      },
+    },
+  },
 ];
 
 /**
@@ -621,6 +764,11 @@ async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: Scree
     if (state !== 'default') await screen.force?.[state]?.after?.(page);
   }
   if (state === 'default') await screen.afterLoad?.(page);
+  // Offline: the screen loads normally, then the network drops; the app keeps the last content.
+  if (state === 'offline') {
+    await page.context().setOffline(true);
+    await page.waitForFunction(() => navigator.onLine === false);
+  }
 }
 
 /** Every visible, enabled focusable element must be at least `min` tall (32 in dense rows / menus). */
@@ -769,7 +917,7 @@ test('@visual harness: SCREENS is non-empty and every entry is well formed', () 
     names.add(s.name);
     expect(typeof s.route === 'function' || s.route.startsWith('/'), `${s.name} route`).toBe(true);
     for (const st of s.states ?? []) {
-      expect(['default', 'loading', 'empty', 'error']).toContain(st);
+      expect(['default', 'loading', 'empty', 'error', 'offline']).toContain(st);
     }
     if (s.edge || s.seed) expect(s.signedIn, `${s.name}: seeding needs signedIn`).toBe(true);
   }

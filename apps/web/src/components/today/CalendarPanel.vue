@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { PanelFrame } from '@desk/ui';
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import type { TodayAccountT, TodayEventT } from '@desk/contracts';
 import { useTodayStore } from '../../stores/today.js';
@@ -8,6 +8,30 @@ import { formatDateTime } from '../../utils/format.js';
 import AccountChip from './AccountChip.vue';
 
 const today = useTodayStore();
+
+// Offline: the last content stays, under a note with the calendar's own words.
+const online = ref(typeof navigator === 'undefined' || navigator.onLine !== false);
+const setOnline = () => (online.value = navigator.onLine !== false);
+onMounted(() => {
+  window.addEventListener('online', setOnline);
+  window.addEventListener('offline', setOnline);
+});
+onUnmounted(() => {
+  window.removeEventListener('online', setOnline);
+  window.removeEventListener('offline', setOnline);
+});
+const frameKind = computed(() => {
+  if (today.loading || today.purged) return 'loading' as const;
+  return today.error ? ('error' as const) : undefined;
+});
+const errorCopy = computed(() =>
+  today.error === 'offline'
+    ? {
+        title: 'Calendar is offline',
+        description: 'Your events will load once you are back online.',
+      }
+    : {},
+);
 
 const locale = typeof navigator !== 'undefined' ? navigator.language : undefined;
 
@@ -92,194 +116,211 @@ function lastRefreshedLabel(account: TodayAccountT): string {
 </script>
 
 <template>
-  <div class="calendar-panel">
-    <h2>Calendar</h2>
+  <PanelFrame
+    heading="Calendar"
+    class="calendar-panel"
+    data-panel="calendar"
+    :kind="frameKind"
+    :code="today.error ?? undefined"
+    v-bind="errorCopy"
+  >
+    <div class="panel-body">
+      <p v-if="!online" class="offline-note" role="status" data-testid="offline-note">
+        <strong>Calendar is offline.</strong> These events are as last loaded.
+      </p>
 
-    <PanelFrame v-if="today.loading || today.purged" kind="loading" />
-    <PanelFrame v-else-if="today.error" kind="error" :code="today.error" />
+      <template v-if="!hasAccounts">
+        <div class="empty-state">
+          <p>
+            No calendar accounts connected. Connect a calendar to see your next 7 days of events.
+          </p>
+          <RouterLink :to="{ name: 'settings-connections' }" class="link">
+            Connect a calendar
+          </RouterLink>
+        </div>
+      </template>
 
-    <template v-else-if="!hasAccounts">
-      <div class="empty-state">
-        <p>No calendar accounts connected. Connect a calendar to see your next 7 days of events.</p>
-        <RouterLink :to="{ name: 'settings-connections' }" class="link">
-          Connect a calendar
-        </RouterLink>
-      </div>
-    </template>
+      <template v-else>
+        <div class="account-chips">
+          <AccountChip v-for="account in calendarAccounts" :key="account.id" :account="account" />
+        </div>
 
-    <template v-else>
-      <div class="account-chips">
-        <AccountChip v-for="account in calendarAccounts" :key="account.id" :account="account" />
-      </div>
+        <div v-if="staleAccounts.length > 0" class="stale-notices">
+          <p v-for="account in staleAccounts" :key="account.id" class="stale-notice">
+            {{ account.label }}: {{ lastRefreshedLabel(account) }}
+          </p>
+        </div>
 
-      <div v-if="staleAccounts.length > 0" class="stale-notices">
-        <p v-for="account in staleAccounts" :key="account.id" class="stale-notice">
-          {{ account.label }}: {{ lastRefreshedLabel(account) }}
-        </p>
-      </div>
+        <div v-if="reconnectAccounts.length > 0" class="reconnect-notices">
+          <p v-for="account in reconnectAccounts" :key="account.id" class="reconnect-notice">
+            {{ account.label }} needs reconnecting.
+            <a class="reconnect-link" :href="account.reconnectUrl">Reconnect {{ account.label }}</a>
+          </p>
+        </div>
 
-      <div v-if="reconnectAccounts.length > 0" class="reconnect-notices">
-        <p v-for="account in reconnectAccounts" :key="account.id" class="reconnect-notice">
-          {{ account.label }} needs reconnecting.
-          <a class="reconnect-link" :href="account.reconnectUrl">Reconnect {{ account.label }}</a>
-        </p>
-      </div>
+        <p v-if="isEmpty" class="no-events">No events in the next seven days</p>
 
-      <p v-if="isEmpty" class="no-events">No events in the next seven days</p>
-
-      <div v-else class="events">
-        <div v-for="day in calendarEvents" :key="day.date" class="day">
-          <h3 class="day-heading">{{ formatDayHeading(day.date) }}</h3>
-          <div v-for="event in day.events" :key="event.id" class="event">
-            <div class="event-time">{{ timeLabel(event) }}</div>
-            <div class="event-title">
-              {{ event.title }}
-              <span v-if="event.tentative" class="tentative-mark">Tentative</span>
-            </div>
-            <div v-if="event.location" class="event-location">{{ event.location }}</div>
-            <div class="event-footer">
-              <AccountChip
-                v-if="accountsMap.get(event.accountId)"
-                :account="accountsMap.get(event.accountId)!"
-              />
-              <a
-                v-if="event.link"
-                class="event-link"
-                :href="event.link"
-                target="_blank"
-                rel="noopener"
-                :aria-label="eventLinkLabel(event)"
-              >
-                Open
-              </a>
+        <div v-else class="events">
+          <div v-for="day in calendarEvents" :key="day.date" class="day">
+            <h4 class="day-heading">{{ formatDayHeading(day.date) }}</h4>
+            <div v-for="event in day.events" :key="event.id" class="event">
+              <div class="event-time num">{{ timeLabel(event) }}</div>
+              <div class="event-title">
+                {{ event.title }}
+                <span v-if="event.tentative" class="tentative-mark">Tentative</span>
+              </div>
+              <div v-if="event.location" class="event-location">{{ event.location }}</div>
+              <div class="event-footer">
+                <AccountChip
+                  v-if="accountsMap.get(event.accountId)"
+                  :account="accountsMap.get(event.accountId)!"
+                />
+                <a
+                  v-if="event.link"
+                  class="event-link"
+                  :href="event.link"
+                  target="_blank"
+                  rel="noopener"
+                  :aria-label="eventLinkLabel(event)"
+                >
+                  Open
+                </a>
+              </div>
             </div>
           </div>
         </div>
-      </div>
-    </template>
-  </div>
+      </template>
+    </div>
+  </PanelFrame>
 </template>
 
 <style scoped>
-.calendar-panel {
-  padding: 1rem;
-}
-
-h2 {
-  margin: 0 0 1rem 0;
-  font-size: 1.25rem;
-}
-
-.empty-state {
-  text-align: center;
-  padding: 2rem 1rem;
-  color: var(--color-fg-secondary);
-}
-
-.empty-state p {
-  margin-bottom: 1rem;
-}
-
 .link {
-  color: var(--color-accent);
-  text-decoration: none;
-}
-
-.link:hover {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-fg);
   text-decoration: underline;
 }
-
-.no-events {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-fg-secondary);
+.panel-body {
+  padding: var(--space-2) var(--space-4);
+  min-width: 0;
 }
-
+.offline-note {
+  margin: 0 0 var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: 4px solid var(--color-warn);
+  background: var(--color-surface-raised);
+  font-size: var(--text-sm);
+}
+.offline-note strong {
+  font-weight: 600;
+}
 .account-chips {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
   flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
 }
-
 .stale-notices,
 .reconnect-notices {
-  margin-bottom: 1rem;
+  margin-bottom: var(--space-3);
 }
-
-.stale-notice {
-  font-size: 0.8rem;
-  color: var(--color-fg-secondary);
-  margin: 0 0 0.25rem 0;
-}
-
+.stale-notice,
 .reconnect-notice {
-  font-size: 0.85rem;
-  color: var(--color-warn);
-  margin: 0 0 0.25rem 0;
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-sm);
 }
-
+.stale-notice {
+  color: var(--color-fg-muted);
+}
+.reconnect-notice {
+  border-inline-start: 4px solid var(--color-warn);
+  padding-inline-start: var(--space-2);
+}
 .reconnect-link {
-  color: var(--color-accent);
-  margin-left: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-inline-start: var(--space-2);
+  color: var(--color-fg);
+  text-decoration: underline;
+}
+.empty-state,
+.no-events,
+.no-messages {
+  padding: var(--space-6) 0;
+  color: var(--color-fg-muted);
+}
+.empty-state p {
+  margin: 0 0 var(--space-2);
+}
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+@media (min-width: 1024px) {
+  .link,
+  .reconnect-link {
+    min-height: 24px;
+  }
 }
 
 .events {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: var(--space-4);
 }
-
-.day {
-  border-top: 1px solid var(--color-border);
-  padding-top: 1rem;
-}
-
+/* Label role: small spaced capitals. */
 .day-heading {
-  margin: 0 0 0.75rem 0;
-  font-size: 0.875rem;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
   font-weight: 600;
-  color: var(--color-fg-secondary);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
-
 .event {
-  padding: 0.75rem;
-  border-radius: 0.5rem;
-  background: var(--color-bg-secondary);
-  margin-bottom: 0.5rem;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--color-border);
 }
-
 .event-time {
-  font-size: 0.75rem;
-  color: var(--color-fg-secondary);
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
 }
-
 .event-title {
-  font-weight: 500;
-  margin: 0.25rem 0;
+  font-weight: 600;
+  margin: var(--space-1) 0;
+  overflow-wrap: anywhere;
 }
-
 .tentative-mark {
-  font-size: 0.75rem;
-  font-weight: 400;
+  margin-inline-start: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
   color: var(--color-warn);
-  margin-left: 0.5rem;
 }
-
 .event-location {
-  font-size: 0.8rem;
-  color: var(--color-fg-secondary);
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
 }
-
 .event-footer {
-  margin-top: 0.5rem;
+  margin-top: var(--space-2);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
-
 .event-link {
-  font-size: 0.8rem;
-  color: var(--color-accent);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: var(--text-sm);
+  color: var(--color-fg);
+  text-decoration: underline;
+}
+@media (min-width: 1024px) {
+  .event-link {
+    min-height: 24px;
+  }
 }
 </style>

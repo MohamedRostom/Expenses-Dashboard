@@ -7,6 +7,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 ### Added
 
 - Accent colour picker in Settings (six presets, applied at once and kept on the account), behind the `appearance.accent` flag (spec 004 T056, T060).
+- Refresh: Today (calendar and inbox) on the Concourse Board identity (spec 004 T037).
 - Refresh: sign-in on the Concourse Board identity, with an error message per cause (spec 004 T036).
 - Refresh: settings on the Concourse Board identity, with a page margin and a main landmark (spec 004 T035).
 - Refresh: categories and budget editor on the Concourse Board identity; the first default category colour no longer matches the over-budget red (spec 004 T034).

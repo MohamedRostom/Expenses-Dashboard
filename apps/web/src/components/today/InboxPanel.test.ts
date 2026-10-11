@@ -295,4 +295,36 @@ describe('InboxPanel', () => {
     expect(button.disabled).toBe(false);
     expect(button.textContent).toContain('Refresh');
   });
+
+  describe('offline', () => {
+    afterEach(() => vi.restoreAllMocks());
+    const goOffline = () => vi.spyOn(window.navigator, 'onLine', 'get').mockReturnValue(false);
+
+    it('keeps the last content under an offline note with its own copy', async () => {
+      goOffline();
+      const el = await render((s) => {
+        s.payload = payload();
+      });
+      const note = el.querySelector('[data-testid="offline-note"]');
+      expect(note?.getAttribute('role')).toBe('status');
+      expect(note?.textContent).toContain('Inbox is offline');
+      expect(note?.textContent).not.toContain('Calendar is offline');
+      expect(el.querySelector('.account-chips')).not.toBeNull();
+    });
+
+    it('shows the offline error code with inbox copy when nothing was ever loaded', async () => {
+      goOffline();
+      const el = await render((s) => {
+        s.error = 'offline';
+      });
+      expect(el.textContent).toContain('Inbox is offline');
+    });
+
+    it('shows no offline note when online', async () => {
+      const el = await render((s) => {
+        s.payload = payload();
+      });
+      expect(el.querySelector('[data-testid="offline-note"]')).toBeNull();
+    });
+  });
 });
