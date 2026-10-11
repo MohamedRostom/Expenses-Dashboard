@@ -5,7 +5,7 @@ import { Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyTheme } from './views/theme.js';
+import { applyAccent, applyTheme } from './views/theme.js';
 
 const route = useRoute();
 const session = useSessionStore();
@@ -15,6 +15,13 @@ const flags = useFlagsStore();
 watch(
   () => session.user?.theme,
   (theme) => applyTheme(theme ?? 'system'),
+  { immediate: true },
+);
+// US5 (FR-019): the accent preset follows the account once the flag is known; flag off or signed
+// out, no data-accent is set. Flags load after sign-in, so the flag is part of the watch.
+watch(
+  () => [session.user?.accent, flags.isOn('appearance.accent')] as const,
+  ([accent, enabled]) => applyAccent(accent, enabled),
   { immediate: true },
 );
 // Signed-in app screens only: auth pages and the onboarding wizard stay chrome-free.

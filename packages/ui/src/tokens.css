@@ -229,3 +229,15 @@
     --motion-stagger: 0ms;
   }
 }
+/* Signal Green on a nested wrapper only (the Settings accent picker draws every preset's swatch under
+   a root that may carry another preset). The root needs no block; values are the base theme values. */
+[data-accent='signal-green'][data-theme='light'] {
+  --color-accent: #0e3d2a;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d8e6de;
+}
+[data-accent='signal-green'][data-theme='dark'] {
+  --color-accent: #2c7452;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #20332b;
+}

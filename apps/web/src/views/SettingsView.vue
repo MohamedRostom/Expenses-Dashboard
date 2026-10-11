@@ -13,7 +13,9 @@ import {
   useToast,
 } from '@desk/ui';
 import type { BoardColumn } from '@desk/ui';
+import { ACCENT_IDS } from '@desk/contracts';
 import type {
+  AccentId,
   JobResponseT,
   PatchMeResponseT,
   SessionSummaryT,
@@ -22,9 +24,10 @@ import type {
 import { ApiError, apiFetch } from '../api/client.js';
 import { describeDevice, formatDateTime } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
+import { useFlagsStore } from '../stores/flags.js';
 import { useWidgetsStore } from '../stores/widgets.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
-import { applyTheme } from './theme.js';
+import { applyAccent, applyTheme } from './theme.js';
 
 const session = useSessionStore();
 const router = useRouter();
@@ -61,6 +64,26 @@ const sessionColumns: BoardColumn[] = [
 ];
 const theme = ref<string>(session.user?.theme ?? 'system');
 const themeSubmitting = ref(false);
+
+// US5 (FR-019): the accent picker shows only with `appearance.accent`.
+const flags = useFlagsStore();
+const ACCENT_NAMES: Record<AccentId, string> = {
+  'signal-green': 'Signal Green',
+  'concourse-blue': 'Concourse Blue',
+  'platform-teal': 'Platform Teal',
+  violet: 'Violet',
+  slate: 'Slate',
+  plum: 'Plum',
+};
+const accent = ref<AccentId>(session.user?.accent ?? 'signal-green');
+// Each swatch resolves its own preset colour from tokens.css, which needs a concrete theme.
+const swatchTheme = computed(() =>
+  theme.value === 'system'
+    ? typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+    : theme.value,
+);
 
 const timeZone = ref<string>(
   session.user?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -220,6 +243,24 @@ async function changeTheme(value: string) {
   }
 }
 
+// Optimistic: apply at once, put the old accent back if the save fails.
+async function changeAccent(value: AccentId) {
+  const previous = accent.value;
+  accent.value = value;
+  applyAccent(value, true);
+  try {
+    const res = await apiFetch<PatchMeResponseT>('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ accent: value }),
+    });
+    if (res.user) session.user = res.user as typeof session.user;
+  } catch (err) {
+    accent.value = previous;
+    applyAccent(previous, true);
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  }
+}
+
 async function changeTimeZone() {
   timeZoneSubmitting.value = true;
   try {
@@ -365,6 +406,29 @@ async function confirmDelete() {
       <PanelFrame id="st-theme" heading="Theme" class="desk-settings-section">
         <div class="desk-settings-body desk-settings-body--start">
           <ThemeToggle v-model="theme" label="Theme" @update:model-value="changeTheme" />
+          <fieldset
+            v-if="flags.isOn('appearance.accent')"
+            class="desk-settings-accents"
+            role="radiogroup"
+          >
+            <legend class="desk-settings-label">Accent colour</legend>
+            <label
+              v-for="id in ACCENT_IDS"
+              :key="id"
+              class="desk-settings-accent"
+              :data-accent="id"
+              :data-theme="swatchTheme"
+            >
+              <input
+                :checked="accent === id"
+                type="radio"
+                name="settings-accent"
+                :value="id"
+                @change="changeAccent(id)"
+              />
+              <span>{{ ACCENT_NAMES[id] }}</span>
+            </label>
+          </fieldset>
         </div>
       </PanelFrame>
 
@@ -679,6 +743,63 @@ async function confirmDelete() {
   display: flex;
   gap: var(--space-2);
   justify-content: flex-end;
+}
+/* Accent swatches: native radios drawn as filled squares in the preset's own colour. Selected shows
+   as a ring plus an inner rule (not colour alone); the name always sits beside the swatch. */
+.desk-settings-accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.desk-settings-accents legend {
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+.desk-settings-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  cursor: pointer;
+}
+.desk-settings-accent input {
+  appearance: none;
+  flex: none;
+  width: var(--space-6);
+  height: var(--space-6);
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  cursor: pointer;
+}
+.desk-settings-accent input:checked {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 var(--space-1) var(--color-accent-fg);
+}
+.desk-settings-accent input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-settings-accent input:checked + span {
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .desk-settings-accents {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .desk-settings-accents legend {
+    grid-column: 1 / -1;
+  }
+  .desk-settings-accent input {
+    width: var(--target-min);
+    height: var(--target-min);
+  }
 }
 @media (min-width: 1024px) {
   .desk-settings-view {
