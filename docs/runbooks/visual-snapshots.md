@@ -16,7 +16,7 @@ content below the fold), and no `psql()` from `tests/e2e/fixtures/index.ts`, bec
 1. Actions, `update-snapshots`, Run workflow on the branch. It brings up the compose stack,
    switches the flags on and runs `--project=visual --update-snapshots` in the image.
 2. Download the `visual-snapshots` artifact. It contains every `*.spec.ts-snapshots/`
-   directory (and `apps/landing/public/screenshots/` once T050 lands), at their repo paths.
+   directory and `apps/landing/public/screenshots/` (the landing page's PNGs and `manifest.json`, written by `screenshots.spec.ts` through the `screenshots` project), at their repo paths.
 3. Unzip over the working tree, review the changed images, commit them. The `visual` job in
    `ci.yml` then compares against them on every PR.
 
