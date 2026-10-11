@@ -66,10 +66,10 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="auth-view">
+  <main class="auth-view">
     <h1>Create your account</h1>
 
-    <div v-if="submitted" class="check-email">
+    <div v-if="submitted" role="status">
       <p>Check your email to verify your account and finish signing up.</p>
     </div>
 
@@ -93,23 +93,49 @@ async function onSubmit() {
       <Button type="submit" :loading="submitting" :disabled="submitting">Sign up</Button>
     </form>
 
-    <p><router-link to="/login">Already have an account? Sign in</router-link></p>
-  </div>
+    <p class="auth-links">
+      <router-link to="/login">Already have an account? Sign in</router-link>
+    </p>
+  </main>
 </template>
 
 <style scoped>
 .auth-view {
   max-width: 24rem;
-  margin: 2rem auto;
+  margin: var(--space-8) auto;
+  padding-inline: var(--gutter);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
-form {
+.auth-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.auth-view p {
+  margin: 0;
+}
+form,
+.resend-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
+}
+.auth-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--color-fg);
+  text-decoration: underline;
+}
+@media (min-width: 1024px) {
+  .auth-links a {
+    min-height: 24px;
+  }
 }
 </style>

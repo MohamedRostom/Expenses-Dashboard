@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { readdirSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
@@ -463,6 +463,163 @@ const mockToday = (page: Page) =>
     });
   });
 
+// T040 helpers. Year: the summaries are pinned (month names and today's date would move the
+// baselines); the old year.spec.ts snapshots moved into the 'year' entry.
+const json = (body: unknown) => ({ contentType: 'application/json', body: JSON.stringify(body) });
+const mockYear = async (page: Page) => {
+  const year = new Date().getFullYear();
+  const spent = [42_000, 51_500, 38_250, 47_900, 120_000, 44_100, 0, 0, 0, 0, 0, 0];
+  await page.route('**/summary/year*', (route) =>
+    route.fulfill(
+      json({
+        year,
+        currency: 'GBP',
+        months: spent.map((v, i) => ({
+          month: `${year}-${String(i + 1).padStart(2, '0')}`,
+          spent: v,
+          budgeted: i < 6 ? 80_000 : 0,
+        })),
+      }),
+    ),
+  );
+  await page.route('**/summary/compare*', (route) =>
+    route.fulfill(
+      json({
+        a: `${year}-06`,
+        b: `${year}-05`,
+        byCategory: [
+          { categoryId: 'g', delta: -12_500 },
+          { categoryId: 'r', delta: 4_000 },
+          { categoryId: 't', delta: 1_250 },
+        ],
+      }),
+    ),
+  );
+  await page.route('**/categories', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill(
+          json({
+            categories: [
+              ['g', 'Groceries'],
+              ['r', 'Rent'],
+              ['t', 'Transport'],
+            ].map(([id, name], i) => ({ id, name, colour: '#3a6ea5', sortOrder: i })),
+          }),
+        )
+      : route.fallback(),
+  );
+};
+// Bin: one expense, deleted through the API so the bin has a row.
+const seedBin = async (page: Page) => {
+  const headers = await csrfHeaders(page);
+  const me = (await (await page.request.get('/me')).json()) as {
+    user: { defaultCurrency: string };
+  };
+  const res = await page.request.post('/expenses', {
+    headers,
+    data: {
+      description: 'Lunch at the station café',
+      amount: { minor: 1_250, currency: me.user.defaultCurrency },
+      date: '2026-03-14',
+      paidWith: 'card',
+      kind: 'variable',
+    },
+  });
+  expect(res.ok()).toBe(true);
+  const id = ((await res.json()) as { expense: { id: string } }).expense.id;
+  expect((await page.request.delete(`/expenses/${id}`, { headers })).ok()).toBe(true);
+};
+
+// T042 helpers. The strip's own API answers are pinned (fixed figures, no Open-Meteo or rate
+// fetch), so the baselines hold on any day; the real widget flows are covered in widgets.spec.ts.
+const IN_ZONE = '2026-03-14T09:12:00Z';
+const mockWidgets = async (page: Page) => {
+  const base = { settings: {}, state: 'ready', asOf: IN_ZONE, position: 0 };
+  const widgets = [
+    {
+      ...base,
+      id: 'w1',
+      kind: 'currency',
+      figures: {
+        rows: [
+          {
+            code: 'EUR',
+            rate: 1.1842,
+            rateDate: '2026-03-13',
+            prevChange: { pct: 0.2, direction: 'up' },
+            monthChange: { pct: 0.8, direction: 'down', since: '2026-02-12' },
+          },
+        ],
+      },
+    },
+    {
+      ...base,
+      id: 'w2',
+      kind: 'weather',
+      figures: {
+        place: 'Leeds',
+        temperatureC: 14,
+        condition: 'Light cloud',
+        icon: 'cloud',
+        todayMaxC: 17,
+        todayMinC: 9,
+        outlook: [
+          { date: '2026-03-15', maxC: 16, minC: 8, icon: 'sun', condition: 'Sunny' },
+          { date: '2026-03-16', maxC: 18, minC: 10, icon: 'rain', condition: 'Rain' },
+        ],
+        observedAt: IN_ZONE,
+        attribution: 'Weather data by Open-Meteo.com',
+      },
+    },
+    {
+      ...base,
+      id: 'w3',
+      kind: 'spend_pace',
+      figures: {
+        spentMinor: 61_250,
+        budgetMinor: 150_000,
+        pct: 41,
+        daysLeft: 12,
+        dailyToBudgetMinor: 7_396,
+        overBudget: false,
+      },
+    },
+    {
+      ...base,
+      id: 'w4',
+      kind: 'fixed_costs',
+      figures: {
+        remaining: [
+          { categoryId: 'a', name: 'Rent', usualMinor: 95_000, usualBasis: 'budget' },
+          { categoryId: 'b', name: 'Internet', usualMinor: 3_200, usualBasis: 'previous' },
+        ],
+        totalExpectedMinor: 98_200,
+        allRecorded: false,
+      },
+    },
+  ].map((w, position) => ({ ...w, position }));
+  const get = (body: unknown) => (route: Route) =>
+    route.request().method() === 'GET' ? route.fulfill(json(body)) : route.fallback();
+  await page.route('**/widgets', get({ widgets, limit: 6, temperatureUnit: 'C' }));
+  await page.route(
+    '**/widgets/types',
+    get({
+      types: [
+        ['currency', 'Currency', 'Exchange rates against your default currency.'],
+        ['sunrise', 'Sunrise and sunset', "Today's sunrise, sunset and day length."],
+      ].map(([kind, name, description]) => ({
+        kind,
+        name,
+        description,
+        enabled: true,
+        needsPlace: kind === 'sunrise',
+        settingsSchema: {},
+      })),
+    }),
+  );
+  await page.route('**/widgets/refresh', (route) => route.fulfill(json({ queued: 0 })));
+};
+
 export const SCREENS: Screen[] = [
   {
     // T031: the shared header and the open Feedback panel, on the signed-in month view.
@@ -683,6 +840,196 @@ export const SCREENS: Screen[] = [
           ),
       },
     },
+  },
+  {
+    // T040: the year view (moved from year.spec.ts): the total tile, month bars with a table
+    // fallback, and the month comparison panel. Summaries are pinned by mockYear.
+    name: 'year',
+    route: '/year',
+    signedIn: true,
+    mock: mockYear,
+    panels: ['section[role="region"]:has(.desk-year-bars)', '[data-testid="month-compare"]'],
+    states: ['loading', 'error'],
+  },
+  {
+    // T040: the CSV import, step one (the file chooser). The later steps need an uploaded file.
+    name: 'import',
+    route: '/import',
+    signedIn: true,
+    states: ['loading'],
+  },
+  {
+    // T040: the bin with one deleted expense.
+    name: 'bin',
+    route: '/bin',
+    signedIn: true,
+    seed: seedBin,
+    states: ['loading', 'empty', 'error'],
+    force: {
+      empty: {
+        setup: (page) =>
+          page.route('**/expenses?*', (route) => route.fulfill(json({ expenses: [] }))),
+      },
+    },
+  },
+  {
+    // T042: the widget strip under the month view (pinned answers from mockWidgets).
+    name: 'widgets-month',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[data-testid="widget-strip"]'],
+    states: ['loading', 'error'],
+  },
+  {
+    // T042: the same strip on Today.
+    name: 'widgets-today',
+    route: '/today',
+    signedIn: true,
+    flags: 'widgets',
+    mock: async (page) => {
+      await mockWidgets(page);
+      await mockToday(page);
+    },
+    panels: ['[data-testid="widget-strip"]'],
+  },
+  {
+    // T042: the add-widget sheet (Dialog) open over the strip.
+    name: 'widgets-add-sheet',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[role="dialog"]'],
+    afterLoad: async (page) => {
+      await page.getByTestId('add-widget').click();
+      await expect(page.getByRole('dialog', { name: 'Add widget' })).toBeVisible();
+    },
+  },
+  {
+    // T042: a widget's settings sheet open (its menu, then Settings).
+    name: 'widgets-settings-sheet',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[role="dialog"]'],
+    afterLoad: async (page) => {
+      await page.locator('summary[aria-label="Weather menu"]').click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
+    },
+  },
+  {
+    // T039: the account screens. Anonymous; forced errors mock the screen's own POST.
+    name: 'register',
+    route: '/register',
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: (page) =>
+          page.route('**/auth/register', (route) =>
+            route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Request failed' },
+              }),
+            }),
+          ),
+        after: async (page) => {
+          await page.getByLabel('Email').fill('nobody@example.com');
+          await page.getByLabel('Password').fill('not-the-password-1');
+          await page.getByRole('button', { name: 'Sign up' }).click();
+          await expect(page.getByRole('alert')).toBeVisible();
+        },
+      },
+    },
+  },
+  {
+    // T039: the confirmation shown after the request (the endpoint always answers the same).
+    name: 'forgot',
+    route: '/forgot',
+    afterLoad: async (page) => {
+      await page.getByLabel('Email').fill('nobody@example.com');
+      await page.getByRole('button', { name: 'Send reset link' }).click();
+      await expect(page.getByText('If that email exists')).toBeVisible();
+    },
+  },
+  {
+    name: 'forgot-form',
+    route: '/forgot',
+  },
+  {
+    // T039: reset form; the error state is an expired or used link, through ErrorState.
+    name: 'reset',
+    route: '/reset?token=expired',
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: (page) =>
+          page.route('**/auth/password/reset', (route) =>
+            route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Invalid or expired token' },
+              }),
+            }),
+          ),
+        after: async (page) => {
+          await page.getByLabel('New password').fill('not-the-password-1');
+          await page.getByRole('button', { name: 'Reset password' }).click();
+          await expect(page.getByRole('alert')).toBeVisible();
+        },
+      },
+    },
+  },
+  {
+    // T039: an expired or used verification link (default) and the check in progress (loading).
+    name: 'verify',
+    route: '/verify?token=expired',
+    mock: (page) =>
+      page.route('**/auth/verify', (route) =>
+        route.request().method() === 'POST'
+          ? route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Invalid or expired token' },
+              }),
+            })
+          : route.fallback(),
+      ),
+    states: ['loading'],
+  },
+  {
+    // T039: onboarding step 1. A completed user may still open it (the guard only bounces away from
+    // other routes), so no psql is needed to get an unfinished one.
+    name: 'onboarding',
+    route: '/onboarding',
+    signedIn: true,
+  },
+  {
+    // T041: the settings sub-screens. A new user has no capture address, no Notion connection and
+    // no connected accounts, so each shows its first-run state; forced loading/error from the stack.
+    name: 'capture',
+    route: '/settings/capture',
+    signedIn: true,
+    states: ['loading', 'error'],
+  },
+  {
+    name: 'connectors',
+    route: '/settings/connectors',
+    signedIn: true,
+    states: ['loading'],
+  },
+  {
+    name: 'connections',
+    route: '/settings/connections',
+    signedIn: true,
+    states: ['loading', 'error'],
   },
 ];
 

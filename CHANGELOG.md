@@ -9,8 +9,12 @@ All notable changes to this project are recorded here, following [Keep a Changel
 - docs: the accent is one at a time, Signal Green by default, user-selectable from the presets: DESIGN.md "One Signal Rule", ADR-0006 addendum, constitution Principle VI wording and Sync Impact Report, CLAUDE.md, roadmap (spec 004 T061).
 - Accent colour picker in Settings (six presets, applied at once and kept on the account), behind the `appearance.accent` flag (spec 004 T056, T060).
 - Refresh: finish-review fixes for the month view (no-budget and over-budget departure tile, widget strip after the tiles, bars/table tabs, SVG month chevrons), the add sheet (action row stays in view), categories (name is the edit button, one actions menu per row, empty history offers an action) and landing (spec 004 review).
+- Refresh: widgets (strip, frames, add and settings sheets) on the Concourse Board identity; the widget frame now lives in the web app (spec 004 T042).
+- Refresh: year, import and bin screens on the Concourse Board identity; the month comparison sits on a panel frame and the import preview is a board (spec 004 T040).
 - Refresh: Today (calendar and inbox) on the Concourse Board identity (spec 004 T037).
 - Refresh: sign-in on the Concourse Board identity, with an error message per cause (spec 004 T036).
+- Refresh: register, verify, forgot, reset and onboarding on the Concourse Board identity, each in a main landmark (spec 004 T039).
+- Refresh: capture, Notion connector and connected-accounts screens on the Concourse Board identity, each in a main landmark, with real 44px targets and no accent-coloured text (spec 004 T041).
 - Refresh: settings on the Concourse Board identity, with a page margin and a main landmark (spec 004 T035).
 - Refresh: categories and budget editor on the Concourse Board identity; the first default category colour no longer matches the over-budget red (spec 004 T034).
 - Refresh: landing page on the Concourse Board identity (tokens only, three steps above the fold at 360 wide, light and dark screenshots switched by `prefers-color-scheme`); `screenshots.spec.ts` generates them, and the drift list no longer carries the landing files (spec 004 T048-T051).

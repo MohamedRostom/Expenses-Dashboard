@@ -82,8 +82,9 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
 .desk-weather {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  font-size: 0.85rem;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .desk-weather p {
   margin: 0;
@@ -91,32 +92,35 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
 .desk-weather-now {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-weather-temp,
 .desk-weather-range,
 .desk-weather-num {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 .desk-weather-temp {
-  font-size: 1.6rem;
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
+  font-weight: 500;
 }
 .desk-weather-outlook {
   list-style: none;
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.15rem;
+  gap: var(--space-1);
 }
 .desk-weather-outlook li {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-weather-meta {
-  font-size: 0.7rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 </style>

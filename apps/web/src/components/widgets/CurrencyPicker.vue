@@ -60,6 +60,8 @@ function disabledReason(code: string): string | null {
 }
 .desk-currency-option {
   display: block;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  min-block-size: var(--target-min);
 }
 </style>

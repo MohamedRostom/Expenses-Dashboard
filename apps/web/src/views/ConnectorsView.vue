@@ -120,8 +120,8 @@ onMounted(load);
 </script>
 
 <template>
-  <section class="desk-connectors">
-    <h2>Notion sync</h2>
+  <main class="desk-connectors">
+    <h1>Notion sync</h1>
 
     <p v-if="loading">Loading…</p>
 
@@ -170,34 +170,62 @@ onMounted(load);
         </div>
       </Dialog>
     </template>
-  </section>
+  </main>
 </template>
 
 <style scoped>
 .desk-connectors {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
+  max-width: 32rem;
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
-  max-width: 32rem;
+}
+h1,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
 .desk-connectors-status {
   display: grid;
   grid-template-columns: max-content 1fr;
-  gap: 0.25rem 0.75rem;
-  font-size: 0.9rem;
+  gap: var(--space-1) var(--space-3);
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.desk-connectors-status dt {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+.desk-connectors-status dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 .desk-status-error {
-  color: var(--color-critical);
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--space-1) solid var(--color-critical);
 }
 .desk-status-connected {
-  color: var(--color-accent);
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--space-1) solid var(--color-accent);
 }
 .desk-connectors-table,
 .desk-connectors-actions {
   display: flex;
-  gap: 0.75rem;
+  gap: var(--space-3);
   align-items: end;
   flex-wrap: wrap;
 }
