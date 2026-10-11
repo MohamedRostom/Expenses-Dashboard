@@ -33,8 +33,7 @@ jobs:
             -w /work \
             -e E2E_BASE_URL=http://localhost:5173 -e CI=true \
             mcr.microsoft.com/playwright:v${{ steps.pw.outputs.version }}-noble \
-            bash -lc "npx -y pnpm@${{ steps.pw.outputs.pnpm }} install --frozen-lockfile --filter @desk/e2e... && cd tests/e2e && npx playwright test --project=visual --update-snapshots"
-      # T050: add screenshots.spec.ts here once it exists (landing screenshots to apps/landing/public/screenshots/).
+            bash -lc "npx -y pnpm@${{ steps.pw.outputs.pnpm }} install --frozen-lockfile --filter @desk/e2e... && cd tests/e2e && npx playwright test --project=visual --update-snapshots && npx playwright test --project=screenshots"
       - if: always()
         uses: actions/upload-artifact@v7
         with:

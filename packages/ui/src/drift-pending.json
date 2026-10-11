@@ -1,7 +1,4 @@
 [
-  "apps/landing/src/pages/index.vue",
-  "apps/landing/src/pages/privacy.vue",
-  "apps/landing/src/pages/terms.vue",
   "apps/web/src/components/MonthCompare.vue",
   "apps/web/src/components/connections/StandardsForm.vue",
   "apps/web/src/components/today/AccountChip.vue",

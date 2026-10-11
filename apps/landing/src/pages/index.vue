@@ -1,33 +1,53 @@
 <script setup lang="ts">
+import { reactive } from 'vue';
 import { content } from '../content';
+
+// The PNGs come from the update-snapshots run; until they are committed (or if one fails to
+// load) the figure is dropped rather than left as a broken image.
+const failed = reactive(new Set<string>());
 </script>
 
 <template>
   <main class="page">
-    <section class="hero">
-      <h1>{{ content.productName }}</h1>
-      <p class="tagline">{{ content.tagline }}</p>
-      <a :href="content.signUpUrl" class="cta-link">Sign up free</a>
-    </section>
+    <div class="intro">
+      <section class="hero">
+        <h1>{{ content.productName }}</h1>
+        <p class="tagline">{{ content.tagline }}</p>
+        <a :href="content.signUpUrl" class="cta-link">Sign up free</a>
+      </section>
 
-    <section class="steps" aria-label="How it works">
-      <ol>
-        <li v-for="(step, i) in content.steps" :key="step.title">
-          <span class="step-number">{{ i + 1 }}</span>
-          <h2>{{ step.title }}</h2>
-          <p>{{ step.description }}</p>
-        </li>
-      </ol>
-    </section>
+      <section class="steps" aria-labelledby="how-heading">
+        <h2 id="how-heading" class="label">How it works</h2>
+        <ol>
+          <li v-for="(step, i) in content.steps" :key="step.title">
+            <span class="step-number">{{ i + 1 }}</span>
+            <div>
+              <h3>{{ step.title }}</h3>
+              <p>{{ step.description }}</p>
+            </div>
+          </li>
+        </ol>
+      </section>
+    </div>
 
-    <section v-if="content.screenshots.length" class="screenshots" aria-label="Screenshots">
-      <img
+    <section class="screenshots" aria-label="Screenshots">
+      <figure
         v-for="shot in content.screenshots"
-        :key="shot.src"
-        :src="shot.src"
-        :alt="shot.alt"
-        loading="lazy"
-      />
+        v-show="!failed.has(shot.light)"
+        :key="shot.light"
+      >
+        <picture>
+          <source :srcset="shot.dark" media="(prefers-color-scheme: dark)" />
+          <img
+            :src="shot.light"
+            :alt="shot.alt"
+            width="360"
+            height="800"
+            loading="lazy"
+            @error="failed.add(shot.light)"
+          />
+        </picture>
+      </figure>
     </section>
 
     <footer class="footer">
@@ -39,80 +59,133 @@ import { content } from '../content';
 
 <style scoped>
 .page {
-  max-width: 640px;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1.5rem 1rem 2rem;
+  padding: var(--space-6) var(--gutter-fluid) var(--space-8);
   font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
   color: var(--color-fg);
   background: var(--color-bg);
 }
-.hero {
-  text-align: center;
-  padding-block: 2rem;
+.intro {
+  display: grid;
+  gap: var(--space-6);
+  align-items: start;
 }
 .hero h1 {
-  font-size: 2rem;
-  margin: 0 0 0.5rem;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  letter-spacing: var(--tracking-tight);
+  margin: 0 0 var(--space-2);
 }
 .tagline {
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--space-4);
 }
 .cta-link {
-  /* Was <a><Button>...</Button></a> — a <button> nested inside an <a> is invalid HTML (two
-   * interactive elements, one inside the other) and confusing for assistive tech. Styled to
-   * match @desk/ui's Button "primary" variant directly on the anchor instead. */
+  /* A <button> inside an <a> is invalid HTML, so the anchor takes the Button primary look
+   * from @desk/ui directly (same tokens, same 44px target). */
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-sans);
-  font-size: 0.9rem;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
+  min-height: var(--target-min);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
   text-decoration: none;
   background: var(--color-accent);
   color: var(--color-accent-fg);
+}
+.cta-link:focus-visible,
+.footer a:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.cta-link:active {
+  transform: translateY(1px);
+}
+.label {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-fg-muted);
 }
 .steps ol {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
 }
 .steps li {
-  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
-  border-radius: 8px;
-  padding: 1rem;
+  display: grid;
+  grid-template-columns: var(--space-6) 1fr;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+}
+.steps li + li {
+  border-top: 1px solid var(--color-border);
 }
 .step-number {
-  display: inline-block;
-  color: var(--color-fg);
   font-family: var(--font-mono);
-  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--color-accent);
 }
-.steps h2 {
-  font-size: 1.1rem;
-  margin: 0.25rem 0 0.25rem;
+.steps h3 {
+  font-size: var(--text-md);
+  line-height: var(--leading-md);
+  font-weight: 600;
+  margin: 0;
 }
 .steps p {
   margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 .screenshots {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  margin-top: 2rem;
+  display: grid;
+  gap: var(--space-6);
+  margin-top: var(--space-8);
+}
+.screenshots figure {
+  margin: 0;
 }
 .screenshots img {
+  display: block;
   width: 100%;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--color-fg) 15%, transparent);
+  height: auto;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-raised);
 }
 .footer {
   display: flex;
-  gap: 1rem;
-  justify-content: center;
-  margin-top: 2rem;
+  gap: var(--space-4);
+  margin-top: var(--space-8);
+}
+.footer a {
+  color: var(--color-fg);
+}
+@media (min-width: 1024px) {
+  .intro {
+    grid-template-columns: 1fr 1fr;
+    gap: var(--space-12);
+    padding-block: var(--space-12);
+  }
+  .hero h1 {
+    font-size: var(--text-display);
+    line-height: var(--leading-display);
+  }
+  .screenshots {
+    grid-template-columns: repeat(2, minmax(0, 22rem));
+    justify-content: center;
+  }
 }
 </style>

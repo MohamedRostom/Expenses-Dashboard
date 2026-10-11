@@ -17,7 +17,7 @@ export default defineConfig({
   projects: [
     {
       name: 'ci',
-      grepInvert: /@local|@visual|@manual/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       use: {
         ...devices['Desktop Edge'],
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
@@ -29,6 +29,16 @@ export default defineConfig({
     {
       name: 'visual',
       grep: /@visual/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+      },
+    },
+    // Spec 004 T050: landing screenshots of the real app, written into apps/landing/public/screenshots/.
+    // Chromium in the pinned image like `visual`; run by update-snapshots.yml, never by `ci`.
+    {
+      name: 'screenshots',
+      grep: /@screenshots/,
       use: {
         ...devices['Desktop Chrome'],
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
@@ -56,7 +66,7 @@ export default defineConfig({
     // T092: mobile device projects for the responsive/PWA/onboarding specs (@mobile-tagged).
     {
       name: 'pixel-7',
-      grepInvert: /@local|@visual|@manual/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       grep: /@mobile/,
       use: {
         ...devices['Pixel 7'],
@@ -66,7 +76,7 @@ export default defineConfig({
     },
     {
       name: 'iphone-14',
-      grepInvert: /@local|@visual|@manual/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       grep: /@mobile/,
       use: {
         ...devices['iPhone 14'],
