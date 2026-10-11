@@ -72,23 +72,24 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
 
 <style scoped>
 .page {
-  max-width: 640px;
+  overflow-wrap: anywhere;
+  max-width: 65ch;
   margin: 0 auto;
-  padding: 1.5rem 1rem 2rem;
+  padding: var(--space-6) var(--gutter-fluid) var(--space-8);
   font-family: var(--font-sans);
   color: var(--color-fg);
   background: var(--color-bg);
 }
 .provider {
-  border-left: 3px solid var(--color-accent);
-  padding-left: 0.75rem;
-  margin-bottom: 1rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  margin-bottom: var(--space-4);
 }
 .draft-notice {
   background: color-mix(in srgb, var(--color-warn) 15%, transparent);
   border: 1px solid var(--color-warn);
-  border-radius: 6px;
-  padding: 0.75rem;
-  font-size: 0.9rem;
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: var(--text-sm);
 }
 </style>

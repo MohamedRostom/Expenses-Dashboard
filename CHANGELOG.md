@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- Refresh: landing page on the Concourse Board identity (tokens only, three steps above the fold at 360 wide, light and dark screenshots switched by `prefers-color-scheme`); `screenshots.spec.ts` generates them, and the drift list no longer carries the landing files (spec 004 T048-T051).
 - Refresh: month view on the Concourse Board identity; category rows no longer print the currency twice; no sideways scroll at 360 wide (spec 004 T032).
 - Refresh: header, navigation and feedback button on the Concourse Board identity (spec 004 T031).
 - Refresh: add-expense sheet and form on the Concourse Board identity; the date field shows a visible focus ring (spec 004 T033).
