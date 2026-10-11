@@ -59,8 +59,9 @@ describe('SettingsView widgets section', () => {
     await nextTick();
 
     const section = [...el.querySelectorAll('section')].find(
-      (s) => s.querySelector('h2')?.textContent === 'Widgets',
+      (s) => s.querySelector('h3')?.textContent === 'Widgets',
     );
+    expect(el.querySelectorAll('main')).toHaveLength(1);
     expect(section).toBeDefined();
     const items = [...section!.querySelectorAll('[data-testid="widget-place"]')].map((n) =>
       n.textContent?.trim(),

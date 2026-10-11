@@ -487,6 +487,14 @@ export const SCREENS: Screen[] = [
     states: ['loading', 'error'],
   },
   {
+    // T035: settings. Section index + flap sections; one <main>, content inset by the gutter.
+    name: 'settings',
+    route: '/settings',
+    signedIn: true,
+    panels: ['#st-sessions', '#st-delete'],
+    states: ['loading', 'error'],
+  },
+  {
     name: 'login',
     route: '/login',
     states: ['default', 'error'],
@@ -714,6 +722,30 @@ for (const vp of viewports) {
     });
     expect(r.rivals).toEqual([]);
     expect(r.fvn).toContain('tabular-nums');
+  });
+}
+
+// T035: Settings has exactly one <main> and its content is inset by the same gutter as the month view.
+for (const vp of viewports) {
+  test(`@visual screen settings main landmark and gutter ${vp.width}`, async ({ page }) => {
+    const screen = SCREENS.find((s) => s.name === 'settings')!;
+    await page.setViewportSize({ width: vp.width, height: vp.height });
+    const ctx = await prepare(page, screen);
+    await openScreen(page, screen, ctx, 'default');
+    await expect(page.locator('main')).toHaveCount(1);
+    const left = (sel: string) =>
+      page.evaluate((s) => document.querySelector(s)!.getBoundingClientRect().left, sel);
+    const settingsLeft = await left('main h1');
+    await page.goto('/');
+    await page.waitForLoadState('networkidle');
+    const homeLeft = await left('main');
+    const homeInner = await page.evaluate(() => {
+      const m = document.querySelector('main')!;
+      return m.getBoundingClientRect().left + parseFloat(getComputedStyle(m).paddingLeft);
+    });
+    expect(settingsLeft).toBeGreaterThanOrEqual(16);
+    expect(Math.abs(settingsLeft - homeInner)).toBeLessThanOrEqual(1);
+    expect(homeLeft).toBeGreaterThanOrEqual(0);
   });
 }
 

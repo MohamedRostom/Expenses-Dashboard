@@ -25,7 +25,6 @@
   "apps/web/src/views/OnboardingView.vue",
   "apps/web/src/views/RegisterView.vue",
   "apps/web/src/views/ResetView.vue",
-  "apps/web/src/views/SettingsView.vue",
   "apps/web/src/views/TodayView.vue",
   "apps/web/src/views/VerifyView.vue",
   "apps/web/src/views/YearView.vue",
