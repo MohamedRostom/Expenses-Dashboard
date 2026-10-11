@@ -221,7 +221,7 @@ Signal Green is the default. A user may pick one of five alternatives (`data-acc
 - **Eight account colours** (`palette-teal` to `palette-slate`) identify connected mail and calendar accounts; unchanged.
 
 ### Named Rules
-**The One Signal Rule.** Signal Green is the only accent: the primary action, the current location, spend. Nothing decorative is green.
+**The One Signal Rule.** One accent at a time, Signal Green by default, user-selectable from the presets (see Accent presets): the primary action, the current location, spend. Nothing decorative takes the accent, and no preset hue is an amber or red status hue.
 
 **The Status Is Not a Series Rule.** Delay Amber and Cancel Red appear only as a row lamp, a status word, an over-budget fill or an error, never as a chart series, category or account colour. On this board amber always means delayed and red always means cancelled or over.
 

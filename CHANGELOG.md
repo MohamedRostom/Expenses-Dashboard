@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- docs: the accent is one at a time, Signal Green by default, user-selectable from the presets: DESIGN.md "One Signal Rule", ADR-0006 addendum, constitution Principle VI wording and Sync Impact Report, CLAUDE.md, roadmap (spec 004 T061).
 - Accent colour picker in Settings (six presets, applied at once and kept on the account), behind the `appearance.accent` flag (spec 004 T056, T060).
 - Refresh: settings on the Concourse Board identity, with a page margin and a main landmark (spec 004 T035).
 - Refresh: categories and budget editor on the Concourse Board identity; the first default category colour no longer matches the over-budget red (spec 004 T034).
