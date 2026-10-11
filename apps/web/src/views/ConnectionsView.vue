@@ -6,7 +6,7 @@ import {
   type AccountT,
   type CapabilityT,
 } from '@desk/contracts';
-import { PALETTE_COLOURS } from '@desk/ui';
+import { Button, PALETTE_COLOURS } from '@desk/ui';
 import {
   getConnections,
   getProviders,
@@ -226,11 +226,11 @@ async function confirmDisconnect() {
 </script>
 
 <template>
-  <div class="connections-view">
+  <main class="connections-view">
     <h1>Connected Accounts</h1>
 
-    <div v-if="error" class="error-banner">{{ error }}</div>
-    <div v-if="errorCode" class="error-banner">{{ connectErrorCopy(errorCode) }}</div>
+    <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
+    <div v-if="errorCode" class="error-banner" role="alert">{{ connectErrorCopy(errorCode) }}</div>
 
     <div v-if="connectedAccount" class="success-banner">
       <p>Account connected successfully.</p>
@@ -274,39 +274,27 @@ async function confirmDisconnect() {
           </details>
 
           <div v-if="provider.id === 'google'" class="capabilities">
-            <button
-              type="button"
-              :disabled="isLimitReached"
-              class="connect-btn"
-              @click="navigateToOAuth(provider.id, 'calendar')"
-            >
+            <Button :disabled="isLimitReached" @click="navigateToOAuth(provider.id, 'calendar')">
               Connect Calendar
-            </button>
+            </Button>
             <p v-if="!provider.capabilities.includes('mail')" class="note">
               Gmail is currently disabled pending a security assessment. Check back soon.
             </p>
           </div>
 
           <div v-else-if="provider.id === 'standards'" class="capabilities">
-            <button
-              type="button"
-              :disabled="isLimitReached"
-              class="connect-btn"
-              @click="showStandardsForm = true"
-            >
+            <Button :disabled="isLimitReached" @click="showStandardsForm = true">
               Add another provider
-            </button>
+            </Button>
           </div>
 
           <div v-else class="capabilities">
-            <button
-              type="button"
+            <Button
               :disabled="isLimitReached"
-              class="connect-btn"
               @click="navigateToOAuth(provider.id, provider.capabilities.join(','))"
             >
               Connect {{ providerName(provider.id) }}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -384,18 +372,17 @@ async function confirmDisconnect() {
           </div>
 
           <div class="account-actions">
-            <button type="button" class="pause-btn" @click="togglePause(account)">
+            <Button variant="secondary" @click="togglePause(account)">
               {{ account.status === 'paused' ? 'Resume' : 'Pause' }}
-            </button>
+            </Button>
 
-            <button
+            <Button
               v-if="account.status === 'reconnect_needed' || account.status === 'error'"
-              type="button"
-              class="reconnect-btn"
+              variant="secondary"
               @click="startReconnect(account.id)"
             >
               Reconnect
-            </button>
+            </Button>
 
             <a
               v-for="capability in missingCapabilities(account)"
@@ -406,9 +393,7 @@ async function confirmDisconnect() {
               Add {{ capabilityLabel(capability) }}
             </a>
 
-            <button type="button" class="disconnect-btn" @click="askDisconnect(account)">
-              Disconnect
-            </button>
+            <Button variant="danger" @click="askDisconnect(account)">Disconnect</Button>
           </div>
 
           <StandardsForm
@@ -432,313 +417,271 @@ async function confirmDisconnect() {
         {{ revokeInstructionsFor(disconnectTarget.provider) }}
       </p>
       <div class="dialog-actions">
-        <button type="button" @click="cancelDisconnect">Cancel</button>
-        <button type="button" class="disconnect-confirm-btn" @click="confirmDisconnect">
-          Disconnect
-        </button>
+        <Button variant="secondary" @click="cancelDisconnect">Cancel</Button>
+        <Button variant="danger" @click="confirmDisconnect">Disconnect</Button>
       </div>
     </dialog>
-  </div>
+  </main>
 </template>
 
 <style scoped>
 .connections-view {
-  padding: 2rem;
-  max-width: 1000px;
+  max-width: var(--content-max);
   margin: 0 auto;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  font-family: var(--font-sans);
+  color: var(--color-fg);
 }
-
+h1,
+h2,
+h3 {
+  margin: 0;
+}
 h1 {
-  margin-top: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
-
+h2 {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+h3 {
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+}
+section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+p {
+  margin: 0;
+}
 .error-banner,
 .success-banner {
-  padding: 1rem;
-  border-radius: 0.5rem;
-  margin-bottom: 1.5rem;
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
+  border-inline-start: var(--space-1) solid var(--color-accent);
 }
-
 .error-banner {
-  background: #ffe0e0;
-  color: #a83a2e;
+  border-inline-start-color: var(--color-critical);
 }
-
-.success-banner {
-  background: #e0ffe0;
-  color: #2d6b2f;
+.limit-message,
+.note,
+.provider {
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
-
-section {
-  margin-bottom: 2rem;
-}
-
-h2 {
-  font-size: 1.1rem;
-  margin-bottom: 1rem;
-}
-
-.limit-message {
-  color: var(--color-fg-secondary);
-  font-size: 0.9rem;
-  margin-bottom: 1rem;
-}
-
 .provider-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+  gap: var(--space-4);
 }
-
-.provider-card {
-  padding: 1.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background: var(--color-bg-secondary);
+.provider-card,
+.account-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  min-width: 0;
 }
-
-.provider-card h3 {
-  margin: 0 0 1rem 0;
+.privacy-details summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  cursor: pointer;
+  text-decoration: underline;
 }
-
+.privacy-details dl {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+.privacy-details dt {
+  margin-top: var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+.privacy-details dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .capabilities {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
+  align-items: flex-start;
 }
-
-.connect-btn {
-  padding: 0.75rem 1rem;
-  background: var(--color-accent);
-  color: white;
-  border: none;
-  border-radius: 0.4rem;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 500;
-}
-
-.connect-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.connect-btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.note {
-  font-size: 0.85rem;
-  color: var(--color-fg-secondary);
-  margin: 0;
-}
-
 .empty-state {
-  text-align: center;
-  padding: 2rem;
-  color: var(--color-fg-secondary);
+  padding: var(--space-8) var(--space-4);
+  color: var(--color-fg-muted);
 }
-
 .accounts-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
-
-.account-card {
-  padding: 1.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.5rem;
-  background: var(--color-bg-secondary);
-}
-
 .account-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid var(--color-border);
-  padding-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
-
 .label-input {
+  min-height: var(--target-min);
+  box-sizing: border-box;
+  max-width: 100%;
   font: inherit;
-  font-size: 1rem;
   font-weight: 600;
   border: 1px solid transparent;
   background: transparent;
   color: var(--color-fg);
-  padding: 0.1rem 0.3rem;
-  margin: 0 0 0 -0.3rem;
+  padding: var(--space-1) var(--space-2);
+  margin-inline-start: calc(-1 * var(--space-2));
 }
-
 .label-input:hover,
 .label-input:focus {
   border-color: var(--color-border);
-  border-radius: 0.25rem;
+  border-radius: var(--radius-sm);
 }
-
-.provider {
-  font-size: 0.875rem;
-  color: var(--color-fg-secondary);
-  margin: 0.25rem 0 0 0;
+.label-input:focus-visible,
+.calendar-item input:focus-visible,
+.colour-swatch:focus-visible,
+.add-capability-link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
-
 .account-status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 0.25rem;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
   font-weight: 600;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   white-space: nowrap;
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--space-1) solid var(--color-accent);
 }
-
-.account-status.connected {
-  background: #e0ffe0;
-  color: #2d6b2f;
-}
-
-.account-status.reconnect_needed {
-  background: #fff0e0;
-  color: #a8641a;
-}
-
-.account-status.error {
-  background: #ffe0e0;
-  color: #a83a2e;
-}
-
+.account-status.reconnect_needed,
 .account-status.paused {
-  background: #f0f0f0;
-  color: #666;
+  border-inline-start-color: var(--color-warn);
 }
-
+.account-status.error {
+  border-inline-start-color: var(--color-critical);
+}
 .colour-group {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
-
+/* The 44px target is the button; the swatch is drawn inside it. */
 .colour-swatch {
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  background: var(--swatch-color);
-  border: 2px solid transparent;
-  cursor: pointer;
+  position: relative;
+  width: var(--target-min);
+  height: var(--target-min);
+  background: transparent;
+  border: 0;
   padding: 0;
+  cursor: pointer;
 }
-
-.colour-swatch[aria-checked='true'] {
-  border-color: var(--color-fg);
+.colour-swatch::after {
+  content: '';
+  position: absolute;
+  inset: var(--space-2);
+  background: var(--swatch-color);
+  border-radius: var(--radius-md);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
 }
-
+.colour-swatch[aria-checked='true']::after {
+  outline-color: var(--color-fg);
+}
 .account-details {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  font-size: 0.875rem;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
-
-.account-details div {
-  display: flex;
-  gap: 0.5rem;
-}
-
 .calendar-checklist {
-  margin-top: 1rem;
-  font-size: 0.875rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
-
 .checklist-title {
-  margin: 0 0 0.4rem 0;
+  margin-bottom: var(--space-1);
   font-weight: 600;
 }
-
 .calendar-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.15rem 0;
+  gap: var(--space-2);
+  min-height: var(--target-min);
 }
-
 .primary-tag {
-  color: var(--color-fg-secondary);
+  color: var(--color-fg-muted);
 }
-
 .account-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-3);
   align-items: center;
 }
-
-.pause-btn,
-.reconnect-btn,
-.disconnect-btn {
-  padding: 0.5rem 1rem;
-  background: transparent;
-  color: var(--color-accent);
-  border: 1px solid var(--color-accent);
-  border-radius: 0.4rem;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 500;
-}
-
-.disconnect-btn {
-  color: var(--color-critical);
-  border-color: var(--color-critical);
-}
-
-.pause-btn:hover,
-.reconnect-btn:hover {
-  background: var(--color-bg-tertiary, rgba(0, 0, 0, 0.05));
-}
-
 .add-capability-link {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-border);
-  border-radius: 0.4rem;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
   color: var(--color-fg);
-  text-decoration: none;
-  font-size: 0.9rem;
+  text-decoration: underline;
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
-
 .standards-form-panel {
-  margin-top: 1rem;
+  margin-top: var(--space-2);
 }
-
 .disconnect-dialog {
-  border: none;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  max-width: 420px;
+  max-width: 26rem;
+  padding: var(--space-6);
+  border: 0;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-overlay);
   color: var(--color-fg);
-  background: var(--color-bg);
+  background: var(--color-surface-raised);
 }
-
 .disconnect-dialog::backdrop {
-  background: rgb(0 0 0 / 40%);
+  background: var(--color-fg);
+  opacity: 0.4;
 }
-
 .dialog-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
 }
-
-.disconnect-confirm-btn {
-  background: var(--color-critical);
-  color: white;
-  border: none;
-  border-radius: 0.4rem;
-  padding: 0.5rem 1rem;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 500;
+@media (min-width: 1024px) {
+  .add-capability-link,
+  .privacy-details summary,
+  .calendar-item {
+    min-height: 24px;
+  }
 }
 </style>

@@ -86,4 +86,17 @@ describe('RegisterView', () => {
 
     app.unmount();
   });
+  it('is one main landmark', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{"currencies":[]}')));
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    const app = createApp(RegisterView);
+    app.use(pinia);
+    app.mount(el);
+    await nextTick();
+    expect(el.querySelectorAll('main')).toHaveLength(1);
+    app.unmount();
+  });
 });

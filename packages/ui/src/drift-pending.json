@@ -1,12 +1,1 @@
-[
-  "apps/web/src/components/connections/StandardsForm.vue",
-  "apps/web/src/views/CaptureView.vue",
-  "apps/web/src/views/ConnectionsView.vue",
-  "apps/web/src/views/ConnectorsView.vue",
-  "apps/web/src/views/ForgotView.vue",
-  "apps/web/src/views/HelloView.vue",
-  "apps/web/src/views/OnboardingView.vue",
-  "apps/web/src/views/RegisterView.vue",
-  "apps/web/src/views/ResetView.vue",
-  "apps/web/src/views/VerifyView.vue"
-]
+["apps/web/src/views/HelloView.vue"]

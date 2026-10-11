@@ -85,23 +85,43 @@ function leaveTo(name: string) {
 
 <style scoped>
 .desk-onboarding {
-  max-width: 28rem;
-  margin: 0 auto;
-  padding: 1.5rem 1rem;
+  max-width: 24rem;
+  margin: var(--space-8) auto;
+  padding-inline: var(--gutter);
   font-family: var(--font-sans);
   color: var(--color-fg);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
+}
+.desk-onboarding h1 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.desk-onboarding section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.desk-onboarding section p {
+  margin: 0;
 }
 .desk-onboarding-step {
-  font-size: 0.8rem;
-  opacity: 0.7;
   margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 .desk-onboarding-actions {
   display: flex;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 </style>

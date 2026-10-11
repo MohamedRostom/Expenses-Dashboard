@@ -918,6 +918,116 @@ export const SCREENS: Screen[] = [
       await expect(page.getByRole('dialog')).toBeVisible();
     },
   },
+  {
+    // T039: the account screens. Anonymous; forced errors mock the screen's own POST.
+    name: 'register',
+    route: '/register',
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: (page) =>
+          page.route('**/auth/register', (route) =>
+            route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Request failed' },
+              }),
+            }),
+          ),
+        after: async (page) => {
+          await page.getByLabel('Email').fill('nobody@example.com');
+          await page.getByLabel('Password').fill('not-the-password-1');
+          await page.getByRole('button', { name: 'Sign up' }).click();
+          await expect(page.getByRole('alert')).toBeVisible();
+        },
+      },
+    },
+  },
+  {
+    // T039: the confirmation shown after the request (the endpoint always answers the same).
+    name: 'forgot',
+    route: '/forgot',
+    afterLoad: async (page) => {
+      await page.getByLabel('Email').fill('nobody@example.com');
+      await page.getByRole('button', { name: 'Send reset link' }).click();
+      await expect(page.getByText('If that email exists')).toBeVisible();
+    },
+  },
+  {
+    name: 'forgot-form',
+    route: '/forgot',
+  },
+  {
+    // T039: reset form; the error state is an expired or used link, through ErrorState.
+    name: 'reset',
+    route: '/reset?token=expired',
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: (page) =>
+          page.route('**/auth/password/reset', (route) =>
+            route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Invalid or expired token' },
+              }),
+            }),
+          ),
+        after: async (page) => {
+          await page.getByLabel('New password').fill('not-the-password-1');
+          await page.getByRole('button', { name: 'Reset password' }).click();
+          await expect(page.getByRole('alert')).toBeVisible();
+        },
+      },
+    },
+  },
+  {
+    // T039: an expired or used verification link (default) and the check in progress (loading).
+    name: 'verify',
+    route: '/verify?token=expired',
+    mock: (page) =>
+      page.route('**/auth/verify', (route) =>
+        route.request().method() === 'POST'
+          ? route.fulfill({
+              status: 400,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: { code: 'validation_failed', message: 'Invalid or expired token' },
+              }),
+            })
+          : route.fallback(),
+      ),
+    states: ['loading'],
+  },
+  {
+    // T039: onboarding step 1. A completed user may still open it (the guard only bounces away from
+    // other routes), so no psql is needed to get an unfinished one.
+    name: 'onboarding',
+    route: '/onboarding',
+    signedIn: true,
+  },
+  {
+    // T041: the settings sub-screens. A new user has no capture address, no Notion connection and
+    // no connected accounts, so each shows its first-run state; forced loading/error from the stack.
+    name: 'capture',
+    route: '/settings/capture',
+    signedIn: true,
+    states: ['loading', 'error'],
+  },
+  {
+    name: 'connectors',
+    route: '/settings/connectors',
+    signedIn: true,
+    states: ['loading'],
+  },
+  {
+    name: 'connections',
+    route: '/settings/connections',
+    signedIn: true,
+    states: ['loading', 'error'],
+  },
 ];
 
 /**
