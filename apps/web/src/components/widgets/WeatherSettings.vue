@@ -60,11 +60,42 @@ async function setUnit(unit: TemperatureUnitT) {
   border: 0;
   margin: 0;
   padding: 0;
+  display: flex;
+  gap: var(--space-2);
 }
+.desk-weather-unit legend {
+  margin-block-end: var(--space-2);
+}
+/* The native radio covers its whole label, so the focusable box meets the target minimum. */
 .desk-weather-unit label {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
+  min-inline-size: var(--target-min);
   min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.desk-weather-unit input {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.desk-weather-unit label:has(input:checked) {
+  background: var(--color-accent);
+  color: var(--color-accent-fg);
+  border-color: var(--color-accent);
+}
+.desk-weather-unit label:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 </style>

@@ -41,16 +41,17 @@ async function onSubmit() {
       </p>
     </div>
 
-    <ErrorState
-      v-else-if="tokenError"
-      :code="tokenError.code"
-      title="That link expired or was already used"
-      description="Request a new reset link to continue."
-    >
-      <template #action>
-        <Button variant="secondary" @click="router.push('/forgot')">Get a new link</Button>
-      </template>
-    </ErrorState>
+    <div v-else-if="tokenError" role="alert">
+      <ErrorState
+        :code="tokenError.code"
+        title="That link expired or was already used"
+        description="Request a new reset link to continue."
+      >
+        <template #action>
+          <Button variant="secondary" @click="router.push('/forgot')">Get a new link</Button>
+        </template>
+      </ErrorState>
+    </div>
 
     <form v-else @submit.prevent="onSubmit">
       <Input

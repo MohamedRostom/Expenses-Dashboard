@@ -89,7 +89,9 @@ async function onSubmit() {
         :error="passwordError"
       />
       <CurrencyPicker v-model="currency" label="Default currency" />
-      <ErrorState v-if="error" :code="error.code" />
+      <div v-if="error" role="alert">
+        <ErrorState :code="error.code" />
+      </div>
       <Button type="submit" :loading="submitting" :disabled="submitting">Sign up</Button>
     </form>
 
