@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { Button, EmptyState, useToast, PanelFrame } from '@desk/ui';
+import { Button, useToast, PanelFrame } from '@desk/ui';
 import type { WidgetCreateT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { useWidgetsStore } from '../../stores/widgets.js';
@@ -34,7 +34,6 @@ const shown = computed(() => {
 });
 
 const atLimit = computed(() => store.widgets.length >= store.limit);
-const enabledTypes = computed(() => catalogue.value.filter((t) => t.enabled));
 const settingsWidget = computed(() => store.widgets.find((w) => w.id === settingsId.value) ?? null);
 
 onMounted(async () => {
@@ -150,6 +149,13 @@ async function onDragEnd() {
 <template>
   <section class="desk-widget-strip" aria-label="Widgets" data-testid="widget-strip">
     <div class="desk-widget-strip-head">
+      <p
+        v-if="loaded && !store.error && store.widgets.length === 0"
+        class="desk-widget-empty"
+        data-testid="widget-empty"
+      >
+        No widgets yet
+      </p>
       <Button
         data-testid="add-widget"
         variant="secondary"
@@ -160,23 +166,13 @@ async function onDragEnd() {
       </Button>
     </div>
 
-    <EmptyState
-      v-if="loaded && !store.error && store.widgets.length === 0"
-      title="No widgets yet"
-      description="Widgets show small, read-only figures such as exchange rates or your spend pace, right above your expenses."
-    >
-      <template v-if="enabledTypes.length > 0" #action>
-        <p class="desk-widget-offer">Available: {{ enabledTypes.map((t) => t.name).join(', ') }}</p>
-      </template>
-    </EmptyState>
-
     <PanelFrame
-      v-else-if="store.error && store.widgets.length === 0"
+      v-if="store.error && store.widgets.length === 0"
       kind="error"
       :code="offline ? 'offline' : store.error"
     />
 
-    <div v-else ref="grid" class="desk-widget-grid">
+    <div v-else-if="store.widgets.length > 0" ref="grid" class="desk-widget-grid">
       <WidgetFrame
         v-for="(w, i) in shown"
         :key="w.id"
@@ -234,18 +230,20 @@ async function onDragEnd() {
 }
 .desk-widget-strip-head {
   display: flex;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.desk-widget-empty {
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 .desk-widget-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
   gap: var(--space-3);
-}
-.desk-widget-offer {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--color-fg-muted);
 }
 .desk-sr-only {
   position: absolute;

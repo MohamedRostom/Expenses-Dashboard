@@ -521,6 +521,7 @@ const seedBin = async (page: Page) => {
       description: 'Lunch at the station café',
       amount: { minor: 1_250, currency: me.user.defaultCurrency },
       date: '2026-03-14',
+      categoryId: null,
       paidWith: 'card',
       kind: 'variable',
     },
@@ -1240,10 +1241,6 @@ for (const vp of viewports) {
 test('@visual screen month entries board starts inside the first viewport 360', async ({
   page,
 }) => {
-  // known-gap: with the widgets flags on and no widgets, the strip's empty state (owned by
-  // components/widgets, outside this fix) is ~190px tall at 360, so the entries panel top lands near
-  // 860, not under 800. Re-enable when the strip's empty state is compacted.
-  test.fixme(true, 'widget strip empty state pushes the entries panel below 800px at 360');
   const screen = SCREENS.find((s) => s.name === 'month')!;
   await page.setViewportSize({ width: 360, height: 800 });
   const ctx = await prepare(page, screen);

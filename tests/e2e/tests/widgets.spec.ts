@@ -92,16 +92,14 @@ test('the month view renders its expenses before the strip appears', async ({ pa
   await expect(page.getByText('No widgets yet')).toBeVisible({ timeout: 10_000 });
 });
 
-test('with no widgets the strip explains widgets and offers the enabled kinds', async ({
-  page,
-}) => {
+test('with no widgets the strip shows one short line and the add button', async ({ page }) => {
   await mockWidgets(page, (route) => route.fulfill({ json: list([]) }));
   await signUpAndVerify(page, uniqueEmail('widgets-empty'), PASSWORD);
   await addExpense(page, 'Empty strip');
 
   const strip = page.getByTestId('widget-strip');
-  await expect(strip.getByText(/widgets show small, read-only figures/i)).toBeVisible();
-  await expect(strip.getByText(/Currency, Spend pace/)).toBeVisible();
+  await expect(strip.getByTestId('widget-empty')).toHaveText('No widgets yet');
+  await expect(strip.getByTestId('add-widget')).toBeVisible();
   await axeCheck(page);
 });
 
@@ -403,7 +401,7 @@ const widgetsOf = async (page: Page) =>
   (await apiJson<{ widgets: ApiWidget[] }>(page, 'get', '/widgets')).widgets;
 
 const frame = (page: Page, title: string) => page.getByRole('article', { name: title }).first();
-const titles = (page: Page) => page.getByTestId('widget-title').allInnerTexts();
+const titles = (page: Page) => page.getByTestId('widget-title').allTextContents(); // textContent: the CSS capitals don't leak in
 
 async function addWidget(page: Page, name: string): Promise<void> {
   await page.getByTestId('add-widget').click();
@@ -825,7 +823,7 @@ test.describe('arrange (US3)', () => {
     const second = await context.newPage();
     await second.goto('/');
     await expect
-      .poll(() => second.getByTestId('widget-title').allInnerTexts())
+      .poll(() => second.getByTestId('widget-title').allTextContents())
       .toEqual(['Fixed costs', 'Spend pace']);
   });
 });
