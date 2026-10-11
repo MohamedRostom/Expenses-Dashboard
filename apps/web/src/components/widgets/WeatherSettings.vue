@@ -54,11 +54,17 @@ async function setUnit(unit: TemperatureUnitT) {
 .desk-weather-settings {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-weather-unit {
   border: 0;
   margin: 0;
   padding: 0;
+}
+.desk-weather-unit label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
 }
 </style>

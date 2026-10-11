@@ -45,18 +45,19 @@ type Change = { pct: number; direction: keyof typeof GLYPH; since?: string };
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-currency-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.15rem 0.6rem;
-  font-size: 0.85rem;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .desk-currency-rate,
 .desk-currency-date,
 .desk-currency-change {
-  font-family: var(--font-mono, 'IBM Plex Mono', monospace);
+  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 .desk-currency-change {

@@ -115,7 +115,7 @@ function useLocation() {
 .desk-place-picker {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-place-list {
   list-style: none;
@@ -123,16 +123,17 @@ function useLocation() {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .desk-place-option {
   width: 100%;
   text-align: left;
-  padding: 0.4rem 0.5rem;
-  background: none;
-  color: inherit;
-  border: 1px solid var(--color-fg);
-  border-radius: 6px;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
   font: inherit;
   cursor: pointer;
 }

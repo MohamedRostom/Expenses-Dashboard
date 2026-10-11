@@ -2,7 +2,7 @@
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
 type WidgetT = { kind: string } & Record<string, unknown>;
-import PanelFrame from './PanelFrame.vue';
+import PanelFrame from './WidgetFrame.vue';
 
 const widget = (over: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -55,7 +55,7 @@ const btn = (el: HTMLElement, label: string) =>
     (b) => b.textContent?.trim() === label,
   );
 
-describe('PanelFrame menu (T052)', () => {
+describe('WidgetFrame menu (T052)', () => {
   afterEach(() => (document.body.innerHTML = ''));
 
   it('Move up, Move down and Duplicate emit', async () => {
@@ -104,7 +104,7 @@ describe('PanelFrame menu (T052)', () => {
   });
 });
 
-describe('PanelFrame offline copy', () => {
+describe('WidgetFrame offline copy', () => {
   afterEach(() => (document.body.innerHTML = ''));
 
   it('keeps the last figures and as-of time and says it is offline', async () => {
@@ -120,7 +120,7 @@ describe('PanelFrame offline copy', () => {
   });
 });
 
-describe('PanelFrame empty state', () => {
+describe('WidgetFrame empty state', () => {
   afterEach(() => (document.body.innerHTML = ''));
   const empty = (kind: WidgetT['kind']) =>
     mount({ widget: widget({ kind, state: 'empty', figures: undefined } as Partial<WidgetT>) });

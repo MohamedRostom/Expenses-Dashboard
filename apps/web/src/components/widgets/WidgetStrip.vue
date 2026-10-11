@@ -10,6 +10,7 @@ import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
 
@@ -176,7 +177,7 @@ async function onDragEnd() {
     />
 
     <div v-else ref="grid" class="desk-widget-grid">
-      <PanelFrame
+      <WidgetFrame
         v-for="(w, i) in shown"
         :key="w.id"
         :widget="w"
@@ -192,7 +193,7 @@ async function onDragEnd() {
         @settings="settingsId = w.id"
         @remove="onRemove(w.id, label(w.kind).toLowerCase())"
       >
-        <!-- PanelFrame shows the skeleton/error when figures are absent. -->
+        <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
         <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
         <WeatherWidget
           v-else-if="w.kind === 'weather' && w.figures"
@@ -202,7 +203,7 @@ async function onDragEnd() {
         <SunriseWidget v-else-if="w.kind === 'sunrise' && w.figures" :figures="w.figures" />
         <SpendPaceWidget v-else-if="w.kind === 'spend_pace' && w.figures" :figures="w.figures" />
         <FixedCostsWidget v-else-if="w.kind === 'fixed_costs' && w.figures" :figures="w.figures" />
-      </PanelFrame>
+      </WidgetFrame>
     </div>
 
     <p class="desk-sr-only" aria-live="polite" data-testid="widget-live">{{ announcement }}</p>
@@ -229,7 +230,7 @@ async function onDragEnd() {
 .desk-widget-strip {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-widget-strip-head {
   display: flex;
@@ -238,25 +239,27 @@ async function onDragEnd() {
 .desk-widget-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-widget-offer {
   margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.8;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 .desk-sr-only {
   position: absolute;
   width: 1px;
   height: 1px;
   overflow: hidden;
-  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
   white-space: nowrap;
 }
 .desk-widget-attribution {
   margin: 0;
-  font-size: 0.7rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 .desk-widget-attribution:empty {
   display: none;

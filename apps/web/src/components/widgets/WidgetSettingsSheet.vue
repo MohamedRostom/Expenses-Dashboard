@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Dialog, PanelFrame } from '@desk/ui';
+import { Button, Dialog, PanelFrame } from '@desk/ui';
 import { CURRENCY_CAP } from '@desk/core';
 import type { WidgetPatchT, WidgetT } from '@desk/contracts';
 import { useWidgetsStore } from '../../stores/widgets.js';
@@ -52,7 +52,7 @@ async function addSecond() {
         <CurrencyPicker :chosen="chosen" @toggle="toggle" />
         <p v-if="atCap">
           A currency widget shows up to six currencies.
-          <button type="button" @click="addSecond">Add a second currency widget</button>
+          <Button variant="secondary" @click="addSecond">Add a second currency widget</Button>
         </p>
         <PanelFrame v-if="error" kind="error" :code="error" />
       </div>

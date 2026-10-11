@@ -1,6 +1,6 @@
 /// <reference lib="dom" />
 import { readdirSync } from 'node:fs';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type Route } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
@@ -530,6 +530,96 @@ const seedBin = async (page: Page) => {
   expect((await page.request.delete(`/expenses/${id}`, { headers })).ok()).toBe(true);
 };
 
+// T042 helpers. The strip's own API answers are pinned (fixed figures, no Open-Meteo or rate
+// fetch), so the baselines hold on any day; the real widget flows are covered in widgets.spec.ts.
+const IN_ZONE = '2026-03-14T09:12:00Z';
+const mockWidgets = async (page: Page) => {
+  const base = { settings: {}, state: 'ready', asOf: IN_ZONE, position: 0 };
+  const widgets = [
+    {
+      ...base,
+      id: 'w1',
+      kind: 'currency',
+      figures: {
+        rows: [
+          {
+            code: 'EUR',
+            rate: 1.1842,
+            rateDate: '2026-03-13',
+            prevChange: { pct: 0.2, direction: 'up' },
+            monthChange: { pct: 0.8, direction: 'down', since: '2026-02-12' },
+          },
+        ],
+      },
+    },
+    {
+      ...base,
+      id: 'w2',
+      kind: 'weather',
+      figures: {
+        place: 'Leeds',
+        temperatureC: 14,
+        condition: 'Light cloud',
+        icon: 'cloud',
+        todayMaxC: 17,
+        todayMinC: 9,
+        outlook: [
+          { date: '2026-03-15', maxC: 16, minC: 8, icon: 'sun', condition: 'Sunny' },
+          { date: '2026-03-16', maxC: 18, minC: 10, icon: 'rain', condition: 'Rain' },
+        ],
+        observedAt: IN_ZONE,
+        attribution: 'Weather data by Open-Meteo.com',
+      },
+    },
+    {
+      ...base,
+      id: 'w3',
+      kind: 'spend_pace',
+      figures: {
+        spentMinor: 61_250,
+        budgetMinor: 150_000,
+        pct: 41,
+        daysLeft: 12,
+        dailyToBudgetMinor: 7_396,
+        overBudget: false,
+      },
+    },
+    {
+      ...base,
+      id: 'w4',
+      kind: 'fixed_costs',
+      figures: {
+        remaining: [
+          { categoryId: 'a', name: 'Rent', usualMinor: 95_000, usualBasis: 'budget' },
+          { categoryId: 'b', name: 'Internet', usualMinor: 3_200, usualBasis: 'previous' },
+        ],
+        totalExpectedMinor: 98_200,
+        allRecorded: false,
+      },
+    },
+  ].map((w, position) => ({ ...w, position }));
+  const get = (body: unknown) => (route: Route) =>
+    route.request().method() === 'GET' ? route.fulfill(json(body)) : route.fallback();
+  await page.route('**/widgets', get({ widgets, limit: 6, temperatureUnit: 'C' }));
+  await page.route(
+    '**/widgets/types',
+    get({
+      types: [
+        ['currency', 'Currency', 'Exchange rates against your default currency.'],
+        ['sunrise', 'Sunrise and sunset', "Today's sunrise, sunset and day length."],
+      ].map(([kind, name, description]) => ({
+        kind,
+        name,
+        description,
+        enabled: true,
+        needsPlace: kind === 'sunrise',
+        settingsSchema: {},
+      })),
+    }),
+  );
+  await page.route('**/widgets/refresh', (route) => route.fulfill(json({ queued: 0 })));
+};
+
 export const SCREENS: Screen[] = [
   {
     // T031: the shared header and the open Feedback panel, on the signed-in month view.
@@ -777,6 +867,55 @@ export const SCREENS: Screen[] = [
         setup: (page) =>
           page.route('**/expenses?*', (route) => route.fulfill(json({ expenses: [] }))),
       },
+    },
+  },
+  {
+    // T042: the widget strip under the month view (pinned answers from mockWidgets).
+    name: 'widgets-month',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[data-testid="widget-strip"]'],
+    states: ['loading', 'error'],
+  },
+  {
+    // T042: the same strip on Today.
+    name: 'widgets-today',
+    route: '/today',
+    signedIn: true,
+    flags: 'widgets',
+    mock: async (page) => {
+      await mockWidgets(page);
+      await mockToday(page);
+    },
+    panels: ['[data-testid="widget-strip"]'],
+  },
+  {
+    // T042: the add-widget sheet (Dialog) open over the strip.
+    name: 'widgets-add-sheet',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[role="dialog"]'],
+    afterLoad: async (page) => {
+      await page.getByTestId('add-widget').click();
+      await expect(page.getByRole('dialog', { name: 'Add widget' })).toBeVisible();
+    },
+  },
+  {
+    // T042: a widget's settings sheet open (its menu, then Settings).
+    name: 'widgets-settings-sheet',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[role="dialog"]'],
+    afterLoad: async (page) => {
+      await page.locator('summary[aria-label="Weather menu"]').click();
+      await page.getByRole('button', { name: 'Settings', exact: true }).click();
+      await expect(page.getByRole('dialog')).toBeVisible();
     },
   },
 ];
