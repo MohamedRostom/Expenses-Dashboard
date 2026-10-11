@@ -26,6 +26,7 @@ withDefaults(
 
 <style scoped>
 .desk-btn {
+  position: relative;
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
@@ -75,6 +76,10 @@ withDefaults(
   color: var(--color-bg);
 }
 .desk-btn-spinner {
+  position: absolute;
+  inset-inline-start: var(--space-1);
+  top: 50%;
+  margin-top: -0.4em;
   width: 0.8em;
   height: 0.8em;
   border: 2px solid currentColor;

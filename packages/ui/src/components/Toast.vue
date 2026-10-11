@@ -30,7 +30,12 @@ function undo(t: ToastMessage) {
 
 <template>
   <Teleport to="body" :disabled="inline">
-    <div class="desk-toast-stack" :class="{ 'desk-toast-stack--inline': inline }">
+    <TransitionGroup
+      name="desk-toast"
+      tag="div"
+      class="desk-toast-stack"
+      :class="{ 'desk-toast-stack--inline': inline }"
+    >
       <div
         v-for="t in shown"
         :key="t.id"
@@ -54,7 +59,7 @@ function undo(t: ToastMessage) {
           Undo
         </Button>
       </div>
-    </div>
+    </TransitionGroup>
   </Teleport>
 </template>
 
@@ -96,6 +101,24 @@ function undo(t: ToastMessage) {
 .desk-toast:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
+}
+.desk-toast-enter-from,
+.desk-toast-leave-to {
+  opacity: 0;
+}
+.desk-toast-enter-from {
+  transform: translateY(8px);
+}
+.desk-toast-leave-to {
+  transform: translateY(8px);
+}
+.desk-toast-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+.desk-toast-leave-active {
+  transition: opacity var(--motion-fast) var(--ease-exit);
 }
 /* Catalogue example: sits in the flow of its cell. */
 .desk-toast-stack--inline {

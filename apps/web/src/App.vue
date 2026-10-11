@@ -57,6 +57,7 @@ body {
  * page marked by a 2px accent underline (the accent is never text colour), Sign out at the far end. */
 .desk-header {
   background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
   box-shadow: var(--shadow-raised);
 }
 .desk-nav {

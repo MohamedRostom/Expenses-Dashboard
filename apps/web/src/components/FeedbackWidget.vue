@@ -67,18 +67,24 @@ async function submit() {
 
 <template>
   <div class="feedback-widget">
-    <Button class="feedback-toggle" @click="open = !open">
+    <Button
+      class="feedback-toggle"
+      variant="secondary"
+      :aria-expanded="open"
+      aria-controls="feedback-form"
+      @click="open = !open"
+    >
       {{ open ? 'Close feedback' : 'Feedback' }}
     </Button>
-    <form v-if="open" class="feedback-form" @submit.prevent="submit">
+    <form v-if="open" id="feedback-form" class="feedback-form" @submit.prevent="submit">
       <p v-if="!isOnline" class="feedback-offline" role="status">
         You're offline — feedback can't be sent right now.
       </p>
-      <label class="desk-field">
-        <span class="desk-field-label">What's on your mind?</span>
+      <label class="feedback-field">
+        <span class="feedback-label">What's on your mind?</span>
         <textarea
           v-model="message"
-          class="desk-input"
+          class="feedback-input"
           rows="4"
           :maxlength="MAX_LENGTH"
           :disabled="!isOnline || status.kind === 'sending'"
@@ -113,6 +119,7 @@ async function submit() {
 /* A flap on the Raised shadow; the panel above it is an overlay. */
 .feedback-toggle {
   order: 2;
+  background: var(--color-surface-raised);
   box-shadow: var(--shadow-raised);
 }
 .feedback-form {
@@ -130,9 +137,31 @@ async function submit() {
   flex-direction: column;
   gap: var(--space-2);
 }
-.feedback-form textarea {
+.feedback-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.feedback-label {
+  font-size: var(--text-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--color-fg-muted);
+}
+.feedback-input {
   box-sizing: border-box;
   width: 100%;
+  background: var(--color-surface-raised);
+  color: var(--color-fg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font: inherit;
+  padding: var(--space-2);
+}
+.feedback-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .feedback-offline {
   color: var(--color-warn);
@@ -182,9 +211,24 @@ async function submit() {
   text-align: center;
 }
 .feedback-check:checked + .feedback-consent-text::before {
-  content: '\2713';
   background: var(--color-accent);
   border-color: var(--color-accent);
+}
+/* The check is drawn: a rotated L in the accent foreground. */
+.feedback-consent-text {
+  position: relative;
+}
+.feedback-check:checked + .feedback-consent-text::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 7px;
+  top: 50%;
+  width: 5px;
+  height: 10px;
+
+  border-right: 2px solid var(--color-accent-fg);
+  border-bottom: 2px solid var(--color-accent-fg);
+  transform: translateY(-70%) rotate(45deg);
 }
 .feedback-check:focus-visible + .feedback-consent-text::before {
   outline: 2px solid var(--color-focus);

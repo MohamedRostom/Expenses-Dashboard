@@ -8,6 +8,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 - Refresh: month view on the Concourse Board identity; category rows no longer print the currency twice; no sideways scroll at 360 wide (spec 004 T032).
 - Refresh: header, navigation and feedback button on the Concourse Board identity (spec 004 T031).
+- Refresh: feedback form fields, header rule, button loading width and toast motion finished on the Concourse Board identity (spec 004 T031 review fixes).
 - docs: contributor exercise run by the agent (a throw-away DemoPanel built from DESIGN.md §Building a new panel alone, then deleted); the section is corrected where it did not match PanelFrame (it has no slot for loaded content) and records the agent timing. SC-006, timed by a person, stays `needs-rostom` (T047).
 - docs: DESIGN.md "Building a new panel" is a finished walkthrough (PanelFrame, the three states, figures, layout-only CSS, new-block story, checks), with a test that it is no longer a stub (T046).
 - ui: every catalogue story has a `usage` example, rendered at `/__ui` as a live cell per theme plus its source, under a new index of all blocks with their purpose; Dialog and Toast get an `inline` mode so they render in the catalogue, Skeleton gains a `row` shape and DataTable a `loading` state (skeleton rows, `aria-busy`), the dark column no longer occludes wide blocks at 360px (columns stack), and unbuilt `compact`/`inline`/Dialog `loading` entries are dropped from contracts/blocks.md (T045).

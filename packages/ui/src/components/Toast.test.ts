@@ -17,8 +17,19 @@ afterEach(() => {
   document.body.innerHTML = '';
 });
 const el = (sel = '.desk-toast') => document.querySelector<HTMLElement>(sel);
+// A leaving toast stays in the DOM until its transition ends (jsdom never fires it).
+const gone = () => {
+  const e = el();
+  return !e || e.className.includes('leave');
+};
 
 describe('Toast', () => {
+  it('animates enter and leave through a TransitionGroup named desk-toast', async () => {
+    push('a');
+    await nextTick();
+    expect(el()!.className).toContain('desk-toast-enter');
+  });
+
   it('is a status, alert when critical', async () => {
     push('a', 'info');
     push('b', 'critical');
@@ -34,7 +45,7 @@ describe('Toast', () => {
     expect(el('.desk-toast button')).toBeNull();
     vi.advanceTimersByTime(4000);
     await nextTick();
-    expect(el()).toBeNull();
+    expect(gone()).toBe(true);
   });
 
   it('undo button is focusable, runs the action and dismisses', async () => {
@@ -46,7 +57,7 @@ describe('Toast', () => {
     btn.click();
     await nextTick();
     expect(undo).toHaveBeenCalledOnce();
-    expect(el()).toBeNull();
+    expect(gone()).toBe(true);
   });
 
   it('with undo, dismisses at 6 s, paused while hovered and while focused', async () => {
@@ -68,7 +79,7 @@ describe('Toast', () => {
     expect(el()).not.toBeNull();
     vi.advanceTimersByTime(1);
     await nextTick();
-    expect(el()).toBeNull();
+    expect(gone()).toBe(true);
   });
 
   it('has a success tone class', async () => {

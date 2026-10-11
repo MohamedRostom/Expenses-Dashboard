@@ -87,7 +87,17 @@ describe('App nav', () => {
     const { el, app } = await mount('/', true);
     const trigger = el.querySelector('.feedback-widget button') as HTMLElement;
     expect(trigger.classList.contains('desk-btn')).toBe(true);
-    expect(trigger.classList.contains('primary')).toBe(true);
+    expect(trigger.classList.contains('secondary')).toBe(true);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    trigger.click();
+    await nextTick();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const controls = trigger.getAttribute('aria-controls')!;
+    expect(el.querySelector(`#${controls}`)).not.toBeNull();
+    expect(appSource).toMatch(
+      /\.desk-header\s*\{[^}]*border-bottom:\s*1px solid var\(--color-border\)/,
+    );
+    expect(feedbackSource).not.toMatch(/2713/);
     expect(feedbackSource).not.toMatch(/color:\s*white|rgba?\(/);
     expect(feedbackSource).toMatch(/--shadow-overlay/);
     expect(feedbackSource).toMatch(/--shadow-raised/);
