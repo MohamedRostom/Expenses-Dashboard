@@ -136,3 +136,11 @@ describe('DESIGN.md (data-model.md §Design direction)', () => {
     }
   });
 });
+
+describe('DESIGN.md accent rule (T061)', () => {
+  it('allows one accent at a time, user-selectable from the presets', () => {
+    const colors = section('Colors');
+    expect(colors).toContain('One accent at a time');
+    expect(colors).not.toContain('is the only accent');
+  });
+});

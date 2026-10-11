@@ -3,8 +3,9 @@ Sync Impact Report
 - Version change: 1.1.1 -> 1.2.0
 - Modified principles: VI (design tokens: the identity is now the one recorded in the root
   `DESIGN.md` under ADR-0006 "Concourse Board": system UI words and system mono tabular
-  figures replace IBM Plex Sans/Mono, Signal Green replaces the incumbent green, still one
-  green accent and three theme states)
+  figures replace IBM Plex Sans/Mono, Signal Green replaces the incumbent green; still one
+  accent at a time, Signal Green by default and user-selectable from the presets in `DESIGN.md`
+  (owner request 2026-10-10, ADR-0006 addendum), and three theme states)
 - Modified sections: none
 - Added sections: none
 - Removed sections: none
@@ -93,7 +94,7 @@ to the look of existing screens is not a feature and needs no flag. What ships M
 finished: every panel has skeleton, empty and error states; error copy branches on the error
 code, never one generic banner; charts are a small hand-written SVG layer following the
 project's dataviz rules; design tokens (the identity in the root `DESIGN.md`, ADR-0006: system UI words, system mono
-tabular figures, one green accent, three theme states) come from `packages/ui`, not from
+tabular figures, one accent (Signal Green by default, user-selectable from the presets in `DESIGN.md`), three theme states) come from `packages/ui`, not from
 ad-hoc CSS. Rationale: complexity is paid for at 3 am,
 and a half-finished surface costs more trust than a missing one.
 

@@ -42,6 +42,10 @@ Not taken: the ADR was accepted. Recorded for history. If this ADR had been reje
 - Dropping a declared web font that was never loaded changes nothing on the wire; the figure face varies by platform (Cascadia or Consolas, SF Mono, Roboto Mono), which the snapshots absorb because they render in the pinned Playwright image.
 - No new runtime or dev dependency.
 
+## Addendum 2026-10-10: user-selectable accent
+
+At the owner's request (2026-10-10) the accent is user-selectable. It stays one accent at a time, Signal Green by default, chosen from the presets listed in `DESIGN.md` §Accent presets, not entered freely. Presets because each one is checked for contrast in all three theme states, which free entry cannot guarantee, and because the status hues (delay amber, cancel red) stay reserved: no preset hue falls in 0 to 60 degrees, so an accent never reads as a status. Constitution Principle VI says "one accent (Signal Green by default, user-selectable from the presets in `DESIGN.md`)" instead of "one green accent". The picker ships behind the `appearance.accent` flag (spec 004 US5); the owner still approves the swatches (T059).
+
 ## Alternatives considered
 
 - **Extend the Ledger Desk** (adjusted rows only). Offered first; the owner chose a new world instead. It remains the fallback.
