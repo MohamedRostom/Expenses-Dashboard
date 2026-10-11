@@ -506,7 +506,7 @@ export const SCREENS: Screen[] = [
               status: 401,
               contentType: 'application/json',
               body: JSON.stringify({
-                error: { code: 'invalid_credentials', message: 'Invalid email or password' },
+                error: { code: 'unauthenticated', message: 'Invalid email or password' },
               }),
             }),
           ),
@@ -519,6 +519,25 @@ export const SCREENS: Screen[] = [
       },
     },
   },
+  {
+    // T036: the other error branch, distinct copy for 429. The default state already shows it.
+    name: 'login-limited',
+    route: '/login',
+    mock: (page) =>
+      page.route('**/auth/login', (route) =>
+        route.fulfill({
+          status: 429,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'rate_limited', message: 'Too many attempts' } }),
+        }),
+      ),
+    afterLoad: async (page) => {
+      await page.getByLabel('Email').fill('nobody@example.com');
+      await page.getByLabel('Password').fill('not-the-password-1');
+      await page.getByRole('button', { name: 'Sign in' }).click();
+      await expect(page.getByRole('alert')).toBeVisible();
+    },
+  },
 ];
 
 /**
@@ -526,15 +545,7 @@ export const SCREENS: Screen[] = [
  * task that removes it; nothing is skipped silently. Keyed by screen name.
  */
 type GapCheck = 'targets' | 'axe' | 'axe-target-size' | 'motion';
-const KNOWN_GAPS: Record<string, { check: GapCheck; task: string }[]> = {
-  // Login is refreshed at T036: 36px inputs/button and 20px links at 360, 20px links at 1280, and
-  // accent-coloured link text failing contrast. T036 removes these three entries.
-  login: [
-    { check: 'targets', task: 'T036' },
-    { check: 'axe', task: 'T036' },
-    { check: 'axe-target-size', task: 'T036' },
-  ],
-};
+const KNOWN_GAPS: Record<string, { check: GapCheck; task: string }[]> = {};
 const gap = (name: string, check: GapCheck) =>
   KNOWN_GAPS[name]?.some((g) => g.check === check) ?? false;
 
