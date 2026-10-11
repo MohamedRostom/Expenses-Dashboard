@@ -2,7 +2,7 @@
 /** This-month-vs-last-month deltas: total and top categories, via /summary/compare. */
 import { computed, onMounted, ref } from 'vue';
 import type { CategoryResponseT, CompareSummaryT } from '@desk/contracts';
-import { Skeleton, PanelFrame } from '@desk/ui';
+import { DataTable, PanelFrame, type BoardColumn } from '@desk/ui';
 import { apiFetch } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { currentMonth } from '../stores/expenses.js';
@@ -55,46 +55,32 @@ const topCategories = computed(() =>
     .slice(0, 3),
 );
 
+const columns: BoardColumn[] = [
+  { key: 'name', label: 'Category' },
+  { key: 'delta', label: 'Change', align: 'end', width: 'amount' },
+];
+const signed = (minor: number) => `${minor >= 0 ? '+' : ''}${formatMoney(minor, currency.value)}`;
+
 defineExpose({ load });
 </script>
 
 <template>
-  <div class="desk-month-compare" data-testid="month-compare">
-    <Skeleton v-if="loading" height="3rem" />
-    <template v-else-if="compare">
-      <p class="desk-month-compare-total">
-        {{ compare.a }} vs {{ compare.b }}:
-        <strong>{{ total >= 0 ? '+' : '' }}{{ formatMoney(total, currency) }}</strong>
-      </p>
-      <ul v-if="topCategories.length > 0" class="desk-month-compare-list">
-        <li v-for="c in topCategories" :key="c.categoryId">
-          {{ categoryLabel(c.categoryId) }}: {{ c.delta >= 0 ? '+' : ''
-          }}{{ formatMoney(c.delta, currency) }}
-        </li>
-      </ul>
-    </template>
-    <PanelFrame v-else-if="errorKind" kind="error" :code="errorKind" />
+  <div data-testid="month-compare">
+    <PanelFrame
+      heading="This month vs last month"
+      :kind="loading ? 'loading' : errorKind ? 'error' : undefined"
+      :code="errorKind ?? undefined"
+    >
+      <DataTable v-if="compare" :columns="columns" dense :caption="`${compare.a} vs ${compare.b}`">
+        <tr>
+          <td>Total</td>
+          <td class="desk-col--amount">{{ signed(total) }}</td>
+        </tr>
+        <tr v-for="c in topCategories" :key="c.categoryId">
+          <td>{{ categoryLabel(c.categoryId) }}</td>
+          <td class="desk-col--amount">{{ signed(c.delta) }}</td>
+        </tr>
+      </DataTable>
+    </PanelFrame>
   </div>
 </template>
-
-<style scoped>
-.desk-month-compare {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-}
-.desk-month-compare-total {
-  margin: 0;
-}
-.desk-month-compare-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.2rem;
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-</style>

@@ -5,7 +5,16 @@ import type {
   ImportBatchResponseT,
   ImportRowResponseT,
 } from '@desk/contracts';
-import { Button, Input, Select, Skeleton, useToast } from '@desk/ui';
+import {
+  Button,
+  DataTable,
+  ErrorState,
+  Input,
+  Select,
+  Skeleton,
+  useToast,
+  type BoardColumn,
+} from '@desk/ui';
 import { ApiError, readCookie } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 
@@ -144,6 +153,17 @@ function toggleSkip(rowNumber: number) {
   skipRows.value = next;
 }
 
+const previewColumns: BoardColumn[] = [
+  { key: 'row', label: '#', hideBelow: 'md' },
+  { key: 'status', label: 'Status' },
+  { key: 'date', label: 'Date', width: 'date' },
+  { key: 'amount', label: 'Amount', align: 'end', width: 'amount' },
+  { key: 'description', label: 'Description', hideBelow: 'md' },
+  { key: 'skip', label: 'Skip', width: 'action' },
+];
+const statusTone = (status: string) =>
+  status === 'error' ? 'critical' : status === 'duplicate' ? 'warn' : null;
+
 const rows = computed<ImportRowResponseT[]>(() => batch.value?.rows ?? []);
 
 // Step 4: commit summary
@@ -226,15 +246,16 @@ onMounted(loadProfiles);
 
       <div v-if="profiles.length > 0" class="desk-import-profiles">
         <span>Saved profiles:</span>
-        <button
+        <Button
           v-for="p in profiles"
           :key="p.id"
-          type="button"
+          variant="secondary"
+          size="sm"
           data-testid="import-profile-button"
           @click="applyProfile(p)"
         >
           {{ p.name }}
-        </button>
+        </Button>
       </div>
 
       <div class="desk-import-mapping-form">
@@ -258,7 +279,7 @@ onMounted(loadProfiles);
         <Input v-if="saveAsProfile" v-model="profileName" label="Profile name" />
       </div>
 
-      <p v-if="error" role="alert">{{ error }}</p>
+      <ErrorState v-if="error" title="Upload failed" :description="error" />
       <Button :disabled="loading" @click="uploadAndPreview">{{
         loading ? 'Uploading…' : 'Preview'
       }}</Button>
@@ -268,59 +289,64 @@ onMounted(loadProfiles);
       <h2>3. Preview</h2>
       <Skeleton v-if="loading" height="12rem" />
       <div v-else class="desk-import-preview-wrap">
-        <table class="desk-import-preview" data-testid="import-preview-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Status</th>
-              <th>Date</th>
-              <th>Amount</th>
-              <th>Description</th>
-              <th>Skip</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in rows" :key="row.rowNumber" :data-status="row.status">
-              <td>{{ row.rowNumber }}</td>
-              <td>
-                <span class="desk-import-status-badge" :data-status="row.status">{{
-                  row.status
+        <DataTable
+          :columns="previewColumns"
+          dense
+          caption="Import preview"
+          data-testid="import-preview-table"
+        >
+          <tr v-for="row in rows" :key="row.rowNumber" :data-status="row.status">
+            <td class="desk-col--md desk-col--num">{{ row.rowNumber }}</td>
+            <td>
+              <span class="desk-item">
+                <span
+                  :class="[
+                    'desk-status-word',
+                    statusTone(row.status) && `desk-status-word--${statusTone(row.status)}`,
+                  ]"
+                  :data-status="row.status"
+                  >{{ row.status }}</span
+                >
+                <span v-if="row.error" class="desk-item-cat">{{ row.error }}</span>
+                <span class="desk-item-cat desk-import-description">{{
+                  row.parsed?.description
                 }}</span>
-                <span v-if="row.error">— {{ row.error }}</span>
-              </td>
-              <td>
-                <input
-                  v-if="row.status === 'error'"
-                  :aria-label="`Fix date for row ${row.rowNumber}`"
-                  :value="fixes[row.rowNumber]?.date ?? row.parsed?.date ?? ''"
-                  @input="
-                    fixes[row.rowNumber] = {
-                      ...fixes[row.rowNumber],
-                      date: ($event.target as HTMLInputElement).value,
-                    }
-                  "
-                />
-                <template v-else>{{ row.parsed?.date }}</template>
-              </td>
-              <td>
-                {{
-                  row.parsed?.amountMinor != null && row.parsed?.currency
-                    ? formatMoney(row.parsed.amountMinor, row.parsed.currency)
-                    : '—'
-                }}
-              </td>
-              <td>{{ row.parsed?.description }}</td>
-              <td>
-                <input
-                  type="checkbox"
-                  :aria-label="`Skip row ${row.rowNumber}`"
-                  :checked="skipRows.has(row.rowNumber)"
-                  @change="toggleSkip(row.rowNumber)"
-                />
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              </span>
+            </td>
+            <td class="desk-col--date">
+              <input
+                v-if="row.status === 'error'"
+                class="desk-import-fix"
+                :aria-label="`Fix date for row ${row.rowNumber}`"
+                :value="fixes[row.rowNumber]?.date ?? row.parsed?.date ?? ''"
+                @input="
+                  fixes[row.rowNumber] = {
+                    ...fixes[row.rowNumber],
+                    date: ($event.target as HTMLInputElement).value,
+                  }
+                "
+              />
+              <template v-else>{{ row.parsed?.date }}</template>
+            </td>
+            <td class="desk-col--amount">
+              {{
+                row.parsed?.amountMinor != null && row.parsed?.currency
+                  ? formatMoney(row.parsed.amountMinor, row.parsed.currency)
+                  : '—'
+              }}
+            </td>
+            <td class="desk-col--md">{{ row.parsed?.description }}</td>
+            <td class="desk-col--action">
+              <input
+                type="checkbox"
+                class="desk-import-check"
+                :aria-label="`Skip row ${row.rowNumber}`"
+                :checked="skipRows.has(row.rowNumber)"
+                @change="toggleSkip(row.rowNumber)"
+              />
+            </td>
+          </tr>
+        </DataTable>
       </div>
 
       <Button :disabled="loading" @click="commit">{{
@@ -343,38 +369,62 @@ onMounted(loadProfiles);
 
 <style scoped>
 .desk-import-view {
-  max-width: 60rem;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1rem;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
+  font-family: var(--font-sans);
+  color: var(--color-fg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.desk-import-view section {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+.desk-import-view section > * {
+  max-width: 100%;
+}
+.desk-import-profiles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
 }
 .desk-import-mapping-form {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--space-3);
+  inline-size: 100%;
   max-width: 24rem;
 }
+.desk-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-block-size: var(--target-min);
+}
 .desk-import-preview-wrap {
-  overflow-x: auto;
+  inline-size: 100%;
 }
-.desk-import-preview {
-  width: 100%;
-  border-collapse: collapse;
+.desk-import-check,
+.desk-import-fix,
+.desk-import-view input[type='file'] {
+  min-block-size: var(--target-min);
 }
-.desk-import-preview th,
-.desk-import-preview td {
-  text-align: left;
-  padding: 0.25rem 0.5rem;
-  /* --desk-border/--desk-accent were never-defined tokens — the fallback always won, so this
-   * silently ignored dark mode. color-mix matches the border style every other table in the app
-   * uses (e.g. MonthView's entries table). */
-  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
+.desk-import-check {
+  min-inline-size: var(--target-min);
 }
-.desk-import-status-badge[data-status='ok'] {
-  color: var(--color-accent);
+.desk-import-fix {
+  inline-size: 100%;
+  min-inline-size: 0;
+  font-family: var(--font-mono);
 }
-.desk-import-status-badge[data-status='error'] {
-  color: var(--color-critical);
-}
-.desk-import-status-badge[data-status='duplicate'] {
-  color: #a8641a;
+/* Phone width: the description sits under the status; from 768 it has its own column. */
+@media (min-width: 768px) {
+  .desk-import-description {
+    display: none;
+  }
 }
 </style>

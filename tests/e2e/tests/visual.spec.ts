@@ -463,6 +463,73 @@ const mockToday = (page: Page) =>
     });
   });
 
+// T040 helpers. Year: the summaries are pinned (month names and today's date would move the
+// baselines); the old year.spec.ts snapshots moved into the 'year' entry.
+const json = (body: unknown) => ({ contentType: 'application/json', body: JSON.stringify(body) });
+const mockYear = async (page: Page) => {
+  const year = new Date().getFullYear();
+  const spent = [42_000, 51_500, 38_250, 47_900, 120_000, 44_100, 0, 0, 0, 0, 0, 0];
+  await page.route('**/summary/year*', (route) =>
+    route.fulfill(
+      json({
+        year,
+        currency: 'GBP',
+        months: spent.map((v, i) => ({
+          month: `${year}-${String(i + 1).padStart(2, '0')}`,
+          spent: v,
+          budgeted: i < 6 ? 80_000 : 0,
+        })),
+      }),
+    ),
+  );
+  await page.route('**/summary/compare*', (route) =>
+    route.fulfill(
+      json({
+        a: `${year}-06`,
+        b: `${year}-05`,
+        byCategory: [
+          { categoryId: 'g', delta: -12_500 },
+          { categoryId: 'r', delta: 4_000 },
+          { categoryId: 't', delta: 1_250 },
+        ],
+      }),
+    ),
+  );
+  await page.route('**/categories', (route) =>
+    route.request().method() === 'GET'
+      ? route.fulfill(
+          json({
+            categories: [
+              ['g', 'Groceries'],
+              ['r', 'Rent'],
+              ['t', 'Transport'],
+            ].map(([id, name], i) => ({ id, name, colour: '#3a6ea5', sortOrder: i })),
+          }),
+        )
+      : route.fallback(),
+  );
+};
+// Bin: one expense, deleted through the API so the bin has a row.
+const seedBin = async (page: Page) => {
+  const headers = await csrfHeaders(page);
+  const me = (await (await page.request.get('/me')).json()) as {
+    user: { defaultCurrency: string };
+  };
+  const res = await page.request.post('/expenses', {
+    headers,
+    data: {
+      description: 'Lunch at the station café',
+      amount: { minor: 1_250, currency: me.user.defaultCurrency },
+      date: '2026-03-14',
+      paidWith: 'card',
+      kind: 'variable',
+    },
+  });
+  expect(res.ok()).toBe(true);
+  const id = ((await res.json()) as { expense: { id: string } }).expense.id;
+  expect((await page.request.delete(`/expenses/${id}`, { headers })).ok()).toBe(true);
+};
+
 export const SCREENS: Screen[] = [
   {
     // T031: the shared header and the open Feedback panel, on the signed-in month view.
@@ -678,6 +745,37 @@ export const SCREENS: Screen[] = [
                 })
               : route.fallback(),
           ),
+      },
+    },
+  },
+  {
+    // T040: the year view (moved from year.spec.ts): the total tile, month bars with a table
+    // fallback, and the month comparison panel. Summaries are pinned by mockYear.
+    name: 'year',
+    route: '/year',
+    signedIn: true,
+    mock: mockYear,
+    panels: ['section[role="region"]:has(.desk-year-bars)', '[data-testid="month-compare"]'],
+    states: ['loading', 'error'],
+  },
+  {
+    // T040: the CSV import, step one (the file chooser). The later steps need an uploaded file.
+    name: 'import',
+    route: '/import',
+    signedIn: true,
+    states: ['loading'],
+  },
+  {
+    // T040: the bin with one deleted expense.
+    name: 'bin',
+    route: '/bin',
+    signedIn: true,
+    seed: seedBin,
+    states: ['loading', 'empty', 'error'],
+    force: {
+      empty: {
+        setup: (page) =>
+          page.route('**/expenses?*', (route) => route.fulfill(json({ expenses: [] }))),
       },
     },
   },

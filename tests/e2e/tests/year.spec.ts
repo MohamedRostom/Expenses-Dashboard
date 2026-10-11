@@ -68,12 +68,7 @@ test('year view shows month bars and a working table fallback', async ({ page })
   await expect(page.getByRole('table', { name: /monthly totals/i })).toBeVisible();
 });
 
-test('year view @visual, light and dark', async ({ page }) => {
-  await openYear(page, 'year-visual');
-  await expect(page).toHaveScreenshot('year-view-light.png');
-  await setDark(page);
-  await expect(page).toHaveScreenshot('year-view-dark.png');
-});
+// T040: the year view's @visual snapshots moved into the SCREENS table in visual.spec.ts ('year').
 
 test('clicking a month bar drills into that month', async ({ page }) => {
   const email = uniqueEmail('year-drill');
