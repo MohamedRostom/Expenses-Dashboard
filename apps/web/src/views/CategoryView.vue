@@ -1,14 +1,15 @@
 <script setup lang="ts">
 /** Single-category drill-down: spend over a range of months, via /summary/category/:id. */
 import { onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import type { CategoryDrilldownT } from '@desk/contracts';
-import { DataTable, EmptyState, ErrorState, Skeleton, type BoardColumn } from '@desk/ui';
+import { Button, DataTable, EmptyState, ErrorState, Skeleton, type BoardColumn } from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
 
 const route = useRoute();
+const router = useRouter();
 const session = useSessionStore();
 
 const drilldown = ref<CategoryDrilldownT | null>(null);
@@ -49,7 +50,15 @@ const currency = () => session.user?.defaultCurrency ?? 'GBP';
     <Skeleton v-if="loading" height="12rem" />
     <ErrorState v-else-if="error" :code="error ?? undefined" />
     <template v-else-if="drilldown">
-      <EmptyState v-if="drilldown.months.every((m) => m.spent === 0)" title="No spend recorded" />
+      <EmptyState
+        v-if="drilldown.months.every((m) => m.spent === 0)"
+        title="No spend recorded"
+        description="Nothing was spent in this category over the last 12 months."
+      >
+        <template #action>
+          <Button @click="router.push('/add')">Add an expense</Button>
+        </template>
+      </EmptyState>
       <DataTable v-else :columns="columns" dense caption="Spend by month">
         <tr v-for="m in drilldown.months" :key="m.month">
           <td class="desk-col--date">{{ m.month }}</td>

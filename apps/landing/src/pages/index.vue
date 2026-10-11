@@ -17,7 +17,7 @@ const failed = reactive(new Set<string>());
       </section>
 
       <section class="steps" aria-labelledby="how-heading">
-        <h2 id="how-heading" class="label">How it works</h2>
+        <h2 id="how-heading" class="section-title">How it works</h2>
         <ol>
           <li v-for="(step, i) in content.steps" :key="step.title">
             <span class="step-number">{{ i + 1 }}</span>
@@ -105,14 +105,12 @@ const failed = reactive(new Set<string>());
 .cta-link:active {
   transform: translateY(1px);
 }
-.label {
+.section-title {
   margin: 0 0 var(--space-2);
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--color-fg-muted);
+  color: var(--color-fg);
 }
 .steps ol {
   list-style: none;
@@ -135,7 +133,7 @@ const failed = reactive(new Set<string>());
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-weight: 600;
-  color: var(--color-accent);
+  color: var(--color-fg-muted);
 }
 .steps h3 {
   font-size: var(--text-md);

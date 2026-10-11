@@ -11,6 +11,7 @@ import {
   ErrorState,
   PanelFrame,
   Skeleton,
+  Tabs,
   Tile,
   TrendSparkline,
   useToast,
@@ -213,13 +214,23 @@ const isRatePending = (e: ExpenseResponseT) =>
 // six-digit sum fits at 360; over budget, the figure goes red and the word "over" follows.
 const budgeted = computed(() => (store.summary?.budgeted ?? 0) > 0);
 const over = computed(() => budgeted.value && (store.summary?.remaining ?? 0) < 0);
-const leftNote = computed(
-  () =>
-    'remaining' +
-    (budgeted.value && store.summary
-      ? ` of ${splitMoney(fmt(store.summary.budgeted)).figure} ${store.summary.currency}`
-      : ''),
+// Not a day count: that would change the board every midnight; the month's last day does not.
+const monthEnds = computed(() => {
+  const [y, m] = store.currentMonth.split('-').map(Number);
+  return new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' }).format(
+    new Date(y!, m!, 0),
+  );
+});
+const leftNote = computed(() =>
+  budgeted.value && store.summary
+    ? `of ${splitMoney(fmt(store.summary.budgeted)).figure} ${store.summary.currency}, month ends ${monthEnds.value}`
+    : undefined,
 );
+const catTab = ref('bars');
+const catTabs = [
+  { id: 'bars', label: 'Bars' },
+  { id: 'table', label: 'Table' },
+];
 const overCategories = computed(
   () => categoryBars.value.filter((c) => c.budget != null && c.spent > c.budget).length,
 );
@@ -258,9 +269,17 @@ const entryColumns: BoardColumn[] = [
     </div>
     <header class="desk-month-view-header">
       <div class="desk-month-switcher">
-        <Button variant="secondary" aria-label="Previous month" @click="shiftMonth(-1)">‹</Button>
+        <Button variant="secondary" aria-label="Previous month" @click="shiftMonth(-1)">
+          <svg class="desk-month-chevron" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M10 3 5 8l5 5" />
+          </svg>
+        </Button>
         <span class="desk-month-label">{{ monthLabel }}</span>
-        <Button variant="secondary" aria-label="Next month" @click="shiftMonth(1)">›</Button>
+        <Button variant="secondary" aria-label="Next month" @click="shiftMonth(1)">
+          <svg class="desk-month-chevron" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="m6 3 5 5-5 5" />
+          </svg>
+        </Button>
       </div>
       <span v-if="pendingQueued.length > 0" class="desk-pending-badge" data-testid="pending-count">
         {{ pendingQueued.length }} pending
@@ -268,33 +287,36 @@ const entryColumns: BoardColumn[] = [
       <Button @click="openAdd">Add expense</Button>
     </header>
 
-    <!-- Also mounts when the month fetch failed (e.g. offline), so cached widget figures show
-         (spec edge case "app is offline"). -->
-    <WidgetStrip v-if="settled" />
     <Skeleton v-if="store.loading" height="12rem" />
     <!-- A pending/rejected queue is IndexedDB-backed, independent of the failed network summary
          fetch (store.error) — e.g. offline.spec.ts adds an expense while offline, where
          store.loadMonth() necessarily fails. Falling through to the full-page ErrorState would
          hide the queue the offline feature exists to show, so only show it when there's truly
          nothing else to render. -->
-    <ErrorState
-      v-else-if="store.error && pendingQueued.length === 0 && rejectedQueued.length === 0"
-      :code="store.error ?? undefined"
-    />
+    <template v-else-if="store.error && pendingQueued.length === 0 && rejectedQueued.length === 0">
+      <ErrorState :code="store.error ?? undefined" />
+      <!-- Also mounts when the month fetch failed (e.g. offline), so cached widget figures show
+           (spec edge case "app is offline"). -->
+      <WidgetStrip v-if="settled" />
+    </template>
     <template v-else-if="store.summary || pendingQueued.length > 0 || rejectedQueued.length > 0">
       <template v-if="store.summary">
         <section class="desk-month-view-tiles" aria-label="Month summary">
           <Tile
             class="desk-tile desk-tile--primary"
             primary
-            label="Left this month"
-            :value="splitMoney(fmt(store.summary.remaining)).figure"
+            :label="over ? 'Over budget this month' : 'Left this month'"
+            :value="budgeted ? splitMoney(fmt(store.summary.remaining)).figure : 'No budget set'"
             :variant="over ? 'critical' : 'default'"
             :note="leftNote"
             :status="
               over ? [{ text: `${fmt(-store.summary.remaining)} over`, tone: 'critical' }] : []
             "
-          />
+          >
+            <template v-if="!budgeted" #action>
+              <RouterLink to="/settings/categories">Set a budget</RouterLink>
+            </template>
+          </Tile>
           <Tile
             class="desk-tile"
             label="Spent"
@@ -312,6 +334,7 @@ const entryColumns: BoardColumn[] = [
         >
           + {{ fmt(estimatedPending) }} estimated, not yet synced
         </p>
+        <WidgetStrip v-if="settled" />
 
         <PanelFrame v-if="trendPoints.length > 1" heading="Trend" data-testid="trend-sparkline">
           <div class="desk-month-view-pad"><TrendSparkline :points="trendPoints" /></div>
@@ -446,16 +469,22 @@ const entryColumns: BoardColumn[] = [
 
         <PanelFrame v-if="store.summary" heading="Categories" data-panel="categories">
           <div class="desk-month-view-bars">
-            <CategoryBars
-              :categories="categoryBars"
-              :currency="store.summary.currency"
-              :format-money="fmt"
-            />
-            <DataTable
-              caption="Spending by category"
-              :categories="categoryBars"
-              :format-money="fmt"
-            />
+            <Tabs v-model="catTab" :tabs="catTabs" label="Category view">
+              <template #bars>
+                <CategoryBars
+                  :categories="categoryBars"
+                  :currency="store.summary.currency"
+                  :format-money="fmt"
+                />
+              </template>
+              <template #table>
+                <DataTable
+                  caption="Spending by category"
+                  :categories="categoryBars"
+                  :format-money="fmt"
+                />
+              </template>
+            </Tabs>
           </div>
         </PanelFrame>
       </div>
@@ -504,6 +533,15 @@ const entryColumns: BoardColumn[] = [
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+.desk-month-chevron {
+  width: var(--space-4);
+  height: var(--space-4);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 .desk-month-label {
   font-family: var(--font-mono);

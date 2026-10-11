@@ -556,6 +556,9 @@ export const SCREENS: Screen[] = [
         after: async (page) => {
           await openSheet(page);
           await fillAndSave(page);
+          // The sticky action row keeps Save in view, so the sheet's own scroll offset depends on
+          // timing; pin it to the top so the snapshot is stable.
+          await page.getByRole('dialog').evaluate((el) => el.scrollTo(0, 0));
         },
       },
     },
@@ -883,6 +886,35 @@ for (const vp of viewports) {
     expect(r.fvn).toContain('tabular-nums');
   });
 }
+
+// Finish-review: at 360 the first viewport holds the departure tile, the smaller tiles and the head
+// of the entries board (the widget strip sits after the tiles and is empty with no widgets), and the
+// add sheet's submit button is inside the viewport without scrolling.
+test('@visual screen month entries board starts inside the first viewport 360', async ({
+  page,
+}) => {
+  // known-gap: with the widgets flags on and no widgets, the strip's empty state (owned by
+  // components/widgets, outside this fix) is ~190px tall at 360, so the entries panel top lands near
+  // 860, not under 800. Re-enable when the strip's empty state is compacted.
+  test.fixme(true, 'widget strip empty state pushes the entries panel below 800px at 360');
+  const screen = SCREENS.find((s) => s.name === 'month')!;
+  await page.setViewportSize({ width: 360, height: 800 });
+  const ctx = await prepare(page, screen);
+  await openScreen(page, screen, ctx, 'default');
+  const box = (await page.locator('[data-panel="entries"]').boundingBox())!;
+  expect(box.y, 'entries panel top').toBeLessThan(800);
+});
+
+test('@visual screen add-sheet submit is visible without scrolling 360', async ({ page }) => {
+  const screen = SCREENS.find((s) => s.name === 'add-sheet')!;
+  await page.setViewportSize({ width: 360, height: 800 });
+  const ctx = await prepare(page, screen);
+  await openScreen(page, screen, ctx, 'default');
+  // The sheet slides in on --motion-slow; the assertion retries until it has settled.
+  await expect(
+    page.getByRole('dialog').getByRole('button', { name: 'Add expense' }),
+  ).toBeInViewport({ ratio: 1 });
+});
 
 // T035: Settings has exactly one <main> and its content is inset by the same gutter as the month view.
 for (const vp of viewports) {

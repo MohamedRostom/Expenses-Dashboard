@@ -133,6 +133,7 @@ watch(
 .desk-dialog--bottom {
   width: 100%;
   max-width: 100%;
+  padding-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 /* Desktop panel: pinned to the right edge, full height. */
@@ -152,6 +153,7 @@ watch(
 .desk-dialog--sheet {
   width: 100%;
   max-width: 100%;
+  padding-bottom: 0;
   border-radius: var(--radius-lg) var(--radius-lg) 0 0;
 }
 @media (min-width: 1024px) {
@@ -161,6 +163,7 @@ watch(
   }
   .desk-dialog--sheet {
     width: 28rem;
+    padding-bottom: var(--space-4);
     max-width: 100%;
     height: 100%;
     max-height: 100dvh;

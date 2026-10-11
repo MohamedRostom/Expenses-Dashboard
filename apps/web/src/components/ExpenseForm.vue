@@ -268,6 +268,19 @@ async function onSubmit() {
   display: flex;
   gap: var(--space-2);
 }
+/* Bottom sheet on a phone: the actions stay in view on a raised strip, so "Add expense" never
+   needs a scroll (the sheet's own padding is dropped below so the strip sits flush). */
+@media (max-width: 1023px) {
+  .desk-expense-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    margin-inline: calc(-1 * var(--space-4));
+    padding: var(--space-3) var(--space-4);
+    background: var(--color-surface-raised);
+    border-top: 1px solid var(--color-border);
+  }
+}
 @media (min-width: 1024px) {
   .desk-expense-form-toggle {
     min-height: var(--space-6);

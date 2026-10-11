@@ -44,7 +44,7 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = NAMES.map((name) => ({
 const SEED_COLOURS = [
   '#2e7d4f',
   '#1f8a8a',
-  '#8a7a1f',
+  '#3d8a1f',
   '#5c8a1f',
   '#1f6e5a',
   '#1f6e8a',

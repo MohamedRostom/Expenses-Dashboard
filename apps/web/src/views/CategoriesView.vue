@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorState,
   Input,
+  MenuButton,
   Select,
   Skeleton,
   useToast,
@@ -144,6 +145,15 @@ async function toggleArchive(c: CategoryResponseT) {
   }
 }
 
+const rowActions = (c: CategoryResponseT) => [
+  { id: 'archive', label: 'Archive' },
+  ...(c.name !== 'Other' ? [{ id: 'delete', label: 'Delete' }] : []),
+];
+function onRowAction(id: string, c: CategoryResponseT) {
+  if (id === 'archive') void toggleArchive(c);
+  else void remove(c);
+}
+
 async function remove(c: CategoryResponseT) {
   try {
     await apiFetch(`/categories/${c.id}`, { method: 'DELETE' });
@@ -177,14 +187,20 @@ async function remove(c: CategoryResponseT) {
             <span class="desk-item">
               <span class="desk-categories-name">
                 <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
-                <span class="desk-item-name">{{ c.name }}</span>
+                <Button
+                  variant="ghost"
+                  class="desk-categories-edit"
+                  :aria-label="`Edit ${c.name}`"
+                  @click="openEdit(c)"
+                  >{{ c.name }}</Button
+                >
               </span>
               <span class="desk-item-actions">
-                <Button variant="ghost" size="sm" @click="openEdit(c)">Edit</Button>
-                <Button variant="ghost" size="sm" @click="toggleArchive(c)">Archive</Button>
-                <Button v-if="c.name !== 'Other'" variant="ghost" size="sm" @click="remove(c)"
-                  >Delete</Button
-                >
+                <MenuButton
+                  :label="`Actions for ${c.name}`"
+                  :items="rowActions(c)"
+                  @select="(id) => onRowAction(id, c)"
+                />
               </span>
             </span>
           </td>
@@ -280,6 +296,12 @@ async function remove(c: CategoryResponseT) {
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+}
+.desk-categories-edit {
+  font-size: var(--text-sm);
+  min-width: 0;
+  text-align: start;
+  overflow-wrap: anywhere;
 }
 .desk-categories-swatch {
   flex: none;

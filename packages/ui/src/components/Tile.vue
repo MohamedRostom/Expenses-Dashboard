@@ -21,12 +21,14 @@ defineProps<{
     <Skeleton v-if="loading" height="4rem" />
     <template v-else-if="value !== undefined">
       <!-- The figure comes first in the text flow; the label is placed above it by order. -->
-      <span
-        :class="['desk-tile-value', { 'desk-tile-value--critical': variant === 'critical' }]"
-        data-testid="tile-amount"
-        :data-tile-primary="primary ? 'figure' : undefined"
-        >{{ value }}</span
-      >
+      <span :class="['desk-tile-cell', { 'desk-tile-cell--seam': primary }]">
+        <span
+          :class="['desk-tile-value', { 'desk-tile-value--critical': variant === 'critical' }]"
+          data-testid="tile-amount"
+          :data-tile-primary="primary ? 'figure' : undefined"
+          >{{ value }}</span
+        >
+      </span>
       <span class="desk-tile-label">{{ label }}</span>
       <p v-if="note" class="desk-forecast-basis">{{ note }}</p>
       <p
@@ -36,6 +38,7 @@ defineProps<{
       >
         {{ s.text }}
       </p>
+      <div v-if="$slots.action" class="desk-tile-action"><slot name="action" /></div>
     </template>
     <slot v-else />
   </div>
@@ -59,6 +62,53 @@ defineProps<{
 .desk-tile-block--primary {
   background: var(--color-surface-raised);
   gap: var(--space-2);
+}
+/* The primary figure sits in a flap cell whose seam shows only at its hinges (the side margins),
+   never across the glyphs, so it cannot read as a strikethrough (DESIGN.md Tile). */
+.desk-tile-cell {
+  display: contents;
+}
+.desk-tile-cell--seam {
+  display: block;
+  position: relative;
+  align-self: flex-start;
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  margin-inline: calc(-1 * var(--space-3));
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+}
+.desk-tile-cell--seam::before,
+.desk-tile-cell--seam::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: var(--space-2);
+  border-top: 1px solid var(--color-border);
+  pointer-events: none;
+}
+.desk-tile-cell--seam::before {
+  left: 0;
+}
+.desk-tile-cell--seam::after {
+  right: 0;
+}
+.desk-tile-action {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+}
+.desk-tile-action :deep(a) {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--color-fg);
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.desk-tile-action :deep(a:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .desk-tile-label {
   order: -1;

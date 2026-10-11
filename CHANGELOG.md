@@ -8,6 +8,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 - docs: the accent is one at a time, Signal Green by default, user-selectable from the presets: DESIGN.md "One Signal Rule", ADR-0006 addendum, constitution Principle VI wording and Sync Impact Report, CLAUDE.md, roadmap (spec 004 T061).
 - Accent colour picker in Settings (six presets, applied at once and kept on the account), behind the `appearance.accent` flag (spec 004 T056, T060).
+- Refresh: finish-review fixes for the month view (no-budget and over-budget departure tile, widget strip after the tiles, bars/table tabs, SVG month chevrons), the add sheet (action row stays in view), categories (name is the edit button, one actions menu per row, empty history offers an action) and landing (spec 004 review).
 - Refresh: Today (calendar and inbox) on the Concourse Board identity (spec 004 T037).
 - Refresh: sign-in on the Concourse Board identity, with an error message per cause (spec 004 T036).
 - Refresh: settings on the Concourse Board identity, with a page margin and a main landmark (spec 004 T035).

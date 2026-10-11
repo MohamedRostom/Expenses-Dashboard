@@ -43,7 +43,7 @@ test('over-budget category shows critical state and a negative remaining tile', 
 
   // The budget total is spread across all budgeted categories, so the "Remaining" tile goes
   // negative once one category's spend exceeds its own budget.
-  const remainingTile = page.locator('.desk-tile', { hasText: 'Remaining' });
+  const remainingTile = page.locator('.desk-tile', { hasText: 'Over budget this month' });
   await expect(remainingTile).toContainText('-');
 
   // The over-budget category bar/table both flag the critical state via a distinct class,
