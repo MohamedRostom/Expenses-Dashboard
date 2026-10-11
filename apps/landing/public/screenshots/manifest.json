@@ -1,0 +1,36 @@
+{
+  "files": [
+    {
+      "src": "/screenshots/month-light.png",
+      "screen": "month",
+      "theme": "light",
+      "width": 360,
+      "height": 800,
+      "generatedBy": "screenshots.spec.ts"
+    },
+    {
+      "src": "/screenshots/add-light.png",
+      "screen": "add",
+      "theme": "light",
+      "width": 360,
+      "height": 800,
+      "generatedBy": "screenshots.spec.ts"
+    },
+    {
+      "src": "/screenshots/month-dark.png",
+      "screen": "month",
+      "theme": "dark",
+      "width": 360,
+      "height": 800,
+      "generatedBy": "screenshots.spec.ts"
+    },
+    {
+      "src": "/screenshots/add-dark.png",
+      "screen": "add",
+      "theme": "dark",
+      "width": 360,
+      "height": 800,
+      "generatedBy": "screenshots.spec.ts"
+    }
+  ]
+}
