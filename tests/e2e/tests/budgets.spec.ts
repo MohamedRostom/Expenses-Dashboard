@@ -20,7 +20,7 @@ test('over-budget category shows critical state and a negative remaining tile', 
   // Set a small budget on the seeded "Groceries" category.
   await page.goto('/settings/categories');
   await expect(page.getByText('Groceries')).toBeVisible();
-  const groceriesRow = page.locator('li', { hasText: 'Groceries' }).first();
+  const groceriesRow = page.getByRole('row', { name: /Groceries/ }).first();
   await groceriesRow.getByRole('button', { name: /edit/i }).click();
   await page.getByLabel(/monthly budget/i).fill('10');
   await page.getByRole('button', { name: /^save$/i }).click();

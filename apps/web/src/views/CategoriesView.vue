@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { CategoryResponseT } from '@desk/contracts';
 import {
   Button,
+  DataTable,
   Dialog,
   EmptyState,
   ErrorState,
@@ -10,6 +11,7 @@ import {
   Select,
   Skeleton,
   useToast,
+  type BoardColumn,
 } from '@desk/ui';
 import { formatMajor, parseMajor } from '@desk/core';
 import { apiFetch, ApiError } from '../api/client.js';
@@ -44,6 +46,16 @@ function dismissReviewBanner() {
     // ignore
   }
 }
+
+const columns: BoardColumn[] = [
+  { key: 'name', label: 'Category' },
+  { key: 'kind', label: 'Kind', hideBelow: 'md' },
+  { key: 'budget', label: 'Budget', align: 'end', width: 'amount' },
+];
+const budgetText = (c: CategoryResponseT) =>
+  c.budgetMinor != null
+    ? formatMoney(c.budgetMinor, session.user?.defaultCurrency ?? 'GBP')
+    : 'No budget';
 
 const kindOptions = [
   { value: '', label: 'No default' },
@@ -159,51 +171,59 @@ async function remove(c: CategoryResponseT) {
     <ErrorState v-else-if="error" :code="error ?? undefined" />
     <EmptyState v-else-if="categories.length === 0" title="No categories yet" />
     <template v-else>
-      <ul class="desk-categories-list">
-        <li v-for="c in active" :key="c.id" class="desk-categories-row">
-          <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
-          <span class="desk-categories-name">{{ c.name }}</span>
-          <span class="desk-categories-kind">{{ c.defaultKind ?? '—' }}</span>
-          <span class="desk-categories-budget">{{
-            c.budgetMinor != null
-              ? formatMoney(c.budgetMinor, session.user?.defaultCurrency ?? 'GBP')
-              : 'No budget'
-          }}</span>
-          <span class="desk-categories-actions">
-            <button type="button" @click="openEdit(c)">Edit</button>
-            <button type="button" @click="toggleArchive(c)">Archive</button>
-            <button v-if="c.name !== 'Other'" type="button" @click="remove(c)">Delete</button>
-          </span>
-        </li>
-      </ul>
+      <DataTable :columns="columns" dense caption="Categories" class="desk-categories-table">
+        <tr v-for="c in active" :key="c.id">
+          <td>
+            <span class="desk-item">
+              <span class="desk-categories-name">
+                <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
+                <span class="desk-item-name">{{ c.name }}</span>
+              </span>
+              <span class="desk-item-actions">
+                <Button variant="ghost" size="sm" @click="openEdit(c)">Edit</Button>
+                <Button variant="ghost" size="sm" @click="toggleArchive(c)">Archive</Button>
+                <Button v-if="c.name !== 'Other'" variant="ghost" size="sm" @click="remove(c)"
+                  >Delete</Button
+                >
+              </span>
+            </span>
+          </td>
+          <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
+          <td class="desk-col--amount">{{ budgetText(c) }}</td>
+        </tr>
+      </DataTable>
 
       <template v-if="archived.length > 0">
         <h2>Archived</h2>
-        <ul class="desk-categories-list">
-          <li
-            v-for="c in archived"
-            :key="c.id"
-            class="desk-categories-row desk-categories-row-archived"
-          >
-            <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
-            <span class="desk-categories-name">{{ c.name }}</span>
-            <span class="desk-categories-kind">{{ c.defaultKind ?? '—' }}</span>
-            <span class="desk-categories-budget">{{
-              c.budgetMinor != null
-                ? formatMoney(c.budgetMinor, session.user?.defaultCurrency ?? 'GBP')
-                : 'No budget'
-            }}</span>
-            <span class="desk-categories-actions">
-              <button type="button" @click="toggleArchive(c)">Unarchive</button>
-            </span>
-          </li>
-        </ul>
+        <DataTable
+          :columns="columns"
+          dense
+          caption="Archived categories"
+          class="desk-categories-table desk-categories-table-archived"
+        >
+          <tr v-for="c in archived" :key="c.id">
+            <td>
+              <span class="desk-item">
+                <span class="desk-categories-name">
+                  <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
+                  <span class="desk-item-name">{{ c.name }}</span>
+                </span>
+                <span class="desk-item-actions">
+                  <Button variant="ghost" size="sm" @click="toggleArchive(c)">Unarchive</Button>
+                </span>
+              </span>
+            </td>
+            <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
+            <td class="desk-col--amount">{{ budgetText(c) }}</td>
+          </tr>
+        </DataTable>
       </template>
     </template>
 
     <Dialog
       :open="showDialog"
       :title="editing ? 'Edit category' : 'Add category'"
+      placement="bottom"
       @close="showDialog = false"
     >
       <form class="desk-categories-form" @submit.prevent="save">
@@ -227,92 +247,72 @@ async function remove(c: CategoryResponseT) {
 
 <style scoped>
 .desk-categories-view {
-  max-width: 48rem;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 .desk-categories-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 .desk-review-banner {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
-  padding: 0.6rem 0.9rem;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--color-warn) 15%, transparent);
-  color: var(--color-warn);
-  font-size: 0.85rem;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-3);
+  border-inline-start: var(--space-1) solid var(--color-warn);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-raised);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
-.desk-review-banner button {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  text-decoration: underline;
-}
-.desk-categories-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
+.desk-categories-name {
   display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.desk-categories-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto auto;
   align-items: center;
-  gap: 0.6rem;
-  padding: 0.5rem 0;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  font-size: 0.9rem;
-}
-.desk-categories-row-archived {
-  opacity: 0.6;
+  gap: var(--space-2);
+  min-width: 0;
 }
 .desk-categories-swatch {
-  width: 0.9rem;
-  height: 0.9rem;
-  border-radius: 50%;
+  flex: none;
+  width: var(--space-3);
+  height: var(--space-3);
   display: inline-block;
 }
-.desk-categories-budget {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+.desk-categories-table :deep(.desk-item-actions) {
+  gap: 0;
 }
-.desk-categories-actions {
-  display: flex;
-  gap: 0.5rem;
-}
-.desk-categories-actions button {
-  background: none;
-  border: none;
-  color: var(--color-accent);
-  cursor: pointer;
-  padding: 0;
-  font-size: 0.85rem;
+.desk-categories-table-archived {
+  opacity: 0.7;
 }
 .desk-categories-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
+}
+.desk-field input[type='color'] {
+  inline-size: var(--space-12);
+  min-block-size: var(--target-min);
 }
 .desk-field-label {
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 </style>

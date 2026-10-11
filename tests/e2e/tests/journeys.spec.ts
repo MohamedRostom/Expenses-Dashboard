@@ -139,7 +139,7 @@ test('edit-budget', async ({ page }) => {
   await signedInHome(page);
   await page.goto('/settings/categories');
   const edit = page
-    .locator('li', { hasText: 'Groceries' })
+    .getByRole('row', { name: /Groceries/ })
     .first()
     .getByRole('button', { name: /edit/i });
   await expect(edit).toBeVisible();

@@ -19,8 +19,6 @@
   "apps/web/src/components/widgets/WidgetStrip.vue",
   "apps/web/src/views/BinView.vue",
   "apps/web/src/views/CaptureView.vue",
-  "apps/web/src/views/CategoriesView.vue",
-  "apps/web/src/views/CategoryView.vue",
   "apps/web/src/views/ConnectionsView.vue",
   "apps/web/src/views/ConnectorsView.vue",
   "apps/web/src/views/ForgotView.vue",

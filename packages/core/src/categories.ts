@@ -42,8 +42,8 @@ export const DEFAULT_CATEGORIES: DefaultCategory[] = NAMES.map((name) => ({
 
 /** ponytail: fixed palette cycled by sort order — no colour picker needed for the seed. */
 const SEED_COLOURS = [
-  '#a83a2e',
-  '#a8641a',
+  '#2e7d4f',
+  '#1f8a8a',
   '#8a7a1f',
   '#5c8a1f',
   '#1f6e5a',

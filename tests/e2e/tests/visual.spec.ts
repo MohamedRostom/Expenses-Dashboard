@@ -341,6 +341,16 @@ const fillAndSave = async (page: Page) => {
   await expect(form.getByRole('alert')).toBeVisible();
 };
 
+// T034 helper: one budgeted category the screens can open (id lands in ctx.categoryIds[0]).
+const seedCategory = async (page: Page, ctx: SeedCtx) => {
+  const res = await page.request.post('/categories', {
+    headers: await csrfHeaders(page),
+    data: { name: 'Pet care', colour: '#3a6ea5', budgetMinor: 25_000 },
+  });
+  expect(res.ok()).toBe(true);
+  ctx.categoryIds.push(((await res.json()) as { category: { id: string } }).category.id);
+};
+
 export const SCREENS: Screen[] = [
   {
     // T031: the shared header and the open Feedback panel, on the signed-in month view.
@@ -437,6 +447,44 @@ export const SCREENS: Screen[] = [
         },
       },
     },
+  },
+  {
+    // T034: the category list and its budget editor (Dialog). Seeds one budgeted category so the
+    // board has a row; the budget carries an amount in the figure face.
+    name: 'categories',
+    route: '/settings/categories',
+    signedIn: true,
+    seed: seedCategory,
+    states: ['loading', 'empty', 'error'],
+    force: {
+      empty: {
+        setup: (page) =>
+          page.route('**/categories', (route) =>
+            route.request().method() === 'GET'
+              ? route.fulfill({ contentType: 'application/json', body: '{"categories":[]}' })
+              : route.fallback(),
+          ),
+      },
+    },
+  },
+  {
+    // T034: the budget editor open over the board.
+    name: 'categories-edit',
+    route: '/settings/categories',
+    signedIn: true,
+    panels: ['[role="dialog"]'],
+    afterLoad: async (page) => {
+      await page.getByRole('row', { name: /Rent/ }).getByRole('button', { name: 'Edit' }).click();
+      await expect(page.getByRole('dialog', { name: 'Edit category' })).toBeVisible();
+    },
+  },
+  {
+    // T034: one category's spend history (twelve months, mostly empty for a new user).
+    name: 'category',
+    route: (ctx) => `/settings/categories/${ctx.categoryIds[0]}`,
+    signedIn: true,
+    seed: seedCategory,
+    states: ['loading', 'error'],
   },
   {
     name: 'login',

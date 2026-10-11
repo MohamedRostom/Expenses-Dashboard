@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_CATEGORIES } from './categories.js';
+import { DEFAULT_CATEGORIES, seedColour } from './categories.js';
 
 // CLAUDE.md "Default category seed": 18 named categories; the 7 listed ones default to
 // 'fixed'; 'Other' has no default kind (null); everything else defaults to 'variable'.
@@ -61,5 +61,13 @@ describe('DEFAULT_CATEGORIES', () => {
       ].includes(c.name);
       if (!isFixed) expect(c.defaultKind).toBe('variable');
     }
+  });
+});
+
+// Status Is Not a Series (DESIGN.md): no seeded colour may equal a status colour.
+describe('seedColour', () => {
+  it('never returns a status colour', () => {
+    const status = ['#a83a2e', '#b00020', '#ff6b6b', '#8a5a00', '#ffb000', '#a8641a', '#8f5810'];
+    for (let i = 0; i < DEFAULT_CATEGORIES.length; i++) expect(status).not.toContain(seedColour(i));
   });
 });

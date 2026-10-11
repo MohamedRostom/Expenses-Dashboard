@@ -143,14 +143,17 @@ useShortcuts({
   onNextMonth: () => shiftMonth(1),
 });
 
-const categoryBars = computed<CategoryBarData[]>(
-  () =>
+// Spend first, name as the tiebreaker: the API returns categories in no fixed order, so equal
+// amounts (all the $0 rows) would otherwise swap between loads.
+const categoryBars = computed<CategoryBarData[]>(() =>
+  (
     store.summary?.byCategory.map((c) => ({
       id: c.categoryId,
       name: categoryNames.value[c.categoryId] ?? c.categoryId,
       spent: c.spent,
       budget: c.budget,
-    })) ?? [],
+    })) ?? []
+  ).sort((a, b) => b.spent - a.spent || a.name.localeCompare(b.name)),
 );
 
 function openAdd() {

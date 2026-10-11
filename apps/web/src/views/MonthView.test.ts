@@ -40,6 +40,7 @@ vi.mock('../api/client.js', () => ({
           byCategory: [
             { categoryId: 'c1', spent: 1234, budget: 5000, overBudget: false },
             { categoryId: 'c2', spent: 500, budget: null, overBudget: false },
+            { categoryId: 'c3', spent: 500, budget: null, overBudget: false },
           ],
         },
       };
@@ -48,6 +49,7 @@ vi.mock('../api/client.js', () => ({
         categories: [
           { id: 'c1', name: 'Groceries' },
           { id: 'c2', name: 'Travel' },
+          { id: 'c3', name: 'Books' },
         ],
       };
     return { months: [] };
@@ -77,9 +79,15 @@ describe('MonthView category rows (T032)', () => {
     app.mount(el);
     await flush();
     const rows = [...el.querySelectorAll('.desk-category-bars-row')];
-    expect(rows).toHaveLength(2);
+    expect(rows).toHaveLength(3);
     for (const row of rows) expect(row.textContent).not.toMatch(/GBP\s*GBP/);
     expect(rows[0]!.textContent).toMatch(/£12\.34 GBP\s*\/\s*£50\.00 GBP/);
     expect(rows[1]!.textContent).toMatch(/£5\.00 GBP/);
+    // Equal spend never swaps between runs: ordered by spend, then name (Books before Travel).
+    expect(rows.map((r) => /Groceries|Books|Travel/.exec(r.textContent ?? '')?.[0])).toEqual([
+      'Groceries',
+      'Books',
+      'Travel',
+    ]);
   });
 });
