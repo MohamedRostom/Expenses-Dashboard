@@ -10,6 +10,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 - Accent colour picker in Settings (six presets, applied at once and kept on the account), behind the `appearance.accent` flag (spec 004 T056, T060).
 - Refresh: Today (calendar and inbox) on the Concourse Board identity (spec 004 T037).
 - Refresh: sign-in on the Concourse Board identity, with an error message per cause (spec 004 T036).
+- Refresh: register, verify, forgot, reset and onboarding on the Concourse Board identity, each in a main landmark (spec 004 T039).
 - Refresh: settings on the Concourse Board identity, with a page margin and a main landmark (spec 004 T035).
 - Refresh: categories and budget editor on the Concourse Board identity; the first default category colour no longer matches the over-budget red (spec 004 T034).
 - Refresh: landing page on the Concourse Board identity (tokens only, three steps above the fold at 360 wide, light and dark screenshots switched by `prefers-color-scheme`); `screenshots.spec.ts` generates them, and the drift list no longer carries the landing files (spec 004 T048-T051).
