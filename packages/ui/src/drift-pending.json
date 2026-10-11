@@ -1,6 +1,5 @@
 [
   "apps/web/src/components/MonthCompare.vue",
-  "apps/web/src/components/connections/StandardsForm.vue",
   "apps/web/src/components/widgets/AddWidgetSheet.vue",
   "apps/web/src/components/widgets/CurrencyPicker.vue",
   "apps/web/src/components/widgets/CurrencyWidget.vue",
@@ -12,9 +11,6 @@
   "apps/web/src/components/widgets/WeatherWidget.vue",
   "apps/web/src/components/widgets/WidgetStrip.vue",
   "apps/web/src/views/BinView.vue",
-  "apps/web/src/views/CaptureView.vue",
-  "apps/web/src/views/ConnectionsView.vue",
-  "apps/web/src/views/ConnectorsView.vue",
   "apps/web/src/views/HelloView.vue",
   "apps/web/src/views/ImportView.vue",
   "apps/web/src/views/YearView.vue",

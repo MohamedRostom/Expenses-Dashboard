@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, ref } from 'vue';
+import { Button } from '@desk/ui';
 import type { AccountT, CapabilityT, ProviderPresetT } from '@desk/contracts';
 import { postStandardsConnection } from '../../api/connections.js';
 import { standardsErrorCopy } from '../../utils/errors.js';
@@ -173,9 +174,9 @@ async function onSubmit() {
       </fieldset>
     </template>
 
-    <button type="submit" class="submit-btn" :disabled="submitting">
+    <Button type="submit" class="submit-btn" :loading="submitting">
       {{ isReconnect ? 'Reconnect' : 'Connect' }}
-    </button>
+    </Button>
   </form>
 </template>
 
@@ -183,77 +184,85 @@ async function onSubmit() {
 .standards-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
   max-width: 24rem;
 }
 .desk-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-2);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-field-label {
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 .desk-input,
 .desk-select {
+  min-height: var(--target-min);
+  box-sizing: border-box;
   font-family: var(--font-sans);
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-fg);
-  background: var(--color-bg);
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
   color: var(--color-fg);
 }
+.desk-input:focus-visible,
+.desk-select:focus-visible,
+.capability-item input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
 .password-note {
-  font-size: 0.75rem;
-  color: var(--color-fg-secondary);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 .capability-group {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: var(--space-1);
   border: 1px solid var(--color-border);
-  border-radius: 6px;
-  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-3);
 }
 .capability-item {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: var(--space-2);
+  min-height: var(--target-min);
 }
 .desk-field-error {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   color: var(--color-critical);
 }
 .error-summary {
-  border: 1px solid var(--color-critical);
-  color: var(--color-critical);
-  border-radius: 6px;
-  padding: 0.75rem;
+  border-inline-start: var(--space-1) solid var(--color-critical);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
+  color: var(--color-fg);
+  padding: var(--space-3);
 }
 .error-summary p {
   margin: 0;
 }
 .error-summary p + p {
-  margin-top: 0.25rem;
+  margin-top: var(--space-1);
 }
 .reconnect-address {
-  font-size: 0.9rem;
+  margin: 0;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .submit-btn {
   align-self: flex-start;
-  padding: 0.6rem 1.2rem;
-  background: var(--color-accent);
-  color: white;
-  border: none;
-  border-radius: 0.4rem;
-  cursor: pointer;
-  font: inherit;
-  font-weight: 500;
-}
-.submit-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

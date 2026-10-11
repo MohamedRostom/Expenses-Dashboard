@@ -771,6 +771,26 @@ export const SCREENS: Screen[] = [
     route: '/onboarding',
     signedIn: true,
   },
+  {
+    // T041: the settings sub-screens. A new user has no capture address, no Notion connection and
+    // no connected accounts, so each shows its first-run state; forced loading/error from the stack.
+    name: 'capture',
+    route: '/settings/capture',
+    signedIn: true,
+    states: ['loading', 'error'],
+  },
+  {
+    name: 'connectors',
+    route: '/settings/connectors',
+    signedIn: true,
+    states: ['loading'],
+  },
+  {
+    name: 'connections',
+    route: '/settings/connections',
+    signedIn: true,
+    states: ['loading', 'error'],
+  },
 ];
 
 /**
