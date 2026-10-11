@@ -318,6 +318,29 @@ type Screen = {
 const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
 const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 chars
 
+// T033 helpers: open the add sheet with `n`; fail the save; fill the form and save.
+const openSheet = async (page: Page) => {
+  await page.keyboard.press('n');
+  await expect(page.getByRole('dialog', { name: 'Add expense' })).toBeVisible();
+};
+const failSave = (page: Page) =>
+  page.route('**/expenses', (route) =>
+    route.request().method() === 'POST'
+      ? route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'internal', message: 'Could not save' } }),
+        })
+      : route.fallback(),
+  );
+const fillAndSave = async (page: Page) => {
+  const form = page.locator('.desk-expense-form');
+  await form.getByLabel('Description').fill('Lunch');
+  await form.getByLabel('Amount', { exact: true }).fill('12.50');
+  await form.getByRole('button', { name: 'Add expense' }).click();
+  await expect(form.getByRole('alert')).toBeVisible();
+};
+
 export const SCREENS: Screen[] = [
   {
     // T031: the shared header and the open Feedback panel, on the signed-in month view.
@@ -374,6 +397,44 @@ export const SCREENS: Screen[] = [
               }),
             }),
           ),
+      },
+    },
+  },
+  {
+    // T033: the add-expense page (the same form as the sheet), its failed save and its validation.
+    name: 'add',
+    route: '/add',
+    signedIn: true,
+    states: ['default', 'error'],
+    force: { error: { setup: failSave, after: fillAndSave } },
+  },
+  {
+    // T033: submitting the empty form shows the validation message under the form.
+    name: 'add-invalid',
+    route: '/add',
+    signedIn: true,
+    afterLoad: async (page) => {
+      const form = page.locator('.desk-expense-form');
+      await form.getByRole('button', { name: 'Add expense' }).click();
+      await expect(form.getByRole('alert')).toBeVisible();
+    },
+  },
+  {
+    // T033: the sheet opened from the month view with the `n` shortcut: a bottom sheet at 360, a
+    // side panel from 1024.
+    name: 'add-sheet',
+    route: '/',
+    signedIn: true,
+    panels: ['[role="dialog"]'],
+    afterLoad: openSheet,
+    states: ['default', 'error'],
+    force: {
+      error: {
+        setup: failSave,
+        after: async (page) => {
+          await openSheet(page);
+          await fillAndSave(page);
+        },
       },
     },
   },

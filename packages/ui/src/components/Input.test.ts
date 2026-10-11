@@ -11,6 +11,12 @@ function mount(props: Record<string, unknown>) {
 }
 
 describe('Input', () => {
+  it('carries an adornment as an attribute, so the label text stays exact', async () => {
+    const el = mount({ label: 'Amount', variant: 'amount', adornment: 'EUR' });
+    await nextTick();
+    expect(el.querySelector('.desk-input-wrap')!.getAttribute('data-adornment')).toBe('EUR');
+    expect(el.querySelector('label')!.textContent).toBe('Amount');
+  });
   it('is valid by default', async () => {
     const el = mount({ label: 'Amount' });
     await nextTick();

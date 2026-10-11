@@ -172,16 +172,19 @@ async function onSubmit() {
   <form ref="formEl" class="desk-expense-form" @submit.prevent="onSubmit">
     <Input v-model="description" label="Description" />
     <div class="desk-expense-form-row">
-      <Input v-model="amountMajor" type="number" label="Amount" />
+      <Input
+        v-model="amountMajor"
+        type="number"
+        variant="amount"
+        label="Amount"
+        :adornment="currency"
+      />
       <CurrencyPicker v-model="currency" label="Currency" />
     </div>
     <p v-if="previewLoading" class="desk-expense-form-preview">Checking rate…</p>
     <p v-else-if="convertedPreview" class="desk-expense-form-preview">{{ convertedPreview }}</p>
 
-    <label class="desk-field">
-      <span class="desk-field-label">Date</span>
-      <input v-model="date" class="desk-input" type="date" />
-    </label>
+    <Input v-model="date" type="date" label="Date" />
 
     <Select v-model="categoryId" label="Category" :options="categoryOptions" />
 
@@ -218,58 +221,56 @@ async function onSubmit() {
 .desk-expense-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-4);
   font-family: var(--font-sans);
   color: var(--color-fg);
   width: 100%;
-  max-width: 20rem;
 }
 .desk-expense-form-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-expense-form-row > * {
   flex: 1 1 8rem;
 }
 .desk-expense-form-preview {
   font-family: var(--font-mono);
-  font-size: 0.85rem;
-  margin: -0.25rem 0 0;
-  opacity: 0.8;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+  margin: calc(-1 * var(--space-2)) 0 0;
 }
 .desk-expense-form-toggle {
   align-self: flex-start;
+  min-height: var(--target-min);
   background: none;
   border: none;
-  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-fg);
+  text-decoration: underline;
   cursor: pointer;
-  padding: 0;
-  font-size: 0.85rem;
+  padding: 0 var(--space-1);
+  font-family: inherit;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.desk-expense-form-toggle:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .desk-expense-form-error {
   color: var(--color-critical);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   margin: 0;
 }
 .desk-expense-form-actions {
   display: flex;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
-.desk-field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-.desk-field-label {
-  font-size: 0.85rem;
-}
-.desk-input {
-  font-family: var(--font-sans);
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-fg);
-  background: var(--color-bg);
-  color: var(--color-fg);
+@media (min-width: 1024px) {
+  .desk-expense-form-toggle {
+    min-height: var(--space-6);
+  }
 }
 </style>

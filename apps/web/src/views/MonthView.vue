@@ -461,6 +461,7 @@ const entryColumns: BoardColumn[] = [
     <Dialog
       :open="showDialog"
       :title="editing ? 'Edit expense' : 'Add expense'"
+      placement="sheet"
       @close="showDialog = false"
     >
       <ExpenseForm :expense="editing ?? undefined" @saved="onSaved" @cancel="showDialog = false" />

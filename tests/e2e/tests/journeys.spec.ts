@@ -56,9 +56,6 @@ async function expectFocusRing(page: Page): Promise<void> {
   const ring = await page.evaluate<string>(`(() => {
     const el = document.activeElement;
     if (!el || el === document.body) return 'nothing focused';
-    // Chromium draws a native date input's focus as a highlighted segment inside it; the input
-    // itself computes outline: none, so there is no outline/box-shadow to read.
-    if (el instanceof HTMLInputElement && el.type === 'date') return 'ok';
     const s = getComputedStyle(el);
     const outline = s.outlineStyle !== 'none' && parseFloat(s.outlineWidth) > 0;
     return outline || s.boxShadow !== 'none'

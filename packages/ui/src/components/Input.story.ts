@@ -6,6 +6,10 @@ export default defineStory({
   variants: [
     { name: 'text', props: { label: 'Description', placeholder: 'Coffee' } },
     { name: 'amount', props: { label: 'Amount', variant: 'amount', modelValue: '1234.50' } },
+    {
+      name: 'amount with currency',
+      props: { label: 'Amount', variant: 'amount', adornment: 'EUR', modelValue: '12.50' },
+    },
     { name: 'search', props: { label: 'Search', variant: 'search' } },
   ],
   states: [

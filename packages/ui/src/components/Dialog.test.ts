@@ -88,4 +88,14 @@ describe('Dialog', () => {
     await nextTick();
     expect(dlg()!.classList.contains('desk-dialog--center')).toBe(true);
   });
+
+  it("placement 'sheet' is a bottom sheet on phones and a side panel from 1024", async () => {
+    const { open } = mount({ placement: 'sheet' });
+    open.value = true;
+    await nextTick();
+    expect(dlg()!.className).toContain('desk-dialog--sheet');
+    expect(document.querySelector('.desk-dialog-backdrop')!.className).toContain(
+      'desk-dialog-backdrop--sheet',
+    );
+  });
 });

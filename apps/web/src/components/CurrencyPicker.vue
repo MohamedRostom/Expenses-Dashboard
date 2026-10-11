@@ -109,20 +109,33 @@ function onKeydown(e: KeyboardEvent) {
 .desk-field {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-2);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-field-label {
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 .desk-input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--target-min);
   font-family: var(--font-sans);
-  padding: 0.5rem;
-  border-radius: 6px;
-  border: 1px solid var(--color-fg);
-  background: var(--color-bg);
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
   color: var(--color-fg);
+}
+.desk-input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .currency-picker {
   position: relative;
@@ -133,23 +146,28 @@ function onKeydown(e: KeyboardEvent) {
   left: 0;
   right: 0;
   z-index: 10;
-  margin: 0.25rem 0 0;
-  padding: 0.25rem 0;
+  margin: var(--space-1) 0 0;
+  padding: var(--space-1) 0;
   list-style: none;
-  background: var(--color-bg);
-  border: 1px solid var(--color-fg);
-  border-radius: 6px;
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-overlay);
+  border-radius: var(--radius-sm);
   max-height: 12rem;
   overflow-y: auto;
 }
 .currency-picker-item {
-  padding: 0.4rem 0.6rem;
+  padding: var(--space-2) var(--space-3);
   cursor: pointer;
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
 }
 .currency-picker-item:hover,
 .currency-picker-item-active {
   background: var(--color-accent);
   color: var(--color-accent-fg);
+}
+@media (min-width: 1024px) {
+  .desk-input {
+    min-height: var(--space-10);
+  }
 }
 </style>

@@ -39,19 +39,28 @@ const errorId = useId();
 .desk-field {
   display: flex;
   flex-direction: column;
-  gap: var(--space-1);
+  gap: var(--space-2);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-field-label {
-  font-size: 0.85rem;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 .desk-select {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--target-min);
   font-family: var(--font-sans);
-  padding: var(--space-2);
-  border-radius: 6px;
-  border: 1px solid var(--color-fg);
-  background: var(--color-bg);
+  font-size: var(--text-md);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-raised);
   color: var(--color-fg);
 }
 .desk-select:focus-visible {
@@ -66,7 +75,12 @@ const errorId = useId();
   border-color: var(--color-critical);
 }
 .desk-field-error {
-  font-size: 0.8rem;
+  font-size: var(--text-sm);
   color: var(--color-critical);
+}
+@media (min-width: 1024px) {
+  .desk-select {
+    min-height: var(--space-10);
+  }
 }
 </style>
