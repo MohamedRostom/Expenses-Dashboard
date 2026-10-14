@@ -19,13 +19,13 @@
     "seed-dummy-accounts": "tsx src/seed-dummy-accounts-cli.ts"
   },
   "dependencies": {
-    "drizzle-orm": "^0.45.3",
+    "drizzle-orm": "^0.45.4",
     "@desk/core": "workspace:*",
     "hash-wasm": "^4.12.0",
     "postgres": "^3.4.9"
   },
   "devDependencies": {
-    "@types/node": "^22.20.4",
+    "@types/node": "^22.20.5",
     "drizzle-kit": "^0.31.11"
   }
 }
