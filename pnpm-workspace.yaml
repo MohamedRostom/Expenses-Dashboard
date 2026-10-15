@@ -22,6 +22,10 @@ overrides:
   tmp@<0.2.6: ^0.2.6
   tmp@<=0.2.3: ^0.2.4
   uuid@<11.1.1: ^11.1.1
+  # sharp <0.35.5 ships a vulnerable librsvg (GHSA-wq5f-xc86-pv6w / CVE-2026-96889).
+  # Patched in sharp >=0.35.5; miniflare->sharp is transitive via wrangler, so override
+  # sharp here rather than bumping wrangler/miniflare (0.35.x is API-stable).
+  sharp@<0.35.5: ^0.35.5
 
 auditConfig:
   ignoreGhsas:
