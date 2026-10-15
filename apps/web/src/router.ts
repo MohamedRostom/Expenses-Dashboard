@@ -1,79 +1,93 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import MonthView from './views/MonthView.vue';
+// Only the sign-in screen ships in the entry chunk; every other view loads on navigation.
 import LoginView from './views/LoginView.vue';
-import RegisterView from './views/RegisterView.vue';
-import VerifyView from './views/VerifyView.vue';
-import ForgotView from './views/ForgotView.vue';
-import ResetView from './views/ResetView.vue';
-import SettingsView from './views/SettingsView.vue';
-import CaptureView from './views/CaptureView.vue';
-import ConnectorsView from './views/ConnectorsView.vue';
-import TodayView from './views/TodayView.vue';
-import ConnectionsView from './views/ConnectionsView.vue';
-import YearView from './views/YearView.vue';
-import ImportView from './views/ImportView.vue';
-import BinView from './views/BinView.vue';
-import OnboardingView from './views/OnboardingView.vue';
-import CategoriesView from './views/CategoriesView.vue';
-import CategoryView from './views/CategoryView.vue';
-import AddView from './views/AddView.vue';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', name: 'login', component: LoginView },
-  { path: '/register', name: 'register', component: RegisterView },
-  { path: '/verify', name: 'verify', component: VerifyView },
-  { path: '/forgot', name: 'forgot', component: ForgotView },
-  { path: '/reset', name: 'reset', component: ResetView },
-  { path: '/settings', name: 'settings', component: SettingsView, meta: { requiresAuth: true } },
+  { path: '/register', name: 'register', component: () => import('./views/RegisterView.vue') },
+  { path: '/verify', name: 'verify', component: () => import('./views/VerifyView.vue') },
+  { path: '/forgot', name: 'forgot', component: () => import('./views/ForgotView.vue') },
+  { path: '/reset', name: 'reset', component: () => import('./views/ResetView.vue') },
+  {
+    path: '/settings',
+    name: 'settings',
+    component: () => import('./views/SettingsView.vue'),
+    meta: { requiresAuth: true },
+  },
   {
     path: '/settings/capture',
     name: 'settings-capture',
-    component: CaptureView,
+    component: () => import('./views/CaptureView.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/settings/connectors',
     name: 'settings-connectors',
-    component: ConnectorsView,
+    component: () => import('./views/ConnectorsView.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/today',
     name: 'today',
-    component: TodayView,
+    component: () => import('./views/TodayView.vue'),
     meta: { requiresAuth: true, panelsTodayRequired: true },
   },
   {
     path: '/settings/connections',
     name: 'settings-connections',
-    component: ConnectionsView,
+    component: () => import('./views/ConnectionsView.vue'),
     meta: { requiresAuth: true, panelsTodayRequired: true },
   },
-  { path: '/', name: 'home', component: MonthView, meta: { requiresAuth: true } },
-  { path: '/add', name: 'add', component: AddView, meta: { requiresAuth: true } },
-  { path: '/year', name: 'year', component: YearView, meta: { requiresAuth: true } },
-  { path: '/import', name: 'import', component: ImportView, meta: { requiresAuth: true } },
-  { path: '/bin', name: 'bin', component: BinView, meta: { requiresAuth: true } },
+  {
+    path: '/',
+    name: 'home',
+    component: () => import('./views/MonthView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/add',
+    name: 'add',
+    component: () => import('./views/AddView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/year',
+    name: 'year',
+    component: () => import('./views/YearView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/import',
+    name: 'import',
+    component: () => import('./views/ImportView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/bin',
+    name: 'bin',
+    component: () => import('./views/BinView.vue'),
+    meta: { requiresAuth: true },
+  },
   {
     // C14: root-mounted API keeps `GET /categories`; the client route moves under /settings so a
     // hard refresh here never collides with the API route ahead of the SPA fallback.
     path: '/settings/categories',
     name: 'categories',
-    component: CategoriesView,
+    component: () => import('./views/CategoriesView.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/settings/categories/:id',
     name: 'category',
-    component: CategoryView,
+    component: () => import('./views/CategoryView.vue'),
     meta: { requiresAuth: true },
   },
   {
     path: '/onboarding',
     name: 'onboarding',
-    component: OnboardingView,
+    component: () => import('./views/OnboardingView.vue'),
     meta: { requiresAuth: true },
   },
 ];
