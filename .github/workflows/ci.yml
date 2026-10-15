@@ -113,6 +113,11 @@ jobs:
       - run: for f in currency weather sunrise spend_pace fixed_costs; do pnpm flags set "widgets.$f" --global on; done
         env:
           DATABASE_URL: postgres://desk:desk@localhost:5432/desk
+      # T056 (spec 004 US5): appearance.accent defaults off; each accent test switches it on per-user.
+      # --global off (not on): the "flag off" test needs defaultOn false for a user with no override.
+      - run: pnpm flags set "appearance.accent" --global off
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
       - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'
