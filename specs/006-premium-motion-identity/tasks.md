@@ -10,9 +10,9 @@ Tests are required (constitution Principle I): every task that adds behaviour st
 
 **Wave 1 — independent (different files):**
 
-- [ ] **T001** [P] Draft ADR-0007 "Premium identity with ambient motion" (Proposed), superseding ADR-0006: translucent 16 px panels, the opt-in background layer and its five presets, the light-only motion colour, the pause and panels switches, signed-out defaults, and what carries over (typography, accent presets, three theme states, status colours never used as tints) · `docs/adr/ADR-0007-premium-identity.md`
-- [ ] **T002** [P] Draft constitution v1.3.0: Principle VI's identity clause names ADR-0007 and allows exactly one looping effect, the opt-in background layer; bump version and amendment date · `.specify/memory/constitution.md`
-- [ ] **T003** [P] Rewrite the root design document for ADR-0007: surfaces, radius, blur, motion tints and alphas, the five presets, the background motion rules (pause, reduced motion, reduced data, print), keeping the spec 004 one-time motions · `DESIGN.md`
+- [x] **T001** [P] Draft ADR-0007 "Premium identity with ambient motion" (Proposed), superseding ADR-0006: translucent 16 px panels, the opt-in background layer and its five presets, the light-only motion colour, the pause and panels switches, signed-out defaults, and what carries over (typography, accent presets, three theme states, status colours never used as tints) · `docs/adr/ADR-0007-premium-identity.md`
+- [x] **T002** [P] Draft constitution v1.3.0: Principle VI's identity clause names ADR-0007 and allows exactly one looping effect, the opt-in background layer; bump version and amendment date · `.specify/memory/constitution.md`
+- [x] **T003** [P] Rewrite the root design document for ADR-0007: surfaces, radius, blur, motion tints and alphas, the five presets, the background motion rules (pause, reduced motion, reduced data, print), keeping the spec 004 one-time motions · `DESIGN.md`
 
 **⟶ Wait for Wave 1 to finish, then:**
 

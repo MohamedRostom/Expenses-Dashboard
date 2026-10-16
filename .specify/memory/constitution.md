@@ -1,17 +1,18 @@
 <!--
 Sync Impact Report
-- Version change: 1.1.1 -> 1.2.0
+- Version change: 1.2.0 -> 1.3.0 (draft, pending owner acceptance of ADR-0007, spec 006 T004)
 - Modified principles: VI (design tokens: the identity is now the one recorded in the root
-  `DESIGN.md` under ADR-0006 "Concourse Board": system UI words and system mono tabular
-  figures replace IBM Plex Sans/Mono, Signal Green replaces the incumbent green; still one
-  accent at a time, Signal Green by default and user-selectable from the presets in `DESIGN.md`
-  (owner request 2026-10-10, ADR-0006 addendum), and three theme states)
+  `DESIGN.md` under ADR-0007 "Premium identity with ambient motion", superseding ADR-0006;
+  type, accent presets and three theme states carry over unchanged; exactly one looping
+  effect is allowed, the opt-in background layer, which stays still under reduced motion)
 - Modified sections: none
 - Added sections: none
 - Removed sections: none
 - Templates: plan/spec/tasks templates read this file at runtime; no changes made here
-- Amendment ADR: docs/adr/ADR-0006-visual-identity.md (accepted 2026-10-10)
-- Follow-up TODOs: none
+- Amendment ADR: docs/adr/ADR-0007-premium-identity.md (Proposed 2026-10-16)
+- Previous amendment: 1.1.1 -> 1.2.0, ADR-0006 (accepted 2026-10-10)
+- Follow-up TODOs: on acceptance, mark ADR-0006 Superseded and update the "Design system"
+  section of `CLAUDE.md`
 -->
 
 # Desk Constitution
@@ -93,10 +94,13 @@ feature merged before it is announced sits behind a feature flag in the `flags` 
 to the look of existing screens is not a feature and needs no flag. What ships MUST look
 finished: every panel has skeleton, empty and error states; error copy branches on the error
 code, never one generic banner; charts are a small hand-written SVG layer following the
-project's dataviz rules; design tokens (the identity in the root `DESIGN.md`, ADR-0006: system UI words, system mono
-tabular figures, one accent (Signal Green by default, user-selectable from the presets in `DESIGN.md`), three theme states) come from `packages/ui`, not from
-ad-hoc CSS. Rationale: complexity is paid for at 3 am,
-and a half-finished surface costs more trust than a missing one.
+project's dataviz rules; design tokens (the identity in the root `DESIGN.md`, ADR-0007: system UI
+words, system mono tabular figures, one accent (Signal Green by default, user-selectable from
+the presets in `DESIGN.md`), three theme states, translucent panels over the ground) come from
+`packages/ui`, not from ad-hoc CSS. Nothing on screen loops except the skeleton pulse and one
+opt-in background layer, which is chosen and pausable by the user, still under reduced motion,
+and never competes with the figures. Rationale: complexity is paid for at 3 am, and a
+half-finished surface costs more trust than a missing one.
 
 ## Platform and Security Constraints
 
@@ -159,4 +163,4 @@ complexity (a new abstraction, dependency or service) MUST be justified in the P
 against Principle VI. `CLAUDE.md` is the runtime guidance file for agents and contributors and
 MUST be updated in the same PR as any decision that changes it.
 
-**Version**: 1.2.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-10-10
+**Version**: 1.3.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-10-16
