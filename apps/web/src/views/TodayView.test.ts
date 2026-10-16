@@ -62,4 +62,11 @@ describe('TodayView widget strip (T063)', () => {
     await nextTick();
     expect(m.el.querySelector('.strip')).not.toBeNull();
   });
+
+  it('lays the calendar and inbox panels out on the shared .board-grid (T023)', async () => {
+    const m = mount(() => Promise.resolve());
+    app = m.app;
+    await flushPromises();
+    expect(m.el.querySelector('.panels')!.classList.contains('board-grid')).toBe(true);
+  });
 });

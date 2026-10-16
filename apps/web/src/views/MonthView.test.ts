@@ -127,6 +127,13 @@ describe('MonthView category rows (T032)', () => {
     expect(el.querySelector('.desk-category-bars-row')).toBeNull();
   });
 
+  it('lays the entries and category panels out on the shared .board-grid (T023)', async () => {
+    const el = await mount();
+    expect(el.querySelector('.desk-month-view-columns')!.classList.contains('board-grid')).toBe(
+      true,
+    );
+  });
+
   it('mounts the widget strip after the tiles', async () => {
     const el = await mount();
     const tiles = el.querySelector('.desk-month-view-tiles')!;

@@ -57,7 +57,7 @@ function googleSignIn() {
 </script>
 
 <template>
-  <main class="auth-view">
+  <main class="auth-view surface">
     <h1>Sign in</h1>
     <form @submit.prevent="onSubmit">
       <Input v-model="email" type="email" label="Email" placeholder="you@example.com" />
@@ -77,9 +77,11 @@ function googleSignIn() {
 
 <style scoped>
 .auth-view {
-  max-width: 24rem;
+  max-width: 28rem;
+  box-sizing: border-box;
+  width: calc(100% - 2 * var(--gutter));
   margin: var(--space-8) auto;
-  padding-inline: var(--gutter);
+  padding: var(--space-5);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);

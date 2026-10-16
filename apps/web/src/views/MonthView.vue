@@ -348,7 +348,7 @@ const entryColumns: BoardColumn[] = [
         title="No expenses this month"
         description="Add one to get started."
       />
-      <div v-else class="desk-month-view-columns">
+      <div v-else class="desk-month-view-columns board-grid">
         <PanelFrame heading="Entries" data-panel="entries">
           <DataTable
             class="desk-entries-table"
@@ -592,11 +592,6 @@ const entryColumns: BoardColumn[] = [
   gap: var(--space-6);
   padding: var(--space-2) var(--space-4);
 }
-.desk-month-view-columns {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
 @media (min-width: 768px) {
   .desk-month-view {
     padding-top: var(--space-6);
@@ -615,7 +610,6 @@ const entryColumns: BoardColumn[] = [
   }
   /* Entries board and category bars side by side. */
   .desk-month-view-columns {
-    display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
     align-items: start;
   }

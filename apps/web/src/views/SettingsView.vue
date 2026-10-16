@@ -27,6 +27,7 @@ import { useSessionStore } from '../stores/session.js';
 import { useFlagsStore } from '../stores/flags.js';
 import { useWidgetsStore } from '../stores/widgets.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
+import AppearanceSettings from '../components/appearance/AppearanceSettings.vue';
 import { applyAccent, applyTheme } from './theme.js';
 
 const session = useSessionStore();
@@ -46,10 +47,11 @@ const currencySubmitting = ref(false);
 const job = ref<JobResponseT | null>(null);
 let jobTimer: ReturnType<typeof setTimeout> | undefined;
 
-const SECTIONS = [
+const ALL_SECTIONS = [
   { id: 'profile', title: 'Profile' },
   { id: 'currency', title: 'Default currency' },
   { id: 'theme', title: 'Theme' },
+  { id: 'appearance', title: 'Appearance' },
   { id: 'timezone', title: 'Time zone' },
   { id: 'widgets', title: 'Widgets' },
   { id: 'sessions', title: 'Sessions' },
@@ -57,6 +59,10 @@ const SECTIONS = [
   { id: 'export', title: 'Export' },
   { id: 'delete', title: 'Delete account' },
 ];
+// Appearance (spec 006) exists only while the flag is on, in the index and as a panel.
+const SECTIONS = computed(() =>
+  ALL_SECTIONS.filter((s) => s.id !== 'appearance' || flags.isOn('appearance.motion')),
+);
 const sessionColumns: BoardColumn[] = [
   { key: 'device', label: 'Device' },
   { key: 'seen', label: 'Last seen', hideBelow: 'md' },
@@ -337,7 +343,7 @@ async function confirmDelete() {
       }}</a>
     </nav>
 
-    <div class="desk-settings-sections">
+    <div class="desk-settings-sections board-grid">
       <PanelFrame id="st-profile" heading="Profile" class="desk-settings-section">
         <div class="desk-settings-body">
           <p class="desk-settings-row">
@@ -429,6 +435,17 @@ async function confirmDelete() {
               <span>{{ ACCENT_NAMES[id] }}</span>
             </label>
           </fieldset>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame
+        v-if="flags.isOn('appearance.motion')"
+        id="st-appearance"
+        heading="Appearance"
+        class="desk-settings-section"
+      >
+        <div class="desk-settings-body">
+          <AppearanceSettings :theme="theme" />
         </div>
       </PanelFrame>
 
@@ -587,7 +604,7 @@ async function confirmDelete() {
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
 }
-/* Below 1024 the section index is a scrolling row of links; from 1024 a sticky column. */
+/* The section index is a scrolling row of links; the panels below reflow on .board-grid. */
 .desk-settings-index {
   display: flex;
   gap: var(--space-4);
@@ -617,8 +634,6 @@ async function confirmDelete() {
   outline-offset: 2px;
 }
 .desk-settings-sections {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-4);
   min-width: 0;
 }
@@ -799,39 +814,6 @@ async function confirmDelete() {
   .desk-settings-accent input {
     width: var(--target-min);
     height: var(--target-min);
-  }
-}
-@media (min-width: 1024px) {
-  .desk-settings-view {
-    grid-template-columns: 12rem minmax(0, 46rem);
-    grid-template-areas:
-      'title title'
-      'index sections';
-    column-gap: var(--space-10);
-    justify-content: start;
-  }
-  .desk-settings-title {
-    grid-area: title;
-  }
-  .desk-settings-index {
-    grid-area: index;
-    flex-direction: column;
-    align-self: start;
-    gap: 0;
-    margin-inline: 0;
-    padding-inline: 0;
-    overflow: visible;
-    position: sticky;
-    top: var(--space-4);
-    border-bottom: 0;
-    border-left: 1px solid var(--color-border);
-  }
-  .desk-settings-index-link {
-    min-height: var(--space-8);
-    padding-left: var(--space-3);
-  }
-  .desk-settings-sections {
-    grid-area: sections;
   }
 }
 </style>

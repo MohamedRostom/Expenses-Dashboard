@@ -8,6 +8,9 @@ RUN npm install -g pnpm@12.4.2
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+# Baked into the static HTML at build time (spec 006 FR-021); empty means off.
+ARG VITE_APPEARANCE_MOTION
+ENV VITE_APPEARANCE_MOTION=$VITE_APPEARANCE_MOTION
 RUN pnpm --filter @desk/landing build
 
 FROM nginx:1.31-alpine AS runtime

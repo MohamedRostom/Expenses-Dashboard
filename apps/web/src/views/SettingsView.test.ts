@@ -29,6 +29,49 @@ const widget = (id: string, kind: string, p?: ReturnType<typeof place>) =>
     place: p,
   }) as WidgetT;
 
+async function mountSettings(flags: Record<string, boolean>) {
+  const api = await import('../api/widgets.js');
+  vi.mocked(api.getWidgets).mockResolvedValue({ widgets: [], limit: 8, temperatureUnit: 'C' });
+  const { default: SettingsView } = await import('./SettingsView.vue');
+  const { useFlagsStore } = await import('../stores/flags.js');
+  const router = createRouter({
+    history: createMemoryHistory(),
+    routes: [{ path: '/', component: SettingsView }],
+  });
+  await router.push('/');
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  useFlagsStore().flags = flags;
+  const el = document.createElement('div');
+  document.body.appendChild(el);
+  createApp(SettingsView).use(pinia).use(router).mount(el);
+  for (let i = 0; i < 6; i++) await nextTick();
+  return el;
+}
+
+describe('SettingsView appearance section (spec 006 US1)', () => {
+  it('shows Appearance with the motion picker only when appearance.motion is on', async () => {
+    const on = await mountSettings({ 'appearance.motion': true });
+    const section = on.querySelector('#st-appearance');
+    expect(section?.querySelector('h3')?.textContent).toBe('Appearance');
+    expect(
+      section?.querySelector('[role="radiogroup"][aria-label="Background motion"]'),
+    ).not.toBeNull();
+    expect(on.querySelector('a[href="#st-appearance"]')).not.toBeNull();
+
+    const off = await mountSettings({});
+    expect(off.querySelector('#st-appearance')).toBeNull();
+    expect(off.querySelector('a[href="#st-appearance"]')).toBeNull();
+  }, 20_000);
+
+  it('lays the sections out on the shared .board-grid instead of its own columns', async () => {
+    const el = await mountSettings({});
+    expect(el.querySelector('.desk-settings-sections')!.classList.contains('board-grid')).toBe(
+      true,
+    );
+  });
+});
+
 describe('SettingsView widgets section', () => {
   it('lists the places in use once and shows the unit preference', async () => {
     const api = await import('../api/widgets.js');
