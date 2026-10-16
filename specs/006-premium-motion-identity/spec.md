@@ -12,6 +12,15 @@
 
 Rostom reviewed the direction board and decided: replace the Concourse Board identity rather than layer on it; take the board's surface polish (translucent raised panels) together with the motion; offer all four motion families plus None, with Particles as the default; keep the choice on the user's account; show the colour selector only in light mode; and make panels reflow by screen size. These are settled and are not reopened by this spec.
 
+## Clarifications
+
+### Session 2026-10-16
+
+- Q: Should the new panel look go live in production on merge, or wait behind the `appearance.motion` flag? → A: The look ships unflagged (constitution 1.1.1); only the appearance controls and the moving layer wait for the flag.
+- Q: Should the signed-out pages (sign-in, sign-up, password reset, landing) get the new look in this spec? → A: Yes, all signed-out pages, with a fixed default motion.
+- Q: Should users be able to switch panels from translucent to solid? → A: Yes, a user toggle saved to the account.
+- Q: Besides the device's reduced-motion setting, should Settings have its own pause switch? → A: Yes, a separate "Pause background motion" switch saved to the account.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Choose a background motion in Settings (Priority: P1)
@@ -64,6 +73,8 @@ In light mode, Settings › Appearance shows a "Motion colour" row under the pre
 3. **Given** dark mode (chosen explicitly or by the system), **When** the user opens Settings › Appearance, **Then** the Motion colour row is not shown and the background uses the fixed dark tint.
 4. **Given** a user who chose Coral in light mode and then switched to dark, **When** they switch back to light, **Then** Coral is selected and used again.
 5. **Given** the None preset, **When** the user is in light mode, **Then** the colour row is shown but disabled with a note that it applies when a motion is on.
+6. **Given** Settings › Appearance, **When** the user turns "Translucent panels" off, **Then** every screen shows opaque panels of the same colour, the choice is saved to their account, and it is on by default.
+7. **Given** a user who turns "Pause background motion" on, **When** they browse any screen, **Then** their chosen preset shows its still frame, the choice is saved to their account, and turning it off resumes the motion.
 
 ---
 
@@ -84,7 +95,23 @@ Someone who has asked their system to reduce motion sees the chosen preset as a 
 
 ---
 
-### User Story 5 - Ship dark until announced (Priority: P3)
+### User Story 5 - Signed-out pages share the look (Priority: P2)
+
+Sign-in, sign-up, password reset and the landing site use the same panels over the background. Nobody is signed in yet, so there is no saved choice: these pages show the default motion (Particles in Signal mint in light mode, the fixed dark tint in dark mode).
+
+**Why this priority**: the first thing a new user sees should match the app they are signing up for; it follows Story 2's panels and Story 4's motion rules.
+
+**Independent Test**: visit each signed-out page at 360, 768 and 1280 px in both themes with the flag on and off; with the flag on the default motion runs (still under reduced motion), with it off the ground is still; the landing page keeps its performance ≥ 90 and accessibility ≥ 95 budgets.
+
+**Acceptance Scenarios**:
+
+1. **Given** the flag is on and nobody is signed in, **When** a visitor opens sign-in or the landing page, **Then** the panels sit over Particles in the default tint for the current theme.
+2. **Given** a visitor whose system asks for reduced motion, **When** they open any signed-out page, **Then** the background is still.
+3. **Given** a user who chose Board grid, **When** they sign out, **Then** the signed-out pages show the default motion, not their choice, and their choice returns after signing in.
+
+---
+
+### User Story 6 - Ship dark until announced (Priority: P3)
 
 The motion picker and colour selector stay off in production until Rostom announces them, while the new panel look ships as a change to existing screens.
 
@@ -107,7 +134,7 @@ The motion picker and colour selector stay off in production until Rostom announ
 - Very long screens: the background covers the whole scrolling page, not just the first screenful, and does not move with scroll.
 - Printing a screen: the background layer is not printed.
 - Low-power or low-end devices: if the browser reports the device is in a data or power saving mode, the motion behaves as reduced motion.
-- Signed-out pages (sign-in, sign-up, landing) are out of scope and keep their current look.
+- A signed-in user's choices never leak onto signed-out pages, which always show the defaults.
 
 ## Requirements *(mandatory)*
 
@@ -127,16 +154,19 @@ The motion picker and colour selector stay off in production until Rostom announ
 - **FR-012**: The background animation MUST pause while the page is hidden and resume when it is shown.
 - **FR-013**: The background layer MUST never receive pointer, touch or keyboard input, never sit above content, not scroll with the page content, and not print.
 - **FR-014**: Every text pair on every signed-in screen MUST meet WCAG AA contrast in both themes over every preset and over every stored and custom colour, measured at the background's most saturated frame.
-- **FR-015**: The Background motion and Motion colour controls and the moving layer MUST be gated by the `appearance.motion` feature flag, off in production until announced; with the flag off the background is still and saved choices are kept but not applied.
+- **FR-015**: The Background motion, Motion colour, Translucent panels and Pause background motion controls and the moving layer MUST be gated by the `appearance.motion` feature flag, off in production until announced; with the flag off the background is still, panels are translucent, and saved choices are kept but not applied. The panel look itself (FR-009, FR-010) ships unflagged.
 - **FR-016**: An unknown stored preset MUST fall back to Particles and an invalid stored colour to Signal mint, without an error shown to the user.
 - **FR-017**: A failed save of the preset or colour MUST show an error next to the picker with a retry action, with copy that depends on the error code.
 - **FR-018**: Each user MUST only ever read and change their own appearance choices; the ownership matrix test covers the appearance endpoints for user A × user B.
 - **FR-019**: The new identity MUST keep the existing rules that are not about look: three theme states (light, dark by system, dark by choice), tabular figures for every amount, status colours never reused as chart series or motion tints, skeleton, empty and error states on every panel.
 - **FR-020**: Signed-in performance and accessibility scores MUST NOT fall below their current recorded values on any route with any preset, and the accessibility score MUST stay at or above 95.
+- **FR-021**: Signed-out pages (sign-in, sign-up, password reset, landing) MUST use the same panels and reflow rules and show the default motion (Particles; Signal mint in light, the fixed dark tint in dark), never a signed-in user's choices; the landing page MUST keep performance ≥ 90 and accessibility ≥ 95.
+- **FR-022**: Settings › Appearance MUST offer a "Translucent panels" switch, on by default and saved to the account; off shows opaque panels of the same colour on every screen.
+- **FR-023**: Settings › Appearance MUST offer a "Pause background motion" switch, off by default and saved to the account; on shows the chosen preset's still frame on every screen, independently of the system reduced-motion setting (which always forces stillness).
 
 ### Key Entities
 
-- **Appearance preference (per user)**: the user's background preset (one of the five stored names) and their light-mode motion colour (one of the six stored swatches or a custom colour). Belongs to exactly one user; defaults to Particles and Signal mint.
+- **Appearance preference (per user)**: the user's background preset (one of the five stored names), light-mode motion colour (one of the six stored swatches or a custom colour), translucent panels (on/off) and pause motion (on/off). Belongs to exactly one user; defaults to Particles, Signal mint, on, off.
 - **Motion preset (stored, read-only)**: name, description, its still frame and its default light and dark tints. Shipped with the app, not edited by users.
 - **Motion colour swatch (stored, read-only)**: name and colour value; six of them.
 
@@ -146,8 +176,8 @@ The motion picker and colour selector stay off in production until Rostom announ
 
 - **SC-001**: A user can find and change the background motion from any signed-in screen in under 20 seconds and three interactions or fewer.
 - **SC-002**: 100 % of signed-in routes show the chosen preset after a reload and on a second device signed in as the same user.
-- **SC-003**: 0 signed-in routes scroll horizontally at 360, 768 and 1280 px wide, in either theme.
-- **SC-004**: 100 % of text pairs pass WCAG AA on every route, for each of the five presets × six stored colours × two themes, and for the lightest and darkest custom colour.
+- **SC-003**: 0 routes, signed-in or signed-out, scroll horizontally at 360, 768 and 1280 px wide, in either theme.
+- **SC-004**: 100 % of text pairs pass WCAG AA on every route, for each of the five presets × six stored colours × two themes × translucent and opaque panels, and for the lightest and darkest custom colour.
 - **SC-005**: With reduced motion requested, two screenshots of any route taken 3 seconds apart are identical for every preset.
 - **SC-006**: Signed-in performance scores on `/` and `/settings` are no lower than before this feature (`/` ~0.69, `/settings` ~0.86 as recorded in spec 004), and accessibility stays ≥ 0.95, with Particles selected.
 - **SC-007**: The owner signs off the new look on every screen at phone and desktop width against the approved direction board.
@@ -156,9 +186,8 @@ The motion picker and colour selector stay off in production until Rostom announ
 
 - The approved direction board (https://claude.ai/artifact/NHdkria1bTDsVYGyW1TXE8, version 4) is the visual reference for panels, spacing and the five presets; it is a direction, and the root `DESIGN.md` rewritten for ADR-0007 becomes normative.
 - ADR-0007 supersedes ADR-0006 and the constitution's Principle VI is amended (identity reference, and the "nothing loops" rule replaced by the opt-in background exception) before any implementation task merges.
-- Per the constitution, a change to the look of existing screens needs no flag, so the new panel look ships unflagged; only the motion picker, colour selector and moving layer sit behind `appearance.motion`. With the flag off, panels sit over the still ground.
+- Per the constitution, a change to the look of existing screens needs no flag, so the new panel look ships unflagged (confirmed 2026-10-16); the four appearance controls and the moving layer sit behind `appearance.motion`. With the flag off, translucent panels sit over the still ground.
 - Typography (system UI words, system mono figures) and the accent presets behind `appearance.accent` carry over unchanged; the accent and the motion colour are separate choices.
 - The fixed dark tint is Signal mint at a strength tuned for dark backgrounds.
 - The appearance choices are stored the same way as the existing accent preset; no new third-party service or dependency is needed, and everything must keep passing the Workers build check.
-- Signed-out pages (sign-in, sign-up, landing) keep their current look; they may adopt the identity in a later spec.
 - The existing one-time motions from spec 004 (arrival flip, settle-in, list travel, hover lift) are kept.

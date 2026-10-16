@@ -1,0 +1,136 @@
+# Tasks: Premium Identity with Background Motion
+
+**Input**: [spec.md](./spec.md), [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/](./contracts/)
+
+**Scale note**: about 30 files across contracts, db, api, ui, web and landing, but the look lives in shared tokens and one component, so most screens are untouched. Every visual baseline changes, so baselines are regenerated once, in Polish, not per story.
+
+Tests are required (constitution Principle I): every task that adds behaviour starts from a failing test named in the task.
+
+## Phase 1: Setup (identity documents, owner-gated)
+
+**Wave 1 — independent (different files):**
+
+- [ ] **T001** [P] Draft ADR-0007 "Premium identity with ambient motion" (Proposed), superseding ADR-0006: translucent 16 px panels, the opt-in background layer and its five presets, the light-only motion colour, the pause and panels switches, signed-out defaults, and what carries over (typography, accent presets, three theme states, status colours never used as tints) · `docs/adr/ADR-0007-premium-identity.md`
+- [ ] **T002** [P] Draft constitution v1.3.0: Principle VI's identity clause names ADR-0007 and allows exactly one looping effect, the opt-in background layer; bump version and amendment date · `.specify/memory/constitution.md`
+- [ ] **T003** [P] Rewrite the root design document for ADR-0007: surfaces, radius, blur, motion tints and alphas, the five presets, the background motion rules (pause, reduced motion, reduced data, print), keeping the spec 004 one-time motions · `DESIGN.md`
+
+**⟶ Wait for Wave 1 to finish, then:**
+
+- [ ] **T004** `needs-rostom`: Rostom accepts ADR-0007 (marking ADR-0006 Superseded), constitution v1.3.0 and `DESIGN.md`; no code task merges before this · `docs/adr/ADR-0006-visual-identity.md`
+
+## Phase 2: Foundational (blocks every story)
+
+**Wave 1 — independent (different files):**
+
+- [ ] **T005** [P] Write `motion.test.ts` first (ids in order, default `particles`, six swatches, dark tint), then add `MOTION_PRESET_IDS`, `MOTION_SWATCHES`, `MOTION_DARK_TINT` and export them · `packages/contracts/src/motion.ts`, `packages/contracts/src/motion.test.ts`, `packages/contracts/src/index.ts`
+- [ ] **T006** [P] Write the migration test first (defaults on existing rows, CHECK rejects `'sparkle'` and `'#FFF'`), then add the four `users` columns and migration `0012_user_motion.sql` per data-model · `packages/db/src/schema.ts`, `packages/db/migrations/0012_user_motion.sql`, `packages/db/test/migrations.test.ts`
+- [ ] **T007** [P] Add `--color-surface-glass`, `--blur-surface`, `--radius-xl` and the motion alpha tokens for all three theme states, with `tokens.test.ts` cases for each state · `packages/ui/src/tokens.css`, `packages/ui/src/tokens.test.ts`
+- [ ] **T008** [P] Write the SC-004 matrix test first (5 presets × 6 swatches plus `#ffffff` and `#000000` × 2 themes × glass and opaque panels: every text token ≥ 4.5:1 over the composited ground), then add `compositeOver()` · `packages/ui/src/contrast.ts`, `packages/ui/src/contrast.test.ts`
+- [ ] **T009** [P] Seed the `appearance.motion` flag, off · `packages/db/src/seed.ts`
+
+**⟶ Wait for Wave 1 to finish, then:**
+
+**Wave 2 — independent (different files):**
+
+- [ ] **T010** [P] Extend `UserResponse` and `PatchMeRequest` with the four fields (contract tests: enum, colour regex, lowercase) · `packages/contracts/src/auth.ts`, `packages/contracts/src/me.ts`, `packages/contracts/src/accent.test.ts`
+- [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
+- [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the frame components, with their unit tests updated · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `packages/ui/src/components/Dialog.vue`
+
+**⟶ Wait for Wave 2 to finish, then:**
+
+**Wave 3 — independent (different files):**
+
+- [ ] **T013** [P] Write the API tests first (`PATCH /me` sets and validates each field; 401 signed out; user A's patch leaves user B unchanged in the ownership matrix), then map and patch the fields · `apps/api/src/routes/me.ts`, `apps/api/src/routes/auth.ts`, `apps/api/test/me-appearance.test.ts`, `apps/api/test/ownership-matrix.test.ts`
+- [ ] **T014** [P] Write the test first (unauthenticated 200, only `appearance.motion` listed, global value even with a user override present, `Cache-Control`), then add `GET /flags/public` · `apps/api/src/routes/misc.ts`, `apps/api/test/flags-public.test.ts`
+- [ ] **T015** [P] Write `theme.test.ts` cases first (attributes for flag off, signed out, light, dark tint, pause, solid panels, unknown preset and bad colour fallbacks per FR-016), then add `applyMotion()` · `apps/web/src/views/theme.ts`, `apps/web/src/views/theme.test.ts`
+
+**⟶ Wait for Wave 3 to finish, then:**
+
+- [ ] **T016** Regenerate the OpenAPI document · `packages/contracts/openapi.json`
+- [ ] **T017** Mount `BackgroundMotion` behind `<RouterView>`, add `applyMotion` to the session and flags watch, set `data-motion-paused` on `visibilitychange`, and load `GET /flags/public` when signed out · `apps/web/src/App.vue`, `apps/web/src/stores/flags.ts`
+
+**Checkpoint**: every screen renders the new panels over the background, and the layer follows the html attributes.
+
+## Phase 3: User Story 1, choose the appearance in Settings (P1) 🎯 MVP
+
+Files: `apps/web/src/components/appearance/AppearanceSettings.vue`, `apps/web/src/views/SettingsView.vue`
+
+**Goal**: Settings › Appearance offers the five presets, the light-only colour row, and the panels and pause switches, all saved to the account.
+
+### Tests
+
+- [ ] **T018** [P] [US1] Unit tests for `AppearanceSettings` (radiogroup and switch roles and names, 44 px targets, colour row hidden in dark and disabled under None, save error by code with "Try again") · `apps/web/src/components/appearance/AppearanceSettings.test.ts`
+- [ ] **T019** [P] [US1] e2e: default Particles; pick Board grid, reload, and a fresh context shows it; user A and B isolation; switches persist; axe on Settings · `tests/e2e/tests/motion-settings.spec.ts`
+
+### Implementation
+
+- [ ] **T020** [US1] Build `AppearanceSettings` per `contracts/ui.md`, saving through `PATCH /me` and updating the session user so `applyMotion` reacts without a reload · `apps/web/src/components/appearance/AppearanceSettings.vue`
+
+**⟶ Wait for T020, then:**
+
+- [ ] **T021** [US1] Mount `AppearanceSettings` in Settings › Appearance behind `appearance.motion` · `apps/web/src/views/SettingsView.vue`
+
+**Checkpoint**: a user can choose and keep every appearance setting.
+
+## Phase 4: User Story 2, fluid panels on every screen (P1)
+
+Files: `packages/ui/src/layout.css`, the screens listed in T023, `tests/e2e/tests/reflow.spec.ts`
+
+### Tests
+
+- [ ] **T022** [P] [US2] e2e: every signed-in and signed-out route at 360, 768 and 1280 in both themes asserts `scrollWidth <= clientWidth`; one column at 360 and two at 768 on the month view; content ≤ 1160 px · `tests/e2e/tests/reflow.spec.ts`
+
+### Implementation
+
+- [ ] **T023** [P] [US2] Add `.board-grid` (research R7) and replace each screen's own column rules with it; only screens that set their own columns change · `packages/ui/src/layout.css`, `apps/web/src/views/MonthView.vue`, `apps/web/src/views/CategoriesView.vue`, `apps/web/src/views/YearView.vue`, `apps/web/src/views/TodayView.vue`, `apps/web/src/views/ConnectionsView.vue`
+
+**Checkpoint**: no route scrolls sideways at any of the three widths.
+
+## Phase 5: User Story 3, motion colour across screens (P2)
+
+Files: `tests/e2e/tests/motion-colour.spec.ts`. The colour logic is foundational (T015) and its control belongs to US1 (T020); this phase proves the cross-screen behaviour.
+
+- [ ] **T024** [US3] e2e: Coral in light tints the month view's layer (`--motion-tint`); dark hides the row and uses the dark tint; back in light Coral is restored; a custom colour persists; axe passes over the lightest and darkest custom colour · `tests/e2e/tests/motion-colour.spec.ts`
+
+## Phase 6: User Story 4, motion that respects the person and the device (P2)
+
+Files: `tests/e2e/tests/motion-a11y.spec.ts`
+
+- [ ] **T025** [US4] e2e: with `reducedMotion: 'reduce'`, two screenshots 3 s apart are identical for every preset (SC-005); a hidden page sets `data-motion-paused` and the computed `animation-play-state` is `paused`; the layer has `pointer-events: none` and is absent in print media · `tests/e2e/tests/motion-a11y.spec.ts`
+
+## Phase 7: User Story 5, signed-out pages share the look (P2)
+
+Files: `apps/landing/src/App.vue`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-fly.yml`, `tests/e2e/tests/motion-signed-out.spec.ts`
+
+### Tests
+
+- [ ] **T026** [P] [US5] e2e: sign-in, sign-up and reset show Particles in the default tint with the flag on and a still ground with it off; a signed-out page never shows the last user's choice · `tests/e2e/tests/motion-signed-out.spec.ts`
+
+### Implementation
+
+- [ ] **T027** [P] [US5] Mount `BackgroundMotion` in the landing app when `VITE_APPEARANCE_MOTION` is `true` (default off), with a landing build test · `apps/landing/src/App.vue`
+- [ ] **T028** [P] [US5] Pass `VITE_APPEARANCE_MOTION` to the landing build from a repo variable in the deploy workflows (unset means off) · `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-fly.yml`
+
+## Phase 8: User Story 6, ship dark until announced (P3)
+
+Files: `tests/e2e/tests/motion-flag.spec.ts`
+
+- [ ] **T029** [US6] e2e: with the flag off there are no appearance controls and a still ground while panels stay translucent; turning the flag on for a user with a saved preset applies it · `tests/e2e/tests/motion-flag.spec.ts`
+
+## Phase 9: Polish
+
+**Wave 1 — independent (different files):**
+
+- [ ] **T030** [P] Add `/` and `/settings` with Particles to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
+- [ ] **T031** [P] Run the design tools per CLAUDE.md (redesign-existing-projects audit, `npx -y impeccable@4.1.0 detect` at 360 and 1280, `impeccable-finish-reviewer`) and fix or justify every non-advisory finding · `specs/006-premium-motion-identity/design-tools.md`
+- [ ] **T032** [P] CHANGELOG line, `docs/ROADMAP.md` entry, and the CLAUDE.md design-system section and current state for ADR-0007 · `CHANGELOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`
+
+**⟶ Wait for Wave 1 to finish, then:**
+
+- [ ] **T033** Regenerate every web and landing visual baseline once at `--workers=2` with the `ci` project only, and review the diffs · `tests/e2e/tests/*-snapshots/`
+- [ ] **T034** Validate against the Success Criteria: lint, typecheck, unit (coverage ≥ 85 % on core and api), api, `worker:build`, `pnpm test:e2e --project=ci --workers=2`, OpenAPI not stale · whole repo
+- [ ] **T035** `needs-rostom`: owner sign-off of every screen at phone and desktop width against the direction board (SC-007) and the 20-second change check (SC-001) · `docs/ROADMAP.md`
+
+## Dependencies & Execution Order
+
+Setup (T001–T004) gates any code merge, though Foundational may be written while T004 waits. Foundational runs Wave 1 (T005–T009), then Wave 2 (T010–T012), then Wave 3 (T013–T015), then T016 and T017. Every story starts after Foundational. US1 runs T018 and T019 together, then T020, then T021. US2 runs T022 and T023 together. US3 (T024) needs US1's T020. US4 (T025) needs only Foundational. US5 runs T026, T027 and T028 together. US6 (T029) needs US1's T021. Polish runs Wave 1 (T030–T032), then T033, then T034, then T035, after all stories.
