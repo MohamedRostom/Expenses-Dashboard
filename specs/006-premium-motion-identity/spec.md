@@ -20,6 +20,11 @@ Rostom reviewed the direction board and decided: replace the Concourse Board ide
 - Q: Should the signed-out pages (sign-in, sign-up, password reset, landing) get the new look in this spec? → A: Yes, all signed-out pages, with a fixed default motion.
 - Q: Should users be able to switch panels from translucent to solid? → A: Yes, a user toggle saved to the account.
 - Q: Besides the device's reduced-motion setting, should Settings have its own pause switch? → A: Yes, a separate "Pause background motion" switch saved to the account.
+- Q: How does a change in Settings › Appearance get saved? → A: Automatically on each pick or switch, no Save button; rapid changes are coalesced so only the last is sent; across devices the last save wins and other devices pick it up on their next load.
+- Q: What counts as the device asking to save data or power? → A: `prefers-reduced-data: reduce` where supported and `navigator.connection.saveData` where available; power saving is not detectable by the web and is dropped.
+- Q: What happens in Windows high-contrast mode (`forced-colors: active`)? → A: The background layer is hidden and panels are solid in system colours.
+- Q: Should panels go solid when the system asks for reduced transparency? → A: Yes, under `prefers-reduced-transparency: reduce`, without changing the saved switch; motion is unaffected.
+- Q: Do the preset choices in the picker animate? → A: No, each shows a still thumbnail of its first frame in the current tint; the live background is the preview.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -133,17 +138,20 @@ The motion picker and colour selector stay off in production until Rostom announ
 - The theme switches from light to dark while Settings is open: the colour row disappears without losing the light-mode choice.
 - Very long screens: the background covers the whole scrolling page, not just the first screenful, and does not move with scroll.
 - Printing a screen: the background layer is not printed.
-- Low-power or low-end devices: if the browser reports the device is in a data or power saving mode, the motion behaves as reduced motion.
+- Data saving: if the browser reports a data-saving preference (`prefers-reduced-data: reduce` or `navigator.connection.saveData`), the motion behaves as reduced motion. A power-saving mode is not detectable by the web and is not handled.
+- Windows high contrast (`forced-colors: active`): the background layer is hidden and panels are solid in system colours.
+- Reduced transparency (`prefers-reduced-transparency: reduce`): panels are solid whatever the saved "Translucent panels" switch says; the saved value is kept and the motion is unaffected.
+- Rapid changes: clicking through several presets quickly sends only the last choice; the background follows every click.
 - A signed-in user's choices never leak onto signed-out pages, which always show the defaults.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: Settings › Appearance MUST offer a "Background motion" choice of exactly five stored presets: None, Aurora drift, Board grid, Particles and Grain, each with a visible name and a one-line description.
+- **FR-001**: Settings › Appearance MUST offer a "Background motion" choice of exactly five stored presets: None, Aurora drift, Board grid, Particles and Grain, each with a visible name, a one-line description and a still thumbnail of its first frame in the current tint; nothing in the picker animates.
 - **FR-002**: The default preset for a user who has not chosen one MUST be Particles.
 - **FR-003**: The chosen preset MUST be saved to the user's account and applied on every signed-in screen on every device the user signs in on.
-- **FR-004**: Changing the preset MUST update the background immediately, without a page reload.
+- **FR-004**: Changing the preset MUST update the background immediately, without a page reload. Every appearance control saves automatically on change (no Save button); rapid changes are coalesced so only the last value is saved, and across devices the last save wins, applied on each device's next load.
 - **FR-005**: The preset and colour controls MUST be operable by keyboard and expose their selected state and name to assistive technology; every control MUST be at least 44 × 44 px.
 - **FR-006**: In light mode, Settings › Appearance MUST show a "Motion colour" selector with six stored swatches (Signal mint #7fd1a8, Platform blue #8fb3ff, Lamp amber #f5c27a, Dusk violet #c9a7ff, Coral #ff9fb2, Silver #e9edf2) and a custom colour; the default is Signal mint.
 - **FR-007**: In dark mode the Motion colour selector MUST be hidden and the moving layer MUST use a fixed dark-tuned tint; the user's light-mode colour MUST be kept and restored on returning to light.
@@ -163,6 +171,8 @@ The motion picker and colour selector stay off in production until Rostom announ
 - **FR-021**: Signed-out pages (sign-in, sign-up, password reset, landing) MUST use the same panels and reflow rules and show the default motion (Particles; Signal mint in light, the fixed dark tint in dark), never a signed-in user's choices; the landing page MUST keep performance ≥ 90 and accessibility ≥ 95.
 - **FR-022**: Settings › Appearance MUST offer a "Translucent panels" switch, on by default and saved to the account; off shows opaque panels of the same colour on every screen.
 - **FR-023**: Settings › Appearance MUST offer a "Pause background motion" switch, off by default and saved to the account; on shows the chosen preset's still frame on every screen, independently of the system reduced-motion setting (which always forces stillness).
+- **FR-024**: Under `forced-colors: active` the background layer MUST NOT render and panels MUST be solid in system colours.
+- **FR-025**: Under `prefers-reduced-transparency: reduce` panels MUST be solid, without changing the saved Translucent panels value; under `prefers-reduced-data: reduce` or `navigator.connection.saveData` the motion MUST be still, as under reduced motion.
 
 ### Key Entities
 
