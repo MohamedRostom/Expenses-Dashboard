@@ -24,6 +24,9 @@
   --motion-alpha-aurora-blue: 0.5;
   --motion-alpha-aurora-amber: 0.45;
   --motion-alpha-grid: 0.06;
+  --motion-grid-line: var(--color-fg); /* Board Ink lines in light (DESIGN.md Background layer) */
+  --motion-aurora-blue: #8fb3ff; /* Platform blue, fixed Aurora companion */
+  --motion-aurora-amber: #f5c27a; /* Lamp amber, fixed Aurora companion */
   --motion-alpha-particles: 0.28;
   --motion-alpha-grain: 0.12;
   --shadow-overlay: 0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08);
@@ -107,6 +110,7 @@
     --motion-alpha-aurora-blue: 0.15;
     --motion-alpha-aurora-amber: 0.13;
     --motion-alpha-grid: 0.14;
+    --motion-grid-line: var(--motion-tint, var(--color-fg));
     --motion-alpha-particles: 0.32;
     --motion-alpha-grain: 0.16;
     --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
@@ -141,6 +145,7 @@
   --motion-alpha-aurora-blue: 0.15;
   --motion-alpha-aurora-amber: 0.13;
   --motion-alpha-grid: 0.14;
+  --motion-grid-line: var(--motion-tint, var(--color-fg));
   --motion-alpha-particles: 0.32;
   --motion-alpha-grain: 0.16;
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);

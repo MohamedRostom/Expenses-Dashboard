@@ -9,6 +9,7 @@ import {
   ResetPasswordRequest,
   type UserResponseT,
   type AccentId,
+  type MotionPresetId,
 } from '@desk/contracts';
 import type { AppDeps, AppVariables } from '../app.js';
 import { ApiError } from '../lib/api-error.js';
@@ -27,6 +28,10 @@ function toUserResponse(user: UserRow): UserResponseT {
     defaultCurrency: user.defaultCurrency,
     theme: user.theme,
     accent: user.accent as AccentId,
+    motionPreset: user.motionPreset as MotionPresetId,
+    motionColour: user.motionColour,
+    panelsTranslucent: user.panelsTranslucent,
+    motionPaused: user.motionPaused,
     timeZone: user.timeZone,
     onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     emailVerified: user.emailVerifiedAt !== null,

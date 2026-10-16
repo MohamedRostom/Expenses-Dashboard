@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { ACCENT_IDS } from './accent.js';
 import { UserResponse as BaseUser } from './auth.js';
 import { Capability, ProviderId } from './connections.js';
+import { MOTION_PRESET_IDS } from './motion.js';
 import { TemperatureUnit } from './widgets.js';
 
 /** The `/me` user: the auth user plus the weather unit (spec 003). */
@@ -13,6 +14,15 @@ export type MeResponseT = z.infer<typeof MeResponse>;
 export const PatchMeRequest = z.object({
   theme: z.string().optional(),
   accent: z.enum(ACCENT_IDS).optional(),
+  motionPreset: z.enum(MOTION_PRESET_IDS).optional(),
+  /** Any case in, stored lowercase (contracts/me-appearance.md). */
+  motionColour: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .transform((c) => c.toLowerCase())
+    .optional(),
+  panelsTranslucent: z.boolean().optional(),
+  motionPaused: z.boolean().optional(),
   defaultCurrency: z.string().length(3).optional(),
   timeZone: z.string().optional(),
   onboardingCompletedAt: z.string().nullable().optional(),

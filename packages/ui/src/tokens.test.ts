@@ -347,7 +347,7 @@ describe('block inventory (contracts/blocks.md)', () => {
   const dir = (b: string) => join(here, charts.includes(b) ? 'charts' : 'components');
 
   it('parses every inventory row', () => {
-    expect(inventory.map((i) => i.block)).toHaveLength(15);
+    expect(inventory.map((i) => i.block)).toHaveLength(16);
   });
   const loadStory = async (block: string) =>
     (charts.includes(block)
@@ -469,10 +469,10 @@ describe('accent presets (FR-019)', () => {
 describe('glass and motion tokens (ADR-0007)', () => {
   const lightExpect: Record<string, string> = {
     '--color-surface-glass': 'rgb(246 247 247 / 0.72)',
-    '--color-glass-line': 'rgb(20 23 27 / 0.10)',
+    '--color-glass-line': 'rgb(20 23 27 / 0.1)',
     '--shadow-raised': '0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08)',
     '--motion-alpha-aurora': '0.55',
-    '--motion-alpha-aurora-blue': '0.50',
+    '--motion-alpha-aurora-blue': '0.5',
     '--motion-alpha-aurora-amber': '0.45',
     '--motion-alpha-grid': '0.06',
     '--motion-alpha-particles': '0.28',

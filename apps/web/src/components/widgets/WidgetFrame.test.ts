@@ -143,3 +143,14 @@ describe('WidgetFrame empty state', () => {
     expect(el.querySelector('[class*="skeleton"]')).not.toBeNull();
   });
 });
+
+describe('WidgetFrame surface (T012)', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('carries the shared .surface class; its menu stays opaque', async () => {
+    const { el } = await mount({});
+    expect(el.querySelector('[data-testid="widget-frame"]')?.classList.contains('surface')).toBe(
+      true,
+    );
+    expect(el.querySelector('.desk-widget-menu-items')?.classList.contains('surface')).toBe(false);
+  });
+});

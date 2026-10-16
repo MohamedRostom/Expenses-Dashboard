@@ -67,3 +67,12 @@ describe('PanelFrame loaded content (T032)', () => {
     expect(el.textContent).toContain("You're offline");
   });
 });
+
+describe('PanelFrame surface (T012)', () => {
+  it('the headed flap carries the shared .surface class', async () => {
+    const el = document.createElement('div');
+    createApp(PanelFrame, { heading: 'Panel' }).mount(el);
+    await nextTick();
+    expect(el.querySelector('.desk-panel-frame-flap')?.classList.contains('surface')).toBe(true);
+  });
+});

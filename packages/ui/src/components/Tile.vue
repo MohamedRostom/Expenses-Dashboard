@@ -17,7 +17,7 @@ defineProps<{
 </script>
 
 <template>
-  <div :class="['desk-tile-block', { 'desk-tile-block--primary': primary }]" data-tile>
+  <div :class="['desk-tile-block', 'surface', { 'desk-tile-block--primary': primary }]" data-tile>
     <Skeleton v-if="loading" height="4rem" />
     <template v-else-if="value !== undefined">
       <!-- The figure comes first in the text flow; the label is placed above it by order. -->
@@ -53,14 +53,10 @@ defineProps<{
   gap: var(--space-1);
   min-width: 0;
   padding: var(--space-4);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-tile-block--primary {
-  background: var(--color-surface-raised);
   gap: var(--space-2);
 }
 /* The primary figure sits in a flap cell whose seam shows only at its hinges (the side margins),

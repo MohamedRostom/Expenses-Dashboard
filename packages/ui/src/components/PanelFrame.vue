@@ -83,7 +83,7 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
   <section v-if="heading" class="desk-panel-frame" :aria-labelledby="headingId" role="region">
     <h3 :id="headingId" class="desk-panel-frame-heading">{{ heading }}</h3>
     <!-- Loaded content: a state (kind) always wins over the slot, so error and empty stay as they were. -->
-    <div v-if="!kind" class="desk-panel-frame-flap"><slot /></div>
+    <div v-if="!kind" class="desk-panel-frame-flap surface"><slot /></div>
     <PanelFrame v-else :kind="kind" :code="code" :title="title" :description="description">
       <template v-if="$slots.action" #action><slot name="action" /></template>
     </PanelFrame>
@@ -138,9 +138,6 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
 }
 .desk-panel-frame-flap {
   padding: var(--space-2) 0;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
   overflow: hidden;
 }
 </style>

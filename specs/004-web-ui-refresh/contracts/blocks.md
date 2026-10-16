@@ -42,6 +42,7 @@ same change; **new** = written in Slice A.
 | `MenuButton` (new) | icon button opening a small menu | `icon`, `label` | open, closed | `aria-haspopup="menu"`, `aria-expanded`, arrow keys, Esc | panel headers, widget frames |
 | `ThemeToggle` (new; logic stays in `theme.ts`) | system / light / dark | segmented | selected | `role="radiogroup"` | settings |
 | `Kbd` (new) | keyboard hint | inline | — | `<kbd>` | command palette, help |
+| `BackgroundMotion` (new, spec 006) | the one ambient background layer | `none`, `aurora`, `grid`, `particles`, `grain` | `animating`, `paused` | `aria-hidden="true"`, `pointer-events: none`, no props (reads `<html>` attributes) | app root, landing site |
 
 The hand-written charts (`CategoryBars`, `TrendSparkline`, `YearBars`) stay in
 `packages/ui/src/charts/`, keep their SVG implementation, and are restyled on the tokens; each

@@ -26,7 +26,7 @@ colors:
   flap-raised-dark: "#1f242a"
   glass: "rgb(246 247 247 / 0.72)"
   glass-dark: "rgb(23 27 32 / 0.62)"
-  glass-line: "rgb(20 23 27 / 0.10)"
+  glass-line: "rgb(20 23 27 / 0.1)"
   glass-line-dark: "rgb(242 242 238 / 0.11)"
   frame-line: "#6a727a"
   frame-line-dark: "#5d656e"
@@ -216,7 +216,7 @@ Signal Green is the default. A user may pick one of five alternatives (`data-acc
 - **Board Ink / Letter White** (`board-ink`, `letter-white`; `--color-fg`): text and figures in light and dark.
 - **Steel Mid / Steel Light** (`steel-mid`, `steel-light`; `--color-fg-muted`): column heads, labels, "as of" stamps.
 - **Flap** (`flap`, `flap-raised`, `flap-dark`, `flap-raised-dark`; `--color-surface`, `--color-surface-raised`): the opaque surfaces. Inputs, menus, dialogs, sheets and toasts are raised Flap and stay opaque for legibility; tiles, panels and widget frames use Glass, with opaque Flap as their fallback.
-- **Glass** (`--color-surface-glass`: `rgb(246 247 247 / 0.72)` light, `rgb(23 27 32 / 0.62)` dark; `--blur-surface` 20px with `saturate(140%)`): Flap made translucent for tiles, panels and widget frames. Its edge is a hairline `--color-glass-line` (`rgb(20 23 27 / 0.10)` light, `rgb(242 242 238 / 0.11)` dark). Opacity never drops below 0.66 light or 0.58 dark, which is what keeps text AA over every preset. Under `@supports not (backdrop-filter: blur(1px))`, or when the user turns "Translucent panels" off (`:root[data-panels="solid"]`), Glass becomes `--color-surface-raised`.
+- **Glass** (`--color-surface-glass`: `rgb(246 247 247 / 0.72)` light, `rgb(23 27 32 / 0.62)` dark; `--blur-surface` 20px with `saturate(140%)`): Flap made translucent for tiles, panels and widget frames. Its edge is a hairline `--color-glass-line` (`rgb(20 23 27 / 0.1)` light, `rgb(242 242 238 / 0.11)` dark). Opacity never drops below 0.66 light or 0.58 dark, which is what keeps text AA over every preset. Under `@supports not (backdrop-filter: blur(1px))`, or when the user turns "Translucent panels" off (`:root[data-panels="solid"]`), Glass becomes `--color-surface-raised`.
 - **Frame Line** (`frame-line` / `frame-line-dark`, `--color-border`): control borders, the header rule, table head rules.
 - **Focus Blue** (`focus-blue` / `focus-blue-dark`, `--color-focus`): the focus ring and nothing else; chosen to reach 3:1 on the ground, on a flap and on Signal Green in both themes.
 - **Selection Green** (`selection-green` / `selection-green-dark`, `--color-selection`): selected rows and text.

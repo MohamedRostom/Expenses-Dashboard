@@ -58,3 +58,10 @@ describe('Tile primary figure (T032)', () => {
     expect(w?.textContent).toBe('1 rate pending');
   });
 });
+
+describe('Tile surface (T012)', () => {
+  it('carries the shared .surface class', async () => {
+    const el = await mount({ label: 'Forecast', value: '£1.00' });
+    expect(el.querySelector('[data-tile]')?.classList.contains('surface')).toBe(true);
+  });
+});

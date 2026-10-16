@@ -305,6 +305,33 @@ describe('ownership matrix', () => {
     expect(json.error?.code).toBe('not_found');
   });
 
+  describe('appearance (spec 006)', () => {
+    it("PATCH /me by user A leaves user B's appearance unchanged", async () => {
+      const before = ((await (await userB.get('/me')).json()) as { user: Record<string, unknown> })
+        .user;
+      const res = await userA.patch('/me', {
+        motionPreset: 'aurora',
+        motionColour: '#112233',
+        panelsTranslucent: false,
+        motionPaused: true,
+      });
+      expect(res.status).toBe(200);
+      const after = ((await (await userB.get('/me')).json()) as { user: Record<string, unknown> })
+        .user;
+      for (const k of ['motionPreset', 'motionColour', 'panelsTranslucent', 'motionPaused']) {
+        expect(after[k]).toEqual(before[k]);
+      }
+    });
+
+    it('GET /flags/public is public and returns only the appearance.motion allowlist', async () => {
+      const res = await harness.app.request('/flags/public');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { flags: Record<string, boolean> };
+      expect(Object.keys(body.flags)).toEqual(['appearance.motion']);
+      expect(JSON.stringify(body)).not.toMatch(/@|userId|email/);
+    });
+  });
+
   describe('panels (spec 002)', () => {
     it("GET /panels/today, GET /connections and POST /panels/today/refresh never expose user B's accounts", async () => {
       const bAccount = await createConnectedAccount(userB);
