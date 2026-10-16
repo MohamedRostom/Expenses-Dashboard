@@ -33,6 +33,8 @@ apps/web/src/App.vue                        EDIT mount layer, watch prefs, publi
 apps/web/src/views/SettingsView.vue         EDIT Appearance controls, coalesced auto-save, still preset thumbnails
 apps/web/src/views/*.vue                    EDIT only screens with their own column rules → .board-grid
 apps/landing/src/App.vue                    EDIT mount layer at build time
+apps/landing/src/pages/                     EDIT sections on the shared .surface panel
+apps/web/src/views/{Login,Register,Reset}View.vue  EDIT forms on the shared .surface panel (FR-021)
 DESIGN.md, docs/adr/ADR-0007-premium-identity.md, .specify/memory/constitution.md  identity documents
 tests/e2e/tests/motion.spec.ts              NEW  picker, persistence, pause, reduced motion, reflow, isolation
 ```
@@ -64,4 +66,4 @@ Re-checked after Phase 1 design and again after the second clarify round (2026-1
 
 - **Performance**: `backdrop-filter` on many panels can cost on low-end phones. The opaque switch and the `@supports` fallback cover users; CI measures `/` and `/settings` with Particles against the spec 004 numbers.
 - **Visual baselines**: every snapshot changes. Regenerate once per slice at `--workers=2` (spec 004's stable setting), never with the `manual` project.
-- **Spec 004 is unmerged** (PR #26). This branch builds on `phase-4/ui-baselines` and must rebase once it lands.
+- **Spec 004 merged** (PR #28, 2026-10-16) and this branch is rebased onto `main`. `main`'s `visual` job and the `e2e-local` job were failing before 006 started; T036 and T037 fix them first.
