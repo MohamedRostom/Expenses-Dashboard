@@ -99,7 +99,8 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.accent !== undefined) patch.accent = patchBody.accent;
     if (patchBody.motionPreset !== undefined) patch.motionPreset = patchBody.motionPreset;
-    if (patchBody.motionColour !== undefined) patch.motionColour = patchBody.motionColour;
+    if (patchBody.motionColour !== undefined)
+      patch.motionColour = patchBody.motionColour.toLowerCase();
     if (patchBody.panelsTranslucent !== undefined)
       patch.panelsTranslucent = patchBody.panelsTranslucent;
     if (patchBody.motionPaused !== undefined) patch.motionPaused = patchBody.motionPaused;

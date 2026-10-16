@@ -45,9 +45,9 @@ describe('motion appearance fields (spec 006 contracts/me-appearance.md)', () =>
     }
   });
 
-  it('patch accepts any subset, lowercases the colour, rejects bad values', () => {
+  it('patch accepts any subset and either colour case, rejects bad values', () => {
     expect(PatchMeRequest.parse({})).toEqual({});
-    expect(PatchMeRequest.parse({ motionColour: '#7FD1A8' }).motionColour).toBe('#7fd1a8');
+    expect(PatchMeRequest.parse({ motionColour: '#7FD1A8' }).motionColour).toBe('#7FD1A8');
     expect(
       PatchMeRequest.parse({
         motionPreset: 'aurora',

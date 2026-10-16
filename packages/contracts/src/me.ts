@@ -15,11 +15,10 @@ export const PatchMeRequest = z.object({
   theme: z.string().optional(),
   accent: z.enum(ACCENT_IDS).optional(),
   motionPreset: z.enum(MOTION_PRESET_IDS).optional(),
-  /** Any case in, stored lowercase (contracts/me-appearance.md). */
+  /** Any case in; the API stores it lowercase (contracts/me-appearance.md). No .transform: JSON Schema can't express it. */
   motionColour: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
-    .transform((c) => c.toLowerCase())
     .optional(),
   panelsTranslucent: z.boolean().optional(),
   motionPaused: z.boolean().optional(),
