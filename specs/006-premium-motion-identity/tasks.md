@@ -41,7 +41,7 @@ Added 2026-10-16 at Rostom's request after PR #28 merged and this branch was reb
 **Wave 2 — independent (different files):**
 
 - [ ] **T010** [P] Extend `UserResponse` and `PatchMeRequest` with the four fields (contract tests: enum, colour regex, lowercase) · `packages/contracts/src/auth.ts`, `packages/contracts/src/me.ts`, `packages/contracts/src/accent.test.ts`
-- [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`, `display: none` under `forced-colors: active` (FR-024), and still `.motion-thumb[data-preset]` rules that reuse each preset's drawing with `animation: none` for the picker, research R12) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
+- [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`, `display: none` under `forced-colors: active` (FR-024), and still `.motion-thumb[data-preset]` rules that reuse each preset's drawing with `animation: none` for the picker, research R12) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/components/BackgroundMotion.story.ts` (the inventory test in `tokens.test.ts` needs a story and a row in `specs/004-web-ui-refresh/contracts/blocks.md`), `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
 - [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the panel, tile and widget frames, with their unit tests updated; dialogs, menus and toasts stay on the opaque Overlay surface for legibility. The same opaque fallback applies under `forced-colors: active` and `prefers-reduced-transparency: reduce` without touching the saved switch (FR-024, FR-025, research R11) · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `apps/web/src/components/widgets/WidgetFrame.vue`
 
 **⟶ Wait for Wave 2 to finish, then:**
@@ -117,7 +117,7 @@ Files: `apps/landing/src/App.vue`, `.github/workflows/deploy-staging.yml`, `test
 ### Implementation
 
 - [ ] **T027** [P] [US5] Mount `BackgroundMotion` in the landing app when `VITE_APPEARANCE_MOTION` is `true` (default off), with a landing build test · `apps/landing/src/App.vue`
-- [ ] **T028** [P] [US5] Pass `VITE_APPEARANCE_MOTION` to the landing build from a repo variable in the workflow that builds the landing site (unset means off) · `.github/workflows/deploy-staging.yml`
+- [ ] **T028** [P] [US5] Pass `VITE_APPEARANCE_MOTION` to the landing build from a repo variable in the workflow that builds the landing site (unset means off), and add the announce step (turn the flag on, set the variable, redeploy the landing site) to the release runbook · `.github/workflows/deploy-staging.yml`
 
 ## Phase 8: User Story 6, ship dark until announced (P3)
 

@@ -25,6 +25,8 @@ Rostom reviewed the direction board and decided: replace the Concourse Board ide
 - Q: What happens in Windows high-contrast mode (`forced-colors: active`)? → A: The background layer is hidden and panels are solid in system colours.
 - Q: Should panels go solid when the system asks for reduced transparency? → A: Yes, under `prefers-reduced-transparency: reduce`, without changing the saved switch; motion is unaffected.
 - Q: Do the preset choices in the picker animate? → A: No, each shows a still thumbnail of its first frame in the current tint; the live background is the preview.
+- Q: Should the header bar be see-through glass like the panels, or stay solid? → A: Solid. The header, like dialogs, menus, sheets and toasts, stays an opaque raised surface; only content panels, tiles and widget frames are glass.
+- Q: When the motion is announced, may the landing page show it only after a landing redeploy? → A: Yes. The landing page takes the flag at build time; announcing means turning the flag on and redeploying the landing site, and the release runbook says so.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -156,7 +158,7 @@ The motion picker and colour selector stay off in production until Rostom announ
 - **FR-006**: In light mode, Settings › Appearance MUST show a "Motion colour" selector with six stored swatches (Signal mint #7fd1a8, Platform blue #8fb3ff, Lamp amber #f5c27a, Dusk violet #c9a7ff, Coral #ff9fb2, Silver #e9edf2) and a custom colour; the default is Signal mint.
 - **FR-007**: In dark mode the Motion colour selector MUST be hidden and the moving layer MUST use a fixed dark-tuned tint; the user's light-mode colour MUST be kept and restored on returning to light.
 - **FR-008**: The chosen motion colour MUST be saved to the user's account alongside the preset.
-- **FR-009**: Every signed-in screen MUST present content on raised translucent panels with 16 px corners over the background layer, falling back to an opaque surface of the same colour where translucency is not supported.
+- **FR-009**: Every signed-in screen MUST present content on raised translucent panels with 16 px corners over the background layer, falling back to an opaque surface of the same colour where translucency is not supported. The header, dialogs, menus, sheets and toasts stay opaque.
 - **FR-010**: Panels MUST reflow by screen width: one column at phone width (360 px), two columns at tablet width (768 px), the full grid on desktop, with content no wider than 1160 px; no signed-in screen may scroll horizontally at 360, 768 or 1280 px wide, apart from wide tables inside their own scroll box.
 - **FR-011**: Under a system request for reduced motion, every preset MUST show a still frame with no movement.
 - **FR-012**: The background animation MUST pause while the page is hidden and resume when it is shown.
@@ -168,7 +170,7 @@ The motion picker and colour selector stay off in production until Rostom announ
 - **FR-018**: Each user MUST only ever read and change their own appearance choices; the ownership matrix test covers the appearance endpoints for user A × user B.
 - **FR-019**: The new identity MUST keep the existing rules that are not about look: three theme states (light, dark by system, dark by choice), tabular figures for every amount, status colours never reused as chart series or motion tints, skeleton, empty and error states on every panel.
 - **FR-020**: Signed-in performance and accessibility scores on `/` and `/settings` MUST NOT fall below their current recorded values with Particles or Aurora drift (the costliest preset) selected, and the accessibility score MUST stay at or above 95.
-- **FR-021**: Signed-out pages (sign-in, sign-up, password reset, landing) MUST use the same panels and reflow rules and show the default motion (Particles; Signal mint in light, the fixed dark tint in dark), never a signed-in user's choices; the landing page MUST keep performance ≥ 90 and accessibility ≥ 95.
+- **FR-021**: Signed-out pages (sign-in, sign-up, password reset, landing) MUST use the same panels and reflow rules and show the default motion (Particles; Signal mint in light, the fixed dark tint in dark), never a signed-in user's choices; the landing page MUST keep performance ≥ 90 and accessibility ≥ 95. The landing page reads the flag when it is built, so turning the flag on reaches it only after a landing redeploy.
 - **FR-022**: Settings › Appearance MUST offer a "Translucent panels" switch, on by default and saved to the account; off shows opaque panels of the same colour on every screen.
 - **FR-023**: Settings › Appearance MUST offer a "Pause background motion" switch, off by default and saved to the account; on shows the chosen preset's still frame on every screen, independently of the system reduced-motion setting (which always forces stillness).
 - **FR-024**: Under `forced-colors: active` the background layer MUST NOT render and panels MUST be solid in system colours.
