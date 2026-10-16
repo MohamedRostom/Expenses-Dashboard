@@ -198,6 +198,19 @@ export async function nextMockAccount(provider: 'google' | 'microsoft'): Promise
 }
 
 /**
+ * A one-hour Google event tomorrow at 12:00 UTC. A `now + 24h` event crosses midnight when CI runs
+ * late in the day, and the calendar panel then lists it under both days, so `getByText` matches
+ * twice. Noon UTC stays inside one day for any time zone from UTC-11 to UTC+11.
+ */
+export function tomorrowNoonEvent(): { start: { dateTime: string }; end: { dateTime: string } } {
+  const start = new Date();
+  start.setUTCDate(start.getUTCDate() + 1);
+  start.setUTCHours(12, 0, 0, 0);
+  const end = new Date(start.getTime() + 60 * 60 * 1000);
+  return { start: { dateTime: start.toISOString() }, end: { dateTime: end.toISOString() } };
+}
+
+/**
  * Spec 003 T045: drives the Open-Meteo mock (infra/mocks/src/open-meteo.ts), mounted at /open-meteo.
  * Process-wide state, so call `pauseSource(0)`, `failAll(false)` and `usePolar(null)` to reset.
  */
