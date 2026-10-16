@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { Toast } from '@desk/ui';
+import { BackgroundMotion, Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyAccent, applyTheme } from './views/theme.js';
+import { applyAccent, applyMotion, applyTheme } from './views/theme.js';
 
 const route = useRoute();
 const session = useSessionStore();
@@ -22,6 +22,46 @@ watch(
 watch(
   () => [session.user?.accent, flags.isOn('appearance.accent')] as const,
   ([accent, enabled]) => applyAccent(accent, enabled),
+  { immediate: true },
+);
+// Spec 006: background motion state on <html>. Theme is applied first (applyMotion reads it), and
+// the state is re-derived on theme, flag, prefs, tab visibility and system colour-scheme changes.
+const hidden = ref(typeof document !== 'undefined' && document.visibilityState === 'hidden');
+const onVisibility = () => (hidden.value = document.visibilityState === 'hidden');
+const dark = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+const scheme = ref(0);
+const onScheme = () => scheme.value++;
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibility);
+  dark?.addEventListener?.('change', onScheme);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibility);
+  dark?.removeEventListener?.('change', onScheme);
+});
+watch(
+  () =>
+    [
+      session.user?.theme,
+      session.user?.motionPreset,
+      session.user?.motionColour,
+      session.user?.panelsTranslucent,
+      session.user?.motionPaused,
+      flags.isOn('appearance.motion'),
+      hidden.value,
+      scheme.value,
+    ] as const,
+  () =>
+    applyMotion(session.user ?? null, {
+      enabled: flags.isOn('appearance.motion'),
+      hidden: hidden.value,
+    }),
+  { immediate: true, flush: 'post' },
+);
+// Flags follow the auth state: public set signed out, full set signed in (the store dedupes).
+watch(
+  () => !!session.user,
+  () => flags.load(),
   { immediate: true },
 );
 // Signed-in app screens only: auth pages and the onboarding wizard stay chrome-free.
@@ -47,6 +87,7 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
       <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
     </nav>
   </header>
+  <BackgroundMotion />
   <RouterView />
   <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
   <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />

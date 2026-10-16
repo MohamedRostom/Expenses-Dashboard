@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useFlagsStore } from './flags';
 import * as client from '../api/client';
+import { useSessionStore } from './session';
 
 vi.mock('../api/client', () => ({
   apiFetch: vi.fn(),
@@ -22,11 +23,24 @@ describe('FlagsStore', () => {
     await store.load();
 
     expect(mockFetch).toHaveBeenCalledOnce();
-    expect(mockFetch).toHaveBeenCalledWith('/flags');
+    expect(mockFetch).toHaveBeenCalledWith('/flags/public'); // no session user
     expect(store.flags).toEqual({
       'panels.today': true,
       'panels.google_calendar': false,
     });
+  });
+
+  it('loads /flags when signed in, and reloads the other endpoint on sign-out', async () => {
+    const mockFetch = vi.spyOn(client, 'apiFetch').mockResolvedValue({ flags: {} });
+    const session = useSessionStore();
+    const store = useFlagsStore();
+    session.user = { id: '1' } as never;
+    await store.load();
+    await store.load(); // same state: no second request
+    expect(mockFetch.mock.calls.map((c) => c[0])).toEqual(['/flags']);
+    session.user = null;
+    await store.load();
+    expect(mockFetch.mock.calls.map((c) => c[0])).toEqual(['/flags', '/flags/public']);
   });
 
   it('isOn returns true for on flags', async () => {

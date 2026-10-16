@@ -9,8 +9,14 @@ import { useSessionStore } from './stores/session.js';
 
 const stub = { template: '<div />' };
 
-async function mount(path: string, signedIn: boolean) {
-  vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('{}', { status: 200 })));
+async function mount(
+  path: string,
+  signedIn: boolean,
+  fetchImpl: ReturnType<typeof vi.fn> = vi
+    .fn()
+    .mockResolvedValue(new Response('{}', { status: 200 })),
+) {
+  vi.stubGlobal('fetch', fetchImpl);
   const router = createRouter({
     history: createMemoryHistory(),
     routes: [
@@ -49,6 +55,75 @@ async function mount(path: string, signedIn: boolean) {
   await nextTick();
   return { el, app };
 }
+
+describe('App background motion (spec 006 T017)', () => {
+  const urls = (f: ReturnType<typeof vi.fn>) =>
+    f.mock.calls.map((c) => String(c[0]).replace(/^.*\/api/, ''));
+  const flagFetch = () =>
+    vi
+      .fn()
+      .mockImplementation(
+        async (url: string) =>
+          new Response(
+            JSON.stringify(
+              String(url).includes('/flags') ? { flags: { 'appearance.motion': true } } : {},
+            ),
+            { status: 200 },
+          ),
+      );
+  const flush = async () => {
+    for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+  };
+  const setVisibility = (s: 'hidden' | 'visible') => {
+    Object.defineProperty(document, 'visibilityState', { value: s, configurable: true });
+    document.dispatchEvent(new Event('visibilitychange'));
+  };
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+    setVisibility('visible');
+    document.documentElement.removeAttribute('data-motion-paused');
+  });
+
+  it('renders the background layer once', async () => {
+    const { el, app } = await mount('/', true, flagFetch());
+    expect(el.querySelectorAll('[data-testid="background-motion"]')).toHaveLength(1);
+    app.unmount();
+  });
+
+  it('pauses while the tab is hidden and resumes when visible (user has not paused)', async () => {
+    const { app } = await mount('/', true, flagFetch());
+    await flush();
+    const html = document.documentElement;
+    expect(html.hasAttribute('data-motion-paused')).toBe(false);
+    setVisibility('hidden');
+    await nextTick();
+    expect(html.hasAttribute('data-motion-paused')).toBe(true);
+    setVisibility('visible');
+    await nextTick();
+    expect(html.hasAttribute('data-motion-paused')).toBe(false);
+    app.unmount();
+  });
+
+  it('signed out requests /flags/public and never /flags', async () => {
+    const f = flagFetch();
+    const { app } = await mount('/login', false, f);
+    await flush();
+    expect(urls(f)).toContain('/flags/public');
+    expect(urls(f)).not.toContain('/flags');
+    app.unmount();
+  });
+
+  it('signed in requests /flags and never /flags/public', async () => {
+    const f = flagFetch();
+    const { app } = await mount('/', true, f);
+    await flush();
+    expect(urls(f)).toContain('/flags');
+    expect(urls(f)).not.toContain('/flags/public');
+    app.unmount();
+  });
+});
 
 describe('App nav', () => {
   afterEach(() => {

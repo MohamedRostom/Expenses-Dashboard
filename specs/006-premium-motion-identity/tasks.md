@@ -54,8 +54,8 @@ Added 2026-10-16 at Rostom's request after PR #28 merged and this branch was reb
 
 **⟶ Wait for Wave 3 to finish, then:**
 
-- [ ] **T016** Regenerate the OpenAPI document · `packages/contracts/openapi.json`
-- [ ] **T017** Write `App.test.ts` cases first (the layer is mounted behind `<RouterView>`; `visibilitychange` to hidden sets `data-motion-paused` and back to visible clears it unless the user paused; signed out, `GET /flags/public` is requested and `GET /flags` is not), then mount `BackgroundMotion` behind `<RouterView>`, add `applyMotion` to the session and flags watch, set `data-motion-paused` on `visibilitychange`, and load `GET /flags/public` when signed out · `apps/web/src/App.vue`, `apps/web/src/App.test.ts`, `apps/web/src/stores/flags.ts`
+- [x] **T016** Regenerate the OpenAPI document · `packages/contracts/openapi.json`
+- [x] **T017** Write `App.test.ts` cases first (the layer is mounted behind `<RouterView>`; `visibilitychange` to hidden sets `data-motion-paused` and back to visible clears it unless the user paused; signed out, `GET /flags/public` is requested and `GET /flags` is not), then mount `BackgroundMotion` behind `<RouterView>`, add `applyMotion` to the session and flags watch, set `data-motion-paused` on `visibilitychange`, and load `GET /flags/public` when signed out · `apps/web/src/App.vue`, `apps/web/src/App.test.ts`, `apps/web/src/stores/flags.ts`
 
 **Checkpoint**: every screen renders the new panels over the background, and the layer follows the html attributes.
 
