@@ -1,7 +1,7 @@
 # Token Contract: Web UI Refresh
 
 What every screen, block and the landing page may consume from `packages/ui/src/tokens.css`.
-Names are fixed here; values are set by the approved `docs/design/DESIGN.md` (the current
+Names are fixed here; values are set by the approved `DESIGN.md` (the current
 values remain until then). `packages/ui/src/tokens.test.ts` asserts the invariants at the end.
 
 ## Names
@@ -10,7 +10,7 @@ values remain until then). `packages/ui/src/tokens.test.ts` asserts the invarian
 Font        --font-sans  --font-mono
 Type        --text-xs  --text-sm  --text-md  --text-lg  --text-xl  --text-2xl  --text-display
             --leading-xs … --leading-display   (one line height per size)
-            --tracking-tight  --tracking-normal
+            --tracking-tight  --tracking-normal  --tracking-wide (0.08em, small spaced capitals; added T026)
 Spacing     --space-1 (4px) --space-2 (8px) --space-3 (12px) --space-4 (16px) --space-5 (20px)
             --space-6 (24px) --space-8 (32px) --space-10 (40px) --space-12 (48px)
             --space-16 (64px) --space-20 (80px) --space-24 (96px)
@@ -54,6 +54,18 @@ Layout      --target-min (44px)  --content-max (72rem)  --gutter (--space-4 at p
 | `--color-focus` | `--color-bg`, `--color-surface`, `--color-accent` | 3:1 |
 | `--color-border` | `--color-bg` | 3:1 |
 
+## Accent presets (FR-019)
+
+`:root[data-accent=ID]` (light), `:root:not([data-theme="light"])[data-accent=ID]` (system dark, inside the media query) and `:root[data-theme="dark"][data-accent=ID]` (explicit dark) override `--color-accent`, `--color-accent-fg` and `--color-selection` only; nested-wrapper forms (`[data-accent=ID][data-theme=light|dark]`) share the same rules. Both dark blocks are identical. No new token names. Every preset passes the contrast pairs above in all three states, `--color-fg` on `--color-selection` >= 4.5:1, and has a hue outside 0 to 60 degrees.
+
+| Preset | Light accent | Dark accent |
+|---|---|---|
+| `concourse-blue` | `#11325f` | `#2368c7` |
+| `platform-teal` | `#083a38` | `#117471` |
+| `violet` | `#432664` | `#8451bd` |
+| `slate` | `#2a333c` | `#586b7e` |
+| `plum` | `#511f4b` | `#a63f99` |
+
 ## Consumption rules (drift test)
 
 Allowed in `apps/web/src`, `apps/landing/src`, `packages/ui/src/components`:
@@ -63,3 +75,7 @@ Allowed in `apps/web/src`, `apps/landing/src`, `packages/ui/src/components`:
 Forbidden anywhere outside `tokens.css`: hex or `rgb()`/`hsl()` colours, `font-size` in `px`
 or `rem` literals, `margin`/`padding`/`gap` in `px` or `rem` literals, `transition-duration`
 literals. The test names the file and line of every hit.
+
+Files listed in `packages/ui/src/drift-pending.json` are skipped until their refresh change
+removes them; a listed file that is already clean also fails, so the list can only shrink
+(research R12).

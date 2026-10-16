@@ -1,0 +1,119 @@
+/* T027a: motion for the mock-ups (DESIGN.md §Motion). Imported by board.css. Every duration
+   is a --motion-* token (fast 120, base 200, slow 280, all 0ms under reduced motion); only
+   transform and opacity animate; nothing loops here (the skeleton pulse lives in board.css). */
+
+/* Settle-in: a mock adds `mk-settle` once on mount; `--i` (0..5) staggers six steps. */
+.mk-settle {
+  animation: mk-settle-in var(--motion-base) var(--ease-standard) both;
+  animation-delay: calc(min(var(--i, 0), 5) * var(--motion-stagger));
+}
+@keyframes mk-settle-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* <TransitionGroup name="mk-list">: enter drops in, leave collapses, siblings glide. */
+.mk-list-enter-active {
+  transition:
+    opacity var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+.mk-list-enter-from {
+  opacity: 0;
+  transform: translateY(-8px);
+}
+.mk-list-leave-active {
+  transform-origin: 50% 0;
+  transition:
+    opacity var(--motion-fast) var(--ease-exit),
+    transform var(--motion-fast) var(--ease-exit);
+}
+.mk-list-leave-to {
+  opacity: 0;
+  transform: scaleY(0);
+}
+.mk-list-move {
+  transition: transform var(--motion-base) var(--ease-standard);
+}
+
+/* Hover lift: pointer devices only. Raised stacked twice deepens the shadow; no new elevation. */
+@media (hover: hover) {
+  .mk-lift {
+    transition:
+      transform var(--motion-fast) var(--ease-standard),
+      box-shadow var(--motion-fast) var(--ease-standard);
+  }
+  .mk-lift:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-raised), var(--shadow-raised);
+  }
+}
+
+/* Bars grow from their baseline only while the mock holds `mk-growing` (set during a month change). */
+.mk-growing .mk-bar-fill {
+  transform-box: fill-box;
+  transform-origin: 0 50%;
+  animation: mk-bar-grow var(--motion-base) var(--ease-standard) both;
+}
+@keyframes mk-bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Sheet slides up (slow); menu fades and scales from 0.98 (fast). */
+.mk-sheet-enter-active,
+.mk-sheet-leave-active {
+  transition: transform var(--motion-slow) var(--ease-standard);
+}
+.mk-sheet-enter-from,
+.mk-sheet-leave-to {
+  transform: translateY(100%);
+}
+.mk-menu-enter-active,
+.mk-menu-leave-active {
+  transition:
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+.mk-menu-enter-from,
+.mk-menu-leave-to {
+  opacity: 0;
+  transform: scale(0.98);
+}
+
+/* Widget wrapper: an inline-size container, so a widget reflows by its own column width. */
+.mk-widget {
+  container-type: inline-size;
+}
+@container (max-width: 14rem) {
+  .mk-widget-meta {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-settle,
+  .mk-growing .mk-bar-fill {
+    animation: none;
+  }
+  .mk-lift,
+  .mk-list-move,
+  .mk-list-enter-active,
+  .mk-list-leave-active,
+  .mk-sheet-enter-active,
+  .mk-sheet-leave-active,
+  .mk-menu-enter-active,
+  .mk-menu-leave-active {
+    transition: none;
+  }
+}

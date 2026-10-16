@@ -32,23 +32,26 @@ async function onSubmit() {
 </script>
 
 <template>
-  <div class="auth-view">
+  <main class="auth-view">
     <h1>Set a new password</h1>
 
-    <div v-if="done" class="check-email">
-      <p>Your password was reset. <router-link to="/login">Sign in</router-link></p>
+    <div v-if="done" role="status">
+      <p class="auth-links">
+        Your password was reset. <router-link to="/login">Sign in</router-link>
+      </p>
     </div>
 
-    <ErrorState
-      v-else-if="tokenError"
-      :code="tokenError.code"
-      title="That link expired or was already used"
-      description="Request a new reset link to continue."
-    >
-      <template #action>
-        <Button variant="secondary" @click="router.push('/forgot')">Get a new link</Button>
-      </template>
-    </ErrorState>
+    <div v-else-if="tokenError" role="alert">
+      <ErrorState
+        :code="tokenError.code"
+        title="That link expired or was already used"
+        description="Request a new reset link to continue."
+      >
+        <template #action>
+          <Button variant="secondary" @click="router.push('/forgot')">Get a new link</Button>
+        </template>
+      </ErrorState>
+    </div>
 
     <form v-else @submit.prevent="onSubmit">
       <Input
@@ -59,22 +62,46 @@ async function onSubmit() {
       />
       <Button type="submit" :loading="submitting" :disabled="submitting">Reset password</Button>
     </form>
-  </div>
+  </main>
 </template>
 
 <style scoped>
 .auth-view {
   max-width: 24rem;
-  margin: 2rem auto;
+  margin: var(--space-8) auto;
+  padding-inline: var(--gutter);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
-form {
+.auth-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.auth-view p {
+  margin: 0;
+}
+form,
+.resend-form {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
+}
+.auth-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--color-fg);
+  text-decoration: underline;
+}
+@media (min-width: 1024px) {
+  .auth-links a {
+    min-height: 24px;
+  }
 }
 </style>

@@ -87,6 +87,19 @@ describe('db seed', () => {
       }
     });
 
+    it('seeds the appearance.accent flag off', async () => {
+      const url = container.getConnectionUri();
+      await seed(url);
+      const { db, close } = createDb(url);
+      try {
+        const rows = await db.select().from(flags).where(eq(flags.key, 'appearance.accent'));
+        expect(rows).toHaveLength(1);
+        expect(rows[0]!.defaultOn).toBe(false);
+      } finally {
+        await close();
+      }
+    });
+
     it('flagsOn switches the five widgets.* flags on but not paused_until', async () => {
       const url = container.getConnectionUri();
       const { db, close } = createDb(url);

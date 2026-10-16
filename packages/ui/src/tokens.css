@@ -1,16 +1,67 @@
-/* Design tokens ported from the personal dashboard. Three theme states:
-   bare :root = light; system dark unless the user chose light; explicit dark. */
+/* Light selector lists [data-theme='light'] first: palette.test.ts finds the light block by indexOf(':root {'). */
+/* Design tokens: three theme states. bare :root = light; system dark unless the user chose light;
+   explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10). */
+[data-theme='light'],
 :root {
-  --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
-  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --color-bg: #f2f4f7;
-  --color-fg: #121820;
-  --color-accent: #1f6e5a;
-  /* #a8641a against --color-bg (#f2f4f7) is ~4.23:1 — axe's color-contrast rule (WCAG AA needs
-     4.5:1 for normal text) failed on MonthView.vue's "N pending rate lookups" text, which uses
-     this token directly, not just a light background tint of it. Darkened to restore AA. */
-  --color-warn: #8f5810;
-  --color-critical: #a83a2e;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace;
+  --color-bg: #e8eaeb;
+  --color-surface: #f6f7f7;
+  --color-surface-raised: #ffffff;
+  --color-border: #6a727a;
+  --color-fg: #14171b;
+  --color-fg-muted: #4b535b;
+  --color-accent: #0e3d2a;
+  --color-accent-fg: #f6f7f7;
+  --color-focus: #4d80da;
+  --color-warn: #8a5a00;
+  --color-critical: #b00020;
+  --color-selection: #d8e6de;
+  --shadow-raised: 0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06);
+  --shadow-overlay: 0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08);
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+  --text-display: 2.5rem;
+  --text-display-fluid: clamp(2rem, 1.804rem + 0.8701vw, 2.5rem);
+  --leading-xs: 1rem;
+  --leading-sm: 1.25rem;
+  --leading-md: 1.5rem;
+  --leading-lg: 1.75rem;
+  --leading-xl: 2rem;
+  --leading-2xl: 2.25rem;
+  --leading-display: 3rem;
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.08em;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --motion-stagger: 40ms;
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+  --motion-slow: 280ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --target-min: 44px;
+  --content-max: 72rem;
+  --gutter: var(--space-4);
+  --gutter-fluid: clamp(1rem, 0.1176rem + 3.9216vw, 2rem);
   /* T062: fixed eight-colour connected-account palette (FR-004, FR-024). Each value is checked
      by packages/ui/src/palette.test.ts to be >= 3:1 (WCAG 1.4.11 non-text contrast) against
      --color-bg in both themes. Names match the server's COLOUR_PALETTE ids
@@ -27,12 +78,20 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --color-bg: #121820;
-    --color-fg: #f2f4f7;
-    --color-accent: #5fbf9f;
-    /* The light-mode value darkened above would fail even worse here (~3.8:1 already, before
-       darkening) against this dark background — needs a lighter, not darker, variant. */
-    --color-warn: #d99a4e;
+    --color-bg: #0e1114;
+    --color-surface: #171b20;
+    --color-surface-raised: #1f242a;
+    --color-border: #5d656e;
+    --color-fg: #f2f2ee;
+    --color-fg-muted: #a7adb3;
+    --color-accent: #2c7452;
+    --color-accent-fg: #f2f2ee;
+    --color-focus: #a6caff;
+    --color-warn: #ffb000;
+    --color-critical: #ff6b6b;
+    --color-selection: #20332b;
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
+    --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
     --palette-teal: #5fd6b8;
     --palette-blue: #7fb2ff;
     --palette-violet: #c9a6ff;
@@ -43,11 +102,22 @@
     --palette-slate: #b9c6d4;
   }
 }
-:root[data-theme='dark'] {
-  --color-bg: #121820;
-  --color-fg: #f2f4f7;
-  --color-accent: #5fbf9f;
-  --color-warn: #d99a4e;
+:root[data-theme='dark'],
+[data-theme='dark'] {
+  --color-bg: #0e1114;
+  --color-surface: #171b20;
+  --color-surface-raised: #1f242a;
+  --color-border: #5d656e;
+  --color-fg: #f2f2ee;
+  --color-fg-muted: #a7adb3;
+  --color-accent: #2c7452;
+  --color-accent-fg: #f2f2ee;
+  --color-focus: #a6caff;
+  --color-warn: #ffb000;
+  --color-critical: #ff6b6b;
+  --color-selection: #20332b;
+  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
   --palette-teal: #5fd6b8;
   --palette-blue: #7fb2ff;
   --palette-violet: #c9a6ff;
@@ -56,4 +126,118 @@
   --palette-amber: #e8c25a;
   --palette-green: #8fdc8f;
   --palette-slate: #b9c6d4;
+}
+/* User-selectable accent presets (FR-019). After the theme blocks so they win; the bare [data-accent]
+   forms serve a nested wrapper (catalogue row). signal-green is the default and needs no block. */
+:root[data-accent='concourse-blue'],
+[data-accent='concourse-blue'][data-theme='light'] {
+  --color-accent: #11325f;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d8dfe9;
+}
+:root[data-accent='platform-teal'],
+[data-accent='platform-teal'][data-theme='light'] {
+  --color-accent: #083a38;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d7eae9;
+}
+:root[data-accent='violet'],
+[data-accent='violet'][data-theme='light'] {
+  --color-accent: #432664;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #e0dbe6;
+}
+:root[data-accent='slate'],
+[data-accent='slate'][data-theme='light'] {
+  --color-accent: #2a333c;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #dee0e3;
+}
+:root[data-accent='plum'],
+[data-accent='plum'][data-theme='light'] {
+  --color-accent: #511f4b;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #e6dbe4;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light'])[data-accent='concourse-blue'] {
+    --color-accent: #2368c7;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #1d2734;
+  }
+  :root:not([data-theme='light'])[data-accent='platform-teal'] {
+    --color-accent: #117471;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #1d3534;
+  }
+  :root:not([data-theme='light'])[data-accent='violet'] {
+    --color-accent: #8451bd;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #282130;
+  }
+  :root:not([data-theme='light'])[data-accent='slate'] {
+    --color-accent: #586b7e;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #26292c;
+  }
+  :root:not([data-theme='light'])[data-accent='plum'] {
+    --color-accent: #a63f99;
+    --color-accent-fg: #f2f2ee;
+    --color-selection: #30212e;
+  }
+}
+:root[data-theme='dark'][data-accent='concourse-blue'],
+[data-accent='concourse-blue'][data-theme='dark'] {
+  --color-accent: #2368c7;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #1d2734;
+}
+:root[data-theme='dark'][data-accent='platform-teal'],
+[data-accent='platform-teal'][data-theme='dark'] {
+  --color-accent: #117471;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #1d3534;
+}
+:root[data-theme='dark'][data-accent='violet'],
+[data-accent='violet'][data-theme='dark'] {
+  --color-accent: #8451bd;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #282130;
+}
+:root[data-theme='dark'][data-accent='slate'],
+[data-accent='slate'][data-theme='dark'] {
+  --color-accent: #586b7e;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #26292c;
+}
+:root[data-theme='dark'][data-accent='plum'],
+[data-accent='plum'][data-theme='dark'] {
+  --color-accent: #a63f99;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #30212e;
+}
+@media (min-width: 768px) {
+  :root {
+    --gutter: var(--space-8);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast: 0ms;
+    --motion-base: 0ms;
+    --motion-slow: 0ms;
+    --motion-stagger: 0ms;
+  }
+}
+/* Signal Green on a nested wrapper only (the Settings accent picker draws every preset's swatch under
+   a root that may carry another preset). The root needs no block; values are the base theme values. */
+[data-accent='signal-green'][data-theme='light'] {
+  --color-accent: #0e3d2a;
+  --color-accent-fg: #f6f7f7;
+  --color-selection: #d8e6de;
+}
+[data-accent='signal-green'][data-theme='dark'] {
+  --color-accent: #2c7452;
+  --color-accent-fg: #f2f2ee;
+  --color-selection: #20332b;
 }

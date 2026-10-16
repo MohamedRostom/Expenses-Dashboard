@@ -3,6 +3,8 @@ import { createRouter, createMemoryHistory } from 'vue-router';
 import { createApp, nextTick } from 'vue';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App.vue';
+import appSource from './App.vue?raw';
+import feedbackSource from './components/FeedbackWidget.vue?raw';
 import { useSessionStore } from './stores/session.js';
 
 const stub = { template: '<div />' };
@@ -64,6 +66,41 @@ describe('App nav', () => {
     const { el, app } = await mount('/', true);
     const nav = el.querySelector('nav') as HTMLElement;
     expect(getComputedStyle(nav).flexWrap).toBe('wrap');
+    app.unmount();
+  });
+
+  it('marks the current link aria-current=page and never colours link text with the accent', async () => {
+    const { el, app } = await mount('/', true);
+    const current = el.querySelectorAll('nav a[aria-current="page"]');
+    expect(current).toHaveLength(1);
+    expect(current[0]!.textContent).toBe('Month');
+    // Class contract (CSS is not applied in jsdom): no nav rule sets the accent as text colour;
+    // the current link uses the accent only for its 2px underline.
+    const rules = appSource.match(/\.desk-nav[^{]*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const r of rules) expect(r).not.toMatch(/(^|[;{\s])color:\s*var\(--color-accent\)/);
+    expect(appSource).toMatch(/border-bottom-color:\s*var\(--color-accent\)/);
+    app.unmount();
+  });
+
+  it('draws the Feedback trigger with the Button block and no literal colours (dark contrast)', async () => {
+    const { el, app } = await mount('/', true);
+    const trigger = el.querySelector('.feedback-widget button') as HTMLElement;
+    expect(trigger.classList.contains('desk-btn')).toBe(true);
+    expect(trigger.classList.contains('secondary')).toBe(true);
+    expect(trigger.getAttribute('aria-expanded')).toBe('false');
+    trigger.click();
+    await nextTick();
+    expect(trigger.getAttribute('aria-expanded')).toBe('true');
+    const controls = trigger.getAttribute('aria-controls')!;
+    expect(el.querySelector(`#${controls}`)).not.toBeNull();
+    expect(appSource).toMatch(
+      /\.desk-header\s*\{[^}]*border-bottom:\s*1px solid var\(--color-border\)/,
+    );
+    expect(feedbackSource).not.toMatch(/2713/);
+    expect(feedbackSource).not.toMatch(/color:\s*white|rgba?\(/);
+    expect(feedbackSource).toMatch(/--shadow-overlay/);
+    expect(feedbackSource).toMatch(/--shadow-raised/);
     app.unmount();
   });
 

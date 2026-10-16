@@ -16,11 +16,11 @@ defineProps<{ title: string; description?: string }>();
   font-family: var(--font-sans);
   color: var(--color-fg);
   text-align: center;
-  padding: 2rem 1rem;
+  padding: var(--space-8) var(--space-4);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 .desk-empty-title {
   font-weight: 600;
@@ -28,7 +28,9 @@ defineProps<{ title: string; description?: string }>();
 }
 .desk-empty-desc {
   margin: 0;
-  opacity: 0.75;
-  font-size: 0.9rem;
+  max-width: 40ch;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 </style>

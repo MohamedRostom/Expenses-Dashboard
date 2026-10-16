@@ -34,14 +34,15 @@ const length = computed(() => {
 
 <style scoped>
 .desk-sunrise p {
-  margin: 0.15rem 0;
+  margin: var(--space-1) 0;
 }
 .desk-sunrise-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
 .desk-sunrise-meta {
-  font-size: 0.75rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 </style>

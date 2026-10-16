@@ -1,0 +1,49 @@
+name: update-snapshots
+
+# Re-renders the @visual baselines in the pinned Playwright image (research R6) and uploads them
+# as one artifact; download it and commit the images (docs/runbooks/visual-snapshots.md).
+on: workflow_dispatch
+
+jobs:
+  update-snapshots:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup
+      - id: pw
+        run: |
+          echo "version=$(node -p "require('./tests/e2e/package.json').devDependencies['@playwright/test']")" >> "$GITHUB_OUTPUT"
+          echo "pnpm=$(node -p "require('./package.json').packageManager.split('@')[1]")" >> "$GITHUB_OUTPUT"
+      - run: docker compose -f infra/docker-compose.yml up --build --wait
+        env:
+          GIT_SHA: ${{ github.sha }}
+      - run: for f in today google_calendar google_mail microsoft standards; do pnpm flags set "panels.$f" --global on; done
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
+      - run: for f in currency weather sunrise spend_pace fixed_costs; do pnpm flags set "widgets.$f" --global on; done
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
+      # The container gets its own node_modules (anonymous volumes over the host's) so Linux-musl/glibc
+      # native packages never mix with the runner's; pnpm is installed inside, filtered to @desk/e2e.
+      - name: Render snapshots
+        run: |
+          docker run --rm --network host --ipc=host \
+            -v "$PWD:/work" -v /work/node_modules -v /work/tests/e2e/node_modules \
+            -w /work \
+            -e E2E_BASE_URL=http://localhost:5173 -e CI=true \
+            mcr.microsoft.com/playwright:v${{ steps.pw.outputs.version }}-noble \
+            bash -lc "npx -y pnpm@${{ steps.pw.outputs.pnpm }} install --frozen-lockfile --filter @desk/e2e... && cd tests/e2e && npx playwright test --project=visual --update-snapshots && npx playwright test --project=screenshots"
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-snapshots
+          path: |
+            tests/e2e/tests/*.spec.ts-snapshots/
+            apps/landing/public/screenshots/
+          retention-days: 7
+          if-no-files-found: warn
+      - if: failure()
+        run: docker compose -f infra/docker-compose.yml logs
+      - if: always()
+        run: docker compose -f infra/docker-compose.yml down -v

@@ -1,6 +1,11 @@
 import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { signUpAndVerify, mockProvider, nextMockAccount } from '../fixtures/index.js';
+import {
+  signUpAndVerify,
+  mockProvider,
+  nextMockAccount,
+  tomorrowNoonEvent,
+} from '../fixtures/index.js';
 
 /**
  * T075 (ci): browser-level complement to the ownership matrix (apps/api/test/ownership.test.ts,
@@ -75,8 +80,7 @@ test.describe('Panel isolation between users @ci', () => {
     await mockProvider('google', keyA).addEvent('primary', {
       id: 'evt-alice-only',
       summary: 'OnlyForAlice',
-      start: { dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
-      end: { dateTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString() },
+      ...tomorrowNoonEvent(),
     });
     await mockProvider('google', keyA).addMessage({
       id: 'msg-alice-only',
@@ -96,8 +100,7 @@ test.describe('Panel isolation between users @ci', () => {
     await mockProvider('google', keyB).addEvent('primary', {
       id: 'evt-bob-only',
       summary: 'OnlyForBob',
-      start: { dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
-      end: { dateTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString() },
+      ...tomorrowNoonEvent(),
     });
     backdateLastRefresh(emailB, 'google', 3);
     await waitForOwnEvent(pageB, 'OnlyForBob');

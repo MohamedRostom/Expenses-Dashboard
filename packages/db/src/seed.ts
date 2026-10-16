@@ -28,6 +28,7 @@ const DEFAULT_FLAGS: { key: string; description: string }[] = [
   { key: 'panels.google_mail', description: 'Google Mail panel (gated on CASA assessment)' },
   { key: 'panels.microsoft', description: 'Microsoft Outlook Calendar and Mail panels' },
   { key: 'panels.standards', description: 'IMAP and CalDAV standards-based panels' },
+  { key: 'appearance.accent', description: 'User-selectable accent colour presets' },
   { key: 'widgets.currency', description: 'Currency dashboard widget' },
   { key: 'widgets.weather', description: 'Weather dashboard widget' },
   { key: 'widgets.sunrise', description: 'Sunrise and sunset dashboard widget' },

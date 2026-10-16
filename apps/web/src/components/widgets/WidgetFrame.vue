@@ -1,14 +1,17 @@
 <script setup lang="ts">
+/** The widget frame: a raised flap with header, drag grip, menu and banner (DESIGN.md Components,
+ * compact widget variant). Moved out of @desk/ui's PanelFrame (T042): the copy and the Categories
+ * link are widget-specific. Loading and error bodies are PanelFrame states. */
 import { computed } from 'vue';
-import type { WidgetT, WidgetCauseT } from '@desk/contracts';
-import PanelState from '../PanelState.vue';
+import { PanelFrame } from '@desk/ui';
+import type { WidgetT } from '@desk/contracts';
 
 const props = defineProps<{
-  widget: WidgetT;
-  index: number;
-  count: number;
-  atLimit: boolean;
-  offline: boolean;
+  widget: Pick<WidgetT, 'id' | 'kind' | 'state' | 'cause' | 'asOf' | 'figures'>;
+  index?: number;
+  count?: number;
+  atLimit?: boolean;
+  offline?: boolean;
 }>();
 const emit = defineEmits<{
   settings: [];
@@ -20,11 +23,13 @@ const emit = defineEmits<{
   dragEnd: [e: PointerEvent];
 }>();
 
+const w = computed(() => props.widget);
 function onGripDown(e: PointerEvent) {
   (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   emit('dragStart', e);
 }
 
+type Cause = NonNullable<WidgetT['cause']>;
 const TITLES: Record<WidgetT['kind'], string> = {
   currency: 'Currency',
   weather: 'Weather',
@@ -33,21 +38,21 @@ const TITLES: Record<WidgetT['kind'], string> = {
   fixed_costs: 'Fixed costs',
 };
 
-const CAUSE_COPY: Record<WidgetCauseT, string> = {
+const CAUSE_COPY: Record<Cause, string> = {
   rate_unavailable: 'No rate has been published for this date yet.',
   source_unreachable: "Couldn't reach the data source. Showing the last reading.",
   source_limit_reached: "The data source's daily limit is reached. Showing the last reading.",
   place_not_found: "This widget's place can't be found. Choose it again in settings.",
 };
 
-const title = computed(() => TITLES[props.widget.kind]);
+const frameTitle = computed(() => TITLES[w.value.kind]);
 // asOf is server time; formatting it never consults the device clock.
 const asOf = computed(() =>
-  new Date(props.widget.asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  new Date(w.value.asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 );
-const hasFigures = computed(() => props.widget.figures !== undefined);
+const hasFigures = computed(() => w.value.figures !== undefined);
 const banner = computed(() => {
-  const { state, cause } = props.widget;
+  const { state, cause } = w.value;
   if (props.offline && hasFigures.value) return "You're offline — showing the last reading";
   if (state === 'unavailable') return 'This widget is unavailable right now.';
   if (state === 'stale') return (cause && CAUSE_COPY[cause]) || 'Showing the last reading.';
@@ -60,7 +65,7 @@ const banner = computed(() => {
 // Spend pace and fixed costs have no external source: 'empty' there means nothing to show, not pending.
 const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   if (hasFigures.value) return 'figures';
-  const { state, kind } = props.widget;
+  const { state, kind } = w.value;
   if (state === 'empty' && (kind === 'spend_pace' || kind === 'fixed_costs')) return 'nothing';
   return state === 'error' ? 'error' : 'loading';
 });
@@ -70,9 +75,9 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   <article
     class="desk-widget-frame"
     data-testid="widget-frame"
-    :data-state="widget.state"
-    :data-widget-id="widget.id"
-    :aria-label="title"
+    :data-state="w.state"
+    :data-widget-id="w.id"
+    :aria-label="frameTitle"
   >
     <header class="desk-widget-head">
       <span
@@ -85,13 +90,13 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
         @pointercancel="$emit('dragEnd', $event)"
         >&#8942;&#8942;</span
       >
-      <h3 class="desk-widget-title" data-testid="widget-title">{{ title }}</h3>
+      <h3 class="desk-widget-title" data-testid="widget-title">{{ frameTitle }}</h3>
       <span class="desk-widget-asof">as of {{ asOf }}</span>
       <details class="desk-widget-menu">
-        <summary :aria-label="`${title} menu`">&#8943;</summary>
+        <summary :aria-label="`${frameTitle} menu`">&#8943;</summary>
         <div class="desk-widget-menu-items">
           <button type="button" :disabled="index === 0" @click="$emit('move', -1)">Move up</button>
-          <button type="button" :disabled="index === count - 1" @click="$emit('move', 1)">
+          <button type="button" :disabled="index === (count ?? 0) - 1" @click="$emit('move', 1)">
             Move down
           </button>
           <button type="button" :disabled="atLimit" @click="$emit('duplicate')">Duplicate</button>
@@ -104,68 +109,74 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
     <div class="desk-widget-body">
       <slot v-if="body === 'figures'" />
       <p v-else-if="body === 'nothing'" class="desk-widget-nothing">
-        {{ widget.kind === 'spend_pace' ? 'No budget set.' : 'No fixed-cost categories yet.' }}
+        {{ w.kind === 'spend_pace' ? 'No budget set.' : 'No fixed-cost categories yet.' }}
         <RouterLink to="/categories">{{
-          widget.kind === 'spend_pace'
+          w.kind === 'spend_pace'
             ? 'Set a budget in Categories'
             : 'Mark categories as fixed in Categories'
         }}</RouterLink>
       </p>
-      <PanelState v-else-if="body === 'loading'" kind="loading" />
-      <PanelState v-else kind="error" :code="widget.cause ?? 'server_error'" />
+      <PanelFrame v-else-if="body === 'loading'" kind="loading" />
+      <PanelFrame v-else kind="error" :code="w.cause ?? 'server_error'" />
     </div>
   </article>
 </template>
 
 <style scoped>
+/* A raised flap with a fixed height: figures arriving never push the expenses below (FR-001). */
 .desk-widget-frame {
-  /* Fixed height: figures arriving never push the expenses below (FR-001). */
   height: 12rem;
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid color-mix(in srgb, var(--color-fg) 12%, transparent);
-  border-radius: 8px;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-raised);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-widget-head {
   display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--space-2);
 }
 .desk-widget-grip {
   cursor: grab;
   touch-action: none;
   user-select: none;
-  opacity: 0.5;
+  color: var(--color-fg-muted);
   letter-spacing: -0.2em;
-}
-.desk-widget-menu-items button:disabled {
-  opacity: 0.4;
-  cursor: default;
 }
 .desk-widget-title {
   margin: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
   flex: 1;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 .desk-widget-asof {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 0.7rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 .desk-widget-menu {
   position: relative;
 }
 .desk-widget-menu summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-block-size: var(--target-min);
+  min-inline-size: var(--target-min);
   cursor: pointer;
   list-style: none;
-  padding: 0 0.3rem;
 }
 .desk-widget-menu-items {
   position: absolute;
@@ -173,28 +184,39 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg);
-  border: 1px solid color-mix(in srgb, var(--color-fg) 20%, transparent);
-  border-radius: 6px;
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-overlay);
+  border-radius: var(--radius-md);
 }
 .desk-widget-menu-items button {
   background: none;
   border: none;
   color: var(--color-fg);
   font: inherit;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
   text-align: left;
-  padding: 0.4rem 0.75rem;
+  white-space: nowrap;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-4);
   cursor: pointer;
 }
+.desk-widget-menu-items button:disabled {
+  color: var(--color-fg-muted);
+  cursor: default;
+}
+/* Stale or failed with a last reading: amber, always in words. */
 .desk-widget-banner {
   margin: 0;
-  font-size: 0.75rem;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
   color: var(--color-warn);
 }
 .desk-widget-nothing {
   margin: 0;
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .desk-widget-body {
   flex: 1;

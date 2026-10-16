@@ -10,6 +10,8 @@ COPY . .
 RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
+ARG VITE_UI_CATALOGUE
+ENV VITE_UI_CATALOGUE=$VITE_UI_CATALOGUE
 RUN pnpm --filter @desk/web build && pnpm --filter @desk/api build
 
 FROM gcr.io/distroless/nodejs22-debian12:nonroot AS runtime

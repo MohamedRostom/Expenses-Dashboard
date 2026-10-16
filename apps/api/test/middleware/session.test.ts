@@ -14,6 +14,7 @@ const fakeUser = {
   passwordHash: null,
   defaultCurrency: 'GBP',
   theme: 'system',
+  accent: 'signal-green',
   timeZone: 'UTC',
   temperatureUnit: 'C',
   onboardingCompletedAt: null,

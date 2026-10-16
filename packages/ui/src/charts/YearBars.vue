@@ -101,7 +101,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
 .desk-year-bars {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
   font-family: var(--font-sans);
 }
 .desk-year-bars-chart {
@@ -121,7 +121,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
   /* height:100% here previously didn't resolve to a definite pixel value against the grid's
      stretched row track (measured via getComputedStyle: computed to 758px, driven by the child
      SVG's own aspect-ratio-derived size, not the intended 10rem) — an explicit height matching

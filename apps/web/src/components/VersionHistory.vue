@@ -30,34 +30,71 @@ onMounted(async () => {
     <p v-if="loading">Loading…</p>
     <p v-else-if="loadError" role="alert">{{ loadError }}</p>
     <p v-else-if="versions.length === 0">No sync history yet.</p>
-    <ul v-else>
-      <li v-for="v in versions" :key="v.id">
-        <span class="desk-version-source">{{ v.source }}</span>
-        <time :datetime="v.editedAt">{{ formatDateTime(v.editedAt) }}</time>
-      </li>
-    </ul>
+    <table v-else class="desk-version-table">
+      <caption class="desk-version-caption">
+        Notion sync history
+      </caption>
+      <tbody>
+        <tr v-for="v in versions" :key="v.id">
+          <th scope="row" class="desk-version-source">{{ v.source }}</th>
+          <td>
+            <time :datetime="v.editedAt">{{ formatDateTime(v.editedAt) }}</time>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </details>
 </template>
 
 <style scoped>
 .desk-version-history {
   font-family: var(--font-sans);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
   color: var(--color-fg);
 }
-.desk-version-history ul {
-  list-style: none;
-  margin: 0.25rem 0 0;
-  padding: 0;
+.desk-version-history summary {
+  min-height: var(--target-min);
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 600;
+}
+.desk-version-history summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-version-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.desk-version-caption {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.desk-version-table th,
+.desk-version-table td {
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 .desk-version-source {
-  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  font-size: 0.75rem;
-  opacity: 0.75;
-  margin-right: 0.5rem;
+  color: var(--color-fg-muted);
+}
+.desk-version-table td {
+  text-align: right;
+}
+@media (min-width: 1024px) {
+  .desk-version-history summary {
+    min-height: var(--space-6);
+  }
 }
 </style>

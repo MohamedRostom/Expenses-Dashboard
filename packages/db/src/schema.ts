@@ -35,6 +35,7 @@ export const users = pgTable('users', {
   passwordHash: text('password_hash'),
   defaultCurrency: text('default_currency').notNull(),
   theme: text('theme').notNull().default('system'),
+  accent: text('accent').notNull().default('signal-green'),
   timeZone: text('time_zone').notNull().default('UTC'),
   temperatureUnit: text('temperature_unit').notNull().default('C'),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),

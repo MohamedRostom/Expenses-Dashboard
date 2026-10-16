@@ -1,6 +1,12 @@
 import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { signUpAndVerify, axeCheck, mockProvider, nextMockAccount } from '../fixtures/index.js';
+import {
+  signUpAndVerify,
+  axeCheck,
+  mockProvider,
+  nextMockAccount,
+  tomorrowNoonEvent,
+} from '../fixtures/index.js';
 import { PROVIDER_PRIVACY_TEXT } from '../../../packages/contracts/src/privacy-text.js';
 
 const DB_URL = process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:5432/desk';
@@ -240,8 +246,7 @@ test.describe('Connections and Today pages @ci', () => {
     await mockProvider('google', key).addEvent('primary', {
       id: 'evt-pause-test',
       summary: 'Should hide while paused',
-      start: { dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
-      end: { dateTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString() },
+      ...tomorrowNoonEvent(),
     });
     backdateLastRefresh(email, 'google', 3);
     await refreshUntilAllowed(page);
@@ -315,8 +320,7 @@ test.describe('Connections and Today pages @ci', () => {
     await mockProvider('google', key).addEvent('primary', {
       id: 'evt-disconnect-test',
       summary: 'Goes away on disconnect',
-      start: { dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() },
-      end: { dateTime: new Date(Date.now() + 25 * 60 * 60 * 1000).toISOString() },
+      ...tomorrowNoonEvent(),
     });
     backdateLastRefresh(email, 'google', 3);
     await refreshUntilAllowed(page);

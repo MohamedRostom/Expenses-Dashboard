@@ -2,7 +2,16 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { YearSummaryT } from '@desk/contracts';
-import { EmptyState, ErrorState, Skeleton, YearBars, type YearBarData } from '@desk/ui';
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  PanelFrame,
+  Skeleton,
+  Tile,
+  YearBars,
+  type YearBarData,
+} from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import MonthCompare from '../components/MonthCompare.vue';
@@ -56,29 +65,34 @@ function onSelectMonth(month: string) {
 <template>
   <main class="desk-year-view">
     <header class="desk-year-view-header">
+      <h1>Year</h1>
       <div class="desk-year-switcher">
-        <button type="button" aria-label="Previous year" @click="shiftYear(-1)">‹</button>
+        <Button variant="secondary" aria-label="Previous year" @click="shiftYear(-1)">‹</Button>
         <span class="desk-year-label">{{ year }}</span>
-        <button type="button" aria-label="Next year" @click="shiftYear(1)">›</button>
+        <Button variant="secondary" aria-label="Next year" @click="shiftYear(1)">›</Button>
       </div>
     </header>
 
     <Skeleton v-if="loading" height="14rem" />
     <ErrorState v-else-if="error" :code="error ?? undefined" />
     <template v-else-if="summary">
-      <div class="desk-year-view-total">
-        <span class="desk-tile-label">Year total</span>
-        <span class="desk-tile-value">{{ formatMoney(total, summary.currency) }}</span>
-      </div>
+      <Tile
+        class="desk-year-view-total"
+        label="Year total"
+        :value="formatMoney(total, summary.currency)"
+        primary
+      />
 
       <EmptyState v-if="total === 0" title="No expenses this year" />
       <template v-else>
-        <YearBars
-          :months="bars"
-          :currency="summary.currency"
-          :format-money="(m) => formatMoney(m, summary!.currency)"
-          @select="onSelectMonth"
-        />
+        <PanelFrame heading="Month by month">
+          <YearBars
+            :months="bars"
+            :currency="summary.currency"
+            :format-money="(m) => formatMoney(m, summary!.currency)"
+            @select="onSelectMonth"
+          />
+        </PanelFrame>
         <MonthCompare />
       </template>
     </template>
@@ -87,51 +101,32 @@ function onSelectMonth(month: string) {
 
 <style scoped>
 .desk-year-view {
-  max-width: 60rem;
+  max-width: var(--content-max);
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: var(--space-4);
 }
 .desk-year-view-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 .desk-year-switcher {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  font-family: var(--font-mono);
+  gap: var(--space-3);
 }
-.desk-year-switcher button {
-  background: none;
-  border: 1px solid var(--color-fg);
-  border-radius: 6px;
-  cursor: pointer;
-  color: var(--color-fg);
-  padding: 0.25rem 0.6rem;
-}
-.desk-year-view-total {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.75rem;
-  border: 1px solid var(--color-fg);
-  border-color: color-mix(in srgb, var(--color-fg) 12%, transparent);
-  border-radius: 8px;
-  max-width: 14rem;
-}
-.desk-tile-label {
-  font-size: 0.8rem;
-  opacity: 0.7;
-}
-.desk-tile-value {
+.desk-year-label {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 1.25rem;
+}
+.desk-year-view-total {
+  max-width: 20rem;
 }
 </style>
