@@ -41,8 +41,8 @@ Added 2026-10-16 at Rostom's request after PR #28 merged and this branch was reb
 **Wave 2 — independent (different files):**
 
 - [ ] **T010** [P] Extend `UserResponse` and `PatchMeRequest` with the four fields (contract tests: enum, colour regex, lowercase) · `packages/contracts/src/auth.ts`, `packages/contracts/src/me.ts`, `packages/contracts/src/accent.test.ts`
-- [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
-- [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the panel, tile and widget frames, with their unit tests updated; dialogs, menus and toasts stay on the opaque Overlay surface for legibility · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `apps/web/src/components/widgets/WidgetFrame.vue`
+- [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`, `display: none` under `forced-colors: active` (FR-024), and still `.motion-thumb[data-preset]` rules that reuse each preset's drawing with `animation: none` for the picker, research R12) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
+- [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the panel, tile and widget frames, with their unit tests updated; dialogs, menus and toasts stay on the opaque Overlay surface for legibility. The same opaque fallback applies under `forced-colors: active` and `prefers-reduced-transparency: reduce` without touching the saved switch (FR-024, FR-025, research R11) · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `apps/web/src/components/widgets/WidgetFrame.vue`
 
 **⟶ Wait for Wave 2 to finish, then:**
 
@@ -50,7 +50,7 @@ Added 2026-10-16 at Rostom's request after PR #28 merged and this branch was reb
 
 - [ ] **T013** [P] Write the API tests first (`PATCH /me` sets and validates each field; 401 signed out; user A's patch leaves user B unchanged in the ownership matrix, and `GET /flags/public` listed as a public route that returns no user data), then map and patch the fields · `apps/api/src/routes/me.ts`, `apps/api/src/routes/auth.ts`, `apps/api/test/me-appearance.test.ts`, `apps/api/test/ownership.test.ts`
 - [ ] **T014** [P] Write the test first (unauthenticated 200, only `appearance.motion` listed, global value even with a user override present, `Cache-Control`), then add `GET /flags/public` · `apps/api/src/routes/misc.ts`, `apps/api/test/flags-public.test.ts`
-- [ ] **T015** [P] Write `theme.test.ts` cases first (attributes for flag off, signed out, light, dark tint, pause, solid panels, unknown preset and bad colour fallbacks per FR-016), then add `applyMotion()` · `apps/web/src/views/theme.ts`, `apps/web/src/views/theme.test.ts`
+- [ ] **T015** [P] Write `theme.test.ts` cases first (attributes for flag off, signed out, light, dark tint, pause, solid panels, unknown preset and bad colour fallbacks per FR-016, and `navigator.connection.saveData` true sets `data-motion-paused` per FR-025), then add `applyMotion()` · `apps/web/src/views/theme.ts`, `apps/web/src/views/theme.test.ts`
 
 **⟶ Wait for Wave 3 to finish, then:**
 
@@ -67,12 +67,12 @@ Files: `apps/web/src/components/appearance/AppearanceSettings.vue`, `apps/web/sr
 
 ### Tests
 
-- [ ] **T018** [P] [US1] Unit tests for `AppearanceSettings` (radiogroup and switch roles and names, 44 px targets, colour row hidden in dark and disabled under None, save error by code with "Try again") · `apps/web/src/components/appearance/AppearanceSettings.test.ts`
+- [ ] **T018** [P] [US1] Unit tests for `AppearanceSettings` (radiogroup and switch roles and names, 44 px targets, colour row hidden in dark and disabled under None, save error by code with "Try again"; each preset shows a still `.motion-thumb`; with fake timers, five quick picks send one `PATCH /me` with the last value, a change during an in-flight save is sent after it, an older response does not overwrite a newer preview, and dragging the custom colour sends one request on `change`) · `apps/web/src/components/appearance/AppearanceSettings.test.ts`
 - [ ] **T019** [P] [US1] e2e: default Particles; pick Board grid, reload, and a fresh context shows it; user A and B isolation; switches persist; axe on Settings · `tests/e2e/tests/motion-settings.spec.ts`
 
 ### Implementation
 
-- [ ] **T020** [US1] Build `AppearanceSettings` per `contracts/ui.md`, saving through `PATCH /me` and updating the session user so `applyMotion` reacts without a reload · `apps/web/src/components/appearance/AppearanceSettings.vue`
+- [ ] **T020** [US1] Build `AppearanceSettings` per `contracts/ui.md`, with auto-save on change through a coalesced queue (research R9: 400 ms debounce, merged fields, one request in flight, stale responses ignored, failure keeps the preview), preset thumbnails (R12), and the session user updated so `applyMotion` reacts without a reload · `apps/web/src/components/appearance/AppearanceSettings.vue`
 
 **⟶ Wait for T020, then:**
 
@@ -104,7 +104,7 @@ Files: `tests/e2e/tests/motion-colour.spec.ts`. The colour logic is foundational
 
 Files: `tests/e2e/tests/motion-a11y.spec.ts`
 
-- [ ] **T025** [US4] e2e: with `reducedMotion: 'reduce'`, two screenshots 3 s apart are identical for every preset (SC-005); a hidden page sets `data-motion-paused` and the computed `animation-play-state` is `paused`; the layer has `pointer-events: none`, `position: fixed` (its bounding box is unchanged after scrolling a long page) and is absent in print media; with `prefers-reduced-data: reduce` emulated through CDP `Emulation.setEmulatedMedia`, the layer is still · `tests/e2e/tests/motion-a11y.spec.ts`
+- [ ] **T025** [US4] e2e: with `reducedMotion: 'reduce'`, two screenshots 3 s apart are identical for every preset (SC-005); a hidden page sets `data-motion-paused` and the computed `animation-play-state` is `paused`; the layer has `pointer-events: none`, `position: fixed` (its bounding box is unchanged after scrolling a long page) and is absent in print media; with `prefers-reduced-data: reduce` emulated through CDP `Emulation.setEmulatedMedia`, the layer is still; with `forcedColors: 'active'` the layer is not displayed and panels are opaque; with `prefers-reduced-transparency: reduce` emulated through CDP, panels are opaque while the saved switch still reads on (FR-024, FR-025) · `tests/e2e/tests/motion-a11y.spec.ts`
 
 ## Phase 7: User Story 5, signed-out pages share the look (P2)
 
@@ -141,4 +141,4 @@ Files: `tests/e2e/tests/motion-flag.spec.ts`
 
 ## Dependencies & Execution Order
 
-Setup (T001–T004) gates any code merge, though Foundational may be written while T004 waits. Foundational runs Wave 1 (T005–T009), then Wave 2 (T010–T012), then Wave 3 (T013–T015), then T016 and T017. Every story starts after Foundational. US1 runs T018 and T019 together, then T020, then T021. US2 runs T022 and T023 together. US3 (T024) needs US1's T020. US4 (T025) needs only Foundational. US5 runs T026, T027 and T028 together. US6 (T029) needs US1's T021. Polish runs Wave 1 (T030–T032), then T033, then T034, then T035, after all stories.
+Setup (T001–T004) gates any code merge, though Foundational may be written while T004 waits. Phase 1b (T036, T037 in parallel; T038 owner) clears the inherited CI failures before Foundational starts. Foundational runs Wave 1 (T005–T009), then Wave 2 (T010–T012), then Wave 3 (T013–T015), then T016 and T017. Every story starts after Foundational. US1 runs T018 and T019 together, then T020, then T021. US2 runs T022 and T023 together. US3 (T024) needs US1's T020. US4 (T025) needs only Foundational. US5 runs T026, T027 and T028 together. US6 (T029) needs US1's T021. Polish runs Wave 1 (T030–T032), then T033, then T034, then T035, after all stories.
