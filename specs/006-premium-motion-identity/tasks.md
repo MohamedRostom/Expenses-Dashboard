@@ -16,7 +16,7 @@ Tests are required (constitution Principle I): every task that adds behaviour st
 
 **⟶ Wait for Wave 1 to finish, then:**
 
-- [ ] **T004** `needs-rostom`: Rostom accepts ADR-0007 (marking ADR-0006 Superseded), constitution v1.3.0 and `DESIGN.md`; no code task merges before this · `docs/adr/ADR-0006-visual-identity.md`
+- [x] **T004** `needs-rostom`: Rostom accepts ADR-0007 (marking ADR-0006 Superseded), constitution v1.3.0 and `DESIGN.md`; no code task merges before this · `docs/adr/ADR-0006-visual-identity.md`
 
 ## Phase 1b: Inherited CI failures (fix before Phase 2)
 

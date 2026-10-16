@@ -1,6 +1,6 @@
 # ADR-0006: Visual identity "Concourse Board", with the Ledger Desk as fallback
 
-**Status:** Accepted (2026-10-10)
+**Status:** Superseded by ADR-0007 (2026-10-16); accepted 2026-10-10
 **Date:** 2026-10-05 (proposed), 2026-10-10 (accepted)
 **Deciders:** Rostom (owner)
 **Relates to:** `DESIGN.md`, `specs/004-web-ui-refresh/spec.md` (FR-001, FR-002, FR-016), `.specify/memory/constitution.md` Principle VI, `apps/web/.impeccable/surfaces/apps-web.md`

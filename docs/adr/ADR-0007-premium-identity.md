@@ -1,10 +1,14 @@
 # ADR-0007: Premium identity with ambient motion
 
-**Status:** Proposed
-**Date:** 2026-10-16 (proposed)
+**Status:** Accepted (2026-10-16)
+**Date:** 2026-10-16 (proposed and accepted)
 **Deciders:** Rostom (owner)
-**Supersedes:** ADR-0006 (Concourse Board), on acceptance
+**Supersedes:** ADR-0006 (Concourse Board)
 **Relates to:** `DESIGN.md`, `specs/006-premium-motion-identity/spec.md`, `.specify/memory/constitution.md` Principle VI, direction board https://claude.ai/artifact/NHdkria1bTDsVYGyW1TXE8 (version 4)
+
+## Acceptance
+
+Accepted by the owner on 2026-10-16 (spec 006 T004), together with constitution 1.3.0 and the rewritten `DESIGN.md`. The owner also confirmed the drafted values: Glass opacity 72 % light and 62 % dark with a 20 px blur, 16 px panel corners, the background alpha ceilings in `DESIGN.md` § Motion, Lamp amber as a background-only swatch, the retired departure-tile seam, an opaque header, dialogs, menus, sheets and toasts, FR-020 measured on `/` and `/settings`, and signed-in Lighthouse performance held at no regression rather than 0.9.
 
 ## Context
 

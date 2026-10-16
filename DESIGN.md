@@ -1,6 +1,6 @@
 ---
 name: Desk (working name)
-description: A multi-currency expense tracker. Identity "Premium identity with ambient motion" (ADR-0007, proposed 2026-10-16), superseding "Concourse Board" (ADR-0006).
+description: A multi-currency expense tracker. Identity "Premium identity with ambient motion" (ADR-0007, accepted 2026-10-16), superseding "Concourse Board" (ADR-0006).
 colors:
   signal-green: "#0e3d2a"
   signal-green-dark: "#2c7452"
@@ -164,13 +164,13 @@ components:
 
 # Design System: Desk (working name)
 
-<!-- Spec 004 T025, 2026-10-05; approved 2026-10-10 (T028, ADR-0006). Rewritten for ADR-0007 by spec 006 T003, 2026-10-16, pending owner acceptance (T004). The frontmatter is normative and its values live in packages/ui/src/tokens.css; the glass, radius and motion values named in the body join the frontmatter in T007, when they reach tokens.css. -->
+<!-- Spec 004 T025, 2026-10-05; approved 2026-10-10 (T028, ADR-0006). Rewritten for ADR-0007 by spec 006 T003 and approved by the owner on 2026-10-16 (T004). The frontmatter is normative and its values live in packages/ui/src/tokens.css; the glass, radius and motion values named in the body join the frontmatter in T007, when they reach tokens.css. -->
 
 ## Overview
 
 **Creative North Star: "Premium identity with ambient motion"**
 
-State: Proposed (ADR-0007, 2026-10-16, superseding ADR-0006 "Concourse Board" on acceptance)
+State: Approved (ADR-0007 accepted 2026-10-16, superseding ADR-0006 "Concourse Board")
 
 Desk is a calm, premium place to read the month's money. The figures sit on translucent panels with soft 16px corners, and behind them a slow ambient layer, chosen by the user, keeps the page alive without asking to be read. The board's discipline stays: every row keeps its columns, every figure sits in tabular mono, and status is said once, in a fixed place, in a colour that means one thing: amber is pending, red is over. When a pending rate arrives, the converted amount flips into place, once.
 

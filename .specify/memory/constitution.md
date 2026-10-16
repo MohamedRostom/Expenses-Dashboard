@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version change: 1.2.0 -> 1.3.0 (draft, pending owner acceptance of ADR-0007, spec 006 T004)
+- Version change: 1.2.0 -> 1.3.0 (accepted by the owner 2026-10-16, spec 006 T004)
 - Modified principles: VI (design tokens: the identity is now the one recorded in the root
   `DESIGN.md` under ADR-0007 "Premium identity with ambient motion", superseding ADR-0006;
   type, accent presets and three theme states carry over unchanged; exactly one looping
@@ -10,10 +10,9 @@ Sync Impact Report
 - Added sections: none
 - Removed sections: none
 - Templates: plan/spec/tasks templates read this file at runtime; no changes made here
-- Amendment ADR: docs/adr/ADR-0007-premium-identity.md (Proposed 2026-10-16)
+- Amendment ADR: docs/adr/ADR-0007-premium-identity.md (accepted 2026-10-16)
 - Previous amendment: 1.1.1 -> 1.2.0, ADR-0006 (accepted 2026-10-10)
-- Follow-up TODOs: on acceptance, mark ADR-0006 Superseded and update the "Design system"
-  section of `CLAUDE.md`
+- Follow-up TODOs: none (ADR-0006 marked Superseded and `CLAUDE.md` updated in the same change)
 -->
 
 # Desk Constitution
