@@ -1,5 +1,11 @@
 export { ACCENT_IDS, type AccentId } from './accent.js';
 export {
+  MOTION_PRESET_IDS,
+  MOTION_SWATCHES,
+  MOTION_DARK_TINT,
+  type MotionPresetId,
+} from './motion.js';
+export {
   HealthResponse,
   type HealthResponseT,
   FeedbackRequest,

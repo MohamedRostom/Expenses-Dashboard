@@ -30,11 +30,11 @@ Added 2026-10-16 at Rostom's request after PR #28 merged and this branch was reb
 
 **Wave 1 — independent (different files):**
 
-- [ ] **T005** [P] Write `motion.test.ts` first (ids in order, default `particles`, six swatches, dark tint), then add `MOTION_PRESET_IDS`, `MOTION_SWATCHES`, `MOTION_DARK_TINT` and export them · `packages/contracts/src/motion.ts`, `packages/contracts/src/motion.test.ts`, `packages/contracts/src/index.ts`
-- [ ] **T006** [P] Write the migration test first (defaults on existing rows, CHECK rejects `'sparkle'` and `'#FFF'`), then add the four `users` columns and migration `0012_user_motion.sql` per data-model · `packages/db/src/schema.ts`, `packages/db/migrations/0012_user_motion.sql`, `apps/api/test/user-motion-migration.test.ts`
-- [ ] **T007** [P] Add `--color-surface-glass`, `--blur-surface`, `--radius-xl` and the motion alpha tokens for all three theme states, with `tokens.test.ts` cases for each state · `packages/ui/src/tokens.css`, `packages/ui/src/tokens.test.ts`
-- [ ] **T008** [P] Write the SC-004 matrix test first (5 presets × 6 swatches plus `#ffffff` and `#000000` × 2 themes × glass and opaque panels: every text token ≥ 4.5:1 over the composited ground), then add `compositeOver()` · `packages/ui/src/contrast.ts`, `packages/ui/src/contrast.test.ts`
-- [ ] **T009** [P] Seed the `appearance.motion` flag, off · `packages/db/src/seed.ts`
+- [x] **T005** [P] Write `motion.test.ts` first (ids in order, default `particles`, six swatches, dark tint), then add `MOTION_PRESET_IDS`, `MOTION_SWATCHES`, `MOTION_DARK_TINT` and export them · `packages/contracts/src/motion.ts`, `packages/contracts/src/motion.test.ts`, `packages/contracts/src/index.ts`
+- [x] **T006** [P] Write the migration test first (defaults on existing rows, CHECK rejects `'sparkle'` and `'#FFF'`), then add the four `users` columns and migration `0012_user_motion.sql` per data-model · `packages/db/src/schema.ts`, `packages/db/migrations/0012_user_motion.sql`, `apps/api/test/user-motion-migration.test.ts`
+- [x] **T007** [P] Add `--color-surface-glass`, `--blur-surface`, `--radius-xl` and the motion alpha tokens for all three theme states, with `tokens.test.ts` cases for each state · `packages/ui/src/tokens.css`, `packages/ui/src/tokens.test.ts`
+- [x] **T008** [P] Write the SC-004 matrix test first (5 presets × 6 swatches plus `#ffffff` and `#000000` × 2 themes × glass and opaque panels: every text token ≥ 4.5:1 over the composited ground), then add `compositeOver()` · `packages/ui/src/contrast.ts`, `packages/ui/src/contrast.test.ts`
+- [x] **T009** [P] Seed the `appearance.motion` flag, off · `packages/db/src/seed.ts`
 
 **⟶ Wait for Wave 1 to finish, then:**
 

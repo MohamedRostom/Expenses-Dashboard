@@ -177,14 +177,14 @@ describe('Concourse Board identity values (ADR-0006)', () => {
   });
   it('has the specified shadows', () => {
     expect(light.get('--shadow-raised')).toBe(
-      '0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06)',
+      '0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08)',
     );
     expect(light.get('--shadow-overlay')).toBe(
       '0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08)',
     );
     for (const tokens of [systemDark, explicitDark]) {
       expect(tokens.get('--shadow-raised')).toBe(
-        '0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35)',
+        'inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38)',
       );
       expect(tokens.get('--shadow-overlay')).toBe(
         '0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45)',
@@ -463,4 +463,44 @@ describe('accent presets (FR-019)', () => {
       );
     });
   }
+});
+
+// Spec 006 T007: glass surface, blur, radius and motion alpha ceilings (DESIGN.md, ADR-0007).
+describe('glass and motion tokens (ADR-0007)', () => {
+  const lightExpect: Record<string, string> = {
+    '--color-surface-glass': 'rgb(246 247 247 / 0.72)',
+    '--color-glass-line': 'rgb(20 23 27 / 0.10)',
+    '--shadow-raised': '0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08)',
+    '--motion-alpha-aurora': '0.55',
+    '--motion-alpha-aurora-blue': '0.50',
+    '--motion-alpha-aurora-amber': '0.45',
+    '--motion-alpha-grid': '0.06',
+    '--motion-alpha-particles': '0.28',
+    '--motion-alpha-grain': '0.12',
+  };
+  const darkExpect: Record<string, string> = {
+    '--color-surface-glass': 'rgb(23 27 32 / 0.62)',
+    '--color-glass-line': 'rgb(242 242 238 / 0.11)',
+    '--shadow-raised': 'inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38)',
+    '--motion-alpha-aurora': '0.17',
+    '--motion-alpha-aurora-blue': '0.15',
+    '--motion-alpha-aurora-amber': '0.13',
+    '--motion-alpha-grid': '0.14',
+    '--motion-alpha-particles': '0.32',
+    '--motion-alpha-grain': '0.16',
+  };
+  const themes: [string, Tokens, Record<string, string>][] = [
+    ['light', light, lightExpect],
+    ['system dark', systemDark, darkExpect],
+    ['explicit dark', explicitDark, darkExpect],
+  ];
+  for (const [theme, tokens, expected] of themes) {
+    it.each(Object.entries(expected))(`${theme}: %s`, (name, value) =>
+      expect(tokens.get(name)).toBe(value),
+    );
+  }
+  it('defines blur and radius once on the light selector', () => {
+    expect(light.get('--blur-surface')).toBe('20px');
+    expect(light.get('--radius-xl')).toBe('16px');
+  });
 });

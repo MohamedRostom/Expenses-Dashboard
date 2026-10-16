@@ -24,6 +24,10 @@ colors:
   flap-raised: "#ffffff"
   flap-dark: "#171b20"
   flap-raised-dark: "#1f242a"
+  glass: "rgb(246 247 247 / 0.72)"
+  glass-dark: "rgb(23 27 32 / 0.62)"
+  glass-line: "rgb(20 23 27 / 0.10)"
+  glass-line-dark: "rgb(242 242 238 / 0.11)"
   frame-line: "#6a727a"
   frame-line-dark: "#5d656e"
   focus-blue: "#4d80da"
@@ -435,12 +439,12 @@ The one exception to the 280ms ceiling and the no-loop rule. It is ambient, not 
 | Preset (`data-motion`) | What it draws | Movement | Light alpha | Dark alpha |
 |---|---|---|---|---|
 | None (`none`) | the still ground | none | — | — |
-| Aurora drift (`aurora`) | three large blurred fields (80px blur): the tint, a fixed Platform blue and a fixed Lamp amber | each drifts and scales, 38s, 52s and 64s, `ease-in-out`, alternating | tint 0.55, companions 0.50 and 0.45 | tint 0.40, companions 0.35 and 0.30 |
+| Aurora drift (`aurora`) | three large blurred fields (80px blur): the tint, a fixed Platform blue and a fixed Lamp amber | each drifts and scales, 38s, 52s and 64s, `ease-in-out`, alternating | tint 0.55, companions 0.50 and 0.45 | tint 0.17, companions 0.15 and 0.13 |
 | Board grid (`grid`) | a 48px line grid in the tint, masked to fade out from the top centre | translates one cell diagonally, 26s, `linear` | 0.06 (lines in Board Ink) | 0.14 |
-| Particles (`particles`, default) | two tiles of small dots (190px and 120px repeats) in the tint | rise one tile height, 80s and 55s, `linear` | 0.35 | 0.35 |
+| Particles (`particles`, default) | two tiles of small dots (190px and 120px repeats) in the tint | rise one tile height, 80s and 55s, `linear` | 0.28 | 0.32 |
 | Grain (`grain`) | an SVG `feTurbulence` noise rect | steps its position, 0.9s, `steps(5)` | 0.12 | 0.16 |
 
-The alphas are ceilings, not starting points: T008's composite test proves them and may only lower them. Aurora's companion fields are fixed hues, not a second user colour.
+The alphas are ceilings, not starting points: T008's composite test proves them and may only lower them. Lowered by T008's composite test on 2026-10-17. Aurora's companion fields are fixed hues, not a second user colour.
 
 - **Technique:** one fixed layer, `@keyframes` on `transform` and `opacity` only, `will-change: transform` on the moving element. No script loop, canvas, WebGL or dependency.
 - **Still frame:** each preset's 0 % keyframe. `animation-play-state: paused` under `:root[data-motion-paused]` (the user's pause, or `visibilityState === 'hidden'`); `animation: none` under `prefers-reduced-motion: reduce` and `prefers-reduced-data: reduce`. Both render the same frame, so two screenshots seconds apart match.
