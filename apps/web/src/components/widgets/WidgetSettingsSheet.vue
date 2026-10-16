@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { Dialog } from '@desk/ui';
+import { Button, Dialog, PanelFrame } from '@desk/ui';
 import { CURRENCY_CAP } from '@desk/core';
 import type { WidgetPatchT, WidgetT } from '@desk/contracts';
 import { useWidgetsStore } from '../../stores/widgets.js';
@@ -8,7 +8,6 @@ import CurrencyPicker from './CurrencyPicker.vue';
 import WeatherSettings from './WeatherSettings.vue';
 import SunriseSettings from './SunriseSettings.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
-import PanelState from '../PanelState.vue';
 
 const props = defineProps<{ open: boolean; widget: WidgetT | null }>();
 defineEmits<{ close: [] }>();
@@ -53,9 +52,9 @@ async function addSecond() {
         <CurrencyPicker :chosen="chosen" @toggle="toggle" />
         <p v-if="atCap">
           A currency widget shows up to six currencies.
-          <button type="button" @click="addSecond">Add a second currency widget</button>
+          <Button variant="secondary" @click="addSecond">Add a second currency widget</Button>
         </p>
-        <PanelState v-if="error" kind="error" :code="error" />
+        <PanelFrame v-if="error" kind="error" :code="error" />
       </div>
       <WeatherSettings v-else-if="widget.kind === 'weather'" :widget="widget" :patch="patch" />
       <SunriseSettings v-else-if="widget.kind === 'sunrise'" :widget="widget" :patch="patch" />

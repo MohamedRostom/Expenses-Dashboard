@@ -1,0 +1,27 @@
+{
+  "sign-in": {
+    "taps": 0,
+    "keystrokes": 53,
+    "screens": 1
+  },
+  "add-expense-foreign": {
+    "taps": 0,
+    "keystrokes": 22,
+    "screens": 0
+  },
+  "change-month": {
+    "taps": 0,
+    "keystrokes": 12,
+    "screens": 0
+  },
+  "edit-budget": {
+    "taps": 0,
+    "keystrokes": 37,
+    "screens": 0
+  },
+  "open-settings": {
+    "taps": 0,
+    "keystrokes": 8,
+    "screens": 1
+  }
+}

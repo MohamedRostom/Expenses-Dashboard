@@ -16,6 +16,7 @@ import {
   widgetSourceUsage,
   widgetSourceState,
 } from '@desk/db';
+import { ACCENT_IDS } from '@desk/contracts';
 import { startHarness, type Harness } from './harness.js';
 
 // T033: failing-first tests for GET/PATCH /me, sessions, export, DELETE /me, email change,
@@ -44,6 +45,40 @@ describe('me', () => {
     const body = await j(res);
     expect(body.user.email).toBe('me-get@example.com');
     expect(body.user.defaultCurrency).toBe('GBP');
+  });
+
+  it('accent: defaults to signal-green, accepts every preset and round-trips', async () => {
+    const user = await h.asUser('me-accent@example.com');
+    expect((await j(await user.get('/me'))).user.accent).toBe('signal-green');
+    for (const id of ACCENT_IDS) {
+      const res = await user.patch('/me', { accent: id });
+      expect(res.status).toBe(200);
+      expect((await j(res)).user.accent).toBe(id);
+      expect((await j(await user.get('/me'))).user.accent).toBe(id);
+    }
+  });
+
+  it.each(['chartreuse', '#ff00ff'])('accent: PATCH /me rejects %s', async (bad) => {
+    const user = await h.asUser(`me-accent-bad-${bad.replace('#', '')}@example.com`);
+    const res = await user.patch('/me', { accent: bad });
+    expect(res.status).toBe(400);
+    expect((await j(res)).error.code).toBe('validation_failed');
+    expect((await j(await user.get('/me'))).user.accent).toBe('signal-green');
+  });
+
+  it('accent: one user changing it does not change another (ownership)', async () => {
+    const userA = await h.asUser('me-accent-a@example.com');
+    const userB = await h.asUser('me-accent-b@example.com');
+    const res = await j(await userB.patch('/me', { accent: 'plum' }));
+    expect(res.user.id).toBe(userB.userId);
+    expect(res.user.accent).toBe('plum');
+    expect((await j(await userA.get('/me'))).user.accent).toBe('signal-green');
+  });
+
+  it('accent: GET /me/export carries user.accent', async () => {
+    const user = await h.asUser('me-accent-export@example.com');
+    await user.patch('/me', { accent: 'violet' });
+    expect((await j(await user.get('/me/export'))).user.accent).toBe('violet');
   });
 
   it('GET /me is unauthenticated without a session', async () => {

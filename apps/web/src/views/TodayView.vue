@@ -25,7 +25,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="today-view">
+  <main class="today-view">
     <div class="panels">
       <CalendarPanel />
       <InboxPanel />
@@ -34,25 +34,28 @@ onUnmounted(() => {
     <div aria-live="polite" aria-atomic="true" class="sr-only">
       {{ today.loading ? 'Loading panels...' : 'Panels loaded' }}
     </div>
-  </div>
+  </main>
 </template>
 
 <style scoped>
 .today-view {
-  padding: 1rem;
-  max-width: 1200px;
+  padding: var(--space-4) var(--gutter);
+  max-width: var(--content-max);
   margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
 }
 
 .panels {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
-  gap: 2rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-6);
 }
 
-@media (max-width: 768px) {
+@media (min-width: 1024px) {
   .panels {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -60,11 +63,8 @@ onUnmounted(() => {
   position: absolute;
   width: 1px;
   height: 1px;
-  padding: 0;
-  margin: -1px;
   overflow: hidden;
-  clip: rect(0, 0, 0, 0);
+  clip-path: inset(50%);
   white-space: nowrap;
-  border-width: 0;
 }
 </style>

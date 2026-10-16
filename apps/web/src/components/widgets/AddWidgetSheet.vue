@@ -1,12 +1,11 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
-import { Dialog, Button, EmptyState } from '@desk/ui';
+import { Dialog, Button, EmptyState, PanelFrame } from '@desk/ui';
 import type { WidgetCreateT, WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
 import { CURRENCY_CAP } from '@desk/core';
 import CurrencyPicker from './CurrencyPicker.vue';
 import PlacePicker from './PlacePicker.vue';
-import PanelState from '../PanelState.vue';
 import type { PanelErrorKind } from '../../utils/errors.js';
 
 const props = defineProps<{
@@ -86,7 +85,7 @@ const PREVIEW: Record<WidgetKindT, string> = {
         </Button>
       </div>
     </div>
-    <PanelState v-else-if="typesError" kind="error" :code="typesError" />
+    <PanelFrame v-else-if="typesError" kind="error" :code="typesError" />
     <EmptyState
       v-else-if="!types.some((x) => x.enabled)"
       title="No widgets available yet"
@@ -113,18 +112,18 @@ const PREVIEW: Record<WidgetKindT, string> = {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .desk-add-widget-actions {
   display: flex;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
 }
 .desk-add-widget-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 .desk-add-widget-name {
   margin: 0;
@@ -132,14 +131,16 @@ const PREVIEW: Record<WidgetKindT, string> = {
 }
 .desk-add-widget-desc {
   margin: 0;
-  font-size: 0.85rem;
-  opacity: 0.85;
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  color: var(--color-fg-muted);
 }
 .desk-add-widget-preview {
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 0.8rem;
-  opacity: 0.7;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  color: var(--color-fg-muted);
 }
 </style>

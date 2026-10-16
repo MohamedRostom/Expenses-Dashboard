@@ -5,7 +5,7 @@ import { Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyTheme } from './views/theme.js';
+import { applyAccent, applyTheme } from './views/theme.js';
 
 const route = useRoute();
 const session = useSessionStore();
@@ -15,6 +15,13 @@ const flags = useFlagsStore();
 watch(
   () => session.user?.theme,
   (theme) => applyTheme(theme ?? 'system'),
+  { immediate: true },
+);
+// US5 (FR-019): the accent preset follows the account once the flag is known; flag off or signed
+// out, no data-accent is set. Flags load after sign-in, so the flag is part of the watch.
+watch(
+  () => [session.user?.accent, flags.isOn('appearance.accent')] as const,
+  ([accent, enabled]) => applyAccent(accent, enabled),
   { immediate: true },
 );
 // Signed-in app screens only: auth pages and the onboarding wizard stay chrome-free.
@@ -27,19 +34,22 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
 </script>
 
 <template>
-  <nav v-if="showNav" class="desk-nav" aria-label="Main">
-    <RouterLink :to="{ name: 'home' }">Month</RouterLink>
-    <RouterLink :to="{ name: 'year' }">Year</RouterLink>
-    <RouterLink v-if="showTodayLink" :to="{ name: 'today' }">Today</RouterLink>
-    <RouterLink :to="{ name: 'categories' }">Categories</RouterLink>
-    <RouterLink :to="{ name: 'import' }">Import</RouterLink>
-    <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>
-    <RouterLink :to="{ name: 'settings' }">Settings</RouterLink>
-    <RouterLink :to="{ name: 'settings-connectors' }">Connectors</RouterLink>
-    <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
-  </nav>
+  <header v-if="showNav" class="desk-header">
+    <nav class="desk-nav" aria-label="Main">
+      <RouterLink :to="{ name: 'home' }">Month</RouterLink>
+      <RouterLink :to="{ name: 'year' }">Year</RouterLink>
+      <RouterLink v-if="showTodayLink" :to="{ name: 'today' }">Today</RouterLink>
+      <RouterLink :to="{ name: 'categories' }">Categories</RouterLink>
+      <RouterLink :to="{ name: 'import' }">Import</RouterLink>
+      <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>
+      <RouterLink :to="{ name: 'settings' }">Settings</RouterLink>
+      <RouterLink :to="{ name: 'settings-connectors' }">Connectors</RouterLink>
+      <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
+    </nav>
+  </header>
   <RouterView />
-  <FeedbackWidget />
+  <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
+  <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />
   <Toast />
 </template>
 
@@ -50,40 +60,74 @@ body {
   background: var(--color-bg);
   color: var(--color-fg);
 }
+/* The raised flap strip (DESIGN.md Layout, Navigation): text links in a wrapping row, the current
+ * page marked by a 2px accent underline (the accent is never text colour), Sign out at the far end. */
+.desk-header {
+  background: var(--color-surface);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: var(--shadow-raised);
+}
 .desk-nav {
   display: flex;
-  /* T097 covered MonthView/ExpenseForm/etc at 360px but not this nav — 7 links + Sign out never
-   * fit a 390px viewport in one row (FR-019/Story 7: every screen usable at phone width).
-   * flex-wrap keeps every link reachable without introducing a scroll container or a JS-driven
-   * menu for what a CSS property already solves. */
+  /* T097: 7 links + Sign out never fit one 390px row; wrapping keeps every link reachable with no
+   * scroll container or JS-driven menu. */
   flex-wrap: wrap;
-  gap: 0.5rem 1rem;
-  padding: 0.75rem 1rem;
+  column-gap: var(--space-4);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-1) var(--gutter);
   font-family: var(--font-sans);
-  font-size: 0.9rem;
+  font-size: var(--text-sm);
+  font-weight: 600;
 }
-.desk-nav a {
-  color: var(--color-fg);
+.desk-nav a,
+.desk-nav-signout {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  font: inherit;
+  color: var(--color-fg-muted);
   text-decoration: none;
-  opacity: 0.75;
+  cursor: pointer;
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard);
 }
 .desk-nav a:hover,
-.desk-nav a.router-link-active {
-  opacity: 1;
-  color: var(--color-accent);
+.desk-nav-signout:hover {
+  color: var(--color-fg);
+}
+.desk-nav a[aria-current='page'] {
+  color: var(--color-fg);
+  border-bottom-color: var(--color-accent);
+}
+.desk-nav a:focus-visible,
+.desk-nav-signout:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .desk-nav-signout {
   margin-left: auto;
-  background: none;
-  border: none;
-  font: inherit;
-  color: var(--color-fg);
-  opacity: 0.75;
-  cursor: pointer;
-  padding: 0;
 }
-.desk-nav-signout:hover {
-  opacity: 1;
-  color: var(--color-accent);
+@media (min-width: 768px) {
+  .desk-nav {
+    padding-inline: var(--gutter-fluid);
+  }
+}
+@media (min-width: 1024px) {
+  .desk-nav a,
+  .desk-nav-signout {
+    min-height: var(--space-10);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .desk-nav a,
+  .desk-nav-signout {
+    transition: none;
+  }
 }
 </style>

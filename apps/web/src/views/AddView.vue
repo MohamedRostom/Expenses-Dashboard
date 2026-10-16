@@ -19,8 +19,13 @@ function back() {
 .desk-add-view {
   max-width: 28rem;
   margin: 0 auto;
-  padding: 1.5rem 1rem;
+  padding: var(--space-6) var(--gutter-fluid);
   font-family: var(--font-sans);
   color: var(--color-fg);
+}
+.desk-add-view h1 {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-xl);
+  line-height: var(--leading-xl);
 }
 </style>

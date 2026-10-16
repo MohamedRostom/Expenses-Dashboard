@@ -10,23 +10,16 @@ withDefaults(defineProps<{ height?: string; width?: string }>(), {
 </template>
 
 <style scoped>
+/* A blank flap (Board Ink at 6%) that pulses in opacity; the duration is a token, so reduced motion
+ * (0ms) holds it still. */
 .desk-skeleton {
-  border-radius: 4px;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--color-fg) 8%, transparent) 25%,
-    color-mix(in srgb, var(--color-fg) 16%, transparent) 37%,
-    color-mix(in srgb, var(--color-fg) 8%, transparent) 63%
-  );
-  background-size: 400% 100%;
-  animation: desk-shimmer 1.4s ease infinite;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-fg) 6%, transparent);
+  animation: desk-pulse calc(var(--motion-slow) * 5) var(--ease-standard) infinite alternate;
 }
-@keyframes desk-shimmer {
-  0% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0 50%;
+@keyframes desk-pulse {
+  to {
+    opacity: 0.5;
   }
 }
 @media (prefers-reduced-motion: reduce) {

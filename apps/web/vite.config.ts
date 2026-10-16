@@ -34,9 +34,8 @@ export default defineConfig(({ command }) => ({
   plugins: [
     vue(),
     // research.md R18: generateSW, navigation fallback for the SPA, a font runtime-cache rule
-    // (self-hosted IBM Plex isn't wired up yet — this targets Google Fonts as a placeholder for
-    // whichever host actually serves it once typography lands), manifest with an /add shortcut
-    // for the 15-second phone-add flow. Icons are solid-color placeholders (apps/web/public/icons) —
+    // (targets Google Fonts as a placeholder; the identity uses system font stacks), manifest with an
+    // /add shortcut for the 15-second phone-add flow. Icons are solid-color placeholders (apps/web/public/icons) —
     // swap for real brand assets before shipping.
     VitePWA({
       registerType: 'autoUpdate',

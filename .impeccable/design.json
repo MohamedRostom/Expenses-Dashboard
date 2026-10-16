@@ -1,0 +1,339 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-10T00:00:00Z",
+  "title": "Design System: Desk (working name)",
+  "extensions": {
+    "colorMeta": {
+      "signal-green": {
+        "role": "primary",
+        "displayName": "Signal Green",
+        "canonical": "#0e3d2a",
+        "tonalRamp": [
+          "#040f0b",
+          "#071f15",
+          "#0b2e20",
+          "#0e3d2a",
+          "#4a6e5f",
+          "#879e95",
+          "#c3cfca",
+          "#ecefee"
+        ]
+      },
+      "signal-green-dark": {
+        "role": "primary",
+        "displayName": "Signal Green (dark)",
+        "canonical": "#2c7452"
+      },
+      "daylight-steel": {
+        "role": "neutral",
+        "displayName": "Daylight Steel",
+        "canonical": "#e8eaeb",
+        "tonalRamp": [
+          "#3a3b3b",
+          "#747576",
+          "#aeb0b0",
+          "#e8eaeb",
+          "#eeeff0",
+          "#f4f5f5",
+          "#f9fafa",
+          "#fdfdfd"
+        ]
+      },
+      "flap-black": {
+        "role": "neutral",
+        "displayName": "Flap Black",
+        "canonical": "#0e1114"
+      },
+      "board-ink": {
+        "role": "neutral",
+        "displayName": "Board Ink",
+        "canonical": "#14171b"
+      },
+      "letter-white": {
+        "role": "neutral",
+        "displayName": "Letter White",
+        "canonical": "#f2f2ee"
+      },
+      "steel-mid": {
+        "role": "neutral",
+        "displayName": "Steel Mid",
+        "canonical": "#4b535b"
+      },
+      "flap": {
+        "role": "neutral",
+        "displayName": "Flap",
+        "canonical": "#f6f7f7"
+      },
+      "frame-line": {
+        "role": "neutral",
+        "displayName": "Frame Line",
+        "canonical": "#6a727a"
+      },
+      "focus-blue": {
+        "role": "neutral",
+        "displayName": "Focus Blue",
+        "canonical": "#4d80da"
+      },
+      "selection-green": {
+        "role": "neutral",
+        "displayName": "Selection Green",
+        "canonical": "#d8e6de"
+      },
+      "delay-amber": {
+        "role": "status",
+        "displayName": "Delay Amber",
+        "canonical": "#8a5a00",
+        "tonalRamp": [
+          "#231700",
+          "#452d00",
+          "#684400",
+          "#8a5a00",
+          "#a78340",
+          "#c5ad80",
+          "#e2d6bf",
+          "#f6f2eb"
+        ]
+      },
+      "delay-amber-dark": {
+        "role": "status",
+        "displayName": "Delay Amber (dark)",
+        "canonical": "#ffb000"
+      },
+      "cancel-red": {
+        "role": "status",
+        "displayName": "Cancel Red",
+        "canonical": "#b00020",
+        "tonalRamp": [
+          "#2c0008",
+          "#580010",
+          "#840018",
+          "#b00020",
+          "#c44058",
+          "#d88090",
+          "#ebbfc7",
+          "#f9ebed"
+        ]
+      },
+      "cancel-red-dark": {
+        "role": "status",
+        "displayName": "Cancel Red (dark)",
+        "canonical": "#ff6b6b"
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The departure tile figure (remaining budget), once per screen; nothing is larger (FR-011)."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Page headings, sparingly."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Panel headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Running text, form values, the item column."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column heads, tile labels, tabs: small spaced capitals (--tracking-wide)."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "Tile values and row amounts; system mono, tabular numerals."
+      },
+      "figure-small": {
+        "displayName": "Figure (small)",
+        "purpose": "As-of stamps and rate lines."
+      }
+    },
+    "shadows": [
+      {
+        "name": "raised",
+        "value": "0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06)",
+        "purpose": "Tiles, panels, widget frames. Dark: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35)."
+      },
+      {
+        "name": "overlay",
+        "value": "0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08)",
+        "purpose": "Dialogs, sheets, menus, toasts. Dark: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45)."
+      }
+    ],
+    "motion": [
+      {
+        "name": "motion-fast",
+        "value": "120ms",
+        "purpose": "Menu open, button press, tab and link colour. 0ms under reduced motion."
+      },
+      {
+        "name": "motion-base",
+        "value": "200ms",
+        "purpose": "The arrival flip (one rotateX per changed value) and toast enter. 0ms under reduced motion."
+      },
+      {
+        "name": "motion-slow",
+        "value": "280ms",
+        "purpose": "Sheet slide-in; the FR-007 ceiling. 0ms under reduced motion."
+      },
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(0.2, 0, 0, 1)",
+        "purpose": "Entering, state changes, the flip."
+      },
+      {
+        "name": "ease-exit",
+        "value": "cubic-bezier(0.4, 0, 1, 1)",
+        "purpose": "Elements leaving."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one main action on a screen, on the teal plate.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Add expense</button>",
+      "css": ".ds-btn { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; min-height: var(--target-min); padding: 10px var(--space-4); border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2); transition: transform var(--motion-fast) var(--ease-standard); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-btn-primary { background: var(--color-accent); color: var(--color-accent-fg); }"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Outlined alternative action.",
+      "html": "<button class=\"ds-btn ds-btn-secondary\">Cancel</button>",
+      "css": ".ds-btn { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; min-height: var(--target-min); padding: 10px var(--space-4); border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2); transition: transform var(--motion-fast) var(--ease-standard); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-btn-secondary { background: transparent; color: var(--color-fg); border-color: var(--color-fg); }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive confirmation only.",
+      "html": "<button class=\"ds-btn ds-btn-danger\">Delete for good</button>",
+      "css": ".ds-btn { font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; min-height: var(--target-min); padding: 10px var(--space-4); border-radius: var(--radius-sm); border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-2); transition: transform var(--motion-fast) var(--ease-standard); } .ds-btn:active { transform: translateY(1px); } .ds-btn:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-btn-danger { background: var(--color-critical); color: var(--color-bg); }"
+    },
+    {
+      "name": "Amount Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Labelled field; the amount variant is right-aligned in the figure face with a currency adornment.",
+      "html": "<label class=\"ds-field\"><span class=\"ds-field-label\">Amount</span><span class=\"ds-input-wrap\"><span class=\"ds-input-cur\">EUR</span><input class=\"ds-input ds-input-amount\" value=\"12.50\" inputmode=\"decimal\"></span></label>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: var(--space-1); font-family: var(--font-sans); color: var(--color-fg); } .ds-field-label { font-size: var(--text-sm); font-weight: 600; } .ds-input-wrap { display: flex; align-items: center; gap: var(--space-2); min-height: var(--target-min); padding: 0 var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-raised); } .ds-input-wrap:focus-within { outline: 2px solid var(--color-focus); outline-offset: 2px; } .ds-input-cur { font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-fg-muted); } .ds-input { flex: 1; border: 0; background: transparent; color: var(--color-fg); font-size: var(--text-md); outline: none; } .ds-input-amount { font-family: var(--font-mono); font-variant-numeric: tabular-nums; text-align: right; }"
+    },
+    {
+      "name": "Departure Tile",
+      "kind": "card",
+      "refersTo": "departure-tile",
+      "description": "Signature: the remaining budget at Display size on a raised flap with one seam.",
+      "html": "<div class=\"ds-dep\"><span class=\"ds-dep-label\">Left this month</span><span class=\"ds-dep-cell\"><span class=\"ds-dep-value\">£1,115.40</span></span><span class=\"ds-dep-line\">of £2,400.00 · 12 days left</span></div>",
+      "css": ".ds-dep { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-4); border-radius: var(--radius-md); background: var(--color-surface-raised); color: var(--color-fg); box-shadow: var(--shadow-raised); font-family: var(--font-sans); } .ds-dep-label { font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-fg-muted); } .ds-dep-cell { position: relative; } .ds-dep-cell::after { content: \"\"; position: absolute; left: 0; right: 0; top: 50%; border-top: 1px solid var(--color-border); opacity: 0.4; } .ds-dep-value { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--text-display); line-height: var(--leading-display); font-weight: 600; letter-spacing: var(--tracking-tight); } .ds-dep-line { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: var(--text-xs); color: var(--color-fg-muted); }"
+    },
+    {
+      "name": "Board Row",
+      "kind": "custom",
+      "refersTo": "board-row",
+      "description": "An entries-table row: fixed columns, tabular amount, amber lamp while the rate is pending.",
+      "html": "<table class=\"ds-board\"><caption>October entries</caption><thead><tr><th>Date</th><th>Item</th><th class=\"num\">Amount</th></tr></thead><tbody><tr><td>03 Oct</td><td>Groceries</td><td class=\"num\">£42.10</td></tr><tr class=\"pending\"><td>04 Oct</td><td>Train, Lyon</td><td class=\"num\">EUR 38.00 <span>rate pending</span></td></tr></tbody></table>",
+      "css": ".ds-board { width: 100%; border-collapse: separate; border-spacing: 0 var(--space-1); font-family: var(--font-sans); color: var(--color-fg); } .ds-board caption { text-align: left; font-size: var(--text-lg); font-weight: 600; } .ds-board th { font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-wide); color: var(--color-fg-muted); text-align: left; border-bottom: 1px solid var(--color-border); padding: var(--space-2) var(--space-3); } .ds-board td { padding: var(--space-2) var(--space-3); } .ds-board .num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; } .ds-board tr.pending td:first-child { box-shadow: inset 4px 0 0 var(--color-warn); } .ds-board tr.pending span { color: var(--color-warn); font-size: var(--text-xs); }"
+    },
+    {
+      "name": "Category Bar",
+      "kind": "custom",
+      "refersTo": "category-bars",
+      "description": "Chart row: single-hue Signal Green fill, budget tick, solid red past the budget.",
+      "html": "<div class=\"ds-bar\"><div class=\"ds-bar-label\"><span>Groceries</span><span class=\"ds-bar-amt\">£212.40 / £250.00</span></div><svg class=\"ds-bar-svg\" viewBox=\"0 0 100 10\" preserveAspectRatio=\"none\" aria-hidden=\"true\"><rect class=\"ds-bar-track\" width=\"100\" height=\"10\"/><rect width=\"85\" height=\"10\" class=\"ds-bar-fill\"/><line class=\"ds-bar-tick\" x1=\"99.5\" x2=\"99.5\" y1=\"0\" y2=\"10\"/></svg></div>",
+      "css": ".ds-bar { display: flex; flex-direction: column; gap: var(--space-1); font-family: var(--font-sans); } .ds-bar-label { display: flex; justify-content: space-between; font-size: var(--text-sm); color: var(--color-fg); } .ds-bar-amt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; } .ds-bar-svg { width: 100%; height: var(--space-3); } .ds-bar-track { fill: var(--color-fg); opacity: 0.08; } .ds-bar-fill { fill: var(--color-accent); } .ds-bar-tick { stroke: var(--color-fg); stroke-width: 1; vector-effect: non-scaling-stroke; }"
+    },
+    {
+      "name": "Tabs",
+      "kind": "nav",
+      "refersTo": "tab",
+      "description": "Underline tabs in small spaced capitals; Signal Green marks the selected one.",
+      "html": "<div class=\"ds-tablist\" role=\"tablist\"><button class=\"ds-tab ds-tab-selected\" role=\"tab\" aria-selected=\"true\">Month</button><button class=\"ds-tab\" role=\"tab\" aria-selected=\"false\">Year</button></div>",
+      "css": ".ds-tablist { display: flex; gap: var(--space-4); border-bottom: 1px solid var(--color-border); } .ds-tab { font-family: var(--font-sans); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: var(--tracking-wide); font-weight: 600; min-height: var(--target-min); padding: var(--space-3) var(--space-1); background: transparent; color: var(--color-fg-muted); border: 0; border-bottom: 2px solid transparent; cursor: pointer; transition: color var(--motion-fast) var(--ease-standard); } .ds-tab:hover { color: var(--color-fg); } .ds-tab-selected { color: var(--color-fg); border-bottom-color: var(--color-accent); } .ds-tab:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    },
+    {
+      "name": "Board Header",
+      "kind": "nav",
+      "refersTo": "board-header",
+      "description": "The shell: a raised flap strip with month switcher, wrapping nav links and the add action.",
+      "html": "<header class=\"ds-head\"><nav class=\"ds-nav\"><a class=\"ds-nav-active\" href=\"#\" aria-current=\"page\">Month</a><a href=\"#\">Year</a><a href=\"#\">Categories</a><a href=\"#\">Settings</a></nav></header>",
+      "css": ".ds-head { background: var(--color-surface-raised); color: var(--color-fg); border-bottom: 1px solid var(--color-border); padding: var(--space-3) var(--gutter); } .ds-nav { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-family: var(--font-sans); font-size: var(--text-sm); font-weight: 600; } .ds-nav a { color: inherit; text-decoration: none; display: inline-flex; align-items: center; min-height: var(--target-min); border-bottom: 2px solid transparent; } .ds-nav a.ds-nav-active { border-bottom-color: var(--color-accent); } .ds-nav a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Concourse Board",
+    "overview": "Desk reads like the departure board in a rail concourse. Every row keeps the same columns, every figure sits in its own cell, and status is said once, in a fixed place, in a colour that means one thing: amber is delayed, red is cancelled. On Desk the rows are the month’s entries ranked by date, amber marks an expense whose rate is still pending, and red marks a category over budget. When a pending rate arrives, the converted amount flips into place, once.\n\nThe world lends four things only: the palette (flap black and steel, letter white, delay amber, cancel red, one signal green for action), system mono figures in fixed cells with small spaced capitals for column heads, a board density, and the arrival flip. Layout, navigation and controls stay standard web ones: no icon tab bar, no brushed steel, no per-character flips.\n\nDark mode is the night board and the reference rendering; light mode is the daylight board. Surfaces lift at two heights, and motion is the flip plus feedback, dropping to zero under reduced motion. Accepted in ADR-0006 on 2026-10-10.",
+    "keyCharacteristics": [
+      "Entries as board rows with fixed columns and tabular amounts, in a real sortable table.",
+      "A row lamp: amber for a pending rate, red for an over-budget category, always with its word.",
+      "The departure tile: the remaining budget at Display size, the largest figure on the screen.",
+      "The arrival flip: a value that changes because data arrived turns over once.",
+      "Column heads and labels in small spaced capitals; reading text in mixed case.",
+      "Lifted surfaces at two heights, crisp 2/4/8px corners."
+    ],
+    "rules": [
+      {
+        "name": "The One Signal Rule",
+        "body": "Signal Green is the only accent: the primary action, the current location, spend.",
+        "section": "colors"
+      },
+      {
+        "name": "The Status Is Not a Series Rule",
+        "body": "Delay Amber and Cancel Red appear only as a row lamp, a status word, an over-budget fill or an error, never as a series, category or account colour.",
+        "section": "colors"
+      },
+      {
+        "name": "The Focus Is Blue Rule",
+        "body": "The focus ring is Focus Blue, 2px, with a 2px offset, on every interactive element in both themes.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Figures Rule",
+        "body": "Every amount, rate and date is set in the figure face with `font-variant-numeric: tabular-nums`.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Columns Rule",
+        "body": "A column never moves or resizes when its values change.",
+        "section": "typography"
+      },
+      {
+        "name": "The Two Heights Rule",
+        "body": "Exactly two elevations, Raised and Overlay; board rows are flat inside a raised frame.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep columns fixed: values change, the board does not.",
+      "Do make the departure tile the largest figure on the screen, once.",
+      "Do say status twice, once as a lamp and once as a word.",
+      "Do flip a value only when new data arrives for it, once, under 280ms.",
+      "Do set every amount, rate and date in the figure face with tabular numerals.",
+      "Do keep column heads and labels in small spaced capitals and everything else in mixed case.",
+      "Do lift tiles and panels with Raised and use Overlay only above the page.",
+      "Do define colours as tokens in all three theme states."
+    ],
+    "donts": [
+      "Don't add brushed steel, vent grids, flap textures, a split-flap font or per-character flips.",
+      "Don't use an icon tab bar or set inputs and buttons in flap cells.",
+      "Don't use amber or red for anything but delayed, pending, over budget or broken.",
+      "Don't add a chart library, a third shadow, a second accent or a second figure face.",
+      "Don't animate on load, on scroll, or a value the user did not cause to change.",
+      "Don't use green for focus; focus is always blue."
+    ]
+  }
+}

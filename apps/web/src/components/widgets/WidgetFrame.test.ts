@@ -1,7 +1,8 @@
+// @vitest-environment jsdom
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { WidgetT } from '@desk/contracts';
-import WidgetFrame from './WidgetFrame.vue';
+type WidgetT = { kind: string } & Record<string, unknown>;
+import PanelFrame from './WidgetFrame.vue';
 
 const widget = (over: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -27,7 +28,7 @@ async function mount(props: Record<string, unknown>) {
   const app = createApp({
     render: () =>
       h(
-        WidgetFrame,
+        PanelFrame,
         {
           widget: widget(),
           index: 1,
@@ -40,7 +41,7 @@ async function mount(props: Record<string, unknown>) {
           onDragMove: on('dragMove'),
           onDragEnd: on('dragEnd'),
           ...props,
-        },
+        } as never,
         { default: () => h('p', { class: 'figs' }, 'figures') },
       ),
   });

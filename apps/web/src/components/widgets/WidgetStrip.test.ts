@@ -55,14 +55,12 @@ describe('WidgetStrip', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => (document.body.innerHTML = ''));
 
-  it('with no widgets explains widgets and offers only the enabled kinds', async () => {
-    const { el, app } = await mount(
-      [],
-      [type('currency', 'Currency'), type('weather', 'Weather', false)],
+  it('with no widgets shows one short line and the add button', async () => {
+    const { el, app } = await mount([], [type('currency', 'Currency')]);
+    expect(el.querySelector('[data-testid="widget-empty"]')?.textContent?.trim()).toBe(
+      'No widgets yet',
     );
-    expect(el.textContent).toContain('Widgets show');
-    expect(el.textContent).toContain('Currency');
-    expect(el.textContent).not.toContain('Weather');
+    expect(el.querySelector('[data-testid="add-widget"]')).not.toBeNull();
     app.unmount();
   });
 

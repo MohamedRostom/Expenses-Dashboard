@@ -12,14 +12,46 @@ export default defineConfig({
   retries: process.env['CI'] ? 1 : 0,
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: { trace: 'on-first-retry' },
+  // R6: tight, shared tolerance; the `visual` project renders in the pinned Playwright image.
+  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: 'disabled' } },
   projects: [
     {
       name: 'ci',
-      grepInvert: /@local/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       use: {
         ...devices['Desktop Edge'],
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
         channel: 'msedge',
+      },
+    },
+    // Chromium only, no `channel`: the pinned mcr.microsoft.com/playwright image ships Chromium,
+    // not Edge. Run via the update-snapshots workflow / ci.yml `visual` job (docs/runbooks/visual-snapshots.md).
+    {
+      name: 'visual',
+      grep: /@visual/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+      },
+    },
+    // Spec 004 T050: landing screenshots of the real app, written into apps/landing/public/screenshots/.
+    // Chromium in the pinned image like `visual`; run by update-snapshots.yml, never by `ci`.
+    {
+      name: 'screenshots',
+      grep: /@screenshots/,
+      use: {
+        ...devices['Desktop Chrome'],
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+      },
+    },
+    // Spec 004 T027: one-off screenshot capture, run by hand (tests/before.spec.ts header).
+    {
+      name: 'manual',
+      grep: /@manual/,
+      use: {
+        ...devices['Desktop Edge'],
+        channel: 'msedge', // run by hand on Rostom's machine, which has no bundled Chromium
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
       },
     },
     {
@@ -34,7 +66,7 @@ export default defineConfig({
     // T092: mobile device projects for the responsive/PWA/onboarding specs (@mobile-tagged).
     {
       name: 'pixel-7',
-      grepInvert: /@local/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       grep: /@mobile/,
       use: {
         ...devices['Pixel 7'],
@@ -44,7 +76,7 @@ export default defineConfig({
     },
     {
       name: 'iphone-14',
-      grepInvert: /@local/,
+      grepInvert: /@local|@visual|@manual|@screenshots/,
       grep: /@mobile/,
       use: {
         ...devices['iPhone 14'],

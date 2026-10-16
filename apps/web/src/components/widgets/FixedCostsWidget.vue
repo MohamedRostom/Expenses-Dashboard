@@ -36,11 +36,12 @@ defineProps<{
 .desk-fixed-costs li {
   display: flex;
   justify-content: space-between;
-  gap: 0.6rem;
-  font-size: 0.85rem;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .desk-fixed-costs p {
-  margin: 0.25rem 0 0;
+  margin: var(--space-1) 0 0;
 }
 .desk-fixed-costs-num {
   font-family: var(--font-mono);

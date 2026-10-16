@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "playwright@anthropic-plugin-directory": true,
+    "chrome-devtools-mcp@claude-plugins-official": true
+  }
+}

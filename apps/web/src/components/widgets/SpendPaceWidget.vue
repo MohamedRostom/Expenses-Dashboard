@@ -32,7 +32,7 @@ const days = computed(() =>
 
 <style scoped>
 .desk-spend-pace p {
-  margin: 0.15rem 0;
+  margin: var(--space-1) 0;
 }
 .desk-spend-pace-num {
   font-family: var(--font-mono);

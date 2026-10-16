@@ -114,7 +114,7 @@ function allLabels(): string[] {
 </script>
 
 <template>
-  <div class="capture-view">
+  <main class="capture-view">
     <h1>Phone capture</h1>
     <p>
       Send an expense with one HTTPS request from your phone — no session, just the address below as
@@ -191,65 +191,117 @@ function allLabels(): string[] {
       </table>
       <p v-else>No labels captured yet.</p>
     </section>
-  </div>
+  </main>
 </template>
 
 <style scoped>
 .capture-view {
   max-width: 40rem;
-  margin: 2rem auto;
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: 2rem;
+  gap: var(--space-6);
   font-family: var(--font-sans);
   color: var(--color-fg);
+}
+h1,
+h2,
+p {
+  margin: 0;
+}
+h1 {
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+h2 {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
 }
 section {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 .token-list {
   list-style: none;
+  margin: 0;
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 .revealed {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  border: 1px solid var(--color-accent, #1f6e5a);
-  border-radius: 6px;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  box-shadow: var(--shadow-raised);
+  border-inline-start: var(--space-1) solid var(--color-accent);
 }
 .revealed code {
+  font-family: var(--font-mono);
   word-break: break-all;
 }
-.error-text {
-  color: var(--color-critical);
-  margin: 0;
+.error-text,
+.warn-text {
+  padding: var(--space-3);
+  background: var(--color-surface-raised);
+  border-inline-start: var(--space-1) solid var(--color-critical);
 }
 .warn-text {
-  color: var(--color-warn);
-  margin: 0;
+  border-inline-start-color: var(--color-warn);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
+summary {
+  display: flex;
+  align-items: center;
+  min-height: var(--target-min);
+  cursor: pointer;
+  text-decoration: underline;
+}
+summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 .mapping-table {
   width: 100%;
   border-collapse: collapse;
 }
-.mapping-table th,
+.mapping-table th {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+  text-align: start;
+  padding: var(--space-2);
+}
 .mapping-table td {
-  text-align: left;
-  padding: 0.4rem 0.5rem;
-  border-bottom: 1px solid var(--color-fg);
+  padding: var(--space-2);
+  border-top: 1px solid var(--color-border);
 }
 .unmapped-badge {
-  font-size: 0.75rem;
-  padding: 0.1rem 0.4rem;
-  border-radius: 999px;
-  background: var(--color-warn);
-  color: var(--color-bg);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  padding-inline-start: var(--space-2);
+  border-inline-start: var(--space-1) solid var(--color-warn);
+}
+@media (min-width: 1024px) {
+  summary {
+    min-height: 24px;
+  }
 }
 </style>

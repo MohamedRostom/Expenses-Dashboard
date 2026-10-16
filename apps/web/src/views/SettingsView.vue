@@ -1,8 +1,21 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Dialog, Input, Select, useToast } from '@desk/ui';
+import {
+  Button,
+  DataTable,
+  Dialog,
+  ErrorState,
+  Input,
+  PanelFrame,
+  Skeleton,
+  ThemeToggle,
+  useToast,
+} from '@desk/ui';
+import type { BoardColumn } from '@desk/ui';
+import { ACCENT_IDS } from '@desk/contracts';
 import type {
+  AccentId,
   JobResponseT,
   PatchMeResponseT,
   SessionSummaryT,
@@ -11,9 +24,10 @@ import type {
 import { ApiError, apiFetch } from '../api/client.js';
 import { describeDevice, formatDateTime } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
+import { useFlagsStore } from '../stores/flags.js';
 import { useWidgetsStore } from '../stores/widgets.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
-import { applyTheme } from './theme.js';
+import { applyAccent, applyTheme } from './theme.js';
 
 const session = useSessionStore();
 const router = useRouter();
@@ -32,13 +46,44 @@ const currencySubmitting = ref(false);
 const job = ref<JobResponseT | null>(null);
 let jobTimer: ReturnType<typeof setTimeout> | undefined;
 
-const THEME_OPTIONS = [
-  { value: 'system', label: 'System' },
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
+const SECTIONS = [
+  { id: 'profile', title: 'Profile' },
+  { id: 'currency', title: 'Default currency' },
+  { id: 'theme', title: 'Theme' },
+  { id: 'timezone', title: 'Time zone' },
+  { id: 'widgets', title: 'Widgets' },
+  { id: 'sessions', title: 'Sessions' },
+  { id: 'capture', title: 'Phone capture' },
+  { id: 'export', title: 'Export' },
+  { id: 'delete', title: 'Delete account' },
+];
+const sessionColumns: BoardColumn[] = [
+  { key: 'device', label: 'Device' },
+  { key: 'seen', label: 'Last seen', hideBelow: 'md' },
+  { key: 'actions', label: 'Actions', srOnly: true, width: 'action' },
 ];
 const theme = ref<string>(session.user?.theme ?? 'system');
 const themeSubmitting = ref(false);
+
+// US5 (FR-019): the accent picker shows only with `appearance.accent`.
+const flags = useFlagsStore();
+const ACCENT_NAMES: Record<AccentId, string> = {
+  'signal-green': 'Signal Green',
+  'concourse-blue': 'Concourse Blue',
+  'platform-teal': 'Platform Teal',
+  violet: 'Violet',
+  slate: 'Slate',
+  plum: 'Plum',
+};
+const accent = ref<AccentId>(session.user?.accent ?? 'signal-green');
+// Each swatch resolves its own preset colour from tokens.css, which needs a concrete theme.
+const swatchTheme = computed(() =>
+  theme.value === 'system'
+    ? typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
+      ? 'dark'
+      : 'light'
+    : theme.value,
+);
 
 const timeZone = ref<string>(
   session.user?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -198,6 +243,24 @@ async function changeTheme(value: string) {
   }
 }
 
+// Optimistic: apply at once, put the old accent back if the save fails.
+async function changeAccent(value: AccentId) {
+  const previous = accent.value;
+  accent.value = value;
+  applyAccent(value, true);
+  try {
+    const res = await apiFetch<PatchMeResponseT>('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ accent: value }),
+    });
+    if (res.user) session.user = res.user as typeof session.user;
+  } catch (err) {
+    accent.value = previous;
+    applyAccent(previous, true);
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  }
+}
+
 async function changeTimeZone() {
   timeZoneSubmitting.value = true;
   try {
@@ -265,129 +328,213 @@ async function confirmDelete() {
 </script>
 
 <template>
-  <div class="settings-view">
-    <h1>Settings</h1>
+  <main class="desk-settings-view">
+    <h1 class="desk-settings-title">Settings</h1>
 
-    <section>
-      <h2>Profile</h2>
-      <p>
-        Email: {{ session.user?.email }}
-        <span v-if="session.user?.emailVerified === false" class="badge-warn">Unverified</span>
-      </p>
-      <div v-if="session.user?.emailVerified === false" class="verify-row">
-        <p>Confirm your address within 7 days of signing up, or sign-in is paused until you do.</p>
-        <Button
-          type="button"
-          :loading="verifySending"
-          :disabled="verifySending"
-          @click="resendVerification"
-        >
-          Resend verification email
-        </Button>
-        <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
-      </div>
-      <form @submit.prevent="changeEmail">
-        <Input v-model="newEmail" type="email" label="New email" placeholder="new@example.com" />
-        <Input v-model="emailChangePassword" type="password" label="Current password (if set)" />
-        <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
-        <p v-if="emailError" role="alert" class="error-text">{{ emailError }}</p>
-        <Button type="submit" :loading="emailSubmitting" :disabled="emailSubmitting">
-          Change email
-        </Button>
-      </form>
-    </section>
+    <nav class="desk-settings-index" aria-label="Settings sections">
+      <a v-for="s in SECTIONS" :key="s.id" :href="`#st-${s.id}`" class="desk-settings-index-link">{{
+        s.title
+      }}</a>
+    </nav>
 
-    <section>
-      <h2>Default currency</h2>
-      <CurrencyPicker
-        :model-value="currency"
-        label="Default currency"
-        @update:model-value="changeCurrency"
-      />
-      <p v-if="currencySubmitting && !job">Updating…</p>
-      <p v-if="job && job.status !== 'done' && job.status !== 'failed'">
-        Re-deriving expenses: {{ job.progressDone
-        }}<span v-if="job.progressTotal !== null"> / {{ job.progressTotal }}</span>
-      </p>
-    </section>
+    <div class="desk-settings-sections">
+      <PanelFrame id="st-profile" heading="Profile" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <p class="desk-settings-row">
+            <span class="desk-settings-label">Email</span>
+            <span class="desk-settings-value">{{ session.user?.email }}</span>
+            <span v-if="session.user?.emailVerified === false" class="desk-settings-status"
+              >Unverified</span
+            >
+          </p>
+          <div v-if="session.user?.emailVerified === false" class="desk-settings-note">
+            <p>
+              Confirm your address within 7 days of signing up, or sign-in is paused until you do.
+            </p>
+            <Button
+              type="button"
+              variant="secondary"
+              :loading="verifySending"
+              :disabled="verifySending"
+              @click="resendVerification"
+            >
+              Resend verification email
+            </Button>
+            <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
+          </div>
+          <form class="desk-settings-form" @submit.prevent="changeEmail">
+            <Input
+              v-model="newEmail"
+              type="email"
+              label="New email"
+              placeholder="new@example.com"
+            />
+            <Input
+              v-model="emailChangePassword"
+              type="password"
+              label="Current password (if set)"
+            />
+            <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
+            <p v-if="emailError" role="alert" class="desk-settings-error">{{ emailError }}</p>
+            <div>
+              <Button type="submit" :loading="emailSubmitting" :disabled="emailSubmitting">
+                Change email
+              </Button>
+            </div>
+          </form>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Theme</h2>
-      <Select
-        v-model="theme"
-        :options="THEME_OPTIONS"
-        label="Theme"
-        @update:model-value="changeTheme"
-      />
-    </section>
-
-    <section>
-      <h2>Time zone</h2>
-      <p>Used to default the date on captures sent from your phone (e.g. iOS Shortcuts).</p>
-      <form @submit.prevent="changeTimeZone">
-        <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
-        <Button type="submit" :loading="timeZoneSubmitting" :disabled="timeZoneSubmitting">
-          Save time zone
-        </Button>
-      </form>
-    </section>
-
-    <section>
-      <h2>Widgets</h2>
-      <p v-if="widgetPlaces.length === 0">No places in use by your widgets.</p>
-      <template v-else>
-        <p>Places used by your widgets:</p>
-        <ul>
-          <li v-for="p in widgetPlaces" :key="p" data-testid="widget-place">{{ p }}</li>
-        </ul>
-      </template>
-      <fieldset class="unit-fieldset">
-        <legend>Temperature unit</legend>
-        <label v-for="u in ['C', 'F'] as const" :key="u">
-          <input
-            type="radio"
-            name="settings-temperature-unit"
-            :value="u"
-            :checked="widgetsStore.temperatureUnit === u"
-            @change="changeUnit(u)"
+      <PanelFrame id="st-currency" heading="Default currency" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <CurrencyPicker
+            :model-value="currency"
+            label="Default currency"
+            @update:model-value="changeCurrency"
           />
-          °{{ u }}
-        </label>
-      </fieldset>
-    </section>
+          <p v-if="currencySubmitting && !job">Updating…</p>
+          <p
+            v-if="job && job.status !== 'done' && job.status !== 'failed'"
+            class="desk-settings-fig"
+          >
+            Re-deriving expenses: {{ job.progressDone
+            }}<span v-if="job.progressTotal !== null"> / {{ job.progressTotal }}</span>
+          </p>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Sessions</h2>
-      <p v-if="sessionsLoading">Loading sessions…</p>
-      <p v-else-if="sessionsError" role="alert" class="error-text">{{ sessionsError }}</p>
-      <ul v-else>
-        <li v-for="s in sessions" :key="s.id">
-          {{ describeDevice(s.userAgent) }} — last seen {{ formatDateTime(s.lastSeenAt) }}
-          <span v-if="s.current"> (this session)</span>
-          <Button v-if="!s.current" variant="secondary" @click="revokeSession(s.id)">
-            Revoke
-          </Button>
-        </li>
-      </ul>
-    </section>
+      <PanelFrame id="st-theme" heading="Theme" class="desk-settings-section">
+        <div class="desk-settings-body desk-settings-body--start">
+          <ThemeToggle v-model="theme" label="Theme" @update:model-value="changeTheme" />
+          <fieldset
+            v-if="flags.isOn('appearance.accent')"
+            class="desk-settings-accents"
+            role="radiogroup"
+          >
+            <legend class="desk-settings-label">Accent colour</legend>
+            <label
+              v-for="id in ACCENT_IDS"
+              :key="id"
+              class="desk-settings-accent"
+              :data-accent="id"
+              :data-theme="swatchTheme"
+            >
+              <input
+                :checked="accent === id"
+                type="radio"
+                name="settings-accent"
+                :value="id"
+                @change="changeAccent(id)"
+              />
+              <span>{{ ACCENT_NAMES[id] }}</span>
+            </label>
+          </fieldset>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Phone capture</h2>
-      <p>Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.</p>
-      <Button variant="secondary" @click="router.push('/settings/capture')">
-        Manage capture address
-      </Button>
-    </section>
+      <PanelFrame id="st-timezone" heading="Time zone" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <p class="desk-settings-help">
+            Used to default the date on captures sent from your phone (e.g. iOS Shortcuts).
+          </p>
+          <form class="desk-settings-form" @submit.prevent="changeTimeZone">
+            <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
+            <div>
+              <Button type="submit" :loading="timeZoneSubmitting" :disabled="timeZoneSubmitting">
+                Save time zone
+              </Button>
+            </div>
+          </form>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Export</h2>
-      <Button variant="secondary" @click="downloadExport">Download my data</Button>
-    </section>
+      <PanelFrame id="st-widgets" heading="Widgets" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <p v-if="widgetPlaces.length === 0" class="desk-settings-help">
+            No places in use by your widgets.
+          </p>
+          <template v-else>
+            <p class="desk-settings-help">Places used by your widgets:</p>
+            <ul class="desk-settings-list">
+              <li v-for="p in widgetPlaces" :key="p" data-testid="widget-place">{{ p }}</li>
+            </ul>
+          </template>
+          <fieldset class="desk-settings-fieldset">
+            <legend class="desk-settings-label">Temperature unit</legend>
+            <label v-for="u in ['C', 'F'] as const" :key="u" class="desk-settings-radio">
+              <input
+                type="radio"
+                name="settings-temperature-unit"
+                :value="u"
+                :checked="widgetsStore.temperatureUnit === u"
+                @change="changeUnit(u)"
+              />
+              <span class="desk-settings-fig">°{{ u }}</span>
+            </label>
+          </fieldset>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Delete account</h2>
-      <Button variant="danger" @click="deleteOpen = true">Delete account</Button>
-    </section>
+      <PanelFrame id="st-sessions" heading="Sessions" class="desk-settings-section">
+        <div v-if="sessionsLoading" class="desk-settings-skeleton" aria-busy="true">
+          <p class="desk-sr-only">Loading sessions…</p>
+          <Skeleton v-for="i in 3" :key="i" height="1.25rem" />
+        </div>
+        <ErrorState
+          v-else-if="sessionsError"
+          title="Couldn't load your sessions"
+          :description="sessionsError"
+        >
+          <template #action
+            ><Button variant="secondary" @click="loadSessions">Try again</Button></template
+          >
+        </ErrorState>
+        <DataTable v-else :columns="sessionColumns" dense caption="Signed-in sessions">
+          <tr v-for="s in sessions" :key="s.id">
+            <td>
+              <span class="desk-item">
+                <span class="desk-item-name">{{ describeDevice(s.userAgent) }}</span>
+                <span class="desk-item-cat desk-settings-seen-inline">{{
+                  formatDateTime(s.lastSeenAt)
+                }}</span>
+              </span>
+            </td>
+            <td class="desk-col--md">{{ formatDateTime(s.lastSeenAt) }}</td>
+            <td class="desk-col--action">
+              <span v-if="s.current" class="desk-settings-current">This session</span>
+              <Button v-else variant="ghost" size="sm" @click="revokeSession(s.id)">
+                Revoke
+              </Button>
+            </td>
+          </tr>
+        </DataTable>
+      </PanelFrame>
+
+      <PanelFrame id="st-capture" heading="Phone capture" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <p class="desk-settings-help">
+            Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.
+          </p>
+          <div>
+            <Button variant="secondary" @click="router.push('/settings/capture')">
+              Manage capture address
+            </Button>
+          </div>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame id="st-export" heading="Export" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <div><Button variant="secondary" @click="downloadExport">Download my data</Button></div>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame id="st-delete" heading="Delete account" class="desk-settings-section">
+        <div class="desk-settings-body">
+          <div><Button variant="danger" @click="deleteOpen = true">Delete account</Button></div>
+        </div>
+      </PanelFrame>
+    </div>
 
     <Dialog :open="deleteOpen" title="Delete your account" @close="deleteOpen = false">
       <p>
@@ -396,8 +543,8 @@ async function confirmDelete() {
       </p>
       <Input v-model="deleteConfirmText" label='Type "DELETE" to confirm' />
       <Input v-model="deletePassword" type="password" label="Current password (if set)" />
-      <p v-if="deleteError" role="alert" class="error-text">{{ deleteError }}</p>
-      <div class="dialog-actions">
+      <p v-if="deleteError" role="alert" class="desk-settings-error">{{ deleteError }}</p>
+      <div class="desk-settings-dialog-actions">
         <Button variant="secondary" @click="deleteOpen = false">Cancel</Button>
         <Button
           variant="danger"
@@ -409,62 +556,282 @@ async function confirmDelete() {
         </Button>
       </div>
     </Dialog>
-  </div>
+  </main>
 </template>
 
 <style scoped>
-.settings-view {
-  max-width: 32rem;
-  margin: 2rem auto;
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
+.desk-sr-only {
+  position: absolute;
+  font-size: var(--text-md);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.desk-settings-view {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: var(--space-4);
 }
-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-ul {
-  list-style: none;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-.unit-fieldset {
-  border: 0;
+.desk-settings-title {
   margin: 0;
-  padding: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
-.error-text {
-  color: var(--color-critical);
+/* Below 1024 the section index is a scrolling row of links; from 1024 a sticky column. */
+.desk-settings-index {
+  display: flex;
+  gap: var(--space-4);
+  margin-inline: calc(-1 * var(--gutter-fluid));
+  padding-inline: var(--gutter-fluid);
+  overflow-x: auto;
+  scroll-padding-inline: var(--gutter-fluid);
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--color-border);
+}
+.desk-settings-index-link {
+  display: flex;
+  align-items: center;
+  flex: none;
+  min-height: var(--target-min);
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  white-space: nowrap;
+  text-decoration: none;
+}
+.desk-settings-index-link:hover {
+  color: var(--color-fg);
+}
+.desk-settings-index-link:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-settings-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+.desk-settings-section {
+  scroll-margin-top: var(--space-4);
+}
+.desk-settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+.desk-settings-body--start > :first-child {
+  align-self: flex-start;
+}
+.desk-settings-body p,
+.desk-settings-note p {
   margin: 0;
 }
-.badge-warn {
-  margin-left: 0.5rem;
-  padding: 0.1rem 0.5rem;
-  border: 1px solid var(--color-warn);
-  border-radius: 999px;
+.desk-settings-label {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+.desk-settings-help {
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  max-width: 60ch;
+}
+.desk-settings-fig {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.desk-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+}
+.desk-settings-value {
+  overflow-wrap: anywhere;
+}
+.desk-settings-status {
+  font-size: var(--text-sm);
+  font-weight: 600;
   color: var(--color-warn);
-  font-size: 0.8rem;
 }
-.verify-row {
+.desk-settings-note {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.5rem;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border-inline-start: var(--space-1) solid var(--color-warn);
+  background: var(--color-surface-raised);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
-.dialog-actions {
+.desk-settings-form {
   display: flex;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 28rem;
+}
+.desk-settings-error {
+  color: var(--color-critical);
+}
+.desk-settings-list {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+.desk-settings-fieldset {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.desk-settings-fieldset legend {
+  float: left;
+  margin-right: var(--space-2);
+}
+.desk-settings-radio {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  cursor: pointer;
+}
+.desk-settings-radio input {
+  width: var(--space-6);
+  height: var(--space-6);
+  margin: 0;
+}
+@media (max-width: 767px) {
+  .desk-settings-radio input {
+    width: var(--target-min);
+    height: var(--target-min);
+  }
+}
+.desk-settings-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-2) var(--space-4);
+}
+.desk-settings-current {
+  font-size: var(--text-sm);
+  color: var(--color-fg-muted);
+}
+.desk-settings-seen-inline {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.desk-settings-dialog-actions {
+  display: flex;
+  gap: var(--space-2);
   justify-content: flex-end;
+}
+/* Accent swatches: native radios drawn as filled squares in the preset's own colour. Selected shows
+   as a ring plus an inner rule (not colour alone); the name always sits beside the swatch. */
+.desk-settings-accents {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.desk-settings-accents legend {
+  width: 100%;
+  padding: 0;
+  margin-bottom: var(--space-2);
+}
+.desk-settings-accent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  cursor: pointer;
+}
+.desk-settings-accent input {
+  appearance: none;
+  flex: none;
+  width: var(--space-6);
+  height: var(--space-6);
+  margin: 0;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+  cursor: pointer;
+}
+.desk-settings-accent input:checked {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 var(--space-1) var(--color-accent-fg);
+}
+.desk-settings-accent input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-settings-accent input:checked + span {
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .desk-settings-accents {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .desk-settings-accents legend {
+    grid-column: 1 / -1;
+  }
+  .desk-settings-accent input {
+    width: var(--target-min);
+    height: var(--target-min);
+  }
+}
+@media (min-width: 1024px) {
+  .desk-settings-view {
+    grid-template-columns: 12rem minmax(0, 46rem);
+    grid-template-areas:
+      'title title'
+      'index sections';
+    column-gap: var(--space-10);
+    justify-content: start;
+  }
+  .desk-settings-title {
+    grid-area: title;
+  }
+  .desk-settings-index {
+    grid-area: index;
+    flex-direction: column;
+    align-self: start;
+    gap: 0;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    position: sticky;
+    top: var(--space-4);
+    border-bottom: 0;
+    border-left: 1px solid var(--color-border);
+  }
+  .desk-settings-index-link {
+    min-height: var(--space-8);
+    padding-left: var(--space-3);
+  }
+  .desk-settings-sections {
+    grid-area: sections;
+  }
 }
 </style>

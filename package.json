@@ -18,7 +18,7 @@
     "format:check": "prettier --check .",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r --filter @desk/core --filter @desk/api test",
-    "test:unit": "pnpm -r --filter @desk/core test",
+    "test:unit": "pnpm -r --filter @desk/core --filter @desk/ui --filter @desk/web test && pnpm --filter @desk/e2e test:unit",
     "test:api": "pnpm --filter @desk/api test",
     "test:e2e": "pnpm --filter @desk/e2e exec playwright test",
     "worker:build": "wrangler deploy --dry-run --config infra/cloudflare/wrangler.toml --outdir .wrangler/dry-run",
