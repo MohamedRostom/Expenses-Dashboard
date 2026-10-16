@@ -63,3 +63,31 @@ Each entry is a decision the codebase did not already settle.
 **Decision**: ADR-0007 "Premium identity with ambient motion" supersedes ADR-0006; the constitution moves to v1.3.0, rewording Principle VI's identity clause to name ADR-0007 and allowing exactly one looping effect, the opt-in background layer. The root `DESIGN.md` is rewritten for the new identity, keeping the spec 004 one-time motions and adding the background rules. All three are owner-accepted before any code task merges.
 
 **Rationale**: CLAUDE.md requires an ADR for a decision change, and Principle VI currently names ADR-0006 and forbids loops.
+
+## R9. Saving appearance changes (clarify round 2)
+
+**Decision**: each control applies at once and queues its field into one pending patch. The patch is sent 400 ms after the last change, with at most one `PATCH /me` in flight; a change made while one is in flight is merged into the next. A response is applied to `session.user` only if no newer change is pending, so a slow older response never overwrites the preview. The custom colour previews on `input` and queues on `change`, so dragging the picker sends one value. A failure keeps the preview and shows the alert with "Try again", which resends the pending patch.
+
+**Rationale**: FR-004 asks for the last value only, and the colour input fires dozens of `input` events per drag. Debounce plus a single in-flight request is the smallest thing that is both last-write-wins and order-safe.
+
+**Alternatives considered**: one request per click with a sequence number (sends every intermediate value); a Save button (rejected in clarify).
+
+## R10. Data saving
+
+**Decision**: `prefers-reduced-data: reduce` in `motion.css` (no browser ships it yet; it costs one rule) and `navigator.connection?.saveData` read by `applyMotion`, which sets `data-motion-paused`. No power-saving detection: the web exposes none.
+
+**Rationale**: `saveData` is the only data-saving signal a Chromium browser exposes today; reusing `data-motion-paused` keeps one stillness path.
+
+## R11. Forced colours and reduced transparency
+
+**Decision**: in `motion.css`, `@media (forced-colors: active)` hides the layer (`display: none`). In the `.surface` rule, `@media (forced-colors: active)` and `@media (prefers-reduced-transparency: reduce)` both drop `backdrop-filter` and use the opaque surface, the same fallback as `data-panels="solid"`. The saved switch is untouched.
+
+**Rationale**: decoration yields to a high-contrast palette, and glass is what reduced transparency exists to remove. Chrome and Edge 118+ honour the transparency query; elsewhere the user's switch is the fallback.
+
+## R12. Still preset thumbnails
+
+**Decision**: each preset radio contains a 64 × 40 px `.motion-thumb[data-preset=…]` that reuses the preset's drawing rules from `motion.css` with `animation: none`, tinted with the current `--motion-tint`. No images.
+
+**Rationale**: one set of drawing rules serves the layer and the thumbnails, and nothing in Settings loops, so the "exactly one looping effect" rule holds.
+
+**Alternatives considered**: animated thumbnails (five extra loops, a performance cost on `/settings`); screenshots (go stale when a preset changes and need light and dark versions).

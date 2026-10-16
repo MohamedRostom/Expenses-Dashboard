@@ -28,5 +28,5 @@ The effective appearance on a screen is derived, never stored:
 1. Flag off: still ground (`data-motion="none"`), translucent panels, whatever is saved.
 2. Flag on, signed out: the defaults (Particles, Signal mint in light, the dark tint in dark, translucent, not paused).
 3. Flag on, signed in: the user's preset; tint = `MOTION_DARK_TINT` in dark, else `motion_colour`; panels per `panels_translucent`.
-4. Paused when `motion_paused`, the page is hidden, or the system asks for reduced motion or reduced data.
+4. Paused when `motion_paused`, the page is hidden, `navigator.connection.saveData` is true, or the system asks for reduced motion or reduced data. Hidden entirely under `forced-colors: active`; panels solid under `forced-colors: active` or `prefers-reduced-transparency: reduce`, whatever `panels_translucent` holds.
 5. An unknown preset falls back to `particles` and an invalid colour to `#7fd1a8` (FR-016). The database CHECKs make this a guard for stale clients, not an expected path.

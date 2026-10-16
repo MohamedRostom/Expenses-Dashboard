@@ -6,11 +6,11 @@
 
 ## Summary
 
-Every screen, signed in and out, moves to translucent 16 px panels over an ambient background layer that reflows by width. With `appearance.motion` on, Settings › Appearance offers five motion presets, a light-only motion colour, a translucent-panels switch and a pause switch, all saved to the user's row the same way as the accent preset. The motion is a CSS-only layer that animates transform and opacity and stops under reduced motion, reduced data, a hidden tab or the user's pause. Its contrast is proved by a composited-colour unit test rather than by limiting the user's colour. No new dependency.
+Every screen, signed in and out, moves to translucent 16 px panels over an ambient background layer that reflows by width. With `appearance.motion` on, Settings › Appearance offers five motion presets, a light-only motion colour, a translucent-panels switch and a pause switch, all saved to the user's row the same way as the accent preset. The motion is a CSS-only layer that animates transform and opacity and stops under reduced motion, reduced data (including the browser's save-data flag), a hidden tab or the user's pause; it disappears in Windows high contrast, and panels go solid under reduced transparency. Appearance changes save themselves, coalesced so only the last one is sent, and the picker shows still thumbnails, never a second moving layer. Its contrast is proved by a composited-colour unit test rather than by limiting the user's colour. No new dependency.
 
 ## How it fits together
 
-`App.vue` already watches the session and flags to call `applyTheme` and `applyAccent`. A new `applyMotion(prefs, enabled, theme)` in `apps/web/src/views/theme.ts` joins that watch and sets `data-motion`, `data-motion-paused`, `data-panels` and the `--motion-tint` custom property on `<html>`. `BackgroundMotion.vue`, mounted once in `App.vue` behind `<RouterView>`, reads only those attributes, so it takes no props. Signed out, `App.vue` reads `GET /flags/public` instead of `GET /flags`. The landing site mounts the same component at build time when `VITE_APPEARANCE_MOTION` is `true`.
+`App.vue` already watches the session and flags to call `applyTheme` and `applyAccent`. A new `applyMotion(prefs, enabled, theme)` in `apps/web/src/views/theme.ts` joins that watch and sets `data-motion`, `data-motion-paused`, `data-panels` and the `--motion-tint` custom property on `<html>`. `applyMotion` also pauses when `navigator.connection?.saveData` is true, the one input CSS cannot see. `BackgroundMotion.vue`, mounted once in `App.vue` behind `<RouterView>`, reads only those attributes, so it takes no props. Signed out, `App.vue` reads `GET /flags/public` instead of `GET /flags`. The landing site mounts the same component at build time when `VITE_APPEARANCE_MOTION` is `true`.
 
 ## Project Structure
 
@@ -30,7 +30,7 @@ packages/ui/src/components/PanelFrame.vue (+ tile/widget frames)  EDIT .surface 
 packages/ui/src/contrast.ts                 EDIT compositeOver()
 apps/web/src/views/theme.ts                 EDIT applyMotion()
 apps/web/src/App.vue                        EDIT mount layer, watch prefs, public flags when signed out
-apps/web/src/views/SettingsView.vue         EDIT Appearance controls
+apps/web/src/views/SettingsView.vue         EDIT Appearance controls, coalesced auto-save, still preset thumbnails
 apps/web/src/views/*.vue                    EDIT only screens with their own column rules → .board-grid
 apps/landing/src/App.vue                    EDIT mount layer at build time
 DESIGN.md, docs/adr/ADR-0007-premium-identity.md, .specify/memory/constitution.md  identity documents
@@ -58,7 +58,7 @@ tests/e2e/tests/motion.spec.ts              NEW  picker, persistence, pause, red
 | A public, unauthenticated flags endpoint | Signed-out pages must respect the flag (FR-021, FR-015) | Making `GET /flags` public leaks every flag name |
 | Signed-in Lighthouse performance stays under 0.9 (CLAUDE.md definition of done says "Lighthouse green") | Spec 004 left `/` ~0.69 and `/settings` ~0.86 with assertions at `warn`; this spec promises no regression, not the fix | Fixing signed-in performance here would double the scope; it stays a separate item |
 
-Re-checked after Phase 1 design: no new violation.
+Re-checked after Phase 1 design and again after the second clarify round (2026-10-16: auto-save, save-data, forced colours, reduced transparency, still thumbnails): no new violation. The additions are CSS media rules, one property read and a small save queue; no dependency.
 
 ## Risks
 
