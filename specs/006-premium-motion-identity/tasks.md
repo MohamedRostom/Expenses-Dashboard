@@ -23,7 +23,7 @@ Tests are required (constitution Principle I): every task that adds behaviour st
 **Wave 1 — independent (different files):**
 
 - [ ] **T005** [P] Write `motion.test.ts` first (ids in order, default `particles`, six swatches, dark tint), then add `MOTION_PRESET_IDS`, `MOTION_SWATCHES`, `MOTION_DARK_TINT` and export them · `packages/contracts/src/motion.ts`, `packages/contracts/src/motion.test.ts`, `packages/contracts/src/index.ts`
-- [ ] **T006** [P] Write the migration test first (defaults on existing rows, CHECK rejects `'sparkle'` and `'#FFF'`), then add the four `users` columns and migration `0012_user_motion.sql` per data-model · `packages/db/src/schema.ts`, `packages/db/migrations/0012_user_motion.sql`, `packages/db/test/migrations.test.ts`
+- [ ] **T006** [P] Write the migration test first (defaults on existing rows, CHECK rejects `'sparkle'` and `'#FFF'`), then add the four `users` columns and migration `0012_user_motion.sql` per data-model · `packages/db/src/schema.ts`, `packages/db/migrations/0012_user_motion.sql`, `apps/api/test/user-motion-migration.test.ts`
 - [ ] **T007** [P] Add `--color-surface-glass`, `--blur-surface`, `--radius-xl` and the motion alpha tokens for all three theme states, with `tokens.test.ts` cases for each state · `packages/ui/src/tokens.css`, `packages/ui/src/tokens.test.ts`
 - [ ] **T008** [P] Write the SC-004 matrix test first (5 presets × 6 swatches plus `#ffffff` and `#000000` × 2 themes × glass and opaque panels: every text token ≥ 4.5:1 over the composited ground), then add `compositeOver()` · `packages/ui/src/contrast.ts`, `packages/ui/src/contrast.test.ts`
 - [ ] **T009** [P] Seed the `appearance.motion` flag, off · `packages/db/src/seed.ts`
@@ -34,13 +34,13 @@ Tests are required (constitution Principle I): every task that adds behaviour st
 
 - [ ] **T010** [P] Extend `UserResponse` and `PatchMeRequest` with the four fields (contract tests: enum, colour regex, lowercase) · `packages/contracts/src/auth.ts`, `packages/contracts/src/me.ts`, `packages/contracts/src/accent.test.ts`
 - [ ] **T011** [P] Write `BackgroundMotion.test.ts` first (renders per `data-motion`, `aria-hidden`, nothing for `none`), then add the component and `motion.css` (five presets' keyframes on transform and opacity only, paused under `data-motion-paused`, `animation: none` under reduced motion and reduced data, hidden in print, `pointer-events: none`) · `packages/ui/src/components/BackgroundMotion.vue`, `packages/ui/src/components/BackgroundMotion.test.ts`, `packages/ui/src/motion.css`, `packages/ui/src/index.ts`
-- [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the frame components, with their unit tests updated · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `packages/ui/src/components/Dialog.vue`
+- [ ] **T012** [P] Apply the `.surface` rule (glass with `@supports` and `data-panels="solid"` fallbacks, `--radius-xl`) to the panel, tile and widget frames, with their unit tests updated; dialogs, menus and toasts stay on the opaque Overlay surface for legibility · `packages/ui/src/components/PanelFrame.vue`, `packages/ui/src/components/Tile.vue`, `apps/web/src/components/widgets/WidgetFrame.vue`
 
 **⟶ Wait for Wave 2 to finish, then:**
 
 **Wave 3 — independent (different files):**
 
-- [ ] **T013** [P] Write the API tests first (`PATCH /me` sets and validates each field; 401 signed out; user A's patch leaves user B unchanged in the ownership matrix), then map and patch the fields · `apps/api/src/routes/me.ts`, `apps/api/src/routes/auth.ts`, `apps/api/test/me-appearance.test.ts`, `apps/api/test/ownership-matrix.test.ts`
+- [ ] **T013** [P] Write the API tests first (`PATCH /me` sets and validates each field; 401 signed out; user A's patch leaves user B unchanged in the ownership matrix, and `GET /flags/public` listed as a public route that returns no user data), then map and patch the fields · `apps/api/src/routes/me.ts`, `apps/api/src/routes/auth.ts`, `apps/api/test/me-appearance.test.ts`, `apps/api/test/ownership.test.ts`
 - [ ] **T014** [P] Write the test first (unauthenticated 200, only `appearance.motion` listed, global value even with a user override present, `Cache-Control`), then add `GET /flags/public` · `apps/api/src/routes/misc.ts`, `apps/api/test/flags-public.test.ts`
 - [ ] **T015** [P] Write `theme.test.ts` cases first (attributes for flag off, signed out, light, dark tint, pause, solid panels, unknown preset and bad colour fallbacks per FR-016), then add `applyMotion()` · `apps/web/src/views/theme.ts`, `apps/web/src/views/theme.test.ts`
 
@@ -68,7 +68,7 @@ Files: `apps/web/src/components/appearance/AppearanceSettings.vue`, `apps/web/sr
 
 **⟶ Wait for T020, then:**
 
-- [ ] **T021** [US1] Mount `AppearanceSettings` in Settings › Appearance behind `appearance.motion` · `apps/web/src/views/SettingsView.vue`
+- [ ] **T021** [US1] Mount `AppearanceSettings` in Settings › Appearance behind `appearance.motion`, and replace Settings' own column rules with `.board-grid` (US2's rule; Settings is owned here so only one phase edits it) · `apps/web/src/views/SettingsView.vue`
 
 **Checkpoint**: a user can choose and keep every appearance setting.
 
@@ -82,7 +82,7 @@ Files: `packages/ui/src/layout.css`, the screens listed in T023, `tests/e2e/test
 
 ### Implementation
 
-- [ ] **T023** [P] [US2] Add `.board-grid` (research R7) and replace each screen's own column rules with it; only screens that set their own columns change · `packages/ui/src/layout.css`, `apps/web/src/views/MonthView.vue`, `apps/web/src/views/CategoriesView.vue`, `apps/web/src/views/YearView.vue`, `apps/web/src/views/TodayView.vue`, `apps/web/src/views/ConnectionsView.vue`
+- [ ] **T023** [P] [US2] Add `.board-grid` (research R7) and replace each screen's own column rules with it; these are the screens that set their own `grid-template-columns` today (Settings is done in T021) · `packages/ui/src/layout.css`, `apps/web/src/views/MonthView.vue`, `apps/web/src/views/TodayView.vue`, `apps/web/src/views/ConnectionsView.vue`, `apps/web/src/views/ConnectorsView.vue`, `apps/web/src/components/widgets/WidgetStrip.vue`
 
 **Checkpoint**: no route scrolls sideways at any of the three widths.
 
@@ -96,11 +96,11 @@ Files: `tests/e2e/tests/motion-colour.spec.ts`. The colour logic is foundational
 
 Files: `tests/e2e/tests/motion-a11y.spec.ts`
 
-- [ ] **T025** [US4] e2e: with `reducedMotion: 'reduce'`, two screenshots 3 s apart are identical for every preset (SC-005); a hidden page sets `data-motion-paused` and the computed `animation-play-state` is `paused`; the layer has `pointer-events: none` and is absent in print media · `tests/e2e/tests/motion-a11y.spec.ts`
+- [ ] **T025** [US4] e2e: with `reducedMotion: 'reduce'`, two screenshots 3 s apart are identical for every preset (SC-005); a hidden page sets `data-motion-paused` and the computed `animation-play-state` is `paused`; the layer has `pointer-events: none`, `position: fixed` (its bounding box is unchanged after scrolling a long page) and is absent in print media; with `prefers-reduced-data: reduce` emulated through CDP `Emulation.setEmulatedMedia`, the layer is still · `tests/e2e/tests/motion-a11y.spec.ts`
 
 ## Phase 7: User Story 5, signed-out pages share the look (P2)
 
-Files: `apps/landing/src/App.vue`, `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-fly.yml`, `tests/e2e/tests/motion-signed-out.spec.ts`
+Files: `apps/landing/src/App.vue`, `.github/workflows/deploy-staging.yml`, `tests/e2e/tests/motion-signed-out.spec.ts`
 
 ### Tests
 
@@ -109,7 +109,7 @@ Files: `apps/landing/src/App.vue`, `.github/workflows/deploy-staging.yml`, `.git
 ### Implementation
 
 - [ ] **T027** [P] [US5] Mount `BackgroundMotion` in the landing app when `VITE_APPEARANCE_MOTION` is `true` (default off), with a landing build test · `apps/landing/src/App.vue`
-- [ ] **T028** [P] [US5] Pass `VITE_APPEARANCE_MOTION` to the landing build from a repo variable in the deploy workflows (unset means off) · `.github/workflows/deploy-staging.yml`, `.github/workflows/deploy-fly.yml`
+- [ ] **T028** [P] [US5] Pass `VITE_APPEARANCE_MOTION` to the landing build from a repo variable in the workflow that builds the landing site (unset means off) · `.github/workflows/deploy-staging.yml`
 
 ## Phase 8: User Story 6, ship dark until announced (P3)
 
@@ -121,7 +121,7 @@ Files: `tests/e2e/tests/motion-flag.spec.ts`
 
 **Wave 1 — independent (different files):**
 
-- [ ] **T030** [P] Add `/` and `/settings` with Particles to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
+- [ ] **T030** [P] Add `/` and `/settings` with Particles and with Aurora drift (the costliest preset) to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
 - [ ] **T031** [P] Run the design tools per CLAUDE.md (redesign-existing-projects audit, `npx -y impeccable@4.1.0 detect` at 360 and 1280, `impeccable-finish-reviewer`) and fix or justify every non-advisory finding · `specs/006-premium-motion-identity/design-tools.md`
 - [ ] **T032** [P] CHANGELOG line, `docs/ROADMAP.md` entry, and the CLAUDE.md design-system section and current state for ADR-0007 · `CHANGELOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`
 

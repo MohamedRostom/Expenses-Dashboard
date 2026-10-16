@@ -56,6 +56,7 @@ tests/e2e/tests/motion.spec.ts              NEW  picker, persistence, pause, red
 |---|---|---|
 | A looping background effect | The owner chose ambient motion as the new identity (2026-10-16) | A still background: rejected by the owner |
 | A public, unauthenticated flags endpoint | Signed-out pages must respect the flag (FR-021, FR-015) | Making `GET /flags` public leaks every flag name |
+| Signed-in Lighthouse performance stays under 0.9 (CLAUDE.md definition of done says "Lighthouse green") | Spec 004 left `/` ~0.69 and `/settings` ~0.86 with assertions at `warn`; this spec promises no regression, not the fix | Fixing signed-in performance here would double the scope; it stays a separate item |
 
 Re-checked after Phase 1 design: no new violation.
 
