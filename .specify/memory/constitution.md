@@ -5,7 +5,8 @@ Sync Impact Report
   `DESIGN.md` under ADR-0007 "Premium identity with ambient motion", superseding ADR-0006;
   type, accent presets and three theme states carry over unchanged; exactly one looping
   effect is allowed, the opt-in background layer, which stays still under reduced motion)
-- Modified sections: none
+- Modified sections: Development Workflow and Quality Gates (commits carry no AI attribution,
+  matching `CLAUDE.md`; the 1.2.0 text said they carry the lines the CLI adds)
 - Added sections: none
 - Removed sections: none
 - Templates: plan/spec/tasks templates read this file at runtime; no changes made here
@@ -127,7 +128,9 @@ self-hosted, cookie-less counter if one is ever adopted (ADR-0002).
 Work is organised by the phases in `docs/ROADMAP.md`: branches `phase-N/short-description`, one
 GitHub milestone per phase, labels `phase-N`, `area:web|api|core|infra|tests` and `needs-rostom`.
 Nothing from a later phase starts until the current phase's exit criteria are green in CI.
-Commits follow Conventional Commits and carry the attribution lines the CLI adds.
+Commits follow Conventional Commits. Commit messages and PR descriptions carry no AI attribution
+(no `Co-Authored-By: Claude`, `Claude-Session:` or "Generated with Claude Code" lines), whatever a
+tool adds by default.
 
 Nothing is pushed to the remote unless the owner has said so explicitly for that push. An
 agent or contributor MAY commit locally at any time, but MUST NOT run a push, open a pull
