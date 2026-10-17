@@ -65,3 +65,29 @@ describe('Tile surface (T012)', () => {
     expect(el.querySelector('[data-tile]')?.classList.contains('surface')).toBe(true);
   });
 });
+
+describe('Tile accent ring (T044)', () => {
+  it('primary carries the ring class, critical switches its colour, secondary has none', async () => {
+    const ok = (await mount({ label: 'L', value: '1', primary: true })).querySelector(
+      '[data-tile]',
+    )!;
+    expect(ok.classList.contains('desk-tile-block--primary')).toBe(true);
+    expect(ok.classList.contains('desk-tile-block--critical')).toBe(false);
+    const bad = (
+      await mount({ label: 'L', value: '1', primary: true, variant: 'critical' })
+    ).querySelector('[data-tile]')!;
+    expect(bad.classList.contains('desk-tile-block--critical')).toBe(true);
+    const plain = (await mount({ label: 'L', value: '1' })).querySelector('[data-tile]')!;
+    expect(plain.classList.contains('desk-tile-block--primary')).toBe(false);
+  });
+
+  it('secondary figures are 26px and the ring is a 1px inset accent shadow', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/Tile.vue', 'utf8');
+    expect(src).toContain('font-size: var(--text-figure)');
+    expect(src).toContain('inset 0 0 0 1px var(--color-accent)');
+    expect(src).toContain('inset 0 0 0 1px var(--color-critical)');
+    // The ring adds to the raised shadow; a scoped box-shadow alone would drop the elevation.
+    expect(src.match(/var\(--shadow-raised\),\s*inset 0 0 0 1px/g)).toHaveLength(2);
+  });
+});

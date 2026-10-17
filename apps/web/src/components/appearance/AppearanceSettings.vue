@@ -48,6 +48,22 @@ const dark = computed(() =>
     : props.theme === 'dark',
 );
 
+// Radio-group keyboard pattern: one swatch in the tab order (the checked one, else the first),
+// arrow keys move to and pick the next one.
+const focusHex = computed(() =>
+  MOTION_SWATCHES.some((s) => s.hex === colour.value) ? colour.value : MOTION_SWATCHES[0]!.hex,
+);
+function onSwatchKey(e: KeyboardEvent, i: number) {
+  const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+  if (!step) return;
+  e.preventDefault();
+  const n = MOTION_SWATCHES.length;
+  const next = MOTION_SWATCHES[(i + step + n) % n]!;
+  queue({ motionColour: next.hex });
+  const buttons = (e.currentTarget as HTMLElement).parentElement?.querySelectorAll('button');
+  (buttons?.[(i + step + n) % n] as HTMLElement | undefined)?.focus();
+}
+
 const error = ref('');
 let pending: Patch = {};
 let timer: ReturnType<typeof setTimeout> | undefined;
@@ -167,32 +183,31 @@ onBeforeUnmount(() => {
       aria-label="Motion colour"
       :aria-disabled="preset === 'none' ? 'true' : undefined"
     >
-      <label
-        v-for="s in MOTION_SWATCHES"
+      <button
+        v-for="(s, i) in MOTION_SWATCHES"
         :key="s.id"
+        type="button"
+        role="radio"
         class="desk-appearance-swatch"
         :style="{ '--swatch': s.hex }"
-      >
-        <input
-          type="radio"
-          name="settings-motion-colour"
-          :value="s.hex"
-          :checked="colour === s.hex"
-          :aria-checked="colour === s.hex"
-          :disabled="preset === 'none'"
-          @change="queue({ motionColour: s.hex })"
-        />
-        <span>{{ SWATCH_NAMES[s.id] }}</span>
-      </label>
+        :aria-label="SWATCH_NAMES[s.id]"
+        :title="SWATCH_NAMES[s.id]"
+        :aria-checked="colour === s.hex"
+        :tabindex="s.hex === focusHex ? 0 : -1"
+        :disabled="preset === 'none'"
+        @click="queue({ motionColour: s.hex })"
+        @keydown="onSwatchKey($event, i)"
+      ></button>
       <label class="desk-appearance-custom">
-        <span>Custom colour</span>
         <input
           type="color"
+          aria-label="Custom colour"
           :value="colour"
           :disabled="preset === 'none'"
           @input="preview({ motionColour: ($event.target as HTMLInputElement).value })"
           @change="queue({ motionColour: ($event.target as HTMLInputElement).value })"
         />
+        <span>Custom</span>
       </label>
       <p v-if="preset === 'none'" class="desk-appearance-hint">Applies when a motion is on.</p>
     </div>
@@ -259,11 +274,9 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 .desk-appearance-preset[data-checked='true'] {
-  border-color: var(--color-accent);
-  box-shadow: inset 0 0 0 1px var(--color-accent);
+  border: 2px solid var(--color-accent);
 }
-.desk-appearance-preset input,
-.desk-appearance-swatch input {
+.desk-appearance-preset input {
   position: absolute;
   inset: 0;
   inline-size: 100%;
@@ -273,7 +286,8 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 .desk-appearance-preset:has(input:focus-visible),
-.desk-appearance-swatch:has(input:focus-visible),
+.desk-appearance-swatch:focus-visible,
+.desk-appearance-custom:has(input:focus-visible),
 .desk-appearance-switch:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
@@ -297,44 +311,55 @@ onBeforeUnmount(() => {
   line-height: var(--leading-sm);
 }
 .desk-appearance-colours {
-  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
 }
 .desk-appearance-colours[aria-disabled='true'] {
   opacity: 0.6;
 }
-.desk-appearance-swatch,
+/* Bare round colour buttons (board): 44px, the colour is the whole control. */
+.desk-appearance-swatch {
+  flex: none;
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+.desk-appearance-swatch[aria-checked='true'] {
+  border: 3px solid var(--color-fg);
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
 .desk-appearance-custom {
-  position: relative;
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--space-2);
   min-height: var(--target-min);
-  padding-inline: var(--space-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
   cursor: pointer;
-}
-.desk-appearance-swatch::before {
-  content: '';
-  flex: none;
-  inline-size: var(--space-6);
-  block-size: var(--space-6);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--swatch);
-}
-.desk-appearance-swatch:has(input:checked) {
-  border-color: var(--color-accent);
-  box-shadow: inset 0 0 0 1px var(--color-accent);
-  font-weight: 600;
 }
 .desk-appearance-custom input {
   inline-size: var(--target-min);
   block-size: var(--target-min);
   padding: 0;
   border: 0;
+  border-radius: 50%;
   background: none;
   cursor: pointer;
+}
+.desk-appearance-custom input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.desk-appearance-custom input::-webkit-color-swatch {
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+}
+.desk-appearance-custom input::-moz-color-swatch {
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
 }
 .desk-appearance-switches {
   display: flex;

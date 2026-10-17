@@ -17,7 +17,12 @@
     </div>
     <svg class="desk-motion__grain" xmlns="http://www.w3.org/2000/svg">
       <filter id="desk-motion-noise">
-        <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch" />
+        <feTurbulence
+          type="fractalNoise"
+          baseFrequency="0.85"
+          numOctaves="3"
+          stitchTiles="stitch"
+        />
         <feColorMatrix type="saturate" values="0" />
       </filter>
       <rect width="100%" height="100%" filter="url(#desk-motion-noise)" />
@@ -52,60 +57,69 @@
 /* Aurora drift: the tint, a fixed Platform blue and a fixed Lamp amber, 80px blur. */
 .desk-motion__blob {
   position: absolute;
-  inline-size: 60vmax;
-  block-size: 60vmax;
+  inline-size: 58%;
+  block-size: 72%;
   border-radius: 50%;
   filter: blur(80px);
   will-change: transform;
   animation: desk-aurora-a 38s ease-in-out infinite alternate;
 }
 .desk-motion__blob:nth-child(1) {
-  inset-block-start: -20vmax;
-  inset-inline-start: -10vmax;
+  inset-block-start: -22%;
+  inset-inline-start: -12%;
   background: var(--motion-tint, currentColor);
   opacity: var(--motion-alpha-aurora);
 }
 .desk-motion__blob:nth-child(2) {
-  inset-block-end: -25vmax;
-  inset-inline-end: -15vmax;
+  inset-block-start: 8%;
+  inset-inline-end: -16%;
   background: var(--motion-aurora-blue);
   opacity: var(--motion-alpha-aurora-blue);
   animation-name: desk-aurora-b;
   animation-duration: 52s;
 }
 .desk-motion__blob:nth-child(3) {
-  inset-block-start: 20vmax;
-  inset-inline-start: 30vmax;
+  inset-block-end: -34%;
+  inset-inline-start: 18%;
   background: var(--motion-aurora-amber);
   opacity: var(--motion-alpha-aurora-amber);
   animation-name: desk-aurora-c;
   animation-duration: 64s;
 }
 @keyframes desk-aurora-a {
-  to {
-    transform: translate(18vmax, 12vmax) scale(1.2);
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    transform: translate3d(18%, 12%, 0) scale(1.25);
   }
 }
 @keyframes desk-aurora-b {
-  to {
-    transform: translate(-16vmax, -14vmax) scale(0.85);
+  0% {
+    transform: translate3d(0, 0, 0) scale(1.1);
+  }
+  100% {
+    transform: translate3d(-20%, 16%, 0) scale(0.9);
   }
 }
 @keyframes desk-aurora-c {
-  to {
-    transform: translate(-12vmax, 10vmax) scale(1.15);
+  0% {
+    transform: translate3d(0, 0, 0) scale(0.95);
+  }
+  100% {
+    transform: translate3d(10%, -18%, 0) scale(1.2);
   }
 }
 
 /* Board grid: a 48px line grid in the tint, faded out from the top centre, drifting one cell. */
 .desk-motion__grid {
-  inset: -48px 0 0 -48px;
+  inset: -48px;
   background-image:
     linear-gradient(to right, var(--motion-grid-line) 1px, transparent 1px),
     linear-gradient(to bottom, var(--motion-grid-line) 1px, transparent 1px);
   background-size: 48px 48px;
   opacity: var(--motion-alpha-grid);
-  mask-image: radial-gradient(ellipse at 50% 0%, black 20%, transparent 75%);
+  mask-image: radial-gradient(ellipse at 50% 25%, black 25%, transparent 78%);
   will-change: transform;
   animation: desk-grid 26s linear infinite;
 }
@@ -125,23 +139,21 @@
 }
 .desk-motion__dots:nth-child(1) {
   block-size: calc(100% + 190px);
-  background-image: radial-gradient(
-    circle,
-    var(--motion-tint, currentColor) 1.5px,
-    transparent 2px
-  );
+  background-image:
+    radial-gradient(circle at 30% 40%, var(--motion-tint, currentColor) 1.2px, transparent 1.8px),
+    radial-gradient(circle at 80% 75%, var(--motion-tint, currentColor) 0.9px, transparent 1.5px);
   background-size: 190px 190px;
   animation: desk-rise-a 80s linear infinite;
 }
 .desk-motion__dots:nth-child(2) {
   block-size: calc(100% + 120px);
+  opacity: calc(var(--motion-alpha-particles) * 0.6);
   background-image: radial-gradient(
-    circle,
+    circle at 60% 20%,
     var(--motion-tint, currentColor) 1px,
-    transparent 1.5px
+    transparent 1.6px
   );
   background-size: 120px 120px;
-  background-position: 60px 60px;
   animation: desk-rise-b 55s linear infinite;
 }
 @keyframes desk-rise-a {
@@ -157,17 +169,21 @@
 
 /* Grain: an feTurbulence noise rect that steps its position. */
 .desk-motion__grain {
-  inset: -64px 0 0 -64px;
-  inline-size: calc(100% + 64px);
-  block-size: calc(100% + 64px);
+  inset-block-start: -8%;
+  inset-inline-start: -8%;
+  inline-size: 116%;
+  block-size: 116%;
   color: var(--motion-tint, currentColor);
   opacity: var(--motion-alpha-grain);
   will-change: transform;
   animation: desk-grain 0.9s steps(5) infinite;
 }
 @keyframes desk-grain {
-  to {
-    transform: translate(-48px, 32px);
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(-6%, 5%);
   }
 }
 

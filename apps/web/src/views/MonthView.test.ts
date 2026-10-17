@@ -127,11 +127,23 @@ describe('MonthView category rows (T032)', () => {
     expect(el.querySelector('.desk-category-bars-row')).toBeNull();
   });
 
-  it('lays the entries and category panels out on the shared .board-grid (T023)', async () => {
+  it('puts Categories before Entries in a wrapping flex row (T044)', async () => {
     const el = await mount();
-    expect(el.querySelector('.desk-month-view-columns')!.classList.contains('board-grid')).toBe(
-      true,
+    const row = el.querySelector('.desk-month-view-columns')!;
+    expect(row.classList.contains('board-grid')).toBe(false);
+    const panels = [...row.querySelectorAll('[data-panel]')].map((p) =>
+      p.getAttribute('data-panel'),
     );
+    expect(panels).toEqual(['categories', 'entries']);
+  });
+
+  it('sizes the tiles by auto-fit and the panels by flex-basis, no fixed columns (T044)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/views/MonthView.vue', 'utf8');
+    expect(src).toContain('repeat(auto-fit, minmax(220px, 1fr))');
+    expect(src).not.toContain('repeat(5,');
+    expect(src).toContain('flex: 1 1 380px');
+    expect(src).toContain('flex: 1 1 460px');
   });
 
   it('mounts the widget strip after the tiles', async () => {

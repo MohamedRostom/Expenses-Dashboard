@@ -127,6 +127,24 @@ Files: `tests/e2e/tests/motion-flag.spec.ts`
 
 - [x] **T029** [US6] e2e: with the flag off there are no appearance controls and a still ground while panels stay translucent; turning the flag on for a user with a saved preset applies it · `tests/e2e/tests/motion-flag.spec.ts`
 
+## Phase 8b: Match the direction board (owner request 2026-10-17)
+
+Rostom found the build differs from the approved board (https://claude.ai/artifact/NHdkria1bTDsVYGyW1TXE8, `project/Main.dc.html`, at its default 70 % intensity). The board is the target; each stage ends with a review by a separate agent and its findings fixed before the next stage.
+
+- [x] **T041** Write the gap list: screenshot the board and the build (month view and Settings › Appearance, 360 and 1280, light and dark, flag on, Particles and Aurora drift) and list every difference in panels, background, tiles, layout and controls · `specs/006-premium-motion-identity/design-gaps.md` (new)
+
+**⟶ Wait for T041, then:**
+
+- [x] **T042** Background to the board: dark Aurora companions become deep blue `rgb(52 78 170)` and deep amber `rgb(140 96 30)`; every `--motion-alpha-*` returns to the board's effective value (Aurora light 0.49/0.35/0.32, dark 0.39/0.32/0.28; Particles light 0.63, dark 0.53; Grid light 0.042, dark 0.098; Grain light 0.118, dark 0.157); update the expected values and the composite contrast matrix first; where a pair still fails, raise that panel's opacity, never dim the motion · `packages/ui/src/tokens.css`, `packages/ui/src/tokens.test.ts`, `packages/ui/src/contrast.test.ts`, `packages/ui/src/components/BackgroundMotion.vue`
+- [x] **T043** Glass to the board: panels at 66 % light / 58 % dark with `blur(20px) saturate(140%)`, the board's border and shadow, opaque fallbacks unchanged · `packages/ui/src/tokens.css`, `packages/ui/src/surface.css`, `packages/ui/src/surface.test.ts`
+- [x] **T044** Month view to the board: tile row (Left to spend as the accent-bordered hero, Spent, Fixed costs, Daily pace), Categories with bars and "Over budget by" next to Entries on desktop, stacked on a phone; Trend and Forecast kept below; pill buttons per the gap list · `apps/web/src/views/MonthView.vue`, `apps/web/src/views/MonthView.test.ts`, `packages/ui/src/components/Tile.vue`
+- [x] **T045** Settings › Appearance to the board: preset cards with name and hint, 44 px round swatches with the board's selected ring, round custom colour control · `apps/web/src/components/appearance/AppearanceSettings.vue`, `apps/web/src/components/appearance/AppearanceSettings.test.ts`
+
+**⟶ Wait for T042–T045, then:**
+
+- [ ] **T046** `DESIGN.md` and ADR-0007 values follow the board (alphas, dark companions, glass opacity, saturate); drop the "Lowered by T008" note · `DESIGN.md`, `docs/adr/ADR-0007-premium-identity.md`, `packages/ui/src/design-doc.test.ts`
+- [ ] **T047** Regenerate the visual baselines in the pinned Playwright image, rerun the motion e2e specs, and fix or quarantine with a reason every flaky test until two full `ci` runs at `--workers=2` are green · `tests/e2e/`
+
 ## Phase 9: Polish
 
 **Wave 1 — independent (different files):**
@@ -143,4 +161,4 @@ Files: `tests/e2e/tests/motion-flag.spec.ts`
 
 ## Dependencies & Execution Order
 
-Setup (T001–T004) gates any code merge, though Foundational may be written while T004 waits. Phase 1b runs T036 and T037 in parallel; Foundational starts once both pass locally. T038 (owner) only gates confirming T037 on CI and blocks nothing. Foundational runs Wave 1 (T005–T009), then Wave 2 (T010–T012), then Wave 3 (T013–T015), then T016 and T017. Every story starts after Foundational. US1 runs T018 and T019 together, then T020, then T021. US2 runs T022 and T023 together. US3 (T024) needs US1's T020. US4 (T025) needs only Foundational. US5 runs T026, T027, T028, T039 and T040 together. US6 (T029) needs US1's T021. Polish runs Wave 1 (T030–T032), then T033, then T034, then T035, after all stories.
+Setup (T001–T004) gates any code merge, though Foundational may be written while T004 waits. Phase 1b runs T036 and T037 in parallel; Foundational starts once both pass locally. T038 (owner) only gates confirming T037 on CI and blocks nothing. Foundational runs Wave 1 (T005–T009), then Wave 2 (T010–T012), then Wave 3 (T013–T015), then T016 and T017. Every story starts after Foundational. US1 runs T018 and T019 together, then T020, then T021. US2 runs T022 and T023 together. US3 (T024) needs US1's T020. US4 (T025) needs only Foundational. US5 runs T026, T027, T028, T039 and T040 together. US6 (T029) needs US1's T021. Phase 8b runs T041, then T042–T045 together, then T046 and T047, each stage reviewed by a separate agent before the next. Polish's open tasks (T031, T034) and Phase 1b's T036/T037 run after Phase 8b. Polish runs Wave 1 (T030–T032), then T033, then T034, then T035, after all stories.

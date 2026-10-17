@@ -57,4 +57,19 @@ describe('BackgroundMotion', () => {
   it('exposes the still thumbnail rules for the settings radios', () => {
     for (const p of presets) expect(css).toContain(`.motion-thumb[data-preset='${p}']`);
   });
+
+  it('ports the board geometry', () => {
+    expect(css).toMatch(/inline-size:\s*58%[\s\S]*block-size:\s*72%/);
+    expect(css).toContain('translate3d(18%, 12%, 0) scale(1.25)');
+    expect(css).toContain('ellipse at 50% 25%, black 25%, transparent 78%');
+    expect(css).toMatch(/circle at 30% 40%,[^;]*1\.2px, transparent 1\.8px/);
+    expect(css).toMatch(/circle at 80% 75%,[^;]*0\.9px, transparent 1\.5px/);
+    expect(css).toMatch(/circle at 60% 20%,[^;]*?1px,\s*transparent 1\.6px/);
+    expect(css).toContain('calc(var(--motion-alpha-particles) * 0.6)');
+  });
+
+  it('draws grain with the board turbulence', () => {
+    expect(source).toContain('baseFrequency="0.85"');
+    expect(source).toContain('numOctaves="3"');
+  });
 });

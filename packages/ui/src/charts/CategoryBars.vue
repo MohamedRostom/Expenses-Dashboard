@@ -96,7 +96,7 @@ defineExpose({ barPct, tickPct, isOverBudget });
           />
         </svg>
         <span v-if="isOverBudget(c)" class="desk-category-bars-over"
-          >{{ formatMinor(c.spent - c.budget!) }} over</span
+          >Over budget by {{ formatMinor(c.spent - c.budget!) }}</span
         >
         <span v-else-if="c.budget == null" class="desk-category-bars-note">no budget</span>
       </div>
@@ -153,7 +153,8 @@ defineExpose({ barPct, tickPct, isOverBudget });
   display: block;
   width: 100%;
   height: var(--space-2);
-  overflow: visible;
+  border-radius: 999px;
+  overflow: hidden;
 }
 .desk-category-bars-track {
   fill: var(--color-border);

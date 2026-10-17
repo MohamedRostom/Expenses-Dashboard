@@ -5,8 +5,8 @@
   border: 1px solid var(--color-glass-line);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-raised);
-  -webkit-backdrop-filter: blur(var(--blur-surface));
-  backdrop-filter: blur(var(--blur-surface));
+  -webkit-backdrop-filter: blur(var(--blur-surface)) saturate(140%);
+  backdrop-filter: blur(var(--blur-surface)) saturate(140%);
 }
 @supports not (backdrop-filter: blur(1px)) {
   .surface {

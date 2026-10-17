@@ -85,12 +85,69 @@ describe('AppearanceSettings controls', () => {
     expect(group.textContent).toContain('Board grid');
   });
 
-  it('shows the Motion colour group with six swatches and a custom colour in light', async () => {
+  it('shows the Motion colour group with six named round 44px buttons and a Custom input in light (T045)', async () => {
     const { el } = await setup('light');
-    expect(radios(el, 'Motion colour')).toHaveLength(6);
-    expect(el.querySelector('input[type="color"]')?.closest('label')?.textContent).toContain(
-      'Custom colour',
+    const g = el.querySelector('[role="radiogroup"][aria-label="Motion colour"]')!;
+    const sw = [...g.querySelectorAll<HTMLButtonElement>('button[role="radio"]')];
+    expect(sw).toHaveLength(6);
+    expect(sw.map((b) => b.getAttribute('aria-label'))).toEqual([
+      'Signal mint',
+      'Platform blue',
+      'Lamp amber',
+      'Dusk violet',
+      'Coral',
+      'Silver',
+    ]);
+    expect(sw.every((b) => b.title === b.getAttribute('aria-label') && b.textContent === '')).toBe(
+      true,
     );
+    expect(sw.filter((b) => b.getAttribute('aria-checked') === 'true')).toHaveLength(1);
+    const custom = el.querySelector('input[type="color"]')!;
+    expect(custom.getAttribute('aria-label')).toBe('Custom colour');
+    expect(custom.closest('label')?.textContent).toContain('Custom');
+  });
+
+  it('styles swatches as 44px circles, selected = 3px ink border plus a 2px accent ring (T045)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/appearance/AppearanceSettings.vue', 'utf8');
+    expect(src).toMatch(/\.desk-appearance-swatch\s*\{[^}]*border-radius:\s*50%/);
+    expect(src).toContain('3px solid var(--color-fg)');
+    expect(src).toContain('0 0 0 2px var(--color-accent)');
+  });
+
+  it('preset cards stack name over hint and mark the selected one with a 2px accent border (T045)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/appearance/AppearanceSettings.vue', 'utf8');
+    expect(src).toMatch(
+      /\.desk-appearance-preset\[data-checked='true'\]\s*\{[^}]*border:\s*2px solid var\(--color-accent\)/,
+    );
+    expect(src).toMatch(/\.desk-appearance-text\s*\{[^}]*flex-direction:\s*column/);
+  });
+
+  it('picking a swatch previews and saves its colour (T045)', async () => {
+    const { el, session, api } = await setup();
+    api.mockResolvedValue({ user: baseUser });
+    el.querySelector<HTMLButtonElement>('button[aria-label="Coral"]')!.click();
+    const picked = session.user?.motionColour;
+    expect(picked).not.toBe('#7fd1a8');
+    await vi.advanceTimersByTimeAsync(401);
+    expect(bodyOf(api, 0)).toEqual({ motionColour: picked });
+  });
+
+  it('swatches follow the radio-group keys: one tab stop, arrows move and pick', async () => {
+    const { el, session } = await setup();
+    const swatches = [
+      ...el.querySelectorAll<HTMLButtonElement>('[aria-label="Motion colour"] button'),
+    ];
+    expect(swatches.filter((b) => b.tabIndex === 0)).toHaveLength(1);
+    expect(swatches[0]!.tabIndex).toBe(0); // Signal mint, the saved colour
+    swatches[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await nextTick();
+    expect(session.user?.motionColour).toBe('#8fb3ff');
+    expect(document.activeElement).toBe(swatches[1]);
+    swatches[0]!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    await nextTick();
+    expect(session.user?.motionColour).toBe('#e9edf2'); // wraps to Silver
   });
 
   it('hides the Motion colour group in dark, and for system theme when the system is dark', async () => {

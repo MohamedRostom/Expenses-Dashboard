@@ -15,8 +15,8 @@ describe('.surface (T012, DESIGN.md Glass)', () => {
   it('is glass: glass fill, hairline, blur (both prefixes), xl radius, raised shadow', () => {
     expect(base).toContain('var(--color-surface-glass)');
     expect(base).toContain('var(--color-glass-line)');
-    expect(base).toContain('backdrop-filter: blur(var(--blur-surface))');
-    expect(base).toContain('-webkit-backdrop-filter: blur(var(--blur-surface))');
+    expect(base).toContain('backdrop-filter: blur(var(--blur-surface)) saturate(140%)');
+    expect(base).toContain('-webkit-backdrop-filter: blur(var(--blur-surface)) saturate(140%)');
     expect(base).toContain('var(--radius-xl)');
     expect(base).toContain('var(--shadow-raised)');
   });

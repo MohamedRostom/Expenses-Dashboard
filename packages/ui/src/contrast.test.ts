@@ -32,8 +32,20 @@ const alphas = (block: string) => ({
 const LIGHT = "[data-theme='light'],";
 const DARK = ":root[data-theme='dark'],";
 const THEMES = {
-  light: { block: LIGHT, glass: ['#f6f7f7', 0.72], ...alphas(LIGHT) },
-  dark: { block: DARK, glass: ['#171b20', 0.62], ...alphas(DARK) },
+  light: {
+    block: LIGHT,
+    glass: ['#ffffff', 0.68],
+    blueC: '#8fb3ff',
+    amberC: '#f5c27a',
+    ...alphas(LIGHT),
+  },
+  dark: {
+    block: DARK,
+    glass: ['#151a21', 0.66],
+    blueC: '#344eaa',
+    amberC: '#8c601e',
+    ...alphas(DARK),
+  },
 } as const;
 const SWATCHES = [
   '#7fd1a8',
@@ -45,8 +57,11 @@ const SWATCHES = [
   '#ffffff',
   '#000000',
 ];
-const BLUE = '#8fb3ff';
-const AMBER = '#f5c27a';
+// Particles are 1-2px dots: under the panel's blur(20px) the panel sees their area average, not the dot
+// colour (and without backdrop-filter the panel is opaque). Coverage = sum of pi*r^2/tile^2 using the
+// outer gradient radii in BackgroundMotion.vue: tile A 1.8px and 1.5px on 190px, tile B 1.6px on 120px at 0.6x.
+const DOT_COVERAGE =
+  (Math.PI * (1.8 ** 2 + 1.5 ** 2)) / 190 ** 2 + (0.6 * Math.PI * 1.6 ** 2) / 120 ** 2;
 const TEXT = ['--color-fg', '--color-fg-muted', '--color-warn', '--color-critical'];
 
 describe('compositeOver', () => {
@@ -65,15 +80,15 @@ describe('SC-004 background layer contrast matrix', () => {
     // Worst-case backdrop per preset: the tint (and companions) at max alpha over the ground.
     const backdrops = (tint: string): Record<string, string> => {
       const aurora = compositeOver(
-        AMBER,
+        t.amberC,
         t.amber,
-        compositeOver(BLUE, t.blue, compositeOver(tint, t.tintA, ground)),
+        compositeOver(t.blueC, t.blue, compositeOver(tint, t.tintA, ground)),
       );
       return {
         none: ground,
         aurora,
         grid: compositeOver(theme === 'light' ? ink : tint, t.grid, ground),
-        particles: compositeOver(tint, t.particles, ground),
+        particles: compositeOver(tint, t.particles * DOT_COVERAGE, ground),
         grain: compositeOver(tint, t.grain, ground),
       };
     };

@@ -17,7 +17,17 @@ defineProps<{
 </script>
 
 <template>
-  <div :class="['desk-tile-block', 'surface', { 'desk-tile-block--primary': primary }]" data-tile>
+  <div
+    :class="[
+      'desk-tile-block',
+      'surface',
+      {
+        'desk-tile-block--primary': primary,
+        'desk-tile-block--critical': primary && variant === 'critical',
+      },
+    ]"
+    data-tile
+  >
     <Skeleton v-if="loading" height="4rem" />
     <template v-else-if="value !== undefined">
       <!-- The figure comes first in the text flow; the label is placed above it by order. -->
@@ -58,6 +68,17 @@ defineProps<{
 }
 .desk-tile-block--primary {
   gap: var(--space-2);
+  /* The hero tile: accent border plus a 1px inset ring; red instead when over budget. */
+  border-color: var(--color-accent);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--color-accent);
+}
+.desk-tile-block--critical {
+  border-color: var(--color-critical);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--color-critical);
 }
 /* The primary figure sits in a flap cell whose seam shows only at its hinges (the side margins),
    never across the glyphs, so it cannot read as a strikethrough (DESIGN.md Tile). */
@@ -118,7 +139,7 @@ defineProps<{
 .desk-tile-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
+  font-size: var(--text-figure);
   line-height: var(--leading-lg);
   font-weight: 500;
   overflow-wrap: anywhere;
