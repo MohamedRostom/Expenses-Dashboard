@@ -131,13 +131,13 @@ Files: `tests/e2e/tests/motion-flag.spec.ts`
 
 **Wave 1 — independent (different files):**
 
-- [ ] **T030** [P] Add `/` and `/settings` with Particles and with Aurora drift (the costliest preset) to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
+- [x] **T030** [P] Add `/` and `/settings` with Particles and with Aurora drift (the costliest preset) to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
 - [ ] **T031** [P] Run the design tools per CLAUDE.md (redesign-existing-projects audit, `npx -y impeccable@4.1.0 detect` at 360 and 1280, `impeccable-finish-reviewer`) and fix or justify every non-advisory finding · `specs/006-premium-motion-identity/design-tools.md`
-- [ ] **T032** [P] CHANGELOG line, `docs/ROADMAP.md` entry, and the CLAUDE.md design-system section and current state for ADR-0007 · `CHANGELOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`
+- [x] **T032** [P] CHANGELOG line, `docs/ROADMAP.md` entry, and the CLAUDE.md design-system section and current state for ADR-0007 · `CHANGELOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`
 
 **⟶ Wait for Wave 1 to finish, then:**
 
-- [ ] **T033** Regenerate every web and landing visual baseline once at `--workers=2` with the `ci` project only, and review the diffs · `tests/e2e/tests/*-snapshots/`
+- [x] **T033** Regenerate every web and landing visual baseline once at `--workers=2` with the `ci` project only, and review the diffs · `tests/e2e/tests/*-snapshots/`
 - [ ] **T034** Validate against the Success Criteria: lint, typecheck, unit (coverage ≥ 85 % on core and api), api, `worker:build`, `pnpm test:e2e --project=ci --workers=2`, OpenAPI not stale · whole repo
 - [ ] **T035** `needs-rostom`: owner sign-off of every screen at phone and desktop width against the direction board (SC-007) and the 20-second change check (SC-001) · `docs/ROADMAP.md`
 

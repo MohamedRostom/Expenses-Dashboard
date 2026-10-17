@@ -1,4 +1,6 @@
+import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
+import { csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
 /**
  * T026 (spec 006 US5, FR-021): sign-in, sign-up and reset show Particles in the default tint when
@@ -10,6 +12,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const PAGES = ['/login', '/register', '/reset?token=x'];
 const LANDING_URL = process.env['E2E_LANDING_URL'] ?? 'http://localhost:5174';
+const DB_URL = process.env['DATABASE_URL'] ?? 'postgres://desk:desk@localhost:5432/desk';
 const MINT = '#7fd1a8';
 
 async function setPublicFlag(page: Page, on: boolean): Promise<void> {
@@ -60,18 +63,6 @@ for (const path of PAGES) {
       );
       expect(overflow).toBe(false);
     });
-
-    test("never shows the last user's choice", async ({ page }) => {
-      await setPublicFlag(page, true);
-      // Leftovers a signed-in session might have written; a signed-out page must ignore them.
-      await page.addInitScript(() => {
-        localStorage.setItem('desk.motionPreset', 'grain');
-        localStorage.setItem('desk.motionColour', '#ff0000');
-      });
-      await page.goto(path);
-      await expect.poll(async () => (await html(page)).motion).toBe('particles');
-      expect((await html(page)).tint).toBe(MINT);
-    });
   });
 }
 
@@ -82,4 +73,26 @@ test('landing sections sit on .surface panels', async ({ page }) => {
   }
   await page.goto(`${LANDING_URL}/privacy`);
   await expect(page.locator('main.surface')).toBeVisible();
+});
+
+test("never shows the last user's choice", async ({ page }) => {
+  const email = `motion-signed-out-${Date.now()}@example.com`;
+  await signUpAndVerify(page, email, 'xk-e2e-Tr0ub4-fixture-2026');
+  execSync(`pnpm --filter @desk/db flags set "appearance.motion" --user "${email}" on`, {
+    env: { ...process.env, DATABASE_URL: DB_URL },
+    stdio: 'pipe',
+  });
+  const saved = await page.request.patch('/me', {
+    headers: await csrfHeaders(page),
+    data: { motionPreset: 'grid' },
+  });
+  expect(saved.ok()).toBe(true);
+  await page.goto('/');
+  await expect.poll(async () => (await html(page)).motion).toBe('grid');
+  const out = await page.request.post('/auth/logout', { headers: await csrfHeaders(page) });
+  expect(out.status()).toBe(204);
+  await setPublicFlag(page, true);
+  await page.goto('/login');
+  await expect.poll(async () => (await html(page)).motion).toBe('particles');
+  expect((await html(page)).tint).toBe(MINT);
 });

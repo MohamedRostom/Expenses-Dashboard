@@ -178,12 +178,14 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .desk-motion * {
-    animation: none;
+    /* !important: the per-preset rules (nth-child, scoped) are more specific. */
+    animation: none !important;
   }
 }
 @media (prefers-reduced-data: reduce) {
   .desk-motion * {
-    animation: none;
+    /* !important: the per-preset rules (nth-child, scoped) are more specific. */
+    animation: none !important;
   }
 }
 @media (forced-colors: active) {

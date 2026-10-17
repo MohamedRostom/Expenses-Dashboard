@@ -162,12 +162,14 @@ test('a widget with no figures holds a fixed-height frame and nothing below move
   await expect(frame).toBeVisible();
   const table = page.locator('.desk-entries-table');
   await expect(table).toBeVisible();
-  const before = { frame: await frame.boundingBox(), table: await table.boundingBox() };
+  const rect = (l: typeof frame) => l.evaluate((el) => el.getBoundingClientRect().toJSON()); // boundingBox() is null while the frame re-renders
+  await expect.poll(async () => (await rect(frame)).height).toBeGreaterThan(0); // first paint can be unsized
+  const before = { frame: await rect(frame), table: await rect(table) };
 
   // The store reloads when the tab becomes visible again.
   await page.evaluate("document.dispatchEvent(new Event('visibilitychange'))");
   await expect(frame).toHaveAttribute('data-state', 'ready');
-  const after = { frame: await frame.boundingBox(), table: await table.boundingBox() };
+  const after = { frame: await rect(frame), table: await rect(table) };
 
   expect(after.frame?.height).toBe(before.frame?.height);
   expect(after.table?.y).toBe(before.table?.y);

@@ -136,7 +136,9 @@ test('a panel, not the layer, receives the pointer at its centre (FR-013)', asyn
   expect(hit).toEqual({ inPanel: true, inLayer: false });
 });
 
-test('prefers-reduced-data: the layer is still', async ({ page }) => {
+// Chromium 148 (Playwright 1.63) does not implement the prefers-reduced-data media feature (it is
+// behind a flag), so the emulation has no effect. The CSS rule in BackgroundMotion.vue stays.
+test.fixme('prefers-reduced-data: the layer is still', async ({ page }) => {
   await signedIn(page, 'data');
   expect((await animationNames(page)).some((n) => n !== 'none')).toBe(true);
   await emulate(page, [{ name: 'prefers-reduced-data', value: 'reduce' }]);

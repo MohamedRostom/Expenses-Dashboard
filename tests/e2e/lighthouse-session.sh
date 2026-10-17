@@ -3,7 +3,8 @@
 # as signUpAndVerify in fixtures/index.ts), seeds a few expenses so the month view has content, and
 # prints ONE line on stdout: the Cookie header value for that session. Everything else goes to stderr.
 # Env: APP_URL (default http://localhost:4173, the production-build web-preview that proxies the API),
-# MAILPIT_URL (default http://localhost:8025).
+# MAILPIT_URL (default http://localhost:8025). MOTION_PRESET (optional, e.g. aurora) is set on the user
+# via PATCH /me (spec 006 T030); the account default is particles.
 set -eu
 
 APP_URL="${APP_URL:-http://localhost:4173}"
@@ -46,6 +47,8 @@ done
 api POST /auth/verify "{\"token\":\"$token\"}" >/dev/null
 # A freshly verified user is bounced to /onboarding until this is set (skipOnboarding in the fixtures).
 api PATCH /me "{\"onboardingCompletedAt\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\"}" >/dev/null
+
+[ -z "${MOTION_PRESET:-}" ] || api PATCH /me "{\"motionPreset\":\"$MOTION_PRESET\"}" >/dev/null
 
 # Seed: 4 expenses over two categories, one foreign (EUR), dated today so the current month has content.
 cats="$(api GET /categories | grep -o '"id":"[^"]*"' | cut -d'"' -f4)"

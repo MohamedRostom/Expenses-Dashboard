@@ -34,7 +34,7 @@ const signedIn = [
 async function assertFits(page: Page, label: string) {
   const m = await page.evaluate(() => {
     const d = document.documentElement;
-    const main = document.querySelector('main');
+    const main = document.querySelector('.board-grid'); // the 1160px cap is on the grid, not <main>
     return {
       scroll: d.scrollWidth,
       client: d.clientWidth,
@@ -42,7 +42,7 @@ async function assertFits(page: Page, label: string) {
     };
   });
   expect(m.scroll, `${label}: scrollWidth <= clientWidth`).toBeLessThanOrEqual(m.client);
-  expect(m.main, `${label}: content <= 1160px`).toBeLessThanOrEqual(1160);
+  expect(m.main, `${label}: panel grid <= 1160px`).toBeLessThanOrEqual(1160);
 }
 
 async function sweep(page: Page, route: string) {
