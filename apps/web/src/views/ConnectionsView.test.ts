@@ -608,3 +608,18 @@ describe('ConnectionsView — standards provider (T072)', () => {
     app.unmount();
   });
 });
+
+describe('ConnectionsView board look (spec 006 T050c)', () => {
+  it('puts providers and accounts inside PanelFrames', async () => {
+    vi.stubGlobal('fetch', fetchMockFor({}));
+    const { el } = await mount();
+    for (let i = 0; i < 6; i++) await nextTick();
+    const frames = [...el.querySelectorAll('.desk-panel-frame')];
+    expect(frames.map((f) => f.querySelector('h3')?.textContent)).toEqual([
+      'Add a provider',
+      'Your accounts',
+    ]);
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+});

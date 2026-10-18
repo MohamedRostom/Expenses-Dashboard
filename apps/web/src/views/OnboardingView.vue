@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { Button, Select } from '@desk/ui';
+import { Button, PanelFrame, Select } from '@desk/ui';
 import { apiFetch } from '../api/client.js';
 import { useSessionStore, type User } from '../stores/session.js';
 
@@ -13,6 +13,7 @@ const router = useRouter();
 // it simple" guidance; a full resume-from-exact-step would need extra server state for no
 // real benefit in a 3-step wizard.
 const step = ref(1);
+const titles = ['Set your default currency', 'Add your first expense', 'Connect Notion (optional)'];
 const currency = ref(session.user?.defaultCurrency ?? 'GBP');
 const currencyOptions = [
   { value: 'GBP', label: 'GBP' },
@@ -57,37 +58,41 @@ function leaveTo(name: string) {
 
 <template>
   <main class="desk-onboarding">
-    <p class="desk-onboarding-step">Step {{ step }} of 3</p>
+    <h1>{{ titles[step - 1] }}</h1>
 
-    <section v-if="step === 1">
-      <h1>Set your default currency</h1>
-      <Select v-model="currency" label="Default currency" :options="currencyOptions" />
-    </section>
+    <PanelFrame :heading="`Step ${step} of 3`">
+      <div class="desk-onboarding-body">
+        <Select
+          v-if="step === 1"
+          v-model="currency"
+          label="Default currency"
+          :options="currencyOptions"
+        />
 
-    <section v-else-if="step === 2">
-      <h1>Add your first expense</h1>
-      <p>Head to the add-expense form to log your first entry, or skip for now.</p>
-      <Button @click="leaveTo('add')">Add an expense</Button>
-    </section>
+        <template v-else-if="step === 2">
+          <p>Head to the add-expense form to log your first entry, or skip for now.</p>
+          <Button @click="leaveTo('add')">Add an expense</Button>
+        </template>
 
-    <section v-else>
-      <h1>Connect Notion (optional)</h1>
-      <p>Sync your expenses to a Notion database. You can do this anytime from settings.</p>
-      <Button @click="leaveTo('settings-connectors')">Connect Notion</Button>
-    </section>
+        <template v-else>
+          <p>Sync your expenses to a Notion database. You can do this anytime from settings.</p>
+          <Button @click="leaveTo('settings-connectors')">Connect Notion</Button>
+        </template>
 
-    <div class="desk-onboarding-actions">
-      <Button type="button" variant="secondary" @click="skip">Skip</Button>
-      <Button type="button" @click="next">{{ step < 3 ? 'Next' : 'Finish' }}</Button>
-    </div>
+        <div class="desk-onboarding-actions">
+          <Button type="button" variant="secondary" @click="skip">Skip</Button>
+          <Button type="button" @click="next">{{ step < 3 ? 'Next' : 'Finish' }}</Button>
+        </div>
+      </div>
+    </PanelFrame>
   </main>
 </template>
 
 <style scoped>
 .desk-onboarding {
-  max-width: 24rem;
-  margin: var(--space-8) auto;
-  padding-inline: var(--gutter);
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
   color: var(--color-fg);
   display: flex;
@@ -95,33 +100,25 @@ function leaveTo(name: string) {
   gap: var(--space-4);
 }
 .desk-onboarding h1 {
-  margin: 0 0 var(--space-3);
+  margin: 0;
   font-size: var(--text-2xl);
   line-height: var(--leading-2xl);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
 }
-.desk-onboarding section {
+.desk-onboarding-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
+  max-width: 24rem;
+  padding: var(--space-2) var(--space-4) var(--space-3);
 }
-.desk-onboarding section p {
+.desk-onboarding-body p {
   margin: 0;
-}
-.desk-onboarding-step {
-  margin: 0;
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--color-fg-muted);
 }
 .desk-onboarding-actions {
   display: flex;
-  justify-content: space-between;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 </style>

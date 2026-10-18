@@ -3,7 +3,15 @@
 import { onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { CategoryDrilldownT } from '@desk/contracts';
-import { Button, DataTable, EmptyState, ErrorState, Skeleton, type BoardColumn } from '@desk/ui';
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  PanelFrame,
+  Skeleton,
+  type BoardColumn,
+} from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 import { formatMoney } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
@@ -47,32 +55,41 @@ const currency = () => session.user?.defaultCurrency ?? 'GBP';
   <main class="desk-category-view">
     <h1>Category history</h1>
 
-    <Skeleton v-if="loading" height="12rem" />
-    <ErrorState v-else-if="error" :code="error ?? undefined" />
-    <template v-else-if="drilldown">
-      <EmptyState
-        v-if="drilldown.months.every((m) => m.spent === 0)"
-        title="No spend recorded"
-        description="Nothing was spent in this category over the last 12 months."
-      >
-        <template #action>
-          <Button @click="router.push('/add')">Add an expense</Button>
-        </template>
-      </EmptyState>
-      <DataTable v-else :columns="columns" dense caption="Spend by month">
-        <tr v-for="m in drilldown.months" :key="m.month">
-          <td class="desk-col--date">{{ m.month }}</td>
-          <td class="desk-col--amount">{{ formatMoney(m.spent, currency()) }}</td>
-          <td class="desk-col--amount">
-            {{ m.budget != null ? formatMoney(m.budget, currency()) : '—' }}
-          </td>
-        </tr>
-      </DataTable>
-    </template>
+    <PanelFrame heading="Spend by month">
+      <Skeleton v-if="loading" height="12rem" />
+      <ErrorState v-else-if="error" :code="error ?? undefined" />
+      <template v-else-if="drilldown">
+        <EmptyState
+          v-if="drilldown.months.every((m) => m.spent === 0)"
+          title="No spend recorded"
+          description="Nothing was spent in this category over the last 12 months."
+        >
+          <template #action>
+            <Button @click="router.push('/add')">Add an expense</Button>
+          </template>
+        </EmptyState>
+        <DataTable v-else :columns="columns" dense caption="Spend by month">
+          <tr v-for="m in drilldown.months" :key="m.month">
+            <td class="desk-col--date">{{ m.month }}</td>
+            <td class="desk-col--amount">{{ formatMoney(m.spent, currency()) }}</td>
+            <td class="desk-col--amount">
+              {{ m.budget != null ? formatMoney(m.budget, currency()) : '—' }}
+            </td>
+          </tr>
+        </DataTable>
+      </template>
+    </PanelFrame>
   </main>
 </template>
 
 <style scoped>
+.desk-category-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
 .desk-category-view {
   max-width: var(--content-max);
   margin: 0 auto;

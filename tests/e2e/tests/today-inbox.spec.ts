@@ -311,7 +311,7 @@ test.describe('Today inbox panel @ci', () => {
     setUserFlag(email, 'panels.google_mail', 'off');
     await page.goto('/settings/connections');
     const googleCard = page.locator('.provider-card', {
-      has: page.getByRole('heading', { level: 3, name: 'Google' }),
+      has: page.getByRole('heading', { level: 4, name: 'Google' }),
     });
     await expect(
       googleCard.getByText('Gmail is currently disabled', { exact: false }),

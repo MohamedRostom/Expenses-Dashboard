@@ -146,6 +146,7 @@ Rostom found the build differs from the approved board (https://claude.ai/artifa
 - [x] **T047** Regenerate the visual baselines in the pinned Playwright image, rerun the motion e2e specs, and fix or quarantine with a reason every flaky test until two full `ci` runs at `--workers=2` are green · `tests/e2e/`
 - [x] **T048** Stage-2 review fixes: hero seam ticks, no-budget hero text, entries item column, in-panel section labels, duplicate category 409, empty-month forecast · `packages/ui/`, `apps/web/`, `apps/api/`, `tests/e2e/`
 - [x] **T049** Finish-review fixes for T031/T037: table inset like the board, 360 entries item column, sticky-index test, contrast evidence, local-account failure paths, settings sessions/currency nits
+- [x] **T050** Owner review 2026-10-18 ("only the month, year, today and settings are uptated, the other tabs are not updated and any sub tab not updated also"): put Bin, Categories (edit, archived), Category history, Import (all steps, styled file picker), Onboarding, Connectors, Phone capture and Connections on board `PanelFrame` panels; fix the flakes the reruns exposed (cold Vite start, widgets-perf SC-003, cold-import unit tests) · `apps/web/src/views/`, `tests/e2e/`
 
 ## Phase 9: Polish
 

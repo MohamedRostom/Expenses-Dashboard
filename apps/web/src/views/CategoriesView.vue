@@ -9,6 +9,7 @@ import {
   ErrorState,
   Input,
   MenuButton,
+  PanelFrame,
   Select,
   Skeleton,
   useToast,
@@ -177,40 +178,43 @@ async function remove(c: CategoryResponseT) {
       <button type="button" @click="dismissReviewBanner">Dismiss</button>
     </div>
 
-    <Skeleton v-if="loading" height="12rem" />
-    <ErrorState v-else-if="error" :code="error ?? undefined" />
-    <EmptyState v-else-if="categories.length === 0" title="No categories yet" />
+    <PanelFrame v-if="loading || error || categories.length === 0" heading="Categories">
+      <Skeleton v-if="loading" height="12rem" />
+      <ErrorState v-else-if="error" :code="error ?? undefined" />
+      <EmptyState v-else title="No categories yet" />
+    </PanelFrame>
     <template v-else>
-      <DataTable :columns="columns" dense caption="Categories" class="desk-categories-table">
-        <tr v-for="c in active" :key="c.id">
-          <td>
-            <span class="desk-item">
-              <span class="desk-categories-name">
-                <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
-                <Button
-                  variant="ghost"
-                  class="desk-categories-edit"
-                  :aria-label="`Edit ${c.name}`"
-                  @click="openEdit(c)"
-                  >{{ c.name }}</Button
-                >
+      <PanelFrame heading="Active">
+        <DataTable :columns="columns" dense caption="Categories" class="desk-categories-table">
+          <tr v-for="c in active" :key="c.id">
+            <td>
+              <span class="desk-item">
+                <span class="desk-categories-name">
+                  <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
+                  <Button
+                    variant="ghost"
+                    class="desk-categories-edit"
+                    :aria-label="`Edit ${c.name}`"
+                    @click="openEdit(c)"
+                    >{{ c.name }}</Button
+                  >
+                </span>
+                <span class="desk-item-actions">
+                  <MenuButton
+                    :label="`Actions for ${c.name}`"
+                    :items="rowActions(c)"
+                    @select="(id) => onRowAction(id, c)"
+                  />
+                </span>
               </span>
-              <span class="desk-item-actions">
-                <MenuButton
-                  :label="`Actions for ${c.name}`"
-                  :items="rowActions(c)"
-                  @select="(id) => onRowAction(id, c)"
-                />
-              </span>
-            </span>
-          </td>
-          <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
-          <td class="desk-col--amount">{{ budgetText(c) }}</td>
-        </tr>
-      </DataTable>
+            </td>
+            <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
+            <td class="desk-col--amount">{{ budgetText(c) }}</td>
+          </tr>
+        </DataTable>
+      </PanelFrame>
 
-      <template v-if="archived.length > 0">
-        <h2>Archived</h2>
+      <PanelFrame v-if="archived.length > 0" heading="Archived">
         <DataTable
           :columns="columns"
           dense
@@ -233,7 +237,7 @@ async function remove(c: CategoryResponseT) {
             <td class="desk-col--amount">{{ budgetText(c) }}</td>
           </tr>
         </DataTable>
-      </template>
+      </PanelFrame>
     </template>
 
     <Dialog
@@ -262,6 +266,13 @@ async function remove(c: CategoryResponseT) {
 </template>
 
 <style scoped>
+.desk-categories-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
 .desk-categories-view {
   max-width: var(--content-max);
   margin: 0 auto;
@@ -309,7 +320,16 @@ async function remove(c: CategoryResponseT) {
   height: var(--space-3);
   display: inline-block;
 }
-.desk-categories-table :deep(.desk-item-actions) {
+/* The class lands on DataTable's inner <table> (inheritAttrs: false), which carries no scope id
+   from this view, so the whole selector sits in :deep(); .desk-data-table outranks DataTable's
+   own column rule. The name and its "…" menu share one line. */
+:deep(.desk-categories-table.desk-data-table .desk-item) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+:deep(.desk-categories-table.desk-data-table .desk-item-actions) {
   gap: 0;
 }
 .desk-categories-table-archived {

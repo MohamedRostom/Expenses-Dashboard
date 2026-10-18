@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Button, Dialog, Select, useToast } from '@desk/ui';
+import { Button, Dialog, PanelFrame, Select, useToast } from '@desk/ui';
 import type {
   ListNotionDatabasesResponseT,
   NotionConnectionResponseT,
@@ -123,53 +123,63 @@ onMounted(load);
   <main class="desk-connectors">
     <h1>Notion sync</h1>
 
-    <p v-if="loading">Loading…</p>
+    <div class="desk-connectors-grid board-grid">
+      <PanelFrame v-if="loading" heading="Notion">
+        <div class="desk-connectors-body"><p>Loading…</p></div>
+      </PanelFrame>
 
-    <template v-else-if="!connected">
-      <p>Connect a Notion workspace to keep expenses in sync with a Notion database.</p>
-      <Button @click="connect">Connect Notion</Button>
-    </template>
-
-    <template v-else>
-      <dl class="desk-connectors-status">
-        <dt>Workspace</dt>
-        <dd>{{ connection?.workspaceName }}</dd>
-        <dt>Status</dt>
-        <dd :class="`desk-status-${connection?.status}`">{{ connection?.status }}</dd>
-        <dt>Last sync</dt>
-        <dd>{{ connection?.lastSyncAt ?? 'never' }}</dd>
-        <dt v-if="connection?.lastError">Last error</dt>
-        <dd v-if="connection?.lastError" role="alert">{{ connection?.lastError }}</dd>
-      </dl>
-
-      <div class="desk-connectors-table">
-        <Select
-          v-model="selectedDatabaseId"
-          label="Notion database"
-          :options="
-            databases.map((d) => ({
-              value: d.databaseId,
-              label: `${d.title}${d.compatible ? '' : ' (incompatible)'}`,
-            }))
-          "
-        />
-        <Select v-model="direction" label="Sync direction" :options="directionOptions" />
-        <Button :disabled="!selectedDatabaseId" @click="saveTable">Save table</Button>
-      </div>
-
-      <div class="desk-connectors-actions">
-        <Button :loading="syncing" @click="syncNow">Sync now</Button>
-        <Button variant="secondary" @click="disconnectOpen = true">Disconnect</Button>
-      </div>
-
-      <Dialog :open="disconnectOpen" title="Disconnect Notion?" @close="disconnectOpen = false">
-        <p>Existing synced expenses and their history are kept — only syncing stops.</p>
-        <div class="desk-connectors-actions">
-          <Button variant="danger" @click="disconnect">Disconnect</Button>
-          <Button variant="secondary" @click="disconnectOpen = false">Cancel</Button>
+      <PanelFrame v-else-if="!connected" heading="Notion">
+        <div class="desk-connectors-body">
+          <p>Connect a Notion workspace to keep expenses in sync with a Notion database.</p>
+          <div><Button @click="connect">Connect Notion</Button></div>
         </div>
-      </Dialog>
-    </template>
+      </PanelFrame>
+
+      <template v-else>
+        <PanelFrame heading="Connection">
+          <dl class="desk-connectors-status desk-connectors-body">
+            <dt>Workspace</dt>
+            <dd>{{ connection?.workspaceName }}</dd>
+            <dt>Status</dt>
+            <dd :class="`desk-status-${connection?.status}`">{{ connection?.status }}</dd>
+            <dt>Last sync</dt>
+            <dd>{{ connection?.lastSyncAt ?? 'never' }}</dd>
+            <dt v-if="connection?.lastError">Last error</dt>
+            <dd v-if="connection?.lastError" role="alert">{{ connection?.lastError }}</dd>
+          </dl>
+        </PanelFrame>
+
+        <PanelFrame heading="Sync">
+          <div class="desk-connectors-table desk-connectors-body">
+            <Select
+              v-model="selectedDatabaseId"
+              label="Notion database"
+              :options="
+                databases.map((d) => ({
+                  value: d.databaseId,
+                  label: `${d.title}${d.compatible ? '' : ' (incompatible)'}`,
+                }))
+              "
+            />
+            <Select v-model="direction" label="Sync direction" :options="directionOptions" />
+            <Button :disabled="!selectedDatabaseId" @click="saveTable">Save table</Button>
+          </div>
+
+          <div class="desk-connectors-actions desk-connectors-body">
+            <Button :loading="syncing" @click="syncNow">Sync now</Button>
+            <Button variant="secondary" @click="disconnectOpen = true">Disconnect</Button>
+          </div>
+        </PanelFrame>
+      </template>
+    </div>
+
+    <Dialog :open="disconnectOpen" title="Disconnect Notion?" @close="disconnectOpen = false">
+      <p>Existing synced expenses and their history are kept — only syncing stops.</p>
+      <div class="desk-connectors-actions">
+        <Button variant="danger" @click="disconnect">Disconnect</Button>
+        <Button variant="secondary" @click="disconnectOpen = false">Cancel</Button>
+      </div>
+    </Dialog>
   </main>
 </template>
 
@@ -178,7 +188,7 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  max-width: 32rem;
+  max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
@@ -193,6 +203,18 @@ h1 {
   line-height: var(--leading-2xl);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
+}
+.desk-connectors-body {
+  padding: var(--space-2) var(--space-4);
+}
+.desk-connectors-body > * + * {
+  margin-top: var(--space-3);
+}
+.desk-connectors-grid {
+  inline-size: 100%;
+  max-width: none;
+  margin-inline: 0;
+  align-items: start;
 }
 .desk-connectors-status {
   display: grid;

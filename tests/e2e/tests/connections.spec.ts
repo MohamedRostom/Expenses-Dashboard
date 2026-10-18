@@ -123,8 +123,8 @@ test.describe('Connections and Today pages @ci', () => {
     await expect(page).toHaveURL('/settings/connections');
 
     // Providers are filtered by flags; all on in e2e-ci per T004
-    await expect(page.getByRole('heading', { level: 2, name: 'Add a Provider' })).toBeVisible();
-    await expect(page.getByRole('heading', { level: 3, name: 'Google' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 3, name: 'Add a provider' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 4, name: 'Google' })).toBeVisible();
 
     // Verify axe accessibility
     await axeCheck(page);

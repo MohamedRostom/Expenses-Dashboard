@@ -39,6 +39,7 @@ describe('CategoryView empty history (review2)', () => {
     await router.push('/settings/categories/c1');
     app.mount(el);
     await flush();
+    expect(el.querySelector('.desk-panel-frame')).not.toBeNull();
     const empty = el.querySelector('.desk-empty-state')!;
     expect(empty.textContent).toContain('No spend recorded');
     expect(empty.querySelector('.desk-empty-desc')).not.toBeNull();

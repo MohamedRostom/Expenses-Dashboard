@@ -10,6 +10,7 @@ import {
   DataTable,
   ErrorState,
   Input,
+  PanelFrame,
   Select,
   Skeleton,
   useToast,
@@ -229,64 +230,69 @@ onMounted(loadProfiles);
   <main class="desk-import-view">
     <h1>Import expenses</h1>
 
-    <section v-if="step === 1">
-      <h2>1. Choose a CSV file</h2>
-      <input
-        type="file"
-        accept=".csv"
-        aria-label="CSV file"
-        data-testid="import-file-input"
-        @change="onFileChange"
-      />
-      <Button :disabled="!file" @click="step = 2">Next</Button>
-    </section>
-
-    <section v-else-if="step === 2">
-      <h2>2. Map columns</h2>
-
-      <div v-if="profiles.length > 0" class="desk-import-profiles">
-        <span>Saved profiles:</span>
-        <Button
-          v-for="p in profiles"
-          :key="p.id"
-          variant="secondary"
-          size="sm"
-          data-testid="import-profile-button"
-          @click="applyProfile(p)"
-        >
-          {{ p.name }}
-        </Button>
-      </div>
-
-      <div class="desk-import-mapping-form">
-        <Input v-model="mapping.date" label="Date column" />
-        <Select v-model="mapping.dateFormat" label="Date format" :options="dateFormatOptions" />
-        <Input v-model="mapping.amount" label="Amount column" />
-        <Select
-          v-model="mapping.decimalSeparator"
-          label="Decimal separator"
-          :options="decimalOptions"
-        />
-        <Input v-model="mapping.currency" label="Currency column" />
-        <Input v-model="mapping.description" label="Description column" />
-        <Input v-model="mapping.category" label="Category column (optional)" />
-        <Input v-model="mapping.id" label="Id column (optional, for duplicate matching)" />
-
-        <label class="desk-field">
-          <input v-model="saveAsProfile" type="checkbox" />
-          <span>Save this mapping as a profile</span>
+    <PanelFrame v-if="step === 1" heading="1. Choose a CSV file">
+      <div class="desk-import-body">
+        <label class="desk-import-picker">
+          <input
+            type="file"
+            accept=".csv"
+            aria-label="CSV file"
+            class="desk-import-file"
+            data-testid="import-file-input"
+            @change="onFileChange"
+          />
+          <span class="desk-import-picker-btn">{{ file ? 'Change file' : 'Choose file' }}</span>
+          <span class="desk-import-picker-name">{{ file ? file.name : 'No file chosen' }}</span>
         </label>
-        <Input v-if="saveAsProfile" v-model="profileName" label="Profile name" />
+        <Button :disabled="!file" @click="step = 2">Next</Button>
       </div>
+    </PanelFrame>
 
-      <ErrorState v-if="error" title="Upload failed" :description="error" />
-      <Button :disabled="loading" @click="uploadAndPreview">{{
-        loading ? 'Uploading…' : 'Preview'
-      }}</Button>
-    </section>
+    <PanelFrame v-else-if="step === 2" heading="2. Map columns">
+      <div class="desk-import-body">
+        <div v-if="profiles.length > 0" class="desk-import-profiles">
+          <span>Saved profiles:</span>
+          <Button
+            v-for="p in profiles"
+            :key="p.id"
+            variant="secondary"
+            size="sm"
+            data-testid="import-profile-button"
+            @click="applyProfile(p)"
+          >
+            {{ p.name }}
+          </Button>
+        </div>
 
-    <section v-else-if="step === 3">
-      <h2>3. Preview</h2>
+        <div class="desk-import-mapping-form">
+          <Input v-model="mapping.date" label="Date column" />
+          <Select v-model="mapping.dateFormat" label="Date format" :options="dateFormatOptions" />
+          <Input v-model="mapping.amount" label="Amount column" />
+          <Select
+            v-model="mapping.decimalSeparator"
+            label="Decimal separator"
+            :options="decimalOptions"
+          />
+          <Input v-model="mapping.currency" label="Currency column" />
+          <Input v-model="mapping.description" label="Description column" />
+          <Input v-model="mapping.category" label="Category column (optional)" />
+          <Input v-model="mapping.id" label="Id column (optional, for duplicate matching)" />
+
+          <label class="desk-field">
+            <input v-model="saveAsProfile" type="checkbox" />
+            <span>Save this mapping as a profile</span>
+          </label>
+          <Input v-if="saveAsProfile" v-model="profileName" label="Profile name" />
+        </div>
+
+        <ErrorState v-if="error" title="Upload failed" :description="error" />
+        <Button :disabled="loading" @click="uploadAndPreview">{{
+          loading ? 'Uploading…' : 'Preview'
+        }}</Button>
+      </div>
+    </PanelFrame>
+
+    <PanelFrame v-else-if="step === 3" heading="3. Preview">
       <Skeleton v-if="loading" height="12rem" />
       <div v-else class="desk-import-preview-wrap">
         <DataTable
@@ -352,18 +358,19 @@ onMounted(loadProfiles);
       <Button :disabled="loading" @click="commit">{{
         loading ? 'Committing…' : 'Commit import'
       }}</Button>
-    </section>
+    </PanelFrame>
 
-    <section v-else-if="step === 4">
-      <h2>4. Done</h2>
-      <p data-testid="import-summary">
-        Created {{ summary?.createdExpenses }}, skipped duplicates {{ summary?.duplicates }}, errors
-        {{ summary?.errors }}.
-      </p>
-      <Button v-if="!undone" :disabled="loading" @click="undo">Undo</Button>
-      <p v-else>Undone.</p>
-      <Button @click="startOver">Import another file</Button>
-    </section>
+    <PanelFrame v-else-if="step === 4" heading="4. Done">
+      <div class="desk-import-body">
+        <p data-testid="import-summary">
+          Created {{ summary?.createdExpenses }}, skipped duplicates {{ summary?.duplicates }},
+          errors {{ summary?.errors }}.
+        </p>
+        <Button v-if="!undone" :disabled="loading" @click="undo">Undo</Button>
+        <p v-else>Undone.</p>
+        <Button @click="startOver">Import another file</Button>
+      </div>
+    </PanelFrame>
   </main>
 </template>
 
@@ -378,14 +385,73 @@ onMounted(loadProfiles);
   flex-direction: column;
   gap: var(--space-4);
 }
-.desk-import-view section {
+.desk-import-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
+.desk-import-body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-3);
 }
-.desk-import-view section > * {
+.desk-import-body > * {
   max-width: 100%;
+}
+/* Step 3: the Commit button sits under the board table, inset like the panel body. */
+.desk-import-view :deep(.desk-panel-frame-flap) > .desk-btn {
+  margin: var(--space-3) var(--space-4) var(--space-1);
+}
+/* The real file input stays focusable and labelled; the label draws it. */
+.desk-import-picker {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  cursor: pointer;
+}
+/* Transparent over the whole picker, so the real input is the tap target (>= 44px at 360). */
+.desk-import-file {
+  position: absolute;
+  inset: 0;
+  inline-size: 100%;
+  block-size: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.desk-import-picker-btn {
+  display: inline-flex;
+  align-items: center;
+  box-sizing: border-box;
+  min-block-size: var(--target-min);
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-fg);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 600;
+}
+/* Match Button: 40px on desktop (phone stays 44). */
+@media (min-width: 1024px) {
+  .desk-import-picker-btn {
+    min-block-size: var(--space-10);
+  }
+}
+.desk-import-file:focus-visible + .desk-import-picker-btn {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-import-picker-name {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+  color: var(--color-fg-muted);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
 }
 .desk-import-profiles {
   display: flex;
@@ -409,8 +475,7 @@ onMounted(loadProfiles);
   inline-size: 100%;
 }
 .desk-import-check,
-.desk-import-fix,
-.desk-import-view input[type='file'] {
+.desk-import-fix {
   min-block-size: var(--target-min);
 }
 .desk-import-check {
