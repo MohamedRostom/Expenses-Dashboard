@@ -223,3 +223,26 @@ describe('Sign out', () => {
     expect(useSessionStore().user).toBeNull();
   });
 });
+
+describe('Signed-out backdrop (ADR-0007 amendment 2026-10-18)', () => {
+  let app: ReturnType<typeof createApp> | undefined;
+  afterEach(() => {
+    app?.unmount();
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+
+  it('shows the cycling backdrop instead of the motion layer on sign-in', async () => {
+    const m = await mount('/login', false);
+    app = m.app;
+    expect(m.el.querySelector('.desk-auth-backdrop')).not.toBeNull();
+    expect(m.el.querySelector('[data-testid="background-motion"]')).toBeNull();
+  });
+
+  it('keeps the motion layer on signed-in screens', async () => {
+    const m = await mount('/year', true);
+    app = m.app;
+    expect(m.el.querySelector('.desk-auth-backdrop')).toBeNull();
+    expect(m.el.querySelector('[data-testid="background-motion"]')).not.toBeNull();
+  });
+});

@@ -29,7 +29,8 @@ export const useFlagsStore = defineStore('flags', {
     async fetchFlags(kind: 'auth' | 'public') {
       try {
         const res = await apiFetch<FlagsResponse>(kind === 'auth' ? '/flags' : '/flags/public');
-        if (this.loadedFor === kind) this.flags = res.flags;
+        // A body without `flags` must not leave the store undefined: every isOn() would throw.
+        if (this.loadedFor === kind) this.flags = res.flags ?? {};
       } catch {
         this.loadedFor = null;
         // On error, flags remain empty/false — routes check isOn() which returns false for missing keys

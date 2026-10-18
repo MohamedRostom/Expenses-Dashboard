@@ -61,3 +61,9 @@ Dropped from ADR-0006: the departure tile's flap-cell seam, the "flap" vocabular
 - **Canvas or WebGL particles.** More realistic, but a per-frame script loop costs battery and Lighthouse TBT on routes already under budget.
 - **One fixed motion for everyone.** Rejected by the owner, who wanted the choice on the account.
 - **Rejecting low-contrast custom colours.** Blocks a free choice for a decorative layer; capping the tint alpha bounds the worst case instead.
+
+## Amendment 2026-10-18: a cycling backdrop on signed-out pages
+
+Rostom decided on 2026-10-18 that the signed-out pages (sign-in, sign-up, verify, forgot and reset password) get their own premium backdrop: ten CSS-only scenes in the Desk sign's palette (obsidian, cobalt, ice, steel, navy; a light and a dark set), shown in a shuffled order that covers every scene before any repeats, each holding about 8 seconds with a 2.4 second crossfade and a slow zoom. On those pages it replaces the `BackgroundMotion` layer, so a page still has one ambient loop, not two. This narrows "Signed-out pages show the default motion" above: they now show this backdrop instead.
+
+The guardrails of this ADR still hold. It is decoration only (`aria-hidden`, no pointer events, behind all content), animates opacity and transform only, holds one still scene under reduced motion, reduced data, a hidden tab, or while `appearance.motion` is off (so production shows a still scene until motion is announced), and loads no images or fonts. The landing page is a separate app and keeps the default motion. Implementation: `apps/web/src/components/AuthBackdrop.vue`, mounted from `App.vue` for those five routes.

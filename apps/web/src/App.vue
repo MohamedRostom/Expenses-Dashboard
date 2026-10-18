@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { BackgroundMotion, Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
+import AuthBackdrop from './components/AuthBackdrop.vue';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
 import { applyAccent, applyMotion, applyTheme } from './views/theme.js';
@@ -75,6 +76,9 @@ const showNav = computed(
   () => !!session.user && !!route.meta.requiresAuth && route.name !== 'onboarding',
 );
 
+const SIGNED_OUT_PAGES = new Set(['login', 'register', 'verify', 'forgot', 'reset']);
+const onSignedOutPage = computed(() => SIGNED_OUT_PAGES.has(String(route.name)));
+
 // Show Today link only when the flag is on
 const showTodayLink = computed(() => flags.isOn('panels.today'));
 </script>
@@ -93,7 +97,10 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
       <button type="button" class="desk-nav-signout" @click="signOut">Sign out</button>
     </nav>
   </header>
-  <BackgroundMotion />
+  <!-- Signed-out pages cycle their own backdrop (ADR-0007 amendment 2026-10-18); moving only
+       while appearance.motion is on, a still scene otherwise. -->
+  <AuthBackdrop v-if="onSignedOutPage" :animate="flags.isOn('appearance.motion')" />
+  <BackgroundMotion v-else />
   <RouterView />
   <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
   <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />
