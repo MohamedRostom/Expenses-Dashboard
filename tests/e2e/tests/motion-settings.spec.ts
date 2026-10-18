@@ -101,6 +101,56 @@ test('user A and user B each see only their own preset', async ({ page, browser 
   await a2.context().close();
 });
 
+// Owner's requirement (2026-10-16): every preset is selectable and shows on every screen.
+const SCREENS = [
+  '/',
+  '/year',
+  '/settings/categories',
+  '/import',
+  '/bin',
+  '/settings',
+  '/settings/capture',
+  '/settings/connectors',
+];
+const LAYERS = {
+  'Aurora drift': 'aurora',
+  'Board grid': 'grid',
+  Particles: 'particles',
+  Grain: 'grain',
+} as const;
+
+test('every preset is drawn on every signed-in screen, and None draws nothing', async ({
+  page,
+}) => {
+  test.setTimeout(120_000);
+  await signedIn(page, 'screens');
+  for (const [name, layer] of Object.entries(LAYERS)) {
+    await page.goto('/settings');
+    const done = saved(page);
+    await preset(page, name).check();
+    await done;
+    for (const path of SCREENS) {
+      await page.goto(path);
+      await expect.poll(() => motionOf(page), `${name} on ${path}`).toBe(layer);
+      await expect(page.locator(`.desk-motion__${layer}`), `${name} on ${path}`).toBeVisible();
+    }
+  }
+
+  await page.goto('/settings');
+  const done = saved(page);
+  await preset(page, 'None').check();
+  await done;
+  for (const path of SCREENS) {
+    await page.goto(path);
+    // The layer is mounted and told "none", so the hidden checks below aren't vacuous.
+    await expect.poll(() => motionOf(page), `None on ${path}`).toBe('none');
+    await expect(page.getByTestId('background-motion')).toHaveCount(1);
+    for (const layer of Object.values(LAYERS)) {
+      await expect(page.locator(`.desk-motion__${layer}`), `None on ${path}`).toBeHidden();
+    }
+  }
+});
+
 test('the colour row shows in light, hides in dark; the switches persist', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'light' });
   await signedIn(page, 'switches');
