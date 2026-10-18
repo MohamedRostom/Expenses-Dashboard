@@ -21,3 +21,15 @@ describe('.board-grid (T023, research R7)', () => {
     expect(css).toMatch(/\.board-grid\s*>\s*\*\s*\{[^}]*min-width:\s*0/);
   });
 });
+
+// Chrome and Edge on Windows paint a <select>'s open list from the select's own background, so a
+// transparent select gets a white list even with color-scheme: dark. Options carry the theme.
+describe('native option lists', () => {
+  it('take the surface and text colours of the current theme', () => {
+    const at = css.indexOf('option {');
+    expect(at).toBeGreaterThanOrEqual(0);
+    const rule = css.slice(at, css.indexOf('}', at));
+    expect(rule).toContain('background-color: var(--color-surface)');
+    expect(rule).toContain('color: var(--color-fg)');
+  });
+});
