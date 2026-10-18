@@ -3,6 +3,7 @@
    explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10). */
 [data-theme='light'],
 :root {
+  color-scheme: light;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace;
   --color-bg: #e8eaeb;
@@ -93,6 +94,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --color-bg: #0e1114;
     --color-surface: #171b20;
     --color-surface-raised: #1f242a;
@@ -130,6 +132,7 @@
 }
 :root[data-theme='dark'],
 [data-theme='dark'] {
+  color-scheme: dark;
   --color-bg: #0e1114;
   --color-surface: #171b20;
   --color-surface-raised: #1f242a;

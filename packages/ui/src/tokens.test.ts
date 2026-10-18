@@ -508,3 +508,20 @@ describe('glass and motion tokens (ADR-0007)', () => {
     expect(light.get('--radius-xl')).toBe('16px');
   });
 });
+
+// Native controls (a <select>'s open list, date pickers, scrollbars) are drawn by the browser from
+// color-scheme, not from our tokens; without it they stay white in dark mode.
+describe('tokens.css color-scheme', () => {
+  const block = (selector: string) => {
+    const flat = css.replace(/\s+/g, ' ');
+    const at = flat.indexOf(`${selector} {`);
+    return flat.slice(at, flat.indexOf('}', at));
+  };
+  it.each([
+    ["[data-theme='light'], :root", 'light'],
+    [":root:not([data-theme='light'])", 'dark'],
+    [":root[data-theme='dark'], [data-theme='dark']", 'dark'],
+  ])('%s declares color-scheme: %s', (selector, scheme) => {
+    expect(block(selector)).toMatch(new RegExp(`[{;]\\s*color-scheme:\\s*${scheme};`));
+  });
+});
