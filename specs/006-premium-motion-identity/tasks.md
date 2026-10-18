@@ -158,7 +158,7 @@ Rostom found the build differs from the approved board (https://claude.ai/artifa
 **⟶ Wait for Wave 1 to finish, then:**
 
 - [x] **T033** Regenerate every web and landing visual baseline once at `--workers=2` with the `ci` project only, and review the diffs · `tests/e2e/tests/*-snapshots/`
-- [ ] **T034** Validate against the Success Criteria: lint, typecheck, unit (coverage ≥ 85 % on core and api), api, `worker:build`, `pnpm test:e2e --project=ci --workers=2`, OpenAPI not stale · whole repo
+- [x] **T034** Validate against the Success Criteria: lint, typecheck, unit (coverage ≥ 85 % on core and api), api, `worker:build`, `pnpm test:e2e --project=ci --workers=2`, OpenAPI not stale · whole repo
 - [ ] **T035** `needs-rostom`: owner sign-off of every screen at phone and desktop width against the direction board (SC-007) and the 20-second change check (SC-001) · `docs/ROADMAP.md`
 
 ## Dependencies & Execution Order
