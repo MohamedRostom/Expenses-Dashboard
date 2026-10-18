@@ -395,6 +395,9 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-item-date desk-item-date--solo">{{
+                    shortDay(q.input.date)
+                  }}</span>
                   <span class="desk-status-word desk-status-word--warn">pending</span>
                 </span>
               </td>
@@ -421,6 +424,9 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-item-date desk-item-date--solo">{{
+                    shortDay(q.input.date)
+                  }}</span>
                   <span class="desk-status-word desk-status-word--critical"
                     >failed: {{ q.reason ?? 'unknown error' }}</span
                   >
@@ -452,6 +458,7 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ e.description }}</span>
+                  <span class="desk-item-date">{{ shortDay(e.date) }}</span>
                   <span class="desk-item-cat">{{
                     e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—'
                   }}</span>

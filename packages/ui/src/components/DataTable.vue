@@ -210,6 +210,33 @@ const colClass = (c: BoardColumn) => [
 .desk-data-table--board :deep(th) {
   padding-inline: var(--space-2);
 }
+/* Below 480 the date moves into the item's subline so the item column can read. */
+.desk-data-table :deep(.desk-item-date) {
+  display: none;
+}
+@media (max-width: 479px) {
+  .desk-data-table--board :deep(.desk-col--date) {
+    display: none;
+  }
+  .desk-data-table :deep(.desk-item-date) {
+    display: block;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .desk-data-table :deep(.desk-col--fill) {
+    min-width: 8rem;
+  }
+  /* The category/stamp subline wraps to two lines here instead of ending in an ellipsis. */
+  .desk-data-table.desk-data-table--board :deep(.desk-item-cat) {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
 /* Heads take the Label role: small spaced capitals over a 1px Frame Line. */
 .desk-data-table thead th {
   height: auto;

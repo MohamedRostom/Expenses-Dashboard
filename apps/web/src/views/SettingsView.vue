@@ -22,7 +22,7 @@ import type {
   TemperatureUnitT,
 } from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
-import { describeDevice, formatDateTime } from '../utils/format.js';
+import { describeDevice, formatSeen } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
 import { useFlagsStore } from '../stores/flags.js';
 import { useWidgetsStore } from '../stores/widgets.js';
@@ -65,7 +65,6 @@ const SECTIONS = computed(() =>
 );
 const sessionColumns: BoardColumn[] = [
   { key: 'device', label: 'Device' },
-  { key: 'seen', label: 'Last seen', hideBelow: 'md' },
   { key: 'actions', label: 'Actions', srOnly: true, width: 'action' },
 ];
 const theme = ref<string>(session.user?.theme ?? 'system');
@@ -394,6 +393,7 @@ async function confirmDelete() {
       <PanelFrame id="st-currency" heading="Default currency" class="desk-settings-section">
         <div class="desk-settings-body">
           <CurrencyPicker
+            class="desk-settings-currency"
             :model-value="currency"
             label="Default currency"
             @update:model-value="changeCurrency"
@@ -506,17 +506,22 @@ async function confirmDelete() {
             ><Button variant="secondary" @click="loadSessions">Try again</Button></template
           >
         </ErrorState>
-        <DataTable v-else :columns="sessionColumns" dense caption="Signed-in sessions">
+        <DataTable
+          v-else
+          class="desk-sessions-table"
+          :columns="sessionColumns"
+          dense
+          caption="Signed-in sessions"
+        >
           <tr v-for="s in sessions" :key="s.id">
             <td>
               <span class="desk-item">
                 <span class="desk-item-name">{{ describeDevice(s.userAgent) }}</span>
-                <span class="desk-item-cat desk-settings-seen-inline">{{
-                  formatDateTime(s.lastSeenAt)
-                }}</span>
+                <span class="desk-item-cat desk-settings-seen-inline"
+                  >Last seen {{ formatSeen(s.lastSeenAt) }}</span
+                >
               </span>
             </td>
-            <td class="desk-col--md">{{ formatDateTime(s.lastSeenAt) }}</td>
             <td class="desk-col--action">
               <span v-if="s.current" class="desk-settings-current">This session</span>
               <Button v-else variant="ghost" size="sm" @click="revokeSession(s.id)">
@@ -746,6 +751,7 @@ async function confirmDelete() {
   padding: var(--space-2) var(--space-4);
 }
 .desk-settings-current {
+  white-space: nowrap;
   font-size: var(--text-sm);
   color: var(--color-fg-muted);
 }
@@ -753,6 +759,11 @@ async function confirmDelete() {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+}
+@media (max-width: 479px) {
+  .desk-settings-seen-inline {
+    white-space: normal;
+  }
 }
 .desk-settings-dialog-actions {
   display: flex;
@@ -814,6 +825,56 @@ async function confirmDelete() {
   .desk-settings-accent input {
     width: var(--target-min);
     height: var(--target-min);
+  }
+}
+/* The panel heading already names the field; its label stays as the accessible name only. */
+.desk-settings-currency :deep(.desk-field-label) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+/* Sessions: the last-seen stamp and the current-session word fit on one line. The table is a
+   grandchild of this component's scope (DataTable's root is its wrapper), hence :deep from the top. */
+:deep(.desk-sessions-table.desk-data-table .desk-col--action) {
+  width: 6rem;
+}
+:deep(.desk-sessions-table.desk-data-table .desk-item-cat) {
+  display: block;
+}
+@media (min-width: 1024px) {
+  .desk-settings-view {
+    grid-template-columns: 12rem minmax(0, 1fr);
+    grid-template-areas:
+      'title title'
+      'index sections';
+    column-gap: var(--space-10);
+  }
+  .desk-settings-title {
+    grid-area: title;
+  }
+  .desk-settings-index {
+    grid-area: index;
+    flex-direction: column;
+    align-self: start;
+    gap: 0;
+    margin-inline: 0;
+    padding-inline: 0;
+    overflow: visible;
+    position: sticky;
+    top: var(--space-4);
+    border-bottom: 0;
+    border-left: 1px solid var(--color-border);
+  }
+  .desk-settings-index-link {
+    min-height: var(--space-8);
+    padding-left: var(--space-3);
+  }
+  .desk-settings-sections {
+    grid-area: sections;
+    margin-inline: 0;
   }
 }
 </style>

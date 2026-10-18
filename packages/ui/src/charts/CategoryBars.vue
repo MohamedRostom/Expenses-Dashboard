@@ -112,9 +112,14 @@ defineExpose({ barPct, tickPct, isOverBudget });
   font-family: var(--font-sans);
 }
 .desk-category-bars-row {
-  display: grid;
-  grid-template-columns: var(--space-1) minmax(0, 1fr);
-  column-gap: var(--space-3);
+  position: relative;
+}
+/* The over-budget lamp sits in the panel gutter so bars start on the label's inset (the board). */
+.desk-category-bars-lamp {
+  position: absolute;
+  inset-block: 0;
+  left: calc(-1 * var(--space-3));
+  width: var(--space-1);
 }
 .desk-category-bars-lamp--critical {
   background: var(--color-critical);
@@ -153,7 +158,7 @@ defineExpose({ barPct, tickPct, isOverBudget });
   display: block;
   width: 100%;
   height: var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-xl);
   overflow: hidden;
 }
 .desk-category-bars-track {

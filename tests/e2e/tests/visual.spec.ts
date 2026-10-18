@@ -1095,6 +1095,24 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
         });
       await post('Large amount', 12_345_678, '01');
       for (let i = 0; i < 30; i++) await post(`Busy day entry ${i + 1}`, 300 + i * 125, '15');
+      // One over-budget category so the bars' gutter lamp is in the baselines.
+      const over = await page.request.post('/categories', {
+        headers,
+        data: { name: 'Client dinners', colour: '#b5651d', budgetMinor: 5_000 },
+      });
+      expect(over.ok()).toBe(true);
+      const overId = ((await over.json()) as { category: { id: string } }).category.id;
+      await page.request.post('/expenses', {
+        headers,
+        data: {
+          description: 'Team dinner',
+          amount: { minor: 7_500, currency },
+          date: `${month}-10`,
+          categoryId: overId,
+          paidWith: 'card',
+          kind: 'variable',
+        },
+      });
     }
     await screen.seed?.(page, ctx);
   }

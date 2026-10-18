@@ -116,6 +116,15 @@ describe('MonthView category rows (T032)', () => {
     }
   });
 
+  it('entry rows carry the date in the item subline for phone width (T049)', async () => {
+    const el = await mount();
+    const sub = el.querySelector('[data-panel="entries"] tbody .desk-item > .desk-item-date');
+    expect(sub?.textContent).toMatch(/2/);
+    expect(el.querySelector('[data-panel="entries"] tbody .desk-item-cat')?.textContent).toContain(
+      'Groceries',
+    );
+  });
+
   it('departure tile over budget: label, red minus figure and the word over', async () => {
     Object.assign(money, { budgeted: 1000, remaining: -234 });
     const el = await mount();

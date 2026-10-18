@@ -142,6 +142,16 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
   text-transform: uppercase;
   color: var(--color-fg-muted);
 }
+/* From 768 a table that is the panel's direct child is inset by the panel padding with its first cell
+   flush, so label, row rule and first-cell text share one inset (the board). Nested tables keep theirs. */
+@media (min-width: 768px) {
+  .desk-panel-frame-flap > :deep(.desk-data-table-wrap) {
+    margin-inline: var(--space-4);
+  }
+  .desk-panel-frame-flap > :deep(.desk-data-table-wrap) tr > :first-child {
+    padding-inline-start: 0;
+  }
+}
 .desk-panel-frame-flap {
   padding: 0 0 var(--space-2);
   overflow: hidden;

@@ -29,7 +29,7 @@ describe('series and over-budget colours', () => {
     const t = src('CategoryBars');
     const css = style(t);
     expect(rule(css, 'desk-category-bars-svg')).toMatch(/height:\s*var\(--space-2\)/);
-    expect(rule(css, 'desk-category-bars-svg')).toMatch(/border-radius:\s*999px/);
+    expect(rule(css, 'desk-category-bars-svg')).toMatch(/border-radius:\s*var\(--radius-xl\)/);
     expect(t).toContain('Over budget by {{ formatMinor(c.spent - c.budget!) }}');
   });
   it('YearBars: fill is accent, over-budget is critical', () => {

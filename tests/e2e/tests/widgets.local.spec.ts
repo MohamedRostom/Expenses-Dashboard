@@ -1,4 +1,5 @@
-import { expect, test as base, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import { csrfHeaders as apiCsrf, test } from '../fixtures/local-account.js';
 
 /**
  * T037 @local: the weather widget against the REAL Open-Meteo through the deployed API, run by
@@ -7,9 +8,8 @@ import { expect, test as base, type Page } from '@playwright/test';
  * it needs the deployed target with the widgets.weather flag on for new accounts, which only the
  * owner can arrange.
  *
- * Same account handling as smoke.spec.ts: a fresh account per test created through the API (a
- * Resend test-inbox address, random password) and deleted afterwards, so staging does not
- * accumulate users.
+ * Account handling: the worker's shared account from fixtures/local-account.ts (T037), deleted
+ * when the worker ends, so staging neither accumulates users nor hits the register limit.
  */
 
 const REMOTE = { timeout: 15_000 };
@@ -18,47 +18,9 @@ const HOUR_MS = 60 * 60 * 1000;
 const SAMPLE_MINUTES = Number(process.env['E2E_WEATHER_SAMPLE_MINUTES'] ?? 5);
 const SAMPLE_EVERY_MS = 30_000;
 
-type Credentials = { email: string; password: string };
 type ApiWidget = { kind: string; state: string; asOf: string; figures?: { place: string } };
 
-async function csrfHeaders(page: Page): Promise<Record<string, string>> {
-  const cookie = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf');
-  return cookie ? { 'X-CSRF-Token': cookie.value } : {};
-}
-
-const test = base.extend<{ account: Credentials }>({
-  account: async ({ page }, use) => {
-    const credentials = {
-      email: `delivered+weather-${Date.now()}-${crypto.randomUUID().slice(0, 8)}@resend.dev`,
-      password: `weather-${crypto.randomUUID()}`,
-    };
-    expect((await page.request.get('/healthz')).ok()).toBe(true);
-    const register = await page.request.post('/auth/register', {
-      data: { ...credentials, defaultCurrency: 'GBP', timeZone: 'Europe/London' },
-      headers: await csrfHeaders(page),
-    });
-    expect(register.status()).toBe(202);
-    const login = await page.request.post('/auth/login', {
-      data: credentials,
-      headers: await csrfHeaders(page),
-    });
-    expect(login.ok()).toBe(true);
-    const onboarded = await page.request.patch('/me', {
-      data: { onboardingCompletedAt: new Date().toISOString() },
-      headers: await csrfHeaders(page),
-    });
-    expect(onboarded.ok()).toBe(true);
-    await use(credentials);
-    try {
-      await page.request.delete('/me', {
-        data: { password: credentials.password },
-        headers: await csrfHeaders(page),
-      });
-    } catch {
-      // context gone: anything left is locked after 7 days by login().
-    }
-  },
-});
+const csrfHeaders = (page: Page) => apiCsrf(page.request);
 
 async function weatherWidget(page: Page): Promise<ApiWidget | undefined> {
   const res = await page.request.get('/widgets');
@@ -85,27 +47,35 @@ test.describe('weather widget against the real Open-Meteo @local', () => {
       headers: await csrfHeaders(page),
     });
     expect(created.status()).toBe(201);
+    const { widget } = (await created.json()) as { widget: { id: string } };
+    // The shared account outlives this test (other specs use it); leave no widget behind.
+    const removeWidget = async () =>
+      page.request.delete(`/widgets/${widget.id}`, { headers: await csrfHeaders(page) });
 
-    await page.goto('/');
-    const weather = page.getByRole('article', { name: 'Weather' });
-    await expect(weather).toContainText(/\d+°C/, REMOTE);
-    await expect(weather).toContainText(/as of \d{2}:\d{2}/);
-    await expect(weather).toContainText('Open-Meteo');
+    try {
+      await page.goto('/');
+      const weather = page.getByRole('article', { name: 'Weather' });
+      await expect(weather).toContainText(/\d+°C/, REMOTE);
+      await expect(weather).toContainText(/as of \d{2}:\d{2}/);
+      await expect(weather).toContainText('Open-Meteo');
 
-    const ageOk = async () => {
-      const w = await weatherWidget(page);
-      expect(w, 'the weather widget exists').toBeDefined();
-      expect(w!.state).not.toBe('error');
-      const age = Date.now() - new Date(w!.asOf).getTime();
-      expect(age, `reading age ${Math.round(age / 60000)} min`).toBeLessThan(HOUR_MS);
-    };
-    await ageOk();
-
-    // SC-004 sampling: the refresh job keeps the reading inside its one-hour window.
-    const until = Date.now() + SAMPLE_MINUTES * 60_000;
-    while (Date.now() < until) {
-      await page.waitForTimeout(SAMPLE_EVERY_MS);
+      const ageOk = async () => {
+        const w = await weatherWidget(page);
+        expect(w, 'the weather widget exists').toBeDefined();
+        expect(w!.state).not.toBe('error');
+        const age = Date.now() - new Date(w!.asOf).getTime();
+        expect(age, `reading age ${Math.round(age / 60000)} min`).toBeLessThan(HOUR_MS);
+      };
       await ageOk();
+
+      // SC-004 sampling: the refresh job keeps the reading inside its one-hour window.
+      const until = Date.now() + SAMPLE_MINUTES * 60_000;
+      while (Date.now() < until) {
+        await page.waitForTimeout(SAMPLE_EVERY_MS);
+        await ageOk();
+      }
+    } finally {
+      await removeWidget();
     }
   });
 });
