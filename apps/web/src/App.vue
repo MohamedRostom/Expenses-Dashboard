@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { BackgroundMotion, Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import { useSessionStore } from './stores/session.js';
@@ -8,7 +8,13 @@ import { useFlagsStore } from './stores/flags.js';
 import { applyAccent, applyMotion, applyTheme } from './views/theme.js';
 
 const route = useRoute();
+const router = useRouter();
 const session = useSessionStore();
+// The auth guard only runs on navigation, so clearing the session alone left the old screen up.
+async function signOut() {
+  await session.logout();
+  await router.replace('/login');
+}
 const flags = useFlagsStore();
 // Important-list fix: the saved theme used to apply only once SettingsView happened to mount —
 // every other screen showed the default light/dark-by-OS look regardless of the user's choice.
@@ -84,7 +90,7 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
       <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>
       <RouterLink :to="{ name: 'settings' }">Settings</RouterLink>
       <RouterLink :to="{ name: 'settings-connectors' }">Connectors</RouterLink>
-      <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
+      <button type="button" class="desk-nav-signout" @click="signOut">Sign out</button>
     </nav>
   </header>
   <BackgroundMotion />

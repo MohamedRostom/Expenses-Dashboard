@@ -191,3 +191,35 @@ describe('App nav', () => {
     }
   });
 });
+
+describe('Sign out', () => {
+  let app: ReturnType<typeof createApp> | undefined;
+  afterEach(() => {
+    app?.unmount();
+    vi.unstubAllGlobals();
+  });
+  const flush = async () => {
+    for (let i = 0; i < 10; i++) await new Promise((r) => setTimeout(r, 0));
+  };
+
+  it.each([
+    ['the API signs the session out', new Response(null, { status: 204 })],
+    ['the logout request fails', new TypeError('network down')],
+  ])('leaves the current screen for /login when %s', async (_, result) => {
+    const fetchImpl = vi.fn((url: string) =>
+      String(url).includes('/auth/logout')
+        ? result instanceof Error
+          ? Promise.reject(result)
+          : Promise.resolve(result)
+        : // after sign-out the app loads /flags/public, which always carries `flags`
+          Promise.resolve(new Response('{"flags":{}}', { status: 200 })),
+    );
+    const mounted = await mount('/year', true, fetchImpl as never);
+    app = mounted.app;
+    const router = app.config.globalProperties.$router;
+    mounted.el.querySelector<HTMLButtonElement>('.desk-nav-signout')!.click();
+    await flush();
+    expect(router.currentRoute.value.path).toBe('/login');
+    expect(useSessionStore().user).toBeNull();
+  });
+});
