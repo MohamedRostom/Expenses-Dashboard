@@ -102,7 +102,7 @@ export default defineConfig(({ command }) => ({
         name: 'Desk',
         short_name: 'Desk',
         description: 'Expenses dashboard',
-        theme_color: '#1f6e5a',
+        theme_color: '#1a1e27', // the graphite of the Desk sign (public/icons/desk-mark.svg)
         background_color: '#f2f4f7',
         display: 'standalone',
         start_url: '/',

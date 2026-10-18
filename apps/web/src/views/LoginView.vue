@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { Button, ErrorState, Input } from '@desk/ui';
 import { ApiError, apiFetch } from '../api/client.js';
 import { useSessionStore, type User } from '../stores/session.js';
+import DeskLogo from '../components/DeskLogo.vue';
 
 const email = ref('');
 const password = ref('');
@@ -58,6 +59,7 @@ function googleSignIn() {
 
 <template>
   <main class="auth-view surface">
+    <DeskLogo />
     <h1>Sign in</h1>
     <form @submit.prevent="onSubmit">
       <Input v-model="email" type="email" label="Email" placeholder="you@example.com" />
