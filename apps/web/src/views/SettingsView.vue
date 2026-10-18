@@ -47,21 +47,49 @@ const currencySubmitting = ref(false);
 const job = ref<JobResponseT | null>(null);
 let jobTimer: ReturnType<typeof setTimeout> | undefined;
 
-const ALL_SECTIONS = [
-  { id: 'profile', title: 'Profile' },
-  { id: 'currency', title: 'Default currency' },
-  { id: 'theme', title: 'Theme' },
-  { id: 'appearance', title: 'Appearance' },
-  { id: 'timezone', title: 'Time zone' },
-  { id: 'widgets', title: 'Widgets' },
-  { id: 'sessions', title: 'Sessions' },
-  { id: 'capture', title: 'Phone capture' },
-  { id: 'export', title: 'Export' },
-  { id: 'delete', title: 'Delete account' },
+// The index mirrors the grouped panels below; keep the two in the same order.
+const ALL_GROUPS = [
+  {
+    id: 'account',
+    title: 'Account',
+    sections: [
+      { id: 'profile', title: 'Profile' },
+      { id: 'sessions', title: 'Sessions' },
+    ],
+  },
+  {
+    id: 'preferences',
+    title: 'Preferences',
+    sections: [
+      { id: 'currency', title: 'Default currency' },
+      { id: 'timezone', title: 'Time zone' },
+      { id: 'widgets', title: 'Widgets' },
+    ],
+  },
+  {
+    id: 'look',
+    title: 'Look and feel',
+    sections: [
+      { id: 'theme', title: 'Theme' },
+      { id: 'appearance', title: 'Appearance' },
+    ],
+  },
+  {
+    id: 'data',
+    title: 'Your data',
+    sections: [
+      { id: 'capture', title: 'Phone capture' },
+      { id: 'export', title: 'Export' },
+      { id: 'delete', title: 'Delete account' },
+    ],
+  },
 ];
 // Appearance (spec 006) exists only while the flag is on, in the index and as a panel.
-const SECTIONS = computed(() =>
-  ALL_SECTIONS.filter((s) => s.id !== 'appearance' || flags.isOn('appearance.motion')),
+const GROUPS = computed(() =>
+  ALL_GROUPS.map((g) => ({
+    ...g,
+    sections: g.sections.filter((s) => s.id !== 'appearance' || flags.isOn('appearance.motion')),
+  })),
 );
 const sessionColumns: BoardColumn[] = [
   { key: 'device', label: 'Device' },
@@ -337,225 +365,259 @@ async function confirmDelete() {
     <h1 class="desk-settings-title">Settings</h1>
 
     <nav class="desk-settings-index" aria-label="Settings sections">
-      <a v-for="s in SECTIONS" :key="s.id" :href="`#st-${s.id}`" class="desk-settings-index-link">{{
-        s.title
-      }}</a>
+      <div v-for="g in GROUPS" :key="g.id" class="desk-settings-index-group">
+        <a :href="`#sg-${g.id}`" class="desk-settings-index-heading">{{ g.title }}</a>
+        <a
+          v-for="s in g.sections"
+          :key="s.id"
+          :href="`#st-${s.id}`"
+          class="desk-settings-index-link"
+          >{{ s.title }}</a
+        >
+      </div>
     </nav>
 
-    <div class="desk-settings-sections board-grid">
-      <PanelFrame id="st-profile" heading="Profile" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <p class="desk-settings-row">
-            <span class="desk-settings-label">Email</span>
-            <span class="desk-settings-value">{{ session.user?.email }}</span>
-            <span v-if="session.user?.emailVerified === false" class="desk-settings-status"
-              >Unverified</span
-            >
-          </p>
-          <div v-if="session.user?.emailVerified === false" class="desk-settings-note">
-            <p>
-              Confirm your address within 7 days of signing up, or sign-in is paused until you do.
-            </p>
-            <Button
-              type="button"
-              variant="secondary"
-              :loading="verifySending"
-              :disabled="verifySending"
-              @click="resendVerification"
-            >
-              Resend verification email
-            </Button>
-            <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
-          </div>
-          <form class="desk-settings-form" @submit.prevent="changeEmail">
-            <Input
-              v-model="newEmail"
-              type="email"
-              label="New email"
-              placeholder="new@example.com"
-            />
-            <Input
-              v-model="emailChangePassword"
-              type="password"
-              label="Current password (if set)"
-            />
-            <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
-            <p v-if="emailError" role="alert" class="desk-settings-error">{{ emailError }}</p>
-            <div>
-              <Button type="submit" :loading="emailSubmitting" :disabled="emailSubmitting">
-                Change email
-              </Button>
-            </div>
-          </form>
-        </div>
-      </PanelFrame>
-
-      <PanelFrame id="st-currency" heading="Default currency" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <CurrencyPicker
-            class="desk-settings-currency"
-            :model-value="currency"
-            label="Default currency"
-            @update:model-value="changeCurrency"
-          />
-          <p v-if="currencySubmitting && !job">Updating…</p>
-          <p
-            v-if="job && job.status !== 'done' && job.status !== 'failed'"
-            class="desk-settings-fig"
-          >
-            Re-deriving expenses: {{ job.progressDone
-            }}<span v-if="job.progressTotal !== null"> / {{ job.progressTotal }}</span>
-          </p>
-        </div>
-      </PanelFrame>
-
-      <PanelFrame id="st-theme" heading="Theme" class="desk-settings-section">
-        <div class="desk-settings-body desk-settings-body--start">
-          <ThemeToggle v-model="theme" label="Theme" @update:model-value="changeTheme" />
-          <fieldset
-            v-if="flags.isOn('appearance.accent')"
-            class="desk-settings-accents"
-            role="radiogroup"
-          >
-            <legend class="desk-settings-label">Accent colour</legend>
-            <label
-              v-for="id in ACCENT_IDS"
-              :key="id"
-              class="desk-settings-accent"
-              :data-accent="id"
-              :data-theme="swatchTheme"
-            >
-              <input
-                :checked="accent === id"
-                type="radio"
-                name="settings-accent"
-                :value="id"
-                @change="changeAccent(id)"
-              />
-              <span>{{ ACCENT_NAMES[id] }}</span>
-            </label>
-          </fieldset>
-        </div>
-      </PanelFrame>
-
-      <PanelFrame
-        v-if="flags.isOn('appearance.motion')"
-        id="st-appearance"
-        heading="Appearance"
-        class="desk-settings-section"
-      >
-        <div class="desk-settings-body">
-          <AppearanceSettings :theme="theme" />
-        </div>
-      </PanelFrame>
-
-      <PanelFrame id="st-timezone" heading="Time zone" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <p class="desk-settings-help">
-            Used to default the date on captures sent from your phone (e.g. iOS Shortcuts).
-          </p>
-          <form class="desk-settings-form" @submit.prevent="changeTimeZone">
-            <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
-            <div>
-              <Button type="submit" :loading="timeZoneSubmitting" :disabled="timeZoneSubmitting">
-                Save time zone
-              </Button>
-            </div>
-          </form>
-        </div>
-      </PanelFrame>
-
-      <PanelFrame id="st-widgets" heading="Widgets" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <p v-if="widgetPlaces.length === 0" class="desk-settings-help">
-            No places in use by your widgets.
-          </p>
-          <template v-else>
-            <p class="desk-settings-help">Places used by your widgets:</p>
-            <ul class="desk-settings-list">
-              <li v-for="p in widgetPlaces" :key="p" data-testid="widget-place">{{ p }}</li>
-            </ul>
-          </template>
-          <fieldset class="desk-settings-fieldset">
-            <legend class="desk-settings-label">Temperature unit</legend>
-            <label v-for="u in ['C', 'F'] as const" :key="u" class="desk-settings-radio">
-              <input
-                type="radio"
-                name="settings-temperature-unit"
-                :value="u"
-                :checked="widgetsStore.temperatureUnit === u"
-                @change="changeUnit(u)"
-              />
-              <span class="desk-settings-fig">°{{ u }}</span>
-            </label>
-          </fieldset>
-        </div>
-      </PanelFrame>
-
-      <PanelFrame id="st-sessions" heading="Sessions" class="desk-settings-section">
-        <div v-if="sessionsLoading" class="desk-settings-skeleton" aria-busy="true">
-          <p class="desk-sr-only">Loading sessions…</p>
-          <Skeleton v-for="i in 3" :key="i" height="1.25rem" />
-        </div>
-        <ErrorState
-          v-else-if="sessionsError"
-          title="Couldn't load your sessions"
-          :description="sessionsError"
-        >
-          <template #action
-            ><Button variant="secondary" @click="loadSessions">Try again</Button></template
-          >
-        </ErrorState>
-        <DataTable
-          v-else
-          class="desk-sessions-table"
-          :columns="sessionColumns"
-          dense
-          caption="Signed-in sessions"
-        >
-          <tr v-for="s in sessions" :key="s.id">
-            <td>
-              <span class="desk-item">
-                <span class="desk-item-name">{{ describeDevice(s.userAgent) }}</span>
-                <span class="desk-item-cat desk-settings-seen-inline"
-                  >Last seen {{ formatSeen(s.lastSeenAt) }}</span
+    <div class="desk-settings-sections">
+      <section id="sg-account" class="desk-settings-group" aria-labelledby="sg-account-h">
+        <h2 id="sg-account-h" class="desk-settings-group-title">Account</h2>
+        <div class="board-grid desk-settings-group-grid">
+          <PanelFrame id="st-profile" heading="Profile" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <p class="desk-settings-row">
+                <span class="desk-settings-label">Email</span>
+                <span class="desk-settings-value">{{ session.user?.email }}</span>
+                <span v-if="session.user?.emailVerified === false" class="desk-settings-status"
+                  >Unverified</span
                 >
-              </span>
-            </td>
-            <td class="desk-col--action">
-              <span v-if="s.current" class="desk-settings-current">This session</span>
-              <Button v-else variant="ghost" size="sm" @click="revokeSession(s.id)">
-                Revoke
-              </Button>
-            </td>
-          </tr>
-        </DataTable>
-      </PanelFrame>
+              </p>
+              <div v-if="session.user?.emailVerified === false" class="desk-settings-note">
+                <p>
+                  Confirm your address within 7 days of signing up, or sign-in is paused until you
+                  do.
+                </p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  :loading="verifySending"
+                  :disabled="verifySending"
+                  @click="resendVerification"
+                >
+                  Resend verification email
+                </Button>
+                <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
+              </div>
+              <form class="desk-settings-form" @submit.prevent="changeEmail">
+                <Input
+                  v-model="newEmail"
+                  type="email"
+                  label="New email"
+                  placeholder="new@example.com"
+                />
+                <Input
+                  v-model="emailChangePassword"
+                  type="password"
+                  label="Current password (if set)"
+                />
+                <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
+                <p v-if="emailError" role="alert" class="desk-settings-error">{{ emailError }}</p>
+                <div>
+                  <Button type="submit" :loading="emailSubmitting" :disabled="emailSubmitting">
+                    Change email
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </PanelFrame>
 
-      <PanelFrame id="st-capture" heading="Phone capture" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <p class="desk-settings-help">
-            Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.
-          </p>
-          <div>
-            <Button variant="secondary" @click="router.push('/settings/capture')">
-              Manage capture address
-            </Button>
-          </div>
+          <PanelFrame id="st-sessions" heading="Sessions" class="desk-settings-section">
+            <div v-if="sessionsLoading" class="desk-settings-skeleton" aria-busy="true">
+              <p class="desk-sr-only">Loading sessions…</p>
+              <Skeleton v-for="i in 3" :key="i" height="1.25rem" />
+            </div>
+            <ErrorState
+              v-else-if="sessionsError"
+              title="Couldn't load your sessions"
+              :description="sessionsError"
+            >
+              <template #action
+                ><Button variant="secondary" @click="loadSessions">Try again</Button></template
+              >
+            </ErrorState>
+            <DataTable
+              v-else
+              class="desk-sessions-table"
+              :columns="sessionColumns"
+              dense
+              caption="Signed-in sessions"
+            >
+              <tr v-for="s in sessions" :key="s.id">
+                <td>
+                  <span class="desk-item">
+                    <span class="desk-item-name">{{ describeDevice(s.userAgent) }}</span>
+                    <span class="desk-item-cat desk-settings-seen-inline"
+                      >Last seen {{ formatSeen(s.lastSeenAt) }}</span
+                    >
+                  </span>
+                </td>
+                <td class="desk-col--action">
+                  <span v-if="s.current" class="desk-settings-current">This session</span>
+                  <Button v-else variant="ghost" size="sm" @click="revokeSession(s.id)">
+                    Revoke
+                  </Button>
+                </td>
+              </tr>
+            </DataTable>
+          </PanelFrame>
         </div>
-      </PanelFrame>
+      </section>
 
-      <PanelFrame id="st-export" heading="Export" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <div><Button variant="secondary" @click="downloadExport">Download my data</Button></div>
-        </div>
-      </PanelFrame>
+      <section id="sg-preferences" class="desk-settings-group" aria-labelledby="sg-preferences-h">
+        <h2 id="sg-preferences-h" class="desk-settings-group-title">Preferences</h2>
+        <div class="board-grid desk-settings-group-grid">
+          <PanelFrame id="st-currency" heading="Default currency" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <CurrencyPicker
+                class="desk-settings-currency"
+                :model-value="currency"
+                label="Default currency"
+                @update:model-value="changeCurrency"
+              />
+              <p v-if="currencySubmitting && !job">Updating…</p>
+              <p
+                v-if="job && job.status !== 'done' && job.status !== 'failed'"
+                class="desk-settings-fig"
+              >
+                Re-deriving expenses: {{ job.progressDone
+                }}<span v-if="job.progressTotal !== null"> / {{ job.progressTotal }}</span>
+              </p>
+            </div>
+          </PanelFrame>
 
-      <PanelFrame id="st-delete" heading="Delete account" class="desk-settings-section">
-        <div class="desk-settings-body">
-          <div><Button variant="danger" @click="deleteOpen = true">Delete account</Button></div>
+          <PanelFrame id="st-timezone" heading="Time zone" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <p class="desk-settings-help">
+                Used to default the date on captures sent from your phone (e.g. iOS Shortcuts).
+              </p>
+              <form class="desk-settings-form" @submit.prevent="changeTimeZone">
+                <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
+                <div>
+                  <Button
+                    type="submit"
+                    :loading="timeZoneSubmitting"
+                    :disabled="timeZoneSubmitting"
+                  >
+                    Save time zone
+                  </Button>
+                </div>
+              </form>
+            </div>
+          </PanelFrame>
+
+          <PanelFrame id="st-widgets" heading="Widgets" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <p v-if="widgetPlaces.length === 0" class="desk-settings-help">
+                No places in use by your widgets.
+              </p>
+              <template v-else>
+                <p class="desk-settings-help">Places used by your widgets:</p>
+                <ul class="desk-settings-list">
+                  <li v-for="p in widgetPlaces" :key="p" data-testid="widget-place">{{ p }}</li>
+                </ul>
+              </template>
+              <fieldset class="desk-settings-fieldset">
+                <legend class="desk-settings-label">Temperature unit</legend>
+                <label v-for="u in ['C', 'F'] as const" :key="u" class="desk-settings-radio">
+                  <input
+                    type="radio"
+                    name="settings-temperature-unit"
+                    :value="u"
+                    :checked="widgetsStore.temperatureUnit === u"
+                    @change="changeUnit(u)"
+                  />
+                  <span class="desk-settings-fig">°{{ u }}</span>
+                </label>
+              </fieldset>
+            </div>
+          </PanelFrame>
         </div>
-      </PanelFrame>
+      </section>
+
+      <section id="sg-look" class="desk-settings-group" aria-labelledby="sg-look-h">
+        <h2 id="sg-look-h" class="desk-settings-group-title">Look and feel</h2>
+        <div class="board-grid desk-settings-group-grid">
+          <PanelFrame id="st-theme" heading="Theme" class="desk-settings-section">
+            <div class="desk-settings-body desk-settings-body--start">
+              <ThemeToggle v-model="theme" label="Theme" @update:model-value="changeTheme" />
+              <fieldset
+                v-if="flags.isOn('appearance.accent')"
+                class="desk-settings-accents"
+                role="radiogroup"
+              >
+                <legend class="desk-settings-label">Accent colour</legend>
+                <label
+                  v-for="id in ACCENT_IDS"
+                  :key="id"
+                  class="desk-settings-accent"
+                  :data-accent="id"
+                  :data-theme="swatchTheme"
+                >
+                  <input
+                    :checked="accent === id"
+                    type="radio"
+                    name="settings-accent"
+                    :value="id"
+                    @change="changeAccent(id)"
+                  />
+                  <span>{{ ACCENT_NAMES[id] }}</span>
+                </label>
+              </fieldset>
+            </div>
+          </PanelFrame>
+
+          <PanelFrame
+            v-if="flags.isOn('appearance.motion')"
+            id="st-appearance"
+            heading="Appearance"
+            class="desk-settings-section"
+          >
+            <div class="desk-settings-body">
+              <AppearanceSettings :theme="theme" />
+            </div>
+          </PanelFrame>
+        </div>
+      </section>
+
+      <section id="sg-data" class="desk-settings-group" aria-labelledby="sg-data-h">
+        <h2 id="sg-data-h" class="desk-settings-group-title">Your data</h2>
+        <div class="board-grid desk-settings-group-grid">
+          <PanelFrame id="st-capture" heading="Phone capture" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <p class="desk-settings-help">
+                Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.
+              </p>
+              <div>
+                <Button variant="secondary" @click="router.push('/settings/capture')">
+                  Manage capture address
+                </Button>
+              </div>
+            </div>
+          </PanelFrame>
+
+          <PanelFrame id="st-export" heading="Export" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <div>
+                <Button variant="secondary" @click="downloadExport">Download my data</Button>
+              </div>
+            </div>
+          </PanelFrame>
+
+          <PanelFrame id="st-delete" heading="Delete account" class="desk-settings-section">
+            <div class="desk-settings-body">
+              <div><Button variant="danger" @click="deleteOpen = true">Delete account</Button></div>
+            </div>
+          </PanelFrame>
+        </div>
+      </section>
     </div>
 
     <Dialog :open="deleteOpen" title="Delete your account" @close="deleteOpen = false">
@@ -620,6 +682,11 @@ async function confirmDelete() {
   scrollbar-width: none;
   border-bottom: 1px solid var(--color-border);
 }
+/* Below 1024 the row lists the groups only; the per-section links join them in the sticky column. */
+.desk-settings-index-group {
+  display: contents;
+}
+.desk-settings-index-heading,
 .desk-settings-index-link {
   display: flex;
   align-items: center;
@@ -631,16 +698,43 @@ async function confirmDelete() {
   white-space: nowrap;
   text-decoration: none;
 }
+.desk-settings-index-link {
+  display: none;
+}
+.desk-settings-index-heading:hover,
 .desk-settings-index-link:hover {
   color: var(--color-fg);
 }
+.desk-settings-index-heading:focus-visible,
 .desk-settings-index-link:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
 .desk-settings-sections {
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
   min-width: 0;
+}
+.desk-settings-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  scroll-margin-top: var(--space-4);
+}
+.desk-settings-group-title {
+  margin: 0;
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+.desk-settings-group-grid {
+  gap: var(--space-4);
+  width: 100%;
+  margin-inline: 0;
 }
 .desk-settings-section {
   scroll-margin-top: var(--space-4);
@@ -868,9 +962,25 @@ async function confirmDelete() {
     border-bottom: 0;
     border-left: 1px solid var(--color-border);
   }
-  .desk-settings-index-link {
+  .desk-settings-index-group {
+    display: flex;
+    flex-direction: column;
+  }
+  .desk-settings-index-group + .desk-settings-index-group {
+    margin-top: var(--space-3);
+  }
+  .desk-settings-index-heading {
     min-height: var(--space-8);
     padding-left: var(--space-3);
+    font-size: var(--text-xs);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+  .desk-settings-index-link {
+    display: flex;
+    min-height: var(--space-8);
+    padding-left: var(--space-6);
+    font-weight: 400;
   }
   .desk-settings-sections {
     grid-area: sections;

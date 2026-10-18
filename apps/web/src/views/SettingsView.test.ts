@@ -64,10 +64,29 @@ describe('SettingsView appearance section (spec 006 US1)', () => {
     expect(off.querySelector('a[href="#st-appearance"]')).toBeNull();
   }, 20_000);
 
-  it('lays the sections out on the shared .board-grid instead of its own columns', async () => {
+  it('lays each group of sections out on the shared .board-grid instead of its own columns', async () => {
     const el = await mountSettings({});
-    expect(el.querySelector('.desk-settings-sections')!.classList.contains('board-grid')).toBe(
-      true,
+    const grids = el.querySelectorAll('.desk-settings-group > .board-grid');
+    expect(grids).toHaveLength(4);
+  });
+
+  it('groups the panels under headed groups, in the same order as the index', async () => {
+    const el = await mountSettings({ 'appearance.motion': true });
+    const groups = [...el.querySelectorAll('.desk-settings-group')].map((g) => [
+      g.querySelector('h2')?.textContent,
+      [...g.querySelectorAll('.desk-settings-section')].map((p) => p.id),
+    ]);
+    expect(groups).toEqual([
+      ['Account', ['st-profile', 'st-sessions']],
+      ['Preferences', ['st-currency', 'st-timezone', 'st-widgets']],
+      ['Look and feel', ['st-theme', 'st-appearance']],
+      ['Your data', ['st-capture', 'st-export', 'st-delete']],
+    ]);
+    const index = [...el.querySelectorAll('.desk-settings-index a')].map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(index.filter((h) => h!.startsWith('#st-'))).toEqual(
+      groups.flatMap(([, ids]) => (ids as string[]).map((id) => `#${id}`)),
     );
   });
 });
