@@ -320,6 +320,8 @@ const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 
 
 // T033 helpers: open the add sheet with `n`; fail the save; fill the form and save.
 const openSheet = async (page: Page) => {
+  // The 'n' shortcut exists only once MonthView has mounted (its route chunk loads lazily).
+  await expect(page.getByRole('button', { name: 'Add expense' }).first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(page.getByRole('dialog', { name: 'Add expense' })).toBeVisible();
 };
@@ -748,7 +750,9 @@ export const SCREENS: Screen[] = [
       empty: {
         setup: (page) =>
           page.route('**/categories', (route) =>
-            route.request().method() === 'GET'
+            // fetch only: the same glob also matches the page's own navigation to this URL, which
+            // used to render the JSON body as the "empty" baseline.
+            route.request().method() === 'GET' && route.request().resourceType() === 'fetch'
               ? route.fulfill({ contentType: 'application/json', body: '{"categories":[]}' })
               : route.fallback(),
           ),
@@ -780,6 +784,25 @@ export const SCREENS: Screen[] = [
     route: '/settings',
     signedIn: true,
     panels: ['#st-sessions', '#st-delete'],
+    // The Sessions row prints the session's real device and "Last seen" time, which change every
+    // run (width of "4:08 AM" vs "11:42 AM"). Pin one row; the year is the current one so the
+    // stamp stays year-less on any date (formatSeen drops it).
+    mock: (page) =>
+      page.route(/\/me\/sessions$/, (route) =>
+        route.fulfill(
+          json({
+            sessions: [
+              {
+                id: 'visual-session-1',
+                current: true,
+                lastSeenAt: new Date(new Date().getFullYear(), 2, 14, 9, 30).toISOString(),
+                userAgent:
+                  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+              },
+            ],
+          }),
+        ),
+      ),
     states: ['loading', 'error'],
   },
   {
@@ -1138,6 +1161,32 @@ const failFetches = (page: Page) =>
       : route.fallback(),
   );
 
+// Ready = the app has mounted something, no skeleton is showing and the DOM has been quiet for 500 ms
+// (data arriving re-renders it). networkidle is not used: it also counts sockets, fonts and the
+// like, and timed out on bin/empty; requests answered through the service worker are invisible to
+// request events, so those cannot be counted either.
+async function ready(page: Page) {
+  await expect(page.locator('#app > *').first()).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        let timer = setTimeout(done, 500);
+        const obs = new MutationObserver(() => {
+          clearTimeout(timer);
+          timer = setTimeout(done, 500);
+        });
+        function done() {
+          obs.disconnect();
+          // Skeleton.vue sets no aria-busy, so look for its class as well.
+          resolve(!document.querySelector('[aria-busy="true"], .desk-skeleton'));
+        }
+        obs.observe(document.body, { subtree: true, childList: true, characterData: true });
+      }),
+    undefined,
+    { timeout: 15_000 },
+  );
+}
+
 async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: ScreenState) {
   await screen.mock?.(page);
   if (state === 'loading') await holdFetches(page);
@@ -1145,7 +1194,7 @@ async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: Scree
   else if (state === 'empty') await screen.force?.empty?.setup?.(page);
   await page.goto(routeOf(screen, ctx));
   if (state !== 'loading') {
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     if (state !== 'default') await screen.force?.[state]?.after?.(page);
   }
   if (state === 'default') await screen.afterLoad?.(page);
@@ -1304,11 +1353,12 @@ for (const vp of viewports) {
     const ctx = await prepare(page, screen);
     await openScreen(page, screen, ctx, 'default');
     await expect(page.locator('main')).toHaveCount(1);
+    await expect(page.locator('main h1')).toBeVisible();
     const left = (sel: string) =>
       page.evaluate((s) => document.querySelector(s)!.getBoundingClientRect().left, sel);
     const settingsLeft = await left('main h1');
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('main')).toBeVisible();
     const homeLeft = await left('main');
     const homeInner = await page.evaluate(() => {
       const m = document.querySelector('main')!;
