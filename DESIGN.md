@@ -24,8 +24,8 @@ colors:
   flap-raised: "#ffffff"
   flap-dark: "#171b20"
   flap-raised-dark: "#1f242a"
-  glass: "rgb(246 247 247 / 0.72)"
-  glass-dark: "rgb(23 27 32 / 0.62)"
+  glass: "rgb(255 255 255 / 0.68)"
+  glass-dark: "rgb(21 26 33 / 0.66)"
   glass-line: "rgb(20 23 27 / 0.1)"
   glass-line-dark: "rgb(242 242 238 / 0.11)"
   frame-line: "#6a727a"
@@ -216,7 +216,7 @@ Signal Green is the default. A user may pick one of five alternatives (`data-acc
 - **Board Ink / Letter White** (`board-ink`, `letter-white`; `--color-fg`): text and figures in light and dark.
 - **Steel Mid / Steel Light** (`steel-mid`, `steel-light`; `--color-fg-muted`): column heads, labels, "as of" stamps.
 - **Flap** (`flap`, `flap-raised`, `flap-dark`, `flap-raised-dark`; `--color-surface`, `--color-surface-raised`): the opaque surfaces. Inputs, menus, dialogs, sheets and toasts are raised Flap and stay opaque for legibility; tiles, panels and widget frames use Glass, with opaque Flap as their fallback.
-- **Glass** (`--color-surface-glass`: `rgb(246 247 247 / 0.72)` light, `rgb(23 27 32 / 0.62)` dark; `--blur-surface` 20px with `saturate(140%)`): Flap made translucent for tiles, panels and widget frames. Its edge is a hairline `--color-glass-line` (`rgb(20 23 27 / 0.1)` light, `rgb(242 242 238 / 0.11)` dark). Opacity never drops below 0.66 light or 0.58 dark, which is what keeps text AA over every preset. Under `@supports not (backdrop-filter: blur(1px))`, or when the user turns "Translucent panels" off (`:root[data-panels="solid"]`), Glass becomes `--color-surface-raised`.
+- **Glass** (`--color-surface-glass`: `rgb(255 255 255 / 0.68)` light, `rgb(21 26 33 / 0.66)` dark; `--blur-surface` 20px with `saturate(140%)`): Flap made translucent for tiles, panels and widget frames. Its edge is a hairline `--color-glass-line` (`rgb(20 23 27 / 0.1)` light, `rgb(242 242 238 / 0.11)` dark). The direction board drew 0.66 light and 0.58 dark; the composite contrast test raised them to 0.68 and 0.66, the least that keeps text AA over every preset, and they never drop below that. Under `@supports not (backdrop-filter: blur(1px))`, or when the user turns "Translucent panels" off (`:root[data-panels="solid"]`), Glass becomes `--color-surface-raised`.
 - **Frame Line** (`frame-line` / `frame-line-dark`, `--color-border`): control borders, the header rule, table head rules.
 - **Focus Blue** (`focus-blue` / `focus-blue-dark`, `--color-focus`): the focus ring and nothing else; chosen to reach 3:1 on the ground, on a flap and on Signal Green in both themes.
 - **Selection Green** (`selection-green` / `selection-green-dark`, `--color-selection`): selected rows and text.
@@ -325,16 +325,16 @@ Bottom sheet at phone, side panel from 1024, centred for confirmations; raised f
 Raised flap on Overlay with a 4px leading lamp in its status colour (green for saved, amber, red), undo as a ghost button.
 
 ### Tile and the Departure Tile (signature)
-A tile is a glass panel with a Label-role caption, a Figure and an optional small figure line ("as of 09:07"). The departure tile is the remaining budget at Display size on a glass panel edged with a 1px accent ring; its caption reads "LEFT THIS MONTH" and its line gives the budget and days left. Over budget, its figure turns Cancel Red, a leading minus is shown and the line says "over", so colour is never the only signal.
+A tile is a glass panel with a Label-role caption, a Figure and an optional small figure line ("as of 09:07"). The departure tile is the remaining budget at Display size on a glass panel edged with a 1px accent ring; its caption reads "LEFT THIS MONTH" and its line gives the budget and days left. Over budget, its figure turns Cancel Red, a leading minus is shown and the line says "over", so colour is never the only signal. With no budget the hero says "No budget set" in words (Title role, sans, one line) instead of a Display figure, and the tile carries no seam or hinge marks.
 
 ### DataTable (the board)
-A real `<table>` with a caption: Label-role column heads over a Frame Line, rows separated by space, amounts right-aligned in the figure face, fixed column widths. A row with a pending rate carries the amber lamp and the word "rate pending" in its amount cell; when the rate arrives, the converted amount flips in. Rows sort by their header buttons with `aria-sort`.
+A real `<table>` with a caption: Label-role column heads over a Frame Line, rows separated by space, amounts right-aligned in the figure face, fixed column widths (date, category, amount and actions are fixed in rem; the item column takes all the free width and truncates only when the panel is genuinely narrow). A row with a pending rate carries the amber lamp and the word "rate pending" in its amount cell; when the rate arrives, the converted amount flips in. Rows sort by their header buttons with `aria-sort`.
 
 ### Category Bars (chart)
 Hand-written SVG. Name left (truncated, full name in the accessible name), spent and budget right in the figure face, single-hue bar below, a 1px Board Ink tick at the budget, solid Cancel Red past it, and the red row lamp on the category. A table view is always one tab away.
 
 ### PanelFrame
-Titled glass panel on Raised (the shared `.surface` rule, 16px corners): Title heading, optional `MenuButton`, body, and the Skeleton, EmptyState and ErrorState slots; the compact widget variant keeps 12rem.
+Titled glass panel on Raised (the shared `.surface` rule, 16px corners): the heading is a Label-role caption (small spaced capitals, muted) inside the panel at its top-left, still a real heading, optional `MenuButton`, body, and the Skeleton, EmptyState and ErrorState slots; the compact widget variant keeps 12rem.
 
 ### Tabs
 Label-role capitals in Steel Mid, Board Ink when selected with a 2px Signal Green underline on a Frame Line baseline; 44px tall at phone.
@@ -439,12 +439,12 @@ The one exception to the 280ms ceiling and the no-loop rule. It is ambient, not 
 | Preset (`data-motion`) | What it draws | Movement | Light alpha | Dark alpha |
 |---|---|---|---|---|
 | None (`none`) | the still ground | none | — | — |
-| Aurora drift (`aurora`) | three large blurred fields (80px blur): the tint, a fixed Platform blue and a fixed Lamp amber | each drifts and scales, 38s, 52s and 64s, `ease-in-out`, alternating | tint 0.55, companions 0.50 and 0.45 | tint 0.17, companions 0.15 and 0.13 |
-| Board grid (`grid`) | a 48px line grid in the tint, masked to fade out from the top centre | translates one cell diagonally, 26s, `linear` | 0.06 (lines in Board Ink) | 0.14 |
-| Particles (`particles`, default) | two tiles of small dots (190px and 120px repeats) in the tint | rise one tile height, 80s and 55s, `linear` | 0.28 | 0.32 |
-| Grain (`grain`) | an SVG `feTurbulence` noise rect | steps its position, 0.9s, `steps(5)` | 0.12 | 0.16 |
+| Aurora drift (`aurora`) | three large blurred ellipses (58 % × 72 %, 80px blur): the tint, a fixed Platform blue and a fixed Lamp amber in light, a deep blue `rgb(52 78 170)` and a deep amber `rgb(140 96 30)` in dark | each drifts and scales, 38s, 52s and 64s, `ease-in-out`, alternating | tint 0.49, companions 0.35 and 0.32 | tint 0.39, companions 0.32 and 0.28 |
+| Board grid (`grid`) | a 48px line grid in the tint, masked to fade out from the top centre | translates one cell diagonally, 26s, `linear` | 0.042 (lines in Board Ink) | 0.098 |
+| Particles (`particles`, default) | two tiles of small dots (190px and 120px repeats) in the tint | rise one tile height, 80s and 55s, `linear` | 0.63 (second tile at 0.6 of it) | 0.53 (second tile at 0.6 of it) |
+| Grain (`grain`) | an SVG `feTurbulence` noise rect | steps its position, 0.9s, `steps(5)` | 0.118 | 0.157 |
 
-The alphas are ceilings, not starting points: T008's composite test proves them and may only lower them. Lowered by T008's composite test on 2026-10-17. Aurora's companion fields are fixed hues, not a second user colour.
+The alphas are the direction board's at its 70 % intensity (owner decision 2026-10-17). The composite contrast test proves text stays AA over them; where a pair fails, the panel gets more opaque, the motion is never dimmed. For Particles the test uses the dots' area coverage, because translucent panels always blur the backdrop (without blur support they are opaque). Aurora's companion fields are fixed hues, not a second user colour.
 
 - **Technique:** one fixed layer, `@keyframes` on `transform` and `opacity` only, `will-change: transform` on the moving element. No script loop, canvas, WebGL or dependency.
 - **Still frame:** each preset's 0 % keyframe. `animation-play-state: paused` under `:root[data-motion-paused]` (the user's pause, or `visibilityState === 'hidden'`); `animation: none` under `prefers-reduced-motion: reduce` and `prefers-reduced-data: reduce`. Both render the same frame, so two screenshots seconds apart match.
@@ -482,7 +482,7 @@ The earlier fallback, "The Ledger Desk" (the 2026-10-05 capture, IBM Plex and Le
 
 A panel is a titled region that loads, may be empty, may fail, and otherwise shows figures. Build it only from the blocks listed in `specs/004-web-ui-refresh/contracts/blocks.md`; every block is shown, in each theme, variant and state, at `/__ui` (run the web app with `VITE_UI_CATALOGUE=true`, then open `/__ui`). Each catalogue entry has a purpose line and a copy-ready `usage` snippet.
 
-1. Make the panel one `<section role="region">` labelled by its own heading (`aria-labelledby`), with the heading level one below the screen's `h1`. `PanelFrame` is the same region with a `heading` and exactly one state body (`kind` loading, empty or error); it has no slot for loaded content, so a panel that shows data renders its figures itself, inside the region it owns.
+1. Make the panel one `<section role="region">` labelled by its own heading (`aria-labelledby`), with an `h3` heading styled as the panel's small-capitals label inside the glass (spec 006 T048, matching the direction board). `PanelFrame` is the same region with a `heading`, a default slot for loaded content and one state body (`kind` loading, empty or error) that replaces the slot whenever it is set.
 2. Fill the three states, never a blank panel. Loading is `Skeleton` in the shape of the content (`text`, `tile`, `row` or `chart`). Empty is `EmptyState` with exactly one action in its `action` slot. Error is `PanelFrame kind="error"` (or `ErrorState`) with its `code`; wording that differs from the built-in copy is kept in a `causeMessages` record in the screen file keyed by error code and passed as `title` and `description`. Never one generic string, and the last good content stays visible when a refresh fails.
 3. Put every figure in `Tile` or `DataTable` so it gets the figure face, tabular numerals, fixed columns and the arrival flip. Say status with a row lamp and a word, never colour alone.
 4. Keep the screen file to layout: spacing tokens, grid or flex, `gap`, `max-width`. No colour, type or motion rule belongs there; the drift scan fails the build if one appears.

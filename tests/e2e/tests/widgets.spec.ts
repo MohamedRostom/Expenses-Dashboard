@@ -75,6 +75,9 @@ async function addExpense(page: Page, description: string): Promise<void> {
     .getByRole('button', { name: /^add expense$/i })
     .click();
   await expect(page.getByText(description)).toBeVisible();
+  // The row is optimistic; the toast follows the POST. Wait for it so a later axeCheck does not
+  // catch it mid enter-transition (semi-transparent, fails color-contrast).
+  await expect(page.getByRole('status').filter({ hasText: 'Expense added' })).toBeVisible();
 }
 
 test('the month view renders its expenses before the strip appears', async ({ page }) => {

@@ -30,7 +30,8 @@ test('first sign-in shows the onboarding guide: currency, first expense, optiona
   await axeCheck(page);
   await page.getByRole('button', { name: /^finish$/i }).click();
 
-  await expect(page).toHaveURL('/');
+  // Finish saves over the API before routing; wait for the save, not a fixed 5 s.
+  await expect(page).toHaveURL('/', { timeout: 30_000 });
 });
 
 test('skip at any step marks onboarding done and does not return on next visit', async ({

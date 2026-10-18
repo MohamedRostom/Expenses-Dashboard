@@ -1,5 +1,5 @@
 import { execSync } from 'node:child_process';
-import type { Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
 const MAILPIT_URL = process.env['MAILPIT_URL'] ?? 'http://localhost:8025';
@@ -40,13 +40,16 @@ export async function signUpAndVerify(
   await page.goto(verifyUrl);
 
   if (skipOnboarding) {
-    // /verify does its own client-side redirect to /onboarding after page.goto() above already
-    // resolved (goto only waits for /verify's own load) — an immediate page.url() check races
-    // that navigation, so wait for the Skip button instead of reading the URL synchronously.
-    // A user who's already onboarded never shows it, so the catch is the normal, common case.
-    const skipButton = page.getByRole('button', { name: /^skip$/i });
-    await skipButton.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {});
-    if (await skipButton.isVisible()) await skipButton.click();
+    // /verify redirects client-side after page.goto() resolved, and under load that takes longer
+    // than any fixed wait on the Skip button (a 5 s wait let the user stay on /onboarding). Wait
+    // for the real condition, leaving /verify, then skip only if the guard sent us to onboarding.
+    await page.waitForURL((u) => !u.pathname.startsWith('/verify'), { timeout: 30_000 });
+    if (new URL(page.url()).pathname.startsWith('/onboarding')) {
+      await page.getByRole('button', { name: /^skip$/i }).click();
+      // Skip saves onboardingCompletedAt over the API and only then routes to '/'; callers assert
+      // '/' next with the default 5 s, which a slow save under load misses. Wait for the save.
+      await page.waitForURL((u) => !u.pathname.startsWith('/onboarding'), { timeout: 30_000 });
+    }
   }
 }
 
@@ -260,6 +263,21 @@ export function psql(sql: string): string {
   });
 }
 
+/**
+ * Connecting an account enqueues (and kicks) its first panels.refresh. If that job is still queued
+ * or running when a test adds mock data and backdates last_refresh_at, it either ran before the
+ * data existed or overwrites the backdating, so the POST /refresh that follows finds nothing due
+ * and the data never arrives. Wait until the user's refresh jobs have all finished.
+ */
+export async function waitForRefreshJobsIdle(email: string): Promise<void> {
+  await expect(async () => {
+    const open = psql(
+      `select count(*) from jobs where name = 'panels.refresh' and status in ('queued','running') and user_id = (select id from users where email = '${email}')`,
+    ).trim();
+    expect(open).toBe('0');
+  }).toPass({ timeout: 40_000, intervals: [500, 1000, 2000] });
+}
+
 /** The CSRF header page.request needs on a mutating call (apiFetch adds it for browser fetches). */
 export async function csrfHeaders(page: Page): Promise<Record<string, string>> {
   const cookie = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf');
@@ -285,6 +303,18 @@ export async function axeCheck(
   page: Page,
   opts: { include?: string; disableRules?: string[] } = {},
 ): Promise<void> {
+  // axe samples colours at call time: a toast mid enter-transition is semi-transparent and fails
+  // color-contrast. Wait for every finite transition/animation to end (the looping skeleton pulse
+  // and background motion never do, so they are skipped).
+  await page.waitForFunction(
+    () =>
+      !document.querySelector('[class*="-enter-active"], [class*="-leave-active"]') &&
+      document
+        .getAnimations()
+        .every(
+          (a) => a.playState !== 'running' || a.effect?.getComputedTiming().iterations === Infinity,
+        ),
+  );
   let builder = new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']);
   if (opts.include) builder = builder.include(opts.include);
   if (opts.disableRules?.length) builder = builder.disableRules(opts.disableRules);

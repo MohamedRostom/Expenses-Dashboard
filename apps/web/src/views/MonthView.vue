@@ -29,6 +29,7 @@ import {
   estimatedTotal,
   list as listQueue,
   discard as discardQueued,
+  flushWhenOnline as flushQueue,
   retry as retryQueued,
   type QueuedExpense,
 } from '../offline/queue.js';
@@ -116,13 +117,13 @@ onUnmounted(() => {
   window.removeEventListener('online', onBackOnline);
 });
 
-// Give flush() (fired on the same 'online' event, from initOfflineQueue) a moment to finish
-// before reloading — then refresh both the queue and the authoritative month totals.
+// flush() (also fired on this 'online' event, from initOfflineQueue) is shared while in flight, so
+// awaiting it here means the queue and the month totals reload only after the POSTs have landed.
 function onBackOnline() {
-  setTimeout(() => {
+  void flushQueue().then(() => {
     loadQueue();
     store.loadMonth();
-  }, 500);
+  });
 }
 
 const monthLabel = computed(() => store.currentMonth);
@@ -305,6 +306,7 @@ const entryColumns: BoardColumn[] = [
           <Tile
             class="desk-tile desk-tile--primary"
             primary
+            :words="!budgeted"
             :label="over ? 'Over budget this month' : 'Left this month'"
             :value="budgeted ? splitMoney(fmt(store.summary.remaining)).figure : 'No budget set'"
             :variant="over ? 'critical' : 'default'"
@@ -596,7 +598,8 @@ const entryColumns: BoardColumn[] = [
   min-width: 0;
 }
 .desk-month-view-columns > :deep(.desk-panel-entries) {
-  flex: 1 1 460px;
+  /* Grows faster than Categories so the item column keeps the width long names need. */
+  flex: 1.6 1 460px;
   min-width: 0;
 }
 .desk-month-view-pad {

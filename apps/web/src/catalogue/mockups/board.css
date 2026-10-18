@@ -159,34 +159,12 @@
     grid-column: span 2;
   }
 }
-/* The one flap-cell detail: the departure figure sits in a flap cell whose seam shows only at
-   its hinges (the side margins), never across the glyphs, so it can't read as a strikethrough. */
+/* The figure's cell: a perspective box for the arrival flip; no seam (ADR-0007). */
 .mk-cell {
   position: relative;
   align-self: flex-start;
   max-width: 100%;
   perspective: 600px;
-}
-.mk-cell--seam {
-  padding: var(--space-1) var(--space-3);
-  margin-inline: calc(-1 * var(--space-3));
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-.mk-cell--seam::before,
-.mk-cell--seam::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  pointer-events: none;
-}
-.mk-cell--seam::before {
-  left: 0;
-}
-.mk-cell--seam::after {
-  right: 0;
 }
 .mk-critical {
   color: var(--color-critical);

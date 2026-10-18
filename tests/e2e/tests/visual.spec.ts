@@ -649,9 +649,9 @@ export const SCREENS: Screen[] = [
           body: JSON.stringify({
             month: new Date().toISOString().slice(0, 7),
             currency: 'USD',
-            spentToDate: 12_409_053,
+            spentToDate: 33_500,
             committedFixed: 0,
-            forecast: 38_468_064,
+            forecast: 50_882,
             basis: ['spend to date', 'variable run-rate'],
           }),
         }),
@@ -659,8 +659,8 @@ export const SCREENS: Screen[] = [
     states: ['loading', 'empty', 'error'],
     force: {
       empty: {
-        setup: (page) =>
-          page.route('**/expenses?month=*', (route) =>
+        setup: async (page) => {
+          await page.route('**/expenses?month=*', (route) =>
             route.fulfill({
               contentType: 'application/json',
               body: JSON.stringify({
@@ -676,7 +676,22 @@ export const SCREENS: Screen[] = [
                 },
               }),
             }),
-          ),
+          );
+          // An empty GBP month forecasts nothing (T048: it showed the default mock's USD figure).
+          await page.route('**/summary/forecast*', (route) =>
+            route.fulfill({
+              contentType: 'application/json',
+              body: JSON.stringify({
+                month: new Date().toISOString().slice(0, 7),
+                currency: 'GBP',
+                spentToDate: 0,
+                committedFixed: 0,
+                forecast: 0,
+                basis: ['spend to date'],
+              }),
+            }),
+          );
+        },
       },
     },
   },
@@ -1053,7 +1068,8 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
       const headers = await csrfHeaders(page);
       const cat = await page.request.post('/categories', {
         headers,
-        data: { name: EDGE_CATEGORY, colour: '#3a6ea5' },
+        // A budget keeps the hero a Display figure (no budget makes it words; FR-011 needs a figure).
+        data: { name: EDGE_CATEGORY, colour: '#3a6ea5', budgetMinor: 20_000_000 },
       });
       expect(cat.ok()).toBe(true);
       const categoryId = ((await cat.json()) as { category: { id: string } }).category.id;
@@ -1181,7 +1197,9 @@ for (const vp of viewports) {
       overflow: getComputedStyle(el).textOverflow,
       label: el.getAttribute('title') ?? el.getAttribute('aria-label') ?? el.textContent,
     }));
-    expect(m.over).toBe(true);
+    // Spec 006 T044: the Categories panel grows to fill the row (flex 1 1 380px), so at 1280 the
+    // 48-character name fits whole; it only has to overflow where the panel is a phone's width.
+    if (vp.width < 768) expect(m.over).toBe(true);
     expect(m.overflow).toBe('ellipsis');
     expect(m.label).toContain(EDGE_CATEGORY);
 
@@ -1236,17 +1254,17 @@ for (const vp of viewports) {
 }
 
 // Finish-review: at 360 the first viewport holds the departure tile, the smaller tiles and the head
-// of the entries board (the widget strip sits after the tiles and is empty with no widgets), and the
-// add sheet's submit button is inside the viewport without scrolling.
-test('@visual screen month entries board starts inside the first viewport 360', async ({
+// of the first board (Categories since spec 006 T044; the widget strip sits after the tiles and is
+// empty with no widgets), and the add sheet's submit button is inside the viewport without scrolling.
+test('@visual screen month categories board starts inside the first viewport 360', async ({
   page,
 }) => {
   const screen = SCREENS.find((s) => s.name === 'month')!;
   await page.setViewportSize({ width: 360, height: 800 });
   const ctx = await prepare(page, screen);
   await openScreen(page, screen, ctx, 'default');
-  const box = (await page.locator('[data-panel="entries"]').boundingBox())!;
-  expect(box.y, 'entries panel top').toBeLessThan(800);
+  const box = (await page.locator('[data-panel="categories"]').boundingBox())!;
+  expect(box.y, 'categories panel top').toBeLessThan(800);
 });
 
 test('@visual screen add-sheet submit is visible without scrolling 360', async ({ page }) => {

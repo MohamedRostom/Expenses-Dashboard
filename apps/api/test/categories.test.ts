@@ -120,6 +120,19 @@ describe('categories', () => {
     expect(unarchived.category.archivedAt).toBeNull();
   });
 
+  it('a duplicate category name answers 409 conflict on create and rename, not 500', async () => {
+    const user = await h.asUser('cats-dup@example.com');
+    await user.post('/categories', { name: 'Dup', colour: '#112233' });
+    const again = await user.post('/categories', { name: 'Dup', colour: '#445566' });
+    expect(again.status).toBe(409);
+    expect((await j(again)).error.code).toBe('conflict');
+
+    const other = await j(await user.post('/categories', { name: 'Dup 2', colour: '#112233' }));
+    const rename = await user.patch(`/categories/${other.category.id}`, { name: 'Dup' });
+    expect(rename.status).toBe(409);
+    expect((await j(rename)).error.code).toBe('conflict');
+  });
+
   it('DELETE reassigns expenses to "Other" first', async () => {
     const user = await h.asUser('cats-delete@example.com');
     const created = await j(await user.post('/categories', { name: 'Temp', colour: '#000' }));

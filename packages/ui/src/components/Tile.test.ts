@@ -91,3 +91,27 @@ describe('Tile accent ring (T044)', () => {
     expect(src.match(/var\(--shadow-raised\),\s*inset 0 0 0 1px/g)).toHaveLength(2);
   });
 });
+
+describe('Tile hero (T048)', () => {
+  it('the hero figure sits plainly in the ring: no seam cell or hinge ticks', async () => {
+    const el = await mount({ label: 'Left', value: '£1.00', primary: true });
+    expect(el.querySelector('[class*="seam"]')).toBeNull();
+    expect(el.querySelector('[data-tile-primary="figure"]')).not.toBeNull();
+    const { readFileSync } = await import('node:fs');
+    expect(readFileSync('src/components/Tile.vue', 'utf8')).not.toContain('seam');
+  });
+
+  it('words replace the figure with secondary-size sans text on one line', async () => {
+    const el = await mount({ label: 'Left', value: 'No budget set', primary: true, words: true });
+    const v = el.querySelector('[data-tile-primary="figure"]')!;
+    expect(v.classList.contains('desk-tile-value--words')).toBe(true);
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/Tile.vue', 'utf8');
+    const rule = src.match(/\.desk-tile-block--primary \.desk-tile-value--words \{[^}]*\}/)![0];
+    expect(rule).toContain('font-family: var(--font-sans)');
+    expect(rule).toContain('font-size: var(--text-lg)');
+    expect(rule).toContain('white-space: nowrap');
+    const plain = await mount({ label: 'Left', value: '£1.00', primary: true });
+    expect(plain.querySelector('.desk-tile-value--words')).toBeNull();
+  });
+});

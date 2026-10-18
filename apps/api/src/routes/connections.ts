@@ -460,6 +460,9 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
     // Enqueue refresh job if available
     if (deps.jobs) {
       await deps.jobs.enqueue('panels.refresh', { accountId }, { userId: user.id });
+      // Without the kick the first refresh waits for the next 30 s job tick, so a freshly
+      // connected account shows nothing for up to half a minute (same as POST /today/refresh).
+      kickJobsNow(c, deps.runJobsNow);
     }
 
     await deps.db.insert(auditLog).values({

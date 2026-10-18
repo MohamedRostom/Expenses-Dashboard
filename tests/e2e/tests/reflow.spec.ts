@@ -74,7 +74,7 @@ for (const route of signedIn) {
   });
 }
 
-test('reflow: month view panels are one column at 360 and two at 768, never wider than 1160px', async ({
+test('reflow: month view panels stack at 360 and 768, sit side by side at 1280, never wider than 1160px', async ({
   page,
 }) => {
   const email = `reflow-month-${Date.now()}@example.com`;
@@ -94,21 +94,45 @@ test('reflow: month view panels are one column at 360 and two at 768, never wide
     },
   });
   expect(res.ok()).toBe(true);
+  const long = await page.request.post('/expenses', {
+    headers: await csrfHeaders(page),
+    data: {
+      description: 'Streaming subscription',
+      amount: { minor: 1_500, currency: me.user.defaultCurrency },
+      date: new Date().toISOString().slice(0, 10),
+      categoryId: null,
+      paidWith: 'card',
+      kind: 'variable',
+    },
+  });
+  expect(long.ok()).toBe(true);
 
-  const columns = async (width: number) => {
+  // Spec 006 T044: Categories and Entries are a wrapping flex row (380 + 460 px bases), not .board-grid.
+  const layout = async (width: number) => {
     await page.setViewportSize({ width, height: 900 });
     await page.goto('/');
-    await expect(page.locator('[data-panel="entries"]')).toBeVisible();
-    return page
-      .locator('.board-grid')
-      .first()
-      .evaluate((el) => ({
-        cols: getComputedStyle(el).gridTemplateColumns.split(' ').length,
-        width: el.getBoundingClientRect().width,
-      }));
+    const entries = page.locator('[data-panel="entries"]');
+    await expect(entries).toBeVisible();
+    const categories = page.locator('[data-panel="categories"]');
+    await expect(categories).toBeVisible();
+    const [c, e, row] = await Promise.all([
+      categories.boundingBox(),
+      entries.boundingBox(),
+      page.locator('.desk-month-view-columns').boundingBox(),
+    ]);
+    return { sideBySide: e!.y < c!.y + c!.height - 1, width: row!.width };
   };
 
-  expect((await columns(360)).cols, 'one column at 360').toBe(1);
-  expect((await columns(768)).cols, 'two columns at 768').toBe(2);
-  expect((await columns(1280)).width, 'grid <= 1160px at 1280').toBeLessThanOrEqual(1160);
+  expect((await layout(360)).sideBySide, 'stacked at 360').toBe(false);
+  expect((await layout(768)).sideBySide, 'stacked at 768').toBe(false);
+  const wide = await layout(1280);
+  expect(wide.sideBySide, 'side by side at 1280').toBe(true);
+  expect(wide.width, 'row <= 1160px at 1280').toBeLessThanOrEqual(1160);
+
+  // T048: at 1280 the item column takes the free width, so a 22-character name is not truncated.
+  const name = page.locator('[data-panel="entries"] .desk-item-name', {
+    hasText: 'Streaming subscription',
+  });
+  await expect(name).toBeVisible();
+  expect(await name.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
 });

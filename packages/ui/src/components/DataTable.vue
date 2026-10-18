@@ -355,12 +355,12 @@ const colClass = (c: BoardColumn) => [
     width: var(--space-16);
   }
   .desk-data-table :deep(.desk-col--amount) {
-    width: 9rem;
+    width: 8rem;
   }
   .desk-data-table :deep(th.desk-col--md),
   .desk-data-table :deep(td.desk-col--md) {
     display: table-cell;
-    width: 30%;
+    width: 7.5rem;
     color: var(--color-fg-muted);
     overflow: hidden;
     text-overflow: ellipsis;

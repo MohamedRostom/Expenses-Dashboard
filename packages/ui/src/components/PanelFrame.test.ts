@@ -76,3 +76,31 @@ describe('PanelFrame surface (T012)', () => {
     expect(el.querySelector('.desk-panel-frame-flap')?.classList.contains('surface')).toBe(true);
   });
 });
+
+describe('PanelFrame heading inside the glass (T048)', () => {
+  it('the heading is the panel label, a real h3 inside the surface above the content', async () => {
+    const el = document.createElement('div');
+    createApp({
+      render: () =>
+        h(PanelFrame, { heading: 'Entries' }, { default: () => h('p', { class: 'x' }, 'rows') }),
+    }).mount(el);
+    await nextTick();
+    const flap = el.querySelector('.desk-panel-frame-flap')!;
+    const heading = flap.querySelector('h3')!;
+    expect(heading.textContent).toBe('Entries');
+    expect(heading.compareDocumentPosition(flap.querySelector('.x')!)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/PanelFrame.vue', 'utf8');
+    const rule = src.match(/\.desk-panel-frame-heading \{[^}]*\}/)![0];
+    for (const t of [
+      '--text-xs',
+      'font-weight: 600',
+      '--tracking-wide',
+      'uppercase',
+      '--color-fg-muted',
+    ])
+      expect(rule).toContain(t);
+  });
+});

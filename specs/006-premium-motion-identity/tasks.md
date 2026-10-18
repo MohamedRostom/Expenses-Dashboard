@@ -142,8 +142,9 @@ Rostom found the build differs from the approved board (https://claude.ai/artifa
 
 **⟶ Wait for T042–T045, then:**
 
-- [ ] **T046** `DESIGN.md` and ADR-0007 values follow the board (alphas, dark companions, glass opacity, saturate); drop the "Lowered by T008" note · `DESIGN.md`, `docs/adr/ADR-0007-premium-identity.md`, `packages/ui/src/design-doc.test.ts`
-- [ ] **T047** Regenerate the visual baselines in the pinned Playwright image, rerun the motion e2e specs, and fix or quarantine with a reason every flaky test until two full `ci` runs at `--workers=2` are green · `tests/e2e/`
+- [x] **T046** `DESIGN.md` and ADR-0007 values follow the board (alphas, dark companions, glass opacity, saturate); drop the "Lowered by T008" note · `DESIGN.md`, `docs/adr/ADR-0007-premium-identity.md`, `packages/ui/src/design-doc.test.ts`
+- [x] **T047** Regenerate the visual baselines in the pinned Playwright image, rerun the motion e2e specs, and fix or quarantine with a reason every flaky test until two full `ci` runs at `--workers=2` are green · `tests/e2e/`
+- [x] **T048** Stage-2 review fixes: hero seam ticks, no-budget hero text, entries item column, in-panel section labels, duplicate category 409, empty-month forecast · `packages/ui/`, `apps/web/`, `apps/api/`, `tests/e2e/`
 
 ## Phase 9: Polish
 

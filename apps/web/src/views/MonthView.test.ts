@@ -13,6 +13,7 @@ vi.mock('../offline/queue.js', () => ({
   list: async () => [],
   discard: async () => {},
   retry: async () => {},
+  flushWhenOnline: async () => {},
   estimatedTotal: () => 0,
 }));
 const money = vi.hoisted(() => ({ spent: 1234, budgeted: 5000, remaining: 3766 }));
@@ -96,6 +97,25 @@ describe('MonthView category rows (T032)', () => {
     expect(tile.querySelector('a')?.getAttribute('href')).toBe('/settings/categories');
   });
 
+  it('no-budget hero prints its words in the words style, not as a Display figure (T048)', async () => {
+    Object.assign(money, { budgeted: 0, remaining: 0 });
+    const el = await mount();
+    const fig = el.querySelector('[data-tile-primary="figure"]')!;
+    expect(fig.textContent).toBe('No budget set');
+    expect(fig.classList.contains('desk-tile-value--words')).toBe(true);
+  });
+
+  it('Categories and Entries are labels inside their glass panels (T048)', async () => {
+    const el = await mount();
+    for (const [panel, name] of [
+      ['categories', 'Categories'],
+      ['entries', 'Entries'],
+    ] as const) {
+      const h = el.querySelector(`[data-panel="${panel}"] .desk-panel-frame-flap h3`);
+      expect(h?.textContent).toBe(name);
+    }
+  });
+
   it('departure tile over budget: label, red minus figure and the word over', async () => {
     Object.assign(money, { budgeted: 1000, remaining: -234 });
     const el = await mount();
@@ -143,7 +163,7 @@ describe('MonthView category rows (T032)', () => {
     expect(src).toContain('repeat(auto-fit, minmax(220px, 1fr))');
     expect(src).not.toContain('repeat(5,');
     expect(src).toContain('flex: 1 1 380px');
-    expect(src).toContain('flex: 1 1 460px');
+    expect(src).toContain('flex: 1.6 1 460px');
   });
 
   it('mounts the widget strip after the tiles', async () => {

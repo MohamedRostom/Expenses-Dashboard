@@ -10,6 +10,8 @@
 
 Accepted by the owner on 2026-10-16 (spec 006 T004), together with constitution 1.3.0 and the rewritten `DESIGN.md`. The owner also confirmed the drafted values: Glass opacity 72 % light and 62 % dark with a 20 px blur, 16 px panel corners, the background alpha ceilings in `DESIGN.md` § Motion, Lamp amber as a background-only swatch, the retired departure-tile seam, an opaque header, dialogs, menus, sheets and toasts, FR-020 measured on `/` and `/settings`, and signed-in Lighthouse performance held at no regression rather than 0.9.
 
+Amended 2026-10-17 (spec 006 Phase 8b): the owner found the build fainter than the approved direction board, so the board is the reference for values. Glass follows the board (white 66 % light, `rgb(21 26 33)` 58 % dark, `saturate(140%)`), raised by the contrast test to 68 % and 66 %; the background alphas are the board's at its 70 % intensity, and dark Aurora uses a deep blue and a deep amber. The capped-alpha structure and the contrast test are unchanged. Values live in `DESIGN.md`.
+
 ## Context
 
 ADR-0006 made Desk a rail departure board: opaque flaps on a steel ground, crisp 2/4/8 px corners, and a rule that nothing loops except the skeleton pulse. Six days after it was accepted the owner asked for a more premium look with a background that moves, chosen by the user. A direction board (2026-10-16) put four motion families and a surface treatment side by side on the month view in both themes. The owner reviewed it and decided to replace the Concourse Board identity rather than layer motion on top of it, because a moving layer behind opaque flaps is invisible and a board that refuses to loop cannot carry one.
@@ -22,7 +24,7 @@ Adopt "Premium identity with ambient motion" as the visual identity of Desk, as 
 
 | Decision | ADR-0006 (Concourse Board) | ADR-0007 |
 |----------|----------------------------|----------|
-| Surfaces | Opaque flaps, two shadow heights | Translucent (frosted) panels: Flap at 72 % (light) or 62 % (dark) opacity with a 20 px backdrop blur, over the ground; opaque fallback of the same colour where blur is unsupported or the user turns it off |
+| Surfaces | Opaque flaps, two shadow heights | Translucent (frosted) panels: white at 68 % (light) or `rgb(21 26 33)` at 66 % (dark) opacity with a 20 px backdrop blur and `saturate(140%)`, over the ground; opaque fallback of the same colour where blur is unsupported or the user turns it off |
 | Panel corners | 4 px tiles and panels, 8 px dialogs | 16 px on panels, tiles and widget frames (`--radius-xl`); controls keep 2 px, dialogs 8 px |
 | Ground | A still steel ground | The same ground with one opt-in ambient layer behind every screen |
 | Looping | Nothing loops except the skeleton pulse | Exactly one looping effect, the background layer; everything else keeps the spec 004 one-time rules |

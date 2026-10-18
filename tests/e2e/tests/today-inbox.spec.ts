@@ -1,6 +1,12 @@
 import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { signUpAndVerify, axeCheck, mockProvider, nextMockAccount } from '../fixtures/index.js';
+import {
+  signUpAndVerify,
+  axeCheck,
+  mockProvider,
+  nextMockAccount,
+  waitForRefreshJobsIdle,
+} from '../fixtures/index.js';
 
 /**
  * T043 (ci, inbox): the Today page's inbox panel against the fake Graph and Google servers
@@ -168,9 +174,11 @@ test.describe('Today inbox panel @ci', () => {
 
     const microsoftKey = await connect(page, 'microsoft');
     await waitForTodayPayload(page, (b) => b.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await connect(page, 'google');
     const googleKey = await addGoogleMail(page);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('microsoft', microsoftKey).addMessage(
       microsoftMessage('msg-ms-1', 'Older Microsoft mail', 'Bob', 4, true),
@@ -183,8 +191,11 @@ test.describe('Today inbox panel @ci', () => {
     backdateLastRefresh(email, 'google', 3);
     await refreshUntilAllowed(page);
 
+    // Each account refreshes in its own job: wait for both messages, not just the first to land.
     const body = await waitForTodayPayload(page, (b) =>
-      b.messages.some((m) => m.subject === 'Newer Google mail'),
+      ['Newer Google mail', 'Older Microsoft mail'].every((s) =>
+        b.messages.some((m) => m.subject === s),
+      ),
     );
     const subjects = body.messages.map((m) => m.subject);
     expect(subjects.indexOf('Newer Google mail')).toBeLessThan(
@@ -221,8 +232,10 @@ test.describe('Today inbox panel @ci', () => {
 
     const microsoftKey = await connect(page, 'microsoft');
     await waitForTodayPayload(page, (b) => b.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
     await connect(page, 'google');
     const googleKey = await addGoogleMail(page);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('microsoft', microsoftKey).addMessage(
       microsoftMessage('msg-ms-2', 'Microsoft only', 'Carol', 2, true),
@@ -271,6 +284,7 @@ test.describe('Today inbox panel @ci', () => {
     await signUpAndVerify(page, email);
     const microsoftKey = await connect(page, 'microsoft');
     await waitForTodayPayload(page, (b) => b.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('microsoft', microsoftKey).addMessage(
       microsoftMessage('msg-ms-nosubject', '', 'Eve', 1, false),

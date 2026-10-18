@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick } from 'vue';
 import type { Component } from 'vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../api/client.js', () => ({
   apiFetch: vi.fn(),
@@ -65,6 +65,13 @@ afterEach(() => {
   vi.useRealTimers();
   document.body.innerHTML = '';
 });
+
+// Cold-importing the component graph takes several seconds under full parallel load and was
+// being charged to the first test's 5 s timeout; warm the module cache once instead.
+beforeAll(async () => {
+  await import('./AppearanceSettings.vue');
+  await import('../../stores/session.js');
+}, 60_000);
 
 describe('AppearanceSettings controls', () => {
   it('has a Background motion radiogroup of five presets, each with a still thumbnail', async () => {
