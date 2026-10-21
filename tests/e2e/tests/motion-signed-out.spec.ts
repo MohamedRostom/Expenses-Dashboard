@@ -3,8 +3,9 @@ import { expect, test, type Page } from '@playwright/test';
 import { csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
 /**
- * T026 (spec 006 US5, FR-021): sign-in, sign-up and reset show Particles in the default tint when
- * the public flag is on and a still ground when it is off; a signed-out page never shows a
+ * T026 (spec 006 US5, FR-021): sign-in, sign-up and reset show the cycling AuthBackdrop (ADR-0007
+ * amendment 2026-10-18; data-motion still resolves to Particles in the default tint) when the
+ * public flag is on and a still scene when it is off; a signed-out page never shows a
  * previous user's choice; each form sits on a centred `.surface` panel. `GET /flags/public` is
  * mocked so the global flag is never touched. The landing page is covered at build time by
  * apps/landing/src/landing.build.test.ts (the flag is baked in), here only its `.surface` panels.
@@ -36,7 +37,9 @@ for (const path of PAGES) {
       await page.goto(path);
       await expect.poll(async () => (await html(page)).motion).toBe('particles');
       expect((await html(page)).tint).toBe(MINT);
-      await expect(page.getByTestId('background-motion')).toBeAttached();
+      // ADR-0007 amendment 2026-10-18: the cycling AuthBackdrop replaces BackgroundMotion here.
+      await expect(page.locator('.desk-auth-backdrop:not(.is-still)')).toBeAttached();
+      await expect(page.getByTestId('background-motion')).toHaveCount(0);
 
       const panel = page.locator('main.surface');
       await expect(panel.locator('form')).toBeVisible();
@@ -51,6 +54,7 @@ for (const path of PAGES) {
       await page.goto(path);
       await expect(page.locator('main.surface form')).toBeVisible();
       await expect.poll(async () => (await html(page)).motion).toBe('none');
+      await expect(page.locator('.desk-auth-backdrop.is-still')).toBeAttached();
     });
 
     test('reflows at 360 without horizontal scroll', async ({ page }) => {
