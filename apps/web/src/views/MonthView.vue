@@ -605,8 +605,9 @@ const entryColumns: BoardColumn[] = [
   min-width: 0;
 }
 .desk-month-view-columns > :deep(.desk-panel-entries) {
-  /* Grows faster than Categories so the item column keeps the width long names need. */
-  flex: 1.6 1 460px;
+  /* Grows faster than Categories so the item column keeps the width long names need, in the
+     wider Linux fallback faces (DejaVu Sans) as well as Segoe UI. */
+  flex: 2.5 1 460px;
   min-width: 0;
 }
 .desk-month-view-pad {

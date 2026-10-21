@@ -172,7 +172,7 @@ describe('MonthView category rows (T032)', () => {
     expect(src).toContain('repeat(auto-fit, minmax(220px, 1fr))');
     expect(src).not.toContain('repeat(5,');
     expect(src).toContain('flex: 1 1 380px');
-    expect(src).toContain('flex: 1.6 1 460px');
+    expect(src).toContain('flex: 2.5 1 460px');
   });
 
   it('mounts the widget strip after the tiles', async () => {
