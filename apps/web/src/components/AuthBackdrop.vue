@@ -80,36 +80,21 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<!-- Not scoped: the palette switches on the <html> theme states, and every class is prefixed. -->
+<!-- Not scoped: every class is prefixed. -->
 <style>
 .desk-auth-backdrop {
-  --ab-base: #e6eaf1;
-  --ab-1: #7f9bff; /* cobalt */
-  --ab-2: #a9d4ff; /* ice */
-  --ab-3: #9aa6b8; /* steel */
-  --ab-4: #b8c6e0; /* navy, lifted for light */
+  /* Palette from tokens.css, which switches it with the three theme states. */
+  --ab-base: var(--auth-backdrop-base);
+  --ab-1: var(--auth-backdrop-1);
+  --ab-2: var(--auth-backdrop-2);
+  --ab-3: var(--auth-backdrop-3);
+  --ab-4: var(--auth-backdrop-4);
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
   background: var(--ab-base);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) .desk-auth-backdrop {
-    --ab-base: #07080b;
-    --ab-1: #2f5bff;
-    --ab-2: #5aa8ff;
-    --ab-3: #8a94a6;
-    --ab-4: #10264d;
-  }
-}
-:root[data-theme='dark'] .desk-auth-backdrop {
-  --ab-base: #07080b;
-  --ab-1: #2f5bff;
-  --ab-2: #5aa8ff;
-  --ab-3: #8a94a6;
-  --ab-4: #10264d;
 }
 .desk-auth-scene {
   position: absolute;

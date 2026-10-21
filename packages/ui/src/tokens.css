@@ -28,6 +28,12 @@
   --motion-grid-line: var(--color-fg); /* Board Ink lines in light (DESIGN.md Background layer) */
   --motion-aurora-blue: #8fb3ff; /* Platform blue, fixed Aurora companion */
   --motion-aurora-amber: #f5c27a; /* Lamp amber, fixed Aurora companion */
+  /* Signed-out backdrop palette, after the Desk sign (ADR-0007 amendment 2026-10-18) */
+  --auth-backdrop-base: #e6eaf1;
+  --auth-backdrop-1: #7f9bff; /* cobalt */
+  --auth-backdrop-2: #a9d4ff; /* ice */
+  --auth-backdrop-3: #9aa6b8; /* steel */
+  --auth-backdrop-4: #b8c6e0; /* navy, lifted for light */
   --motion-alpha-particles: 0.63;
   --motion-alpha-grain: 0.118;
   --shadow-overlay: 0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08);
@@ -114,6 +120,11 @@
     --motion-alpha-aurora-blue: 0.32;
     --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
     --motion-aurora-amber: rgb(140 96 30);
+    --auth-backdrop-base: #07080b;
+    --auth-backdrop-1: #2f5bff;
+    --auth-backdrop-2: #5aa8ff;
+    --auth-backdrop-3: #8a94a6;
+    --auth-backdrop-4: #10264d;
     --motion-alpha-aurora-amber: 0.28;
     --motion-alpha-grid: 0.098;
     --motion-grid-line: var(--motion-tint, var(--color-fg));
@@ -152,6 +163,11 @@
   --motion-alpha-aurora-blue: 0.32;
   --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
   --motion-aurora-amber: rgb(140 96 30);
+  --auth-backdrop-base: #07080b;
+  --auth-backdrop-1: #2f5bff;
+  --auth-backdrop-2: #5aa8ff;
+  --auth-backdrop-3: #8a94a6;
+  --auth-backdrop-4: #10264d;
   --motion-alpha-aurora-amber: 0.28;
   --motion-alpha-grid: 0.098;
   --motion-grid-line: var(--motion-tint, var(--color-fg));
