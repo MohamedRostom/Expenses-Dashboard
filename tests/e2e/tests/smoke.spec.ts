@@ -4,6 +4,7 @@ import {
   deleteAccount,
   newCredentials,
   registerAccount,
+  RegistrationLimited,
   test as base,
   type Credentials,
 } from '../fixtures/local-account.js';
@@ -34,10 +35,17 @@ const test = base.extend<{ credentials: Credentials; freshAccount: Credentials }
 
   /** A signed-in, onboarded account of this test's own, created through the API. */
   freshAccount: async ({ page, credentials }, use) => {
-    await registerAccount(page.request, credentials, DEFAULT_CURRENCY);
+    try {
+      await registerAccount(page.request, credentials, DEFAULT_CURRENCY);
+    } catch (err) {
+      if (!(err instanceof RegistrationLimited)) throw err;
+      test.skip(true, LIMIT_REASON);
+    }
     await use(credentials);
   },
 });
+
+const LIMIT_REASON = 'staging registration limit (429) hit; wait an hour or use another runner IP';
 
 const csrfHeaders = (page: Page) => apiCsrf(page.request);
 
@@ -98,10 +106,12 @@ test.describe('post-deploy smoke @local', () => {
     await page.goto('/register');
     await page.getByLabel(/email/i).fill(credentials.email);
     await page.getByLabel(/password/i).fill(credentials.password);
-    await Promise.all([
-      page.waitForResponse((r) => r.url().endsWith('/auth/register') && r.status() === 202),
+    const [registered] = await Promise.all([
+      page.waitForResponse((r) => r.url().endsWith('/auth/register')),
       page.getByRole('button', { name: /sign up|register|create account/i }).click(),
     ]);
+    test.skip(registered.status() === 429, LIMIT_REASON);
+    expect(registered.status()).toBe(202);
 
     await signIn(page, credentials);
     await expect(page).toHaveURL(/\/onboarding/, REMOTE);

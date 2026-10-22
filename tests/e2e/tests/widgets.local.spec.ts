@@ -46,6 +46,8 @@ test.describe('weather widget against the real Open-Meteo @local', () => {
       data: { kind: 'weather', place: candidates[0] },
       headers: await csrfHeaders(page),
     });
+    // The route answers 404 only while widgets.weather is off for this account (owner-only setup).
+    test.skip(created.status() === 404, 'widgets.weather is off on the target; turn it on to run');
     expect(created.status()).toBe(201);
     const { widget } = (await created.json()) as { widget: { id: string } };
     // The shared account outlives this test (other specs use it); leave no widget behind.
