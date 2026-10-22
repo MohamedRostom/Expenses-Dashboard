@@ -12,9 +12,9 @@
   },
   "devDependencies": {
     "tsx": "^4.23.15",
-    "prettier": "^3.9.8"
+    "prettier": "^3.9.10"
   },
   "dependencies": {
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }
