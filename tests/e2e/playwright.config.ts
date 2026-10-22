@@ -10,7 +10,9 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 1 : 0,
-  reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }]] : 'list',
+  // `github` turns each failure into a check-run annotation: the job log is too long to read
+  // the list output back once the compose logs are dumped after a failure.
+  reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }], ['github']] : 'list',
   use: { trace: 'on-first-retry' },
   // R6: tight, shared tolerance; the `visual` project renders in the pinned Playwright image.
   expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: 'disabled' } },
