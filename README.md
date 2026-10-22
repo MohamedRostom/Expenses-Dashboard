@@ -49,16 +49,18 @@ Read `CLAUDE.md` for the decisions, `docs/ROADMAP.md` for what comes next, `docs
 
 ## Status
 
-Phase 0 (foundation) is scaffolded and merged: monorepo, `/healthz` + Hello page, `users` migration, compose stack, Fly and Cloudflare configs, CI, preview and staging deploys, CodeQL, Dependabot, secret scanning, branch protection. Phase 0 closes once the Fly/Cloudflare secrets and the `desk-local` runner exist (see "Open items"). Phase 1 (`phase-1/accounts`) starts with the `Money` type and its property-based tests.
+Phases 0–4 are built and released through staging and production (latest tag `v0.1.5`; see `CHANGELOG.md` for the feature list): accounts and sessions, multi-currency expenses, categories and budgets, Notion sync, the capture webhook, column-mapped import, the PWA and the landing page. Phase 5/6 (beta operations and the Cloudflare cut-over) is in progress; the cut-over itself is owner-run from `docs/runbooks/cutover.md`.
 
-Specs for the next features live in `specs/` (Spec Kit format: `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `tasks.md`):
+v2 work ships behind feature flags that are off in production until announced. Each feature is a Spec Kit spec in `specs/` (`spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/`, `tasks.md`):
 
-| Spec | What | Ships |
+| Spec | What | State |
 | --- | --- | --- |
-| `001-phased-product-baseline` | Baseline for every phase, F1–F6 | v1, via `phase-N/…` branches |
-| `002-mail-calendar-panels` | Read-only mail + calendar panels across Google, Microsoft and standards-based providers (ADR-0004) | v2; Google mail gated on CASA |
-| `003-dashboard-widgets` | Weather, sunrise, place search, currency widgets on Open-Meteo (ADR-0005) | v2 |
-| `004-web-ui-refresh` | Design tokens, blocks and landing page refresh | v2 |
+| `001-phased-product-baseline` | Baseline for every phase, F1–F6 | Shipped (v1); owner-only checks open |
+| `002-mail-calendar-panels` | Read-only mail and calendar panels across Google, Microsoft and standards-based providers (ADR-0004) | Built behind `panels.*` flags; Google mail gated on CASA |
+| `003-dashboard-widgets` | Weather, sunrise, place search, currency, spend pace and fixed-cost widgets on Open-Meteo (ADR-0005) | Built behind `widgets.*` flags |
+| `004-web-ui-refresh` | Design tokens, screens and landing page refresh (ADR-0006, superseded) | Built |
+| `005-fix-found-bugs` | Living register of bugs found on deployed environments | Ongoing |
+| `006-premium-motion-identity` | Glass panels and opt-in background motion (ADR-0007) | Merged; controls behind `appearance.motion` |
 
 ## Roadmap
 
@@ -78,20 +80,60 @@ Each phase has exit criteria in `docs/ROADMAP.md`; nothing from a later phase st
 
 Everything is TypeScript on Node 22 with pnpm workspaces. These are settled; reopening one needs an ADR.
 
+```mermaid
+flowchart LR
+  user([Browser / installed PWA])
+  phone([Phone automation])
+  subgraph desk [Desk]
+    web[apps/web<br/>Vue 3 PWA]
+    landing[apps/landing<br/>vite-ssg]
+    api[apps/api — Hono<br/>node.ts on Fly.io · worker.ts on Workers]
+    db[(Postgres 16<br/>Neon)]
+  end
+  user --> web & landing
+  web -- "JSON, session cookie + CSRF" --> api
+  phone -- capture webhook --> api
+  api --> db
+  api --> fx[Frankfurter<br/>ECB rates]
+  api <-- "two-way sync, public OAuth" --> notion[Notion]
+  api --> meteo[Open-Meteo]
+  api --> panels["Google · Microsoft ·<br/>IMAP/CalDAV (v2, read-only)"]
+  api --> mail[Resend<br/>transactional email]
+```
+
 - **Frontend:** Vue 3 + Vite + Pinia + vue-router. PWA via `vite-plugin-pwa`, landing page via `vite-ssg`.
 - **Backend:** Hono, one app object with two entry points — `apps/api/src/node.ts` (Fly.io container, Stage 1) and `apps/api/src/worker.ts` (Cloudflare Workers, Stage 2). Every dependency must survive `wrangler deploy --dry-run`; if it can't, wrap it behind an interface with a Workers-compatible implementation.
 - **Database:** Postgres 16 through Drizzle ORM. Migrations are SQL files in `packages/db/migrations`, applied on start. Stage 2 uses Neon through Cloudflare Hyperdrive.
 - **Sessions:** server-side, HTTP-only cookies, CSRF double-submit. `SessionStore` interface: Postgres now, Cloudflare KV later.
 - **Auth:** email + password (Argon2id) and Google OIDC with `openid email profile` only. Connector scopes (Notion, and in v2 mail/calendar) are granted per connection, never on the sign-in grant.
 - **Source of truth:** the app's own database. Notion is an optional per-user two-way sync through Notion's public OAuth (API version `2025-09-03`, data sources).
-- **Money:** integer minor units, never floats. Each expense stores `amount_original`, `currency_original`, `rate_to_default`, `rate_date`, `rate_source`, `amount_default`, `rate_overridden`. Rates come from frankfurter.app (ECB), cached daily in `fx_rates`; weekends and holidays fall back to the last published rate and record which date was used. Changing the default currency re-derives every row in a background job.
-- **Hosting:** Stage 1 Fly.io (staging at `ros-desk-staging.fly.dev`, a preview app per PR). Stage 2 Cloudflare.
+- **Money:** integer minor units, never floats. Each expense stores `amount_original`, `currency_original`, `rate_to_default`, `rate_date`, `rate_source`, `amount_default`, `rate_overridden`. Rates come from Frankfurter (`api.frankfurter.dev/v1`, ECB data, no key), cached daily in `fx_rates`; weekends and holidays fall back to the last published rate and record which date was used. Changing the default currency re-derives every row in a background job.
+
+  ```mermaid
+  sequenceDiagram
+    participant W as Web
+    participant A as API
+    participant C as fx_rates cache
+    participant F as Frankfurter
+    W->>A: POST expense (amount_original, currency_original, date)
+    A->>C: rate for (currency → default, date)?
+    alt cached
+      C-->>A: rate, rate_date
+    else not cached
+      A->>F: GET /v1/{date}
+      F-->>A: last published rate (weekend/holiday → earlier date)
+      A->>C: store rate + the date actually used
+    end
+    A->>A: amount_default = round(amount_original × rate) in minor units
+    A-->>W: expense with rate_date, rate_source, rate_overridden=false
+  ```
+- **Hosting:** Stage 1 Fly.io (staging at `ros-desk-staging.fly.dev`, a preview app per PR). Stage 2 Cloudflare. Both stages use Neon Postgres, one project with a branch per environment.
 - **Not in v1:** bank integrations of any kind (ADR-0003) — only the generic webhook and column-mapped import.
 - **Rejected:** Python/FastAPI (no native Cloudflare path), Nuxt (couples API to UI), GitHub Pages (no server for secrets).
 
 ### Open items (Rostom's call — ADR-0002)
 
-Product name, transactional email provider, Neon from day one or Stage 2 only, licence, analytics. Until ADR-0002 is accepted treat these as undecided.
+Decided so far: Neon from day one (2026-09-20) and Resend for transactional email. Still open: product name, licence and analytics. ADR-0002 stays Proposed until all of them are settled, so treat "Desk" and the current `LICENSE` as provisional.
 
 ## Repository layout
 
@@ -104,38 +146,52 @@ Product name, transactional email provider, Neon from day one or Stage 2 only, l
 │   │   │   ├── env.ts       startup validation (refuses to boot on missing vars)
 │   │   │   ├── node.ts      Stage 1 entry — Fly.io container
 │   │   │   └── worker.ts    Stage 2 entry — Cloudflare Workers
-│   │   └── test             healthz, env, migrations, worker
-│   └── web                  Vue 3 + Vite
-│       └── src
-│           ├── router.ts
-│           └── views/HelloView.vue
+│   │   └── test             Vitest + Testcontainers, ownership matrix
+│   ├── web                  Vue 3 + Vite PWA: views, stores, components, catalogue
+│   └── landing              vite-ssg marketing site
 ├── packages
-│   ├── core                 pure domain logic, no I/O (month-key today; Money next)
-│   ├── contracts            zod schemas + shared types
-│   ├── db                   Drizzle schema, migrations/, migrate CLI
+│   ├── core                 pure domain logic, no I/O: Money, conversion, budgets, sync diff
+│   ├── contracts            zod schemas, shared types, generated openapi.json
+│   ├── db                   Drizzle schema, migrations/, migrate and flags CLIs
 │   ├── ui                   design tokens (tokens.css) + base components
-│   └── connectors           notion/, rates/ — real client + fake + recorded fixtures
+│   └── connectors           notion, rates, open-meteo, google, microsoft, imap, caldav — real client + fake + recorded fixtures
 ├── tests
-│   └── e2e                  Playwright: projects `ci` (mocked) and `local` (real accounts)
+│   ├── e2e                  Playwright: projects `ci` (mocked) and `local` (real accounts)
+│   └── load                 k6 smoke
 ├── infra
 │   ├── docker-compose.yml   api + web + postgres + mailpit + mocks
-│   ├── fly                  Dockerfile (multi-stage), fly.toml
+│   ├── mocks                connector mocks for the compose stack
+│   ├── fly                  Dockerfile (multi-stage), fly.toml per environment
 │   └── cloudflare           wrangler.toml
 ├── docs
 │   ├── ROADMAP.md
-│   ├── adr                  ADR-0001 … ADR-0005
+│   ├── adr                  ADR-0001 … ADR-0007
+│   ├── runbooks             cut-over, restore, uptime, snapshots, announcements
 │   └── assets               banner.svg
-├── specs                    Spec Kit feature specs 001–004
+├── specs                    Spec Kit feature specs 001–006
 ├── .github
-│   └── workflows            ci, deploy-preview, deploy-staging, e2e-local, codeql
+│   └── workflows            ci, deploy-*, e2e-local, codeql, update-snapshots, …
 ├── CLAUDE.md                project memory and decisions
+├── DESIGN.md                normative design system
 ├── LOCAL_DEVELOPMENT.md
 ├── CHANGELOG.md
 ├── SECURITY.md
 └── package.json             pnpm workspace root
 ```
 
-Planned but not yet created: `apps/landing` (vite-ssg), `tests/load` (k6 smoke).
+Workspace dependencies point one way: apps depend on packages, and `core` depends on nothing.
+
+```mermaid
+flowchart TD
+  web[apps/web] --> contracts & core & ui
+  landing[apps/landing] --> contracts & ui
+  api[apps/api] --> connectors & contracts & core & db
+  db[packages/db] --> core
+  contracts[packages/contracts]
+  core[packages/core<br/>no I/O]
+  ui[packages/ui]
+  connectors[packages/connectors]
+```
 
 ## Development
 
@@ -150,7 +206,7 @@ pnpm install
 cp .env.example .env               # defaults match the compose stack
 ```
 
-`.env.example` lists every variable the Node entry point reads (`DATABASE_URL` required; `PORT` and `GIT_SHA` optional). `apps/api/src/env.ts` refuses to boot if a required one is missing; the Worker validates its bindings through the same schema.
+`.env.example` lists every variable the API reads, with a comment on each. `apps/api/src/env.ts` refuses to boot if a required one is missing; the Worker validates its bindings through the same schema.
 
 ### Option A — dev servers on the host, Postgres in Docker
 
@@ -207,12 +263,16 @@ Migrations are plain SQL, committed, and applied on API start in every environme
 ```sh
 pnpm lint && pnpm typecheck        # also run on staged files by the Husky pre-commit hook
 pnpm format                        # prettier --write
-pnpm test:unit                     # packages/core, Vitest, coverage floor 85 %
+pnpm test:unit                     # core, ui, web, landing and e2e helpers (Vitest)
 pnpm test:api                      # apps/api, Vitest + Testcontainers Postgres (needs Docker)
 pnpm worker:build                  # wrangler deploy --dry-run: proves the Worker bundle
 pnpm test:e2e --project=ci         # Playwright against the compose stack on :5173
 pnpm test                          # core + api together
+pnpm --filter @desk/contracts generate:openapi   # regenerate openapi.json (CI fails if stale)
+pnpm flags                         # list and toggle feature flags
 ```
+
+Pass `--project=ci` directly, not after `--`: otherwise the `manual` project also runs and overwrites `docs/design/before/`. e2e and visual tests are only stable at `--workers=2` on a laptop.
 
 Run a single package or file directly: `pnpm --filter @desk/core test -- month-key`, `pnpm --filter @desk/api test -- healthz`. Coverage reports land in `packages/core/coverage/` and `apps/api/coverage/`.
 
@@ -229,11 +289,25 @@ Every PR needs the checks above green, an e2e-ci scenario, coverage not lower an
 
 ## CI and deploys
 
-`ci.yml` runs on every PR: `detect-changes` → `lint` → `typecheck` → `unit` → `api` → `worker-build` (→ e2e-ci). Branch protection on `main` requires the CI jobs and blocks direct pushes. `deploy-preview.yml` deploys a Fly app per PR and destroys it on close; `deploy-staging.yml` deploys `main` to `ros-desk-staging.fly.dev`. `codeql.yml` and Dependabot run on a schedule.
+`ci.yml` runs on every PR: `detect-changes` → `lint` → `typecheck` → `unit` → `api` → `worker-build` (→ e2e-ci). Branch protection on `main` requires the CI jobs and blocks direct pushes. `deploy-preview.yml` deploys a Fly app per PR and destroys it on close; `deploy-staging.yml` deploys `main` to `ros-desk-staging.fly.dev`; `deploy-fly.yml` runs on `v0.*` tags: it deploys to staging, smoke-tests, then promotes the same build to `ros-desk-production` behind the `production` environment's required reviewer; `deploy-cf.yml` runs on `v1.*` tags for the Stage 2 cut-over (Worker + Pages, e2e-ci against the Cloudflare preview, then smoke). `codeql.yml` and Dependabot run on a schedule.
+
+```mermaid
+flowchart LR
+  pr[Pull request] --> ci["ci.yml<br/>lint · typecheck · unit · api · worker-build · e2e-ci"]
+  pr --> preview["deploy-preview.yml<br/>Fly app per PR, destroyed on close"]
+  ci -- required checks --> main[merge to main]
+  main --> staging["deploy-staging.yml<br/>ros-desk-staging"]
+  tag0[tag v0.*] --> fly["deploy-fly.yml<br/>staging → smoke"]
+  fly -- "approval: production env" --> prod[ros-desk-production]
+  tag1[tag v1.*] --> cf["deploy-cf.yml<br/>Workers + Pages → e2e-ci → smoke"]
+  nightly[nightly / dispatch] --> local["e2e-local.yml<br/>desk-local runner, real accounts"]
+```
+
+Each deploy pipeline has a kill switch, a repo **variable** set to `false` to pause it (the run shows as skipped, not failed): `DEPLOYMENT_FLAG` (staging and production), `PREVIEW_DEPLOYMENT_FLAG` (preview deploys; teardown always runs) and `CLOUDFLARE_DEPLOYMENT_FLAG`. Example: `gh variable set DEPLOYMENT_FLAG --body false`.
 
 `e2e-local.yml` covers anything that needs real accounts, real devices or OAuth round-trips. It runs on a self-hosted runner labelled `desk-local`, on `workflow_dispatch` and nightly, only on `main`, with secrets in the approval-gated `local-secrets` environment. It never blocks a PR.
 
-Repo secrets needed: `FLY_API_TOKEN`, `PREVIEW_DATABASE_URL`, `STAGING_DATABASE_URL` (Phase 0); `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (Phase 6 — the dry-run is unauthenticated).
+Repo secrets: `FLY_API_TOKEN`, `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `*_DATABASE_URL`, `*_SESSION_SECRET` and `*_SECRET_BOX_KEY` for each of `PREVIEW`, `STAGING` and `PRODUCTION`. The `worker-build` dry-run needs none of them.
 
 ## Testing rules
 
@@ -245,7 +319,9 @@ Definition of done per PR: unit + API tests, an e2e-ci scenario, a `CHANGELOG.md
 
 ## Design system
 
-Ported from the personal dashboard. IBM Plex Sans for body, IBM Plex Mono with `tabular-nums` for numbers. Accent green `#1f6e5a` (light) / `#5fbf9f` (dark); backgrounds `#f2f4f7` / `#121820`; status colours warn `#a8641a`, critical `#a83a2e` — never reused as chart series. Three theme states: bare `:root` is light, `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`, and `:root[data-theme="dark"]`. Charts are a small hand-written SVG layer (no chart library) with a table view always available. Every panel has skeleton, empty and error states, and error copy branches on the error code.
+"Premium identity with ambient motion" (ADR-0007); the root `DESIGN.md` is normative and the values live in `packages/ui/src/tokens.css`. Tiles and panels are translucent glass with 16 px corners, falling back to opaque surfaces when the user picks solid panels, the browser lacks `backdrop-filter`, or forced colours or reduced transparency are on. One opt-in, CSS-only background layer (Particles by default; Aurora drift, Board grid, Grain or None) stands still under reduced motion, reduced data, a hidden tab or the user's pause.
+
+Words use the system UI stack; every figure uses the system mono stack with `tabular-nums`. Accent Signal Green `#0e3d2a` (light) / `#2c7452` (dark), one accent at a time; backgrounds `#e8eaeb` / `#0e1114`; status colours Delay Amber and Cancel Red, never reused as chart series. Three theme states: bare `:root` is light, `@media (prefers-color-scheme: dark)` guarded by `:root:not([data-theme="light"])`, and `:root[data-theme="dark"]`. Charts are a small hand-written SVG layer (no chart library) with a table view always available. Every panel has skeleton, empty and error states, and error copy branches on the error code.
 
 Default categories: Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Groceries, Eating out, Transport, Cycling, Gym & health, Personal care, Clothing, Entertainment, Household, Driving lessons, Travel, Other. Fixed-kind by default: Rent, Council tax, Utilities, Internet, Phone, Subscriptions, Gym & health.
 
@@ -260,13 +336,16 @@ Branches `phase-N/short-description` (feature specs use `feature/NNN-slug`), one
 - `docs/adr/ADR-0003-no-bank-integration-in-v1.md`
 - `docs/adr/ADR-0004-mail-and-calendar-panels.md` — v2 read-only mail and calendar
 - `docs/adr/ADR-0005-weather-source.md` — Open-Meteo, CC-BY attribution, revisit before monetisation
-
-Weather data by [Open-Meteo.com](https://open-meteo.com/) (licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)).
-
+- `docs/adr/ADR-0006-visual-identity.md` — "Concourse Board" (superseded by ADR-0007)
+- `docs/adr/ADR-0007-premium-identity.md` — glass panels and opt-in background motion
+- `DESIGN.md` — the normative design system
 - `docs/ROADMAP.md` — phases 0–6 with exit criteria
+- `docs/runbooks/` — cut-over, restore, uptime, visual snapshots, feature announcements
 - `SECURITY.md` — private vulnerability reporting
 - `LOCAL_DEVELOPMENT.md` — full local setup and troubleshooting
 
-## Licence
+## Licence and attribution
 
-MIT — see `LICENSE`.
+MIT — see `LICENSE` (provisional until ADR-0002 settles the licence).
+
+Weather data by [Open-Meteo.com](https://open-meteo.com/) (licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)). Exchange rates from the European Central Bank via [Frankfurter](https://frankfurter.dev/).
