@@ -26,7 +26,6 @@ function shuffle(avoidFirst?: number): number[] {
 
 const order = ref(shuffle());
 const pos = ref(0);
-const current = computed(() => order.value[pos.value]);
 
 const prefers = (q: string) => typeof matchMedia === 'function' && matchMedia(q).matches;
 const still = computed(
@@ -35,6 +34,8 @@ const still = computed(
     prefers('(prefers-reduced-motion: reduce)') ||
     prefers('(prefers-reduced-data: reduce)'),
 );
+// Still always holds the first scene, so a still page renders the same every time.
+const current = computed(() => (still.value ? 0 : order.value[pos.value]));
 
 let timer: ReturnType<typeof setInterval> | undefined;
 function step() {

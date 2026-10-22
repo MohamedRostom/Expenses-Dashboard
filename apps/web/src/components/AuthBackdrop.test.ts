@@ -71,6 +71,16 @@ describe('AuthBackdrop (signed-out pages, ADR-0007 amendment 2026-10-18)', () =>
     expect(m.el.querySelector('.desk-auth-backdrop')!.classList.contains('is-still')).toBe(true);
   });
 
+  it('holds the same first scene whenever it is still, so the page renders the same every time', async () => {
+    for (const r of [0, 0.5, 0.99]) {
+      vi.spyOn(Math, 'random').mockReturnValue(r);
+      const m = await mount(false);
+      expect(active(m.el)).toBe('1');
+      m.app.unmount();
+      vi.mocked(Math.random).mockRestore();
+    }
+  });
+
   it('pauses while the tab is hidden and resumes when it is shown', async () => {
     const m = await mount();
     app = m.app;
