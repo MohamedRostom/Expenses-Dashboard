@@ -131,6 +131,11 @@ jobs:
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+      # The compose logs dumped after a failure push lhci's output out of the readable job log;
+      # this puts each failed assertion on the check run as an annotation instead.
+      - if: failure()
+        working-directory: tests/e2e
+        run: node lighthouse-annotate.mjs .lighthouseci/assertion-results.json
       # Spec 004 T030: the run above sees the sign-in page (every URL redirects there). This one
       # measures the signed-in month view and settings on the production build (web-preview, 4173)
       # with a seeded user's session cookie. lighthouserc.session.json holds performance at `warn`
