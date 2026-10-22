@@ -227,12 +227,10 @@ const colClass = (c: BoardColumn) => [
   .desk-data-table :deep(.desk-col--fill) {
     min-width: 8rem;
   }
-  /* The category/stamp subline wraps to two lines here instead of ending in an ellipsis. */
+  /* The category/stamp subline wraps here instead of ending in an ellipsis. No line clamp: how
+     many lines a long name needs depends on the font (Segoe UI vs DejaVu Sans), and nothing is cut. */
   .desk-data-table.desk-data-table--board :deep(.desk-item-cat) {
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
+    display: block;
     white-space: normal;
     overflow-wrap: anywhere;
   }

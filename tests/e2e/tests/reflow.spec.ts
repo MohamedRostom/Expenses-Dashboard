@@ -302,7 +302,7 @@ test('reflow: Entries item column is at least 8rem at 360 with the date in its s
   await expect(item.locator('.desk-item-date')).toBeVisible();
   // The date has its own line, so the category keeps the full subline width.
   const cat = item.locator('.desk-item-cat');
-  // A two-line name wraps instead of ending in an ellipsis: nothing is cut sideways or below.
+  // A long name wraps instead of ending in an ellipsis: nothing is cut sideways or below.
   expect(
     await cat.evaluate(
       (el) => el.scrollWidth <= el.clientWidth && el.scrollHeight <= el.clientHeight,

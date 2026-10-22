@@ -138,24 +138,22 @@ test('change-month', async ({ page }) => {
 test('edit-budget', async ({ page }) => {
   await signedInHome(page);
   await page.goto('/settings/categories');
-  const edit = page
-    .getByRole('row', { name: /Groceries/ })
-    .first()
-    .getByRole('button', { name: /edit/i });
-  await expect(edit).toBeVisible();
+  // The budget cell edits in place: Enter opens the field, Enter saves.
+  const row = page.getByRole('row', { name: /Groceries/ }).first();
+  const budget = row.getByRole('button', { name: 'Budget for Groceries' });
+  await expect(budget).toBeVisible();
 
   const j = startJourney(page);
   const p = j.page;
-  await focusWith(p, edit);
+  await focusWith(p, budget);
   await p.keyboard.press('Enter');
-  const dialog = page.getByRole('dialog');
-  await expect(dialog).toBeVisible();
+  const field = row.getByRole('textbox', { name: 'Budget for Groceries' });
+  await expect(field).toBeFocused();
   await expectFocusRing(p);
-  await focusWith(p, dialog.getByLabel(/monthly budget/i));
   await p.keyboard.type('10');
-  await focusWith(p, dialog.getByRole('button', { name: /^save$/i }));
   await p.keyboard.press('Enter');
-  await expect(dialog).toBeHidden();
+  await expect(field).toBeHidden();
+  await expect(budget).toContainText('10');
   finish('edit-budget', j.counts());
 });
 
