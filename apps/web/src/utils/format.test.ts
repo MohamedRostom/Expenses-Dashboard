@@ -1,5 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { describeDevice, formatDate, formatMoney } from './format.js';
+import { describeDevice, formatDate, formatMoney, formatSeen } from './format.js';
+
+describe('formatSeen', () => {
+  const now = new Date(2026, 9, 18, 12, 0);
+  it('drops the year for the current year', () => {
+    const out = formatSeen(new Date(2026, 9, 18, 4, 8).toISOString(), 'en-US', now);
+    expect(out).toBe('Oct 18, 4:08 AM');
+  });
+  it('keeps the year for another year', () => {
+    expect(formatSeen(new Date(2025, 11, 1, 9, 5).toISOString(), 'en-US', now)).toContain('2025');
+  });
+});
 
 describe('formatMoney', () => {
   it('formats GBP (exponent 2) with ISO code appended', () => {

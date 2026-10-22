@@ -1,6 +1,12 @@
 import { execSync } from 'node:child_process';
 import { expect, test, type Page } from '@playwright/test';
-import { signUpAndVerify, axeCheck, mockProvider, nextMockAccount } from '../fixtures/index.js';
+import {
+  signUpAndVerify,
+  axeCheck,
+  mockProvider,
+  nextMockAccount,
+  waitForRefreshJobsIdle,
+} from '../fixtures/index.js';
 
 /**
  * T029 (ci, calendar): the Today page's calendar panel against the fake Google and Graph
@@ -235,6 +241,7 @@ test.describe('Today calendar panel @ci', () => {
     // events and asking for another refresh — avoids two jobs racing to create the same
     // account_calendars row.
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('google', key).addEvent(
       'primary',
@@ -307,6 +314,7 @@ test.describe('Today calendar panel @ci', () => {
     const key = await connect(page, 'microsoft');
 
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     const start = new Date();
     start.setUTCDate(start.getUTCDate() + 1);
@@ -345,6 +353,7 @@ test.describe('Today calendar panel @ci', () => {
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('google', key).addEvent('primary', googleEvent('evt-late-add', 'Retro', 1));
 
@@ -373,6 +382,7 @@ test.describe('Today calendar panel @ci', () => {
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('google', key).revoke();
 
@@ -408,6 +418,7 @@ test.describe('Today calendar panel @ci', () => {
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('google', key).addEvent(
       'primary',
@@ -456,6 +467,7 @@ test.describe('Today render performance @mobile', () => {
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
     await waitForTodayPayload(page, (body) => body.accounts[0]?.lastRefreshAt !== null);
+    await waitForRefreshJobsIdle(email);
 
     await mockProvider('google', key).addEvent(
       'primary',

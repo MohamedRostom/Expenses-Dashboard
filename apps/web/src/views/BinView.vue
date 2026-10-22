@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import type { ExpenseResponseT } from '@desk/contracts';
-import { Button, DataTable, EmptyState, ErrorState, Skeleton, type BoardColumn } from '@desk/ui';
+import {
+  Button,
+  DataTable,
+  EmptyState,
+  ErrorState,
+  PanelFrame,
+  Skeleton,
+  type BoardColumn,
+} from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
 import { useExpensesStore } from '../stores/expenses.js';
 import { formatDate, formatMoney } from '../utils/format.js';
@@ -47,25 +55,27 @@ onMounted(load);
 <template>
   <main class="desk-bin-view">
     <h1>Bin</h1>
-    <Skeleton v-if="loading" height="8rem" />
-    <ErrorState v-else-if="error" :code="error ?? undefined" />
-    <EmptyState v-else-if="deleted.length === 0" title="Nothing in the bin" />
-    <DataTable v-else :columns="columns" dense caption="Bin">
-      <tr v-for="e in deleted" :key="e.id">
-        <td class="desk-col--md desk-col--date">{{ formatDate(e.date) }}</td>
-        <td>
-          <span class="desk-item">
-            <span class="desk-item-name">{{ e.description }}</span>
-            <!-- Phone width: the date sits under the description; from 768 it has its own column. -->
-            <span class="desk-item-cat desk-bin-date">{{ formatDate(e.date) }}</span>
-          </span>
-        </td>
-        <td class="desk-col--amount">{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
-        <td class="desk-col--action">
-          <Button variant="ghost" size="sm" @click="onRestore(e.id)">Restore</Button>
-        </td>
-      </tr>
-    </DataTable>
+    <PanelFrame heading="Deleted expenses">
+      <Skeleton v-if="loading" height="8rem" />
+      <ErrorState v-else-if="error" :code="error ?? undefined" />
+      <EmptyState v-else-if="deleted.length === 0" title="Nothing in the bin" />
+      <DataTable v-else :columns="columns" dense caption="Bin">
+        <tr v-for="e in deleted" :key="e.id">
+          <td class="desk-col--md desk-col--date">{{ formatDate(e.date) }}</td>
+          <td>
+            <span class="desk-item">
+              <span class="desk-item-name">{{ e.description }}</span>
+              <!-- Phone width: the date sits under the description; from 768 it has its own column. -->
+              <span class="desk-item-cat desk-bin-date">{{ formatDate(e.date) }}</span>
+            </span>
+          </td>
+          <td class="desk-col--amount">{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
+          <td class="desk-col--action">
+            <Button variant="ghost" size="sm" @click="onRestore(e.id)">Restore</Button>
+          </td>
+        </tr>
+      </DataTable>
+    </PanelFrame>
   </main>
 </template>
 
@@ -79,6 +89,13 @@ onMounted(load);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+}
+.desk-bin-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
 }
 @media (min-width: 768px) {
   .desk-bin-date {

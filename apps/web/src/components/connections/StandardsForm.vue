@@ -246,8 +246,6 @@ async function onSubmit() {
 }
 .error-summary {
   border-inline-start: var(--space-1) solid var(--color-critical);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-raised);
   color: var(--color-fg);
   padding: var(--space-3);
 }

@@ -13,12 +13,14 @@ const uniqueEmail = (tag: string) =>
  * (once empty, once with eight ready widgets) so the measured difference is the client's cost of
  * rendering a full strip, not the server's (apps/api/test/widgets-load.test.ts covers that).
  * Lighthouse perf/a11y scores stay with the lhci run and axe elsewhere.
- * ponytail: the 100 ms deltas are medians of 5 in-page timings, still noisy on a shared runner;
+ * ponytail: the 100 ms deltas are medians of PAIRS in-page timings, still noisy on a shared runner;
  * if this flakes, raise the repeat count before the thresholds.
  */
 
 const TYPES = { types: [] };
 const DELTA_BUDGET_MS = 100;
+// Raised from 5 (2026-10-18): the Today delta read 135 ms once under a full --workers=2 run.
+const PAIRS = 9;
 
 const pace = (i: number) => ({
   id: `w${i}`,
@@ -63,13 +65,13 @@ async function mock(page: Page, initial: number): Promise<void> {
 const median = (xs: number[]) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)]!;
 
 /**
- * Median of per-pair differences (eight widgets minus none) over 5 interleaved pairs, so load
+ * Median of per-pair differences (eight widgets minus none) over PAIRS interleaved pairs, so load
  * drift on a shared stack hits both arms alike. `metric` loads `path` and returns milliseconds.
  */
 async function delta(page: Page, path: string, metric: (page: Page) => Promise<number>) {
   await page.goto(path); // warm-up: cold bundles would penalise whichever arm runs first
   const diffs: number[] = [];
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < PAIRS; i++) {
     count = 0;
     await page.goto(path);
     const none = await metric(page);

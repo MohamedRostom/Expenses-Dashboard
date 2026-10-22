@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, h, nextTick } from 'vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WidgetCreateT, WidgetTypeT } from '@desk/contracts';
 import type { PanelErrorKind } from '../../utils/errors.js';
 
@@ -77,6 +77,13 @@ const addFor = (name: string) =>
   [...body().querySelectorAll('li')]
     .find((l) => l.textContent?.includes(`${name} description`))!
     .querySelector('button')!;
+
+// Cold-importing the component graph takes several seconds under full parallel load and was
+// being charged to the first test's 5 s timeout; warm the module cache once instead.
+beforeAll(async () => {
+  await import('./AddWidgetSheet.vue');
+  await import('../../stores/session.js');
+}, 60_000);
 
 describe('AddWidgetSheet', () => {
   beforeEach(() => vi.clearAllMocks());

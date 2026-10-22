@@ -1,0 +1,36 @@
+/* The shared glass panel surface (DESIGN.md Colors > Glass, Elevation, Shapes; research R6, R11).
+   Header, dialogs, menus, sheets and toasts do not use it: they stay opaque raised. */
+.surface {
+  background: var(--color-surface-glass);
+  border: 1px solid var(--color-glass-line);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-raised);
+  -webkit-backdrop-filter: blur(var(--blur-surface)) saturate(140%);
+  backdrop-filter: blur(var(--blur-surface)) saturate(140%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .surface {
+    background: var(--color-surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+:root[data-panels='solid'] .surface {
+  background: var(--color-surface-raised);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+@media (forced-colors: active) {
+  .surface {
+    background: var(--color-surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .surface {
+    background: var(--color-surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}

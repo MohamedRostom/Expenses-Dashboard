@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" role="img" aria-label="Desk">
+  <!-- The Desk sign, kept in step with apps/web/src/components/DeskLogo.vue. icon-192.png and
+       icon-512.png are rendered from this mark full-bleed (corners squared for platform masks). -->
+  <defs>
+    <linearGradient id="cell" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2e3440"/>
+      <stop offset="1" stop-color="#1a1e27"/>
+    </linearGradient>
+    <linearGradient id="cell-low" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#171a22"/>
+      <stop offset="1" stop-color="#0c0e13"/>
+    </linearGradient>
+    <linearGradient id="silver" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="0.55" stop-color="#dfe4ec"/>
+      <stop offset="1" stop-color="#9aa3b2"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="11" fill="url(#cell)"/>
+  <path d="M0 24 H48 V37 A11 11 0 0 1 37 48 H11 A11 11 0 0 1 0 37 Z" fill="url(#cell-low)"/>
+  <rect x="4" y="0.6" width="40" height="0.7" rx="0.35" fill="#ffffff" opacity="0.22"/>
+  <path d="M18.5 12.5 H24 A11.5 11.5 0 0 1 24 35.5 H18.5 Z" fill="none" stroke="url(#silver)" stroke-width="3.4" stroke-linejoin="round"/>
+  <rect x="11" y="19.6" width="17.5" height="2.6" rx="1.3" fill="#3d6bff"/>
+  <rect x="11" y="25.8" width="17.5" height="2.6" rx="1.3" fill="#3d6bff"/>
+</svg>

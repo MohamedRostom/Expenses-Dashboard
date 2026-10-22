@@ -1,6 +1,6 @@
 # Tasks: Fix Found Bugs — BUG-001 (Notion connection)
 
-**Input**: Design documents from `specs/005-fix-found-bugs/` — [spec.md](./spec.md), [plan.md](./plan.md), [research.md](./research.md), [data-model.md](./data-model.md), [contracts/notion-api.md](./contracts/notion-api.md), [quickstart.md](./quickstart.md)
+**Input**: Design documents from `specs/005-fix-found-bugs/` — spec.md, plan.md, research.md, data-model.md, contracts/notion-api.md, quickstart.md
 
 **Prerequisites**: specs 001–004 finished (per the Bug Register rule in CLAUDE.md) unless Rostom promotes BUG-001 as urgent. Work on a branch named `phase-N/005-bug-001-notion`.
 
@@ -12,6 +12,7 @@
 
 - **[P]**: can run in parallel (different files, no dependency on an incomplete task)
 - **[Story]**: US1–US4 map to BUG-001's user stories in spec.md
+- Setup and Foundational phases carry no story label; User Story phases must carry [US1]–[US4]; Polish phase carries no label
 
 ## Path Conventions
 
@@ -35,7 +36,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 - [ ] T004 Add nullable `refreshTokenEnc: bytea('refresh_token_enc')` to `notionConnections` in `packages/db/src/schema.ts` and generate migration `packages/db/migrations/0009_*.sql` with the project's Drizzle generate script; confirm it contains only `ALTER TABLE "notion_connections" ADD COLUMN "refresh_token_enc" bytea;` (data-model §notion_connections)
 - [ ] T005 [P] Record Notion fixtures for the new calls in `packages/connectors/src/notion/fixtures/`: `token-refresh-200.json` (new `access_token` + `refresh_token`), `token-refresh-400-invalid-grant.json`, `revoke-200.json`, `search-empty-200.json` (`results: []`), shaped like the existing recorded fixtures (secrets redacted)
-- [ ] T006 Write failing contract tests in `packages/connectors/src/notion/client.test.ts` for `refreshToken(refreshToken)` (POST `/v1/oauth/token`, `grant_type: 'refresh_token'`, Basic auth; returns both tokens; throws `NotionAuthError` on 400/401), `revokeToken(token)` (POST to the revoke endpoint, Basic auth, body `{ token }`; resolves on 200; rejects on error or after a 5 s abort) and `hasSharedContent()` (search `page_size: 1`; `false` for empty results), each against the T005 fixtures; add the same cases for `FakeNotion` so the fake is validated against the same fixtures
+- [ ] T006 [P] Write failing contract tests in `packages/connectors/src/notion/client.test.ts` for `refreshToken(refreshToken)` (POST `/v1/oauth/token`, `grant_type: 'refresh_token'`, Basic auth; returns both tokens; throws `NotionAuthError` on 400/401), `revokeToken(token)` (POST to the revoke endpoint, Basic auth, body `{ token }`; resolves on 200; rejects on error or after a 5 s abort) and `hasSharedContent()` (search `page_size: 1`; `false` for empty results), each against the T005 fixtures; add the same cases for `FakeNotion` so the fake is validated against the same fixtures
 - [ ] T007 Implement `refreshToken`, `revokeToken` and `hasSharedContent` in `packages/connectors/src/notion/client.ts` and their scripted equivalents in `packages/connectors/src/notion/fake.ts` (add `failNextWith('refresh_refused' | 'revoke_error')` and a `setSharedContent(boolean)` switch) until T006 passes
 - [ ] T008 [P] Add routes to `infra/mocks/src/notion-fake-routes.ts` for token refresh, revoke, an empty-search mode, and an authorize page that can return `error=access_denied`, so e2e-ci can drive every callback outcome
 
@@ -145,12 +146,11 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - [ ] T042 Walk every table in `specs/005-fix-found-bugs/quickstart.md` and record results in the PR description
 - [ ] T043 After the tag carrying this fix passes the staging smoke, set BUG-001's Bug Register row in `specs/005-fix-found-bugs/spec.md` to `Fixed in vX.Y.Z` and record SC-001.2 from the first real staging connect
 
-
 ---
 
 ## Phase 8: Stage 2 cut-over (final stage)
 
-**Purpose**: move production to Cloudflare Workers + Pages (Stage 2) and tag `v1.0.0`. Moved here from spec 001 T119 on 2026-09-26 (Rostom) so it runs once, last, after every other spec and bug fix has shipped on Stage 1. The Stage 2 code (001 T117, T118, T125) is already built and kept green by the `worker-build` CI job.
+**Purpose**: move production to Cloudflare Workers + Pages (Stage 2) and tag `v1.0.0`. Moved here from spec 001 T119 on 2026-09-26 (Rostom) so it runs once, last, after every other spec and bug fix has shipped on Stage 1.
 
 - [ ] T044 Execute `docs/runbooks/cutover.md` (owner-only): full e2e-ci against the Cloudflare preview, per-user totals before and after, DNS flip, smoke on the custom domain, tag `v1.0.0`; keep Stage 1 as the one-hour rollback path and 30-day fallback, then scale Fly to zero. Afterwards update `docs/ROADMAP.md` Phase 6 and the "Current state" section of `CLAUDE.md`
 
@@ -167,7 +167,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - **US3 (Phase 5)**: after Phase 2 and T022 (cookie format).
 - **US4 (Phase 6)**: after Phase 2 and T023 (refresh token stored on connect).
 - **Polish (Phase 7)**: after the stories being shipped.
-- **Stage 2 cut-over (Phase 8)**: last of all, after specs 002–004 are finished and every open Bug Register entry is fixed or explicitly deferred by Rostom. Bugs found after the cut-over are registered as usual.
+- **Stage 2 cut-over (Phase 8)**: last of all, after specs 002–004 are finished and every open Bug Register entry is fixed or explicitly deferred by Rostom.
 
 ### User Story Dependencies
 
@@ -186,21 +186,6 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 - US2: T024 ∥ T025 alongside T022/T023.
 - US3 tests T027–T029 in parallel; US4 tests T032–T035 in parallel.
 - After Phase 2, US3 and US4 can proceed in parallel on different files except `apps/api/src/services/notion.ts` and `ConnectorsView.vue` (sequence those tasks).
-
-## Parallel Example: User Story 1
-
-```text
-# Tests together:
-T009 apps/api/test/notion-unavailable.test.ts
-T010 apps/api/test/routes-json.test.ts
-T011 apps/web/src/api/client.test.ts
-T012 apps/web/src/views/ConnectorsView.test.ts
-T013 apps/api/test/ownership.test.ts
-
-# Then implementation, T016 in parallel with T014 → T015:
-T014 apps/api/src/app.ts
-T016 apps/web/src/api/client.ts
-```
 
 ## Implementation Strategy
 

@@ -118,6 +118,10 @@ jobs:
       - run: pnpm flags set "appearance.accent" --global off
         env:
           DATABASE_URL: postgres://desk:desk@localhost:5432/desk
+      # Spec 006: appearance.motion defaults off; each motion test switches it on per-user.
+      - run: pnpm flags set "appearance.motion" --global off
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
       - run: pnpm test:e2e --project=ci
         env:
           CI: 'true'
@@ -127,19 +131,32 @@ jobs:
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+      # The compose logs dumped after a failure push lhci's output out of the readable job log;
+      # this puts each failed assertion on the check run as an annotation instead.
+      - if: failure()
+        working-directory: tests/e2e
+        run: node lighthouse-annotate.mjs .lighthouseci/assertion-results.json
       # Spec 004 T030: the run above sees the sign-in page (every URL redirects there). This one
       # measures the signed-in month view and settings on the production build (web-preview, 4173)
       # with a seeded user's session cookie. lighthouserc.session.json holds performance at `warn`
       # for both URLs until T032 (/) and T035 (/settings) flip them back to `error`.
+      # Spec 006 T030: appearance.motion is switched on first, then the same two pages are measured
+      # once per costliest preset (Particles = account default, Aurora drift) with performance held
+      # at the spec 004 numbers (/ 0.69, /settings 0.86) and accessibility at 0.95.
+      - run: pnpm flags set "appearance.motion" --global on
+        env:
+          DATABASE_URL: postgres://desk:desk@localhost:5432/desk
       - name: Lighthouse signed in
         working-directory: tests/e2e
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
         run: |
-          COOKIE=$(sh lighthouse-session.sh)
-          echo "::add-mask::$COOKIE"
-          pnpm exec lhci autorun --config=./lighthouserc.session.json --collect.settings.extraHeaders="{\"Cookie\":\"$COOKIE\"}"
-          sh lighthouse-check.sh ./lighthouse-reports/session
+          for preset in particles aurora; do
+            COOKIE=$(MOTION_PRESET=$preset sh lighthouse-session.sh)
+            echo "::add-mask::$COOKIE"
+            pnpm exec lhci autorun --config=./lighthouserc.session.json --upload.outputDir="./lighthouse-reports/session/$preset" --collect.settings.extraHeaders="{\"Cookie\":\"$COOKIE\"}"
+            sh lighthouse-check.sh "./lighthouse-reports/session/$preset"
+          done
       # Was "temporary-public-storage" (LHCI's own hosted service) — the reports include full
       # page content/screenshots, and this is a private product. Kept as a normal (private,
       # repo-scoped) Actions artifact instead.

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ACCENT_IDS } from './accent.js';
+import { MOTION_PRESET_IDS } from './motion.js';
 
 /** Shape of the `user` object returned by auth and /me endpoints. */
 export const UserResponse = z.object({
@@ -8,6 +9,10 @@ export const UserResponse = z.object({
   defaultCurrency: z.string(),
   theme: z.string(),
   accent: z.enum(ACCENT_IDS),
+  motionPreset: z.enum(MOTION_PRESET_IDS),
+  motionColour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  panelsTranslucent: z.boolean(),
+  motionPaused: z.boolean(),
   timeZone: z.string(),
   onboardingCompletedAt: z.string().nullable(),
   /** False until the address is confirmed; Settings shows it and offers a resend (FR-001). */

@@ -11,6 +11,13 @@ import { ApiError } from '../lib/api-error.js';
 type CategoryRow = typeof categoriesTable.$inferSelect;
 
 const OTHER_NAME = 'Other';
+const DUPLICATE_NAME = 'A category with that name already exists';
+/** The (user, name) unique violation; drizzle wraps the driver error, so look one level down too. */
+const isUniqueViolation = (e: unknown) =>
+  [e, (e as { cause?: unknown } | null)?.cause].some((x) => {
+    const err = x as { code?: string; constraint_name?: string } | null;
+    return err?.code === '23505' && err.constraint_name === 'categories_user_id_name_unique';
+  });
 function toResponse(row: CategoryRow): CategoryResponseT {
   return {
     id: row.id,
@@ -80,7 +87,10 @@ export function createCategoriesService(db: Db) {
           budgetMinor: input.budgetMinor ?? null,
           sortOrder: 999,
         })
-        .returning();
+        .returning()
+        .catch((e: unknown) => {
+          throw isUniqueViolation(e) ? new ApiError('conflict', DUPLICATE_NAME, 409) : e;
+        });
       if (!row) throw new Error('categories.create: insert returned no row');
       return toResponse(row);
     },
@@ -109,7 +119,10 @@ export function createCategoriesService(db: Db) {
           updatedAt: new Date(),
         })
         .where(eq(categoriesTable.id, current.id))
-        .returning();
+        .returning()
+        .catch((e: unknown) => {
+          throw isUniqueViolation(e) ? new ApiError('conflict', DUPLICATE_NAME, 409) : e;
+        });
       if (!row) throw new Error('categories.patch: update returned no row');
       return toResponse(row);
     },

@@ -11,24 +11,37 @@ defineProps<{
   variant?: 'default' | 'critical';
   /** The one Display-role figure on a screen (FR-011); `data-tile-primary` marks it. */
   primary?: boolean;
+  /** `value` is words (e.g. "No budget set"), not a figure: sans face, secondary size, one line. */
+  words?: boolean;
   /** Status words after the note, in the tone's colour (amber pending, red over). Always words. */
   status?: { text: string; tone: 'warn' | 'critical' }[];
 }>();
 </script>
 
 <template>
-  <div :class="['desk-tile-block', { 'desk-tile-block--primary': primary }]" data-tile>
+  <div
+    :class="[
+      'desk-tile-block',
+      'surface',
+      {
+        'desk-tile-block--primary': primary,
+        'desk-tile-block--critical': primary && variant === 'critical',
+      },
+    ]"
+    data-tile
+  >
     <Skeleton v-if="loading" height="4rem" />
     <template v-else-if="value !== undefined">
       <!-- The figure comes first in the text flow; the label is placed above it by order. -->
-      <span :class="['desk-tile-cell', { 'desk-tile-cell--seam': primary }]">
-        <span
-          :class="['desk-tile-value', { 'desk-tile-value--critical': variant === 'critical' }]"
-          data-testid="tile-amount"
-          :data-tile-primary="primary ? 'figure' : undefined"
-          >{{ value }}</span
-        >
-      </span>
+      <span
+        :class="[
+          'desk-tile-value',
+          { 'desk-tile-value--critical': variant === 'critical', 'desk-tile-value--words': words },
+        ]"
+        data-testid="tile-amount"
+        :data-tile-primary="primary ? 'figure' : undefined"
+        >{{ value }}</span
+      >
       <span class="desk-tile-label">{{ label }}</span>
       <p v-if="note" class="desk-forecast-basis">{{ note }}</p>
       <p
@@ -53,45 +66,22 @@ defineProps<{
   gap: var(--space-1);
   min-width: 0;
   padding: var(--space-4);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
 .desk-tile-block--primary {
-  background: var(--color-surface-raised);
   gap: var(--space-2);
+  /* The hero tile: accent border plus a 1px inset ring; red instead when over budget. */
+  border-color: var(--color-accent);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--color-accent);
 }
-/* The primary figure sits in a flap cell whose seam shows only at its hinges (the side margins),
-   never across the glyphs, so it cannot read as a strikethrough (DESIGN.md Tile). */
-.desk-tile-cell {
-  display: contents;
-}
-.desk-tile-cell--seam {
-  display: block;
-  position: relative;
-  align-self: flex-start;
-  max-width: 100%;
-  padding: var(--space-1) var(--space-3);
-  margin-inline: calc(-1 * var(--space-3));
-  border-radius: var(--radius-sm);
-  background: var(--color-surface);
-}
-.desk-tile-cell--seam::before,
-.desk-tile-cell--seam::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: var(--space-2);
-  border-top: 1px solid var(--color-border);
-  pointer-events: none;
-}
-.desk-tile-cell--seam::before {
-  left: 0;
-}
-.desk-tile-cell--seam::after {
-  right: 0;
+.desk-tile-block--critical {
+  border-color: var(--color-critical);
+  box-shadow:
+    var(--shadow-raised),
+    inset 0 0 0 1px var(--color-critical);
 }
 .desk-tile-action {
   font-size: var(--text-sm);
@@ -122,7 +112,7 @@ defineProps<{
 .desk-tile-value {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: var(--text-lg);
+  font-size: var(--text-figure);
   line-height: var(--leading-lg);
   font-weight: 500;
   overflow-wrap: anywhere;
@@ -133,6 +123,14 @@ defineProps<{
   line-height: var(--leading-display);
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
+}
+.desk-tile-block--primary .desk-tile-value--words {
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  line-height: var(--leading-lg);
+  font-weight: 600;
+  letter-spacing: var(--tracking-normal);
+  white-space: nowrap;
 }
 .desk-tile-value--critical {
   color: var(--color-critical);
@@ -159,7 +157,7 @@ defineProps<{
     font-size: var(--text-md);
     line-height: var(--leading-md);
   }
-  .desk-tile-block--primary .desk-tile-value {
+  .desk-tile-block--primary .desk-tile-value:not(.desk-tile-value--words) {
     font-size: var(--text-xl);
     line-height: var(--leading-xl);
   }

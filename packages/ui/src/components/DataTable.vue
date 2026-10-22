@@ -210,6 +210,31 @@ const colClass = (c: BoardColumn) => [
 .desk-data-table--board :deep(th) {
   padding-inline: var(--space-2);
 }
+/* Below 480 the date moves into the item's subline so the item column can read. */
+.desk-data-table :deep(.desk-item-date) {
+  display: none;
+}
+@media (max-width: 479px) {
+  .desk-data-table--board :deep(.desk-col--date) {
+    display: none;
+  }
+  .desk-data-table :deep(.desk-item-date) {
+    display: block;
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    color: var(--color-fg-muted);
+  }
+  .desk-data-table :deep(.desk-col--fill) {
+    min-width: 8rem;
+  }
+  /* The category/stamp subline wraps here instead of ending in an ellipsis. No line clamp: how
+     many lines a long name needs depends on the font (Segoe UI vs DejaVu Sans), and nothing is cut. */
+  .desk-data-table.desk-data-table--board :deep(.desk-item-cat) {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
 /* Heads take the Label role: small spaced capitals over a 1px Frame Line. */
 .desk-data-table thead th {
   height: auto;
@@ -355,12 +380,12 @@ const colClass = (c: BoardColumn) => [
     width: var(--space-16);
   }
   .desk-data-table :deep(.desk-col--amount) {
-    width: 9rem;
+    width: 8rem;
   }
   .desk-data-table :deep(th.desk-col--md),
   .desk-data-table :deep(td.desk-col--md) {
     display: table-cell;
-    width: 30%;
+    width: 7.5rem;
     color: var(--color-fg-muted);
     overflow: hidden;
     text-overflow: ellipsis;

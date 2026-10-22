@@ -29,6 +29,7 @@ import {
   estimatedTotal,
   list as listQueue,
   discard as discardQueued,
+  flushWhenOnline as flushQueue,
   retry as retryQueued,
   type QueuedExpense,
 } from '../offline/queue.js';
@@ -116,13 +117,13 @@ onUnmounted(() => {
   window.removeEventListener('online', onBackOnline);
 });
 
-// Give flush() (fired on the same 'online' event, from initOfflineQueue) a moment to finish
-// before reloading — then refresh both the queue and the authoritative month totals.
+// flush() (also fired on this 'online' event, from initOfflineQueue) is shared while in flight, so
+// awaiting it here means the queue and the month totals reload only after the POSTs have landed.
 function onBackOnline() {
-  setTimeout(() => {
+  void flushQueue().then(() => {
     loadQueue();
     store.loadMonth();
-  }, 500);
+  });
 }
 
 const monthLabel = computed(() => store.currentMonth);
@@ -305,6 +306,7 @@ const entryColumns: BoardColumn[] = [
           <Tile
             class="desk-tile desk-tile--primary"
             primary
+            :words="!budgeted"
             :label="over ? 'Over budget this month' : 'Left this month'"
             :value="budgeted ? splitMoney(fmt(store.summary.remaining)).figure : 'No budget set'"
             :variant="over ? 'critical' : 'default'"
@@ -349,7 +351,33 @@ const entryColumns: BoardColumn[] = [
         description="Add one to get started."
       />
       <div v-else class="desk-month-view-columns">
-        <PanelFrame heading="Entries" data-panel="entries">
+        <PanelFrame
+          v-if="store.summary"
+          heading="Categories"
+          data-panel="categories"
+          class="desk-panel-categories"
+        >
+          <div class="desk-month-view-bars">
+            <Tabs v-model="catTab" :tabs="catTabs" label="Category view">
+              <template #bars>
+                <CategoryBars
+                  :categories="categoryBars"
+                  :currency="store.summary.currency"
+                  :format-money="fmt"
+                />
+              </template>
+              <template #table>
+                <DataTable
+                  caption="Spending by category"
+                  :categories="categoryBars"
+                  :format-money="fmt"
+                />
+              </template>
+            </Tabs>
+          </div>
+        </PanelFrame>
+
+        <PanelFrame heading="Entries" data-panel="entries" class="desk-panel-entries">
           <DataTable
             class="desk-entries-table"
             caption="Entries, newest first"
@@ -367,6 +395,9 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-item-date desk-item-date--solo">{{
+                    shortDay(q.input.date)
+                  }}</span>
                   <span class="desk-status-word desk-status-word--warn">pending</span>
                 </span>
               </td>
@@ -393,6 +424,9 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ q.input.description }}</span>
+                  <span class="desk-item-date desk-item-date--solo">{{
+                    shortDay(q.input.date)
+                  }}</span>
                   <span class="desk-status-word desk-status-word--critical"
                     >failed: {{ q.reason ?? 'unknown error' }}</span
                   >
@@ -424,6 +458,7 @@ const entryColumns: BoardColumn[] = [
               <td>
                 <span class="desk-item">
                   <span class="desk-item-name">{{ e.description }}</span>
+                  <span class="desk-item-date">{{ shortDay(e.date) }}</span>
                   <span class="desk-item-cat">{{
                     e.categoryId ? (categoryNames[e.categoryId] ?? e.categoryId) : '—'
                   }}</span>
@@ -465,27 +500,6 @@ const entryColumns: BoardColumn[] = [
               </td>
             </tr>
           </DataTable>
-        </PanelFrame>
-
-        <PanelFrame v-if="store.summary" heading="Categories" data-panel="categories">
-          <div class="desk-month-view-bars">
-            <Tabs v-model="catTab" :tabs="catTabs" label="Category view">
-              <template #bars>
-                <CategoryBars
-                  :categories="categoryBars"
-                  :currency="store.summary.currency"
-                  :format-money="fmt"
-                />
-              </template>
-              <template #table>
-                <DataTable
-                  caption="Spending by category"
-                  :categories="categoryBars"
-                  :format-money="fmt"
-                />
-              </template>
-            </Tabs>
-          </div>
         </PanelFrame>
       </div>
     </template>
@@ -573,15 +587,28 @@ const entryColumns: BoardColumn[] = [
 .desk-entries-rejected {
   background: var(--color-surface);
 }
-/* Tiles: two-up on phones with the departure tile across; from 1024px one row of five columns. */
+/* Tiles wrap by their own width; the hero and the forecast tile keep their sizes by content. */
 .desk-month-view-tiles {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: var(--space-3);
 }
-.desk-tile--primary,
-.desk-month-view-tiles > [data-testid='forecast-tile'] {
-  grid-column: 1 / -1;
+/* Categories and Entries side by side while both fit, one column on a phone. */
+.desk-month-view-columns {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+.desk-month-view-columns > :deep(.desk-panel-categories) {
+  flex: 1 1 380px;
+  min-width: 0;
+}
+.desk-month-view-columns > :deep(.desk-panel-entries) {
+  /* Grows faster than Categories so the item column keeps the width long names need, in the
+     wider Linux fallback faces (DejaVu Sans) as well as Segoe UI. */
+  flex: 2.5 1 460px;
+  min-width: 0;
 }
 .desk-month-view-pad {
   padding: var(--space-2) var(--space-4);
@@ -592,32 +619,9 @@ const entryColumns: BoardColumn[] = [
   gap: var(--space-6);
   padding: var(--space-2) var(--space-4);
 }
-.desk-month-view-columns {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-6);
-}
 @media (min-width: 768px) {
   .desk-month-view {
     padding-top: var(--space-6);
-  }
-}
-@media (min-width: 1024px) {
-  .desk-month-view-tiles {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    gap: var(--space-4);
-  }
-  .desk-tile--primary {
-    grid-column: span 2;
-  }
-  .desk-month-view-tiles > [data-testid='forecast-tile'] {
-    grid-column: auto;
-  }
-  /* Entries board and category bars side by side. */
-  .desk-month-view-columns {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    align-items: start;
   }
 }
 </style>

@@ -1,4 +1,5 @@
 import '@desk/ui/tokens.css';
+import '@desk/ui/surface.css';
 import { ViteSSG } from 'vite-ssg';
 import App from './App.vue';
 import Index from './pages/index.vue';

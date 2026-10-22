@@ -1,7 +1,14 @@
 import 'fake-indexeddb/auto';
 import { openDB } from 'idb';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { enqueue, estimatedTotal, flush, initOfflineQueue, list } from './queue.js';
+import {
+  enqueue,
+  estimatedTotal,
+  flush,
+  flushWhenOnline,
+  initOfflineQueue,
+  list,
+} from './queue.js';
 
 /** Test-only: clears the 'pending-expenses' store between tests, including rejected rows
  * that flush() deliberately never retries. */
@@ -109,6 +116,31 @@ describe('offline queue', () => {
     await enqueue({ ...baseInput, amount: { minor: 999, currency: 'EUR' } });
     expect(estimatedTotal(await list(), 'GBP')).toBe(850);
   });
+
+  it('overlapping flush calls share one run and both resolve after it finished', async () => {
+    await enqueue(baseInput);
+    const fetchMock = vi.fn(
+      () =>
+        new Promise<Response>((r) => setTimeout(() => r(jsonResponse({ expense: {} }, 201)), 50)),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    await Promise.all([flush(), flush()]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(await list()).toHaveLength(0);
+  });
+
+  it('flushWhenOnline retries a row whose first POST hit a network error', async () => {
+    await enqueue(baseInput);
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockRejectedValueOnce(new TypeError('Failed to fetch'))
+        .mockResolvedValue(jsonResponse({ expense: {} }, 201)),
+    );
+    await flushWhenOnline();
+    expect(await list()).toHaveLength(0);
+  }, 10_000);
 
   it('flush fires on the online event', async () => {
     await enqueue(baseInput);

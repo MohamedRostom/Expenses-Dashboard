@@ -1,4 +1,13 @@
+<script setup lang="ts">
+import { BackgroundMotion } from '@desk/ui';
+
+// Off unless the landing site is built with the flag on (FR-021); the html attributes the layer
+// needs are written at build time in vite.config.ts.
+const motion = import.meta.env.VITE_APPEARANCE_MOTION === 'true';
+</script>
+
 <template>
+  <BackgroundMotion v-if="motion" />
   <router-view />
 </template>
 

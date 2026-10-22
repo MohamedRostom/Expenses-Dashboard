@@ -3,7 +3,7 @@ import { content } from '../content';
 </script>
 
 <template>
-  <main class="page">
+  <main class="page surface">
     <p class="draft-notice">
       Draft placeholder — not reviewed by counsel. Replace before any production launch.
     </p>
@@ -39,10 +39,10 @@ import { content } from '../content';
 .page {
   max-width: 65ch;
   margin: 0 auto;
-  padding: var(--space-6) var(--gutter-fluid) var(--space-8);
+  padding: var(--space-6) var(--space-4);
+  margin-block: var(--space-6);
   font-family: var(--font-sans);
   color: var(--color-fg);
-  background: var(--color-bg);
 }
 .draft-notice {
   background: color-mix(in srgb, var(--color-warn) 15%, transparent);

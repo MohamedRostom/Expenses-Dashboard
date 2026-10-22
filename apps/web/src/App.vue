@@ -1,14 +1,21 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import { Toast } from '@desk/ui';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { BackgroundMotion, Toast } from '@desk/ui';
 import FeedbackWidget from './components/FeedbackWidget.vue';
+import AuthBackdrop from './components/AuthBackdrop.vue';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyAccent, applyTheme } from './views/theme.js';
+import { applyAccent, applyMotion, applyTheme } from './views/theme.js';
 
 const route = useRoute();
+const router = useRouter();
 const session = useSessionStore();
+// The auth guard only runs on navigation, so clearing the session alone left the old screen up.
+async function signOut() {
+  await session.logout();
+  await router.replace('/login');
+}
 const flags = useFlagsStore();
 // Important-list fix: the saved theme used to apply only once SettingsView happened to mount —
 // every other screen showed the default light/dark-by-OS look regardless of the user's choice.
@@ -24,10 +31,53 @@ watch(
   ([accent, enabled]) => applyAccent(accent, enabled),
   { immediate: true },
 );
+// Spec 006: background motion state on <html>. Theme is applied first (applyMotion reads it), and
+// the state is re-derived on theme, flag, prefs, tab visibility and system colour-scheme changes.
+const hidden = ref(typeof document !== 'undefined' && document.visibilityState === 'hidden');
+const onVisibility = () => (hidden.value = document.visibilityState === 'hidden');
+const dark = typeof matchMedia === 'function' ? matchMedia('(prefers-color-scheme: dark)') : null;
+const scheme = ref(0);
+const onScheme = () => scheme.value++;
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibility);
+  dark?.addEventListener?.('change', onScheme);
+});
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibility);
+  dark?.removeEventListener?.('change', onScheme);
+});
+watch(
+  () =>
+    [
+      session.user?.theme,
+      session.user?.motionPreset,
+      session.user?.motionColour,
+      session.user?.panelsTranslucent,
+      session.user?.motionPaused,
+      flags.isOn('appearance.motion'),
+      hidden.value,
+      scheme.value,
+    ] as const,
+  () =>
+    applyMotion(session.user ?? null, {
+      enabled: flags.isOn('appearance.motion'),
+      hidden: hidden.value,
+    }),
+  { immediate: true, flush: 'post' },
+);
+// Flags follow the auth state: public set signed out, full set signed in (the store dedupes).
+watch(
+  () => !!session.user,
+  () => flags.load(),
+  { immediate: true },
+);
 // Signed-in app screens only: auth pages and the onboarding wizard stay chrome-free.
 const showNav = computed(
   () => !!session.user && !!route.meta.requiresAuth && route.name !== 'onboarding',
 );
+
+const SIGNED_OUT_PAGES = new Set(['login', 'register', 'verify', 'forgot', 'reset']);
+const onSignedOutPage = computed(() => SIGNED_OUT_PAGES.has(String(route.name)));
 
 // Show Today link only when the flag is on
 const showTodayLink = computed(() => flags.isOn('panels.today'));
@@ -44,9 +94,13 @@ const showTodayLink = computed(() => flags.isOn('panels.today'));
       <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>
       <RouterLink :to="{ name: 'settings' }">Settings</RouterLink>
       <RouterLink :to="{ name: 'settings-connectors' }">Connectors</RouterLink>
-      <button type="button" class="desk-nav-signout" @click="session.logout()">Sign out</button>
+      <button type="button" class="desk-nav-signout" @click="signOut">Sign out</button>
     </nav>
   </header>
+  <!-- Signed-out pages cycle their own backdrop (ADR-0007 amendment 2026-10-18); moving only
+       while appearance.motion is on, a still scene otherwise. -->
+  <AuthBackdrop v-if="onSignedOutPage" :animate="flags.isOn('appearance.motion')" />
+  <BackgroundMotion v-else />
   <RouterView />
   <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
   <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />

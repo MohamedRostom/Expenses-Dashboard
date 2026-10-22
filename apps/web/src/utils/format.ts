@@ -34,6 +34,18 @@ export function formatDateTime(isoStr: string, locale?: string): string {
   );
 }
 
+/** Compact "last seen" stamp: like formatDateTime but without the year when it is the current one. */
+export function formatSeen(isoStr: string, locale?: string, now: Date = new Date()): string {
+  const d = new Date(isoStr);
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    day: 'numeric',
+    ...(d.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' }),
+    hour: 'numeric',
+    minute: '2-digit',
+  }).format(d);
+}
+
 const BROWSER_PATTERNS: [RegExp, string][] = [
   [/Edg\//, 'Edge'],
   [/OPR\//, 'Opera'],

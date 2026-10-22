@@ -253,7 +253,8 @@ async function timings(page: Page): Promise<Timing[]> {
           ms: [cs.transitionDuration, cs.animationDuration],
           delay: [cs.transitionDelay, cs.animationDelay],
           iter: cs.animationIterationCount,
-          skeleton: !!el.closest('[data-skeleton], [class*="skeleton"]'),
+          // The skeleton pulse and spec 006's background layer (own pause/reduce rules) are exempt.
+          skeleton: !!el.closest('[data-skeleton], [class*="skeleton"], .desk-motion'),
         });
       }
     }

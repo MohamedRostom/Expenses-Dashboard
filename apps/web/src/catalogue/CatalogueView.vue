@@ -122,6 +122,12 @@ const Cell = (p: { s: Story; v: StoryCase; st: StoryCase }) => render(p.s, p.v, 
   min-width: 0;
   overflow-x: auto;
 }
+/* BackgroundMotion is position: fixed; a transform makes the cell its containing block so the example
+   has a box to draw (and screenshot) in. */
+.cat-cell:has(.desk-motion) {
+  transform: translateZ(0);
+  min-block-size: 8rem;
+}
 .cat-theme {
   background: var(--color-bg);
   color: var(--color-fg);

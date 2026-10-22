@@ -79,3 +79,12 @@ describe('DataTable board mode (T032)', () => {
     expect(el.querySelectorAll('tbody tr')).toHaveLength(1);
   });
 });
+
+describe('DataTable board column sizing (T048)', () => {
+  it('the category column is a fixed rem width so the item column takes the free width', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/DataTable.vue', 'utf8');
+    expect(src).not.toContain('width: 30%');
+    expect(src).toMatch(/td\.desk-col--md\) \{[^}]*width: 7.5rem/);
+  });
+});

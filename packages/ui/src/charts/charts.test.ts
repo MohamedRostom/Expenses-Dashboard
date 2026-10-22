@@ -25,6 +25,13 @@ describe('series and over-budget colours', () => {
     expect(rule(css, 'desk-category-bars-fill-critical')).toContain('var(--color-critical)');
     expect(rule(css, 'desk-category-bars-tick')).toMatch(/stroke:\s*var\(--color-/);
   });
+  it('CategoryBars: 8px round track and an "Over budget by" line (T044)', () => {
+    const t = src('CategoryBars');
+    const css = style(t);
+    expect(rule(css, 'desk-category-bars-svg')).toMatch(/height:\s*var\(--space-2\)/);
+    expect(rule(css, 'desk-category-bars-svg')).toMatch(/border-radius:\s*var\(--radius-xl\)/);
+    expect(t).toContain('Over budget by {{ formatMinor(c.spent - c.budget!) }}');
+  });
   it('YearBars: fill is accent, over-budget is critical', () => {
     const css = style(src('YearBars'));
     expect(rule(css, 'desk-year-bars-fill')).toContain('var(--color-accent)');

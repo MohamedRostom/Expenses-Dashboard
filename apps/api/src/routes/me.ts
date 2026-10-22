@@ -26,6 +26,7 @@ import {
   type ExportDocumentT,
   type ConfirmEmailResponseT,
   type AccentId,
+  type MotionPresetId,
 } from '@desk/contracts';
 import type { AppVariables, JobsDep } from '../app.js';
 import type { SessionUser } from '../middleware/session.js';
@@ -59,6 +60,10 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     defaultCurrency: u.defaultCurrency,
     theme: u.theme,
     accent: u.accent as AccentId,
+    motionPreset: u.motionPreset as MotionPresetId,
+    motionColour: u.motionColour,
+    panelsTranslucent: u.panelsTranslucent,
+    motionPaused: u.motionPaused,
     timeZone: u.timeZone,
     temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
@@ -93,6 +98,12 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     const patch: Partial<typeof usersTable.$inferInsert> = {};
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.accent !== undefined) patch.accent = patchBody.accent;
+    if (patchBody.motionPreset !== undefined) patch.motionPreset = patchBody.motionPreset;
+    if (patchBody.motionColour !== undefined)
+      patch.motionColour = patchBody.motionColour.toLowerCase();
+    if (patchBody.panelsTranslucent !== undefined)
+      patch.panelsTranslucent = patchBody.panelsTranslucent;
+    if (patchBody.motionPaused !== undefined) patch.motionPaused = patchBody.motionPaused;
     if (patchBody.timeZone !== undefined) patch.timeZone = patchBody.timeZone;
     if (patchBody.temperatureUnit !== undefined) patch.temperatureUnit = patchBody.temperatureUnit;
     if (patchBody.onboardingCompletedAt !== undefined) {

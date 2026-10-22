@@ -73,7 +73,7 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 
 <template>
   <article
-    class="desk-widget-frame"
+    class="desk-widget-frame surface"
     data-testid="widget-frame"
     :data-state="w.state"
     :data-widget-id="w.id"
@@ -131,9 +131,6 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }

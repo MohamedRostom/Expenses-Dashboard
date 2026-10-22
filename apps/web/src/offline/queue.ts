@@ -61,16 +61,35 @@ export function estimatedTotal(rows: QueuedExpense[], currency: string): number 
 // can genuinely overlap — without a guard, two concurrent calls both read the same pending row
 // before either deletes it, firing a duplicate POST /expenses (harmless — create is idempotent
 // by client id — but still a wasted request every time it happens).
-let flushing = false;
+// Overlapping callers share the in-flight run and await its end, so a caller that reloads the
+// queue after flush() never reads it while another caller's POST is still pending.
+let inflight: Promise<void> | null = null;
 
-export async function flush(): Promise<void> {
-  if (flushing) return;
-  flushing = true;
-  try {
-    await flushOnce();
-  } finally {
-    flushing = false;
-  }
+export function flush(): Promise<void> {
+  inflight ??= flushOnce().finally(() => {
+    inflight = null;
+  });
+  return inflight;
+}
+
+const RETRY_DELAYS_MS = [1000, 2000, 4000];
+let retrying: Promise<void> | null = null;
+
+/** flush() for the `online` event: the event fires before the connection is reliably usable, so the
+ * first POST can fail with a network error and leave the row pending with nothing to retry it.
+ * Retries a few times with a growing delay while rows remain pending; shared while in flight. */
+export function flushWhenOnline(): Promise<void> {
+  retrying ??= (async () => {
+    for (let i = 0; ; i++) {
+      await flush();
+      if (i >= RETRY_DELAYS_MS.length || !(await list()).some((r) => r.status === 'pending'))
+        return;
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[i]));
+    }
+  })().finally(() => {
+    retrying = null;
+  });
+  return retrying;
 }
 
 async function flushOnce(): Promise<void> {
@@ -114,5 +133,5 @@ export async function retry(id: string): Promise<void> {
  * dead code, so it's a real to-do rather than a false "it works" left in place. */
 export function initOfflineQueue(): void {
   void flush();
-  window.addEventListener('online', () => void flush());
+  window.addEventListener('online', () => void flushWhenOnline());
 }

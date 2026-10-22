@@ -320,6 +320,8 @@ const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 
 
 // T033 helpers: open the add sheet with `n`; fail the save; fill the form and save.
 const openSheet = async (page: Page) => {
+  // The 'n' shortcut exists only once MonthView has mounted (its route chunk loads lazily).
+  await expect(page.getByRole('button', { name: 'Add expense' }).first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(page.getByRole('dialog', { name: 'Add expense' })).toBeVisible();
 };
@@ -649,9 +651,9 @@ export const SCREENS: Screen[] = [
           body: JSON.stringify({
             month: new Date().toISOString().slice(0, 7),
             currency: 'USD',
-            spentToDate: 12_409_053,
+            spentToDate: 33_500,
             committedFixed: 0,
-            forecast: 38_468_064,
+            forecast: 50_882,
             basis: ['spend to date', 'variable run-rate'],
           }),
         }),
@@ -659,8 +661,8 @@ export const SCREENS: Screen[] = [
     states: ['loading', 'empty', 'error'],
     force: {
       empty: {
-        setup: (page) =>
-          page.route('**/expenses?month=*', (route) =>
+        setup: async (page) => {
+          await page.route('**/expenses?month=*', (route) =>
             route.fulfill({
               contentType: 'application/json',
               body: JSON.stringify({
@@ -676,7 +678,22 @@ export const SCREENS: Screen[] = [
                 },
               }),
             }),
-          ),
+          );
+          // An empty GBP month forecasts nothing (T048: it showed the default mock's USD figure).
+          await page.route('**/summary/forecast*', (route) =>
+            route.fulfill({
+              contentType: 'application/json',
+              body: JSON.stringify({
+                month: new Date().toISOString().slice(0, 7),
+                currency: 'GBP',
+                spentToDate: 0,
+                committedFixed: 0,
+                forecast: 0,
+                basis: ['spend to date'],
+              }),
+            }),
+          );
+        },
       },
     },
   },
@@ -733,7 +750,9 @@ export const SCREENS: Screen[] = [
       empty: {
         setup: (page) =>
           page.route('**/categories', (route) =>
-            route.request().method() === 'GET'
+            // fetch only: the same glob also matches the page's own navigation to this URL, which
+            // used to render the JSON body as the "empty" baseline.
+            route.request().method() === 'GET' && route.request().resourceType() === 'fetch'
               ? route.fulfill({ contentType: 'application/json', body: '{"categories":[]}' })
               : route.fallback(),
           ),
@@ -765,6 +784,25 @@ export const SCREENS: Screen[] = [
     route: '/settings',
     signedIn: true,
     panels: ['#st-sessions', '#st-delete'],
+    // The Sessions row prints the session's real device and "Last seen" time, which change every
+    // run (width of "4:08 AM" vs "11:42 AM"). Pin one row; the year is the current one so the
+    // stamp stays year-less on any date (formatSeen drops it).
+    mock: (page) =>
+      page.route(/\/me\/sessions$/, (route) =>
+        route.fulfill(
+          json({
+            sessions: [
+              {
+                id: 'visual-session-1',
+                current: true,
+                lastSeenAt: new Date(new Date().getFullYear(), 2, 14, 9, 30).toISOString(),
+                userAgent:
+                  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
+              },
+            ],
+          }),
+        ),
+      ),
     states: ['loading', 'error'],
   },
   {
@@ -1053,7 +1091,8 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
       const headers = await csrfHeaders(page);
       const cat = await page.request.post('/categories', {
         headers,
-        data: { name: EDGE_CATEGORY, colour: '#3a6ea5' },
+        // A budget keeps the hero a Display figure (no budget makes it words; FR-011 needs a figure).
+        data: { name: EDGE_CATEGORY, colour: '#3a6ea5', budgetMinor: 20_000_000 },
       });
       expect(cat.ok()).toBe(true);
       const categoryId = ((await cat.json()) as { category: { id: string } }).category.id;
@@ -1079,6 +1118,24 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
         });
       await post('Large amount', 12_345_678, '01');
       for (let i = 0; i < 30; i++) await post(`Busy day entry ${i + 1}`, 300 + i * 125, '15');
+      // One over-budget category so the bars' gutter lamp is in the baselines.
+      const over = await page.request.post('/categories', {
+        headers,
+        data: { name: 'Client dinners', colour: '#b5651d', budgetMinor: 5_000 },
+      });
+      expect(over.ok()).toBe(true);
+      const overId = ((await over.json()) as { category: { id: string } }).category.id;
+      await page.request.post('/expenses', {
+        headers,
+        data: {
+          description: 'Team dinner',
+          amount: { minor: 7_500, currency },
+          date: `${month}-10`,
+          categoryId: overId,
+          paidWith: 'card',
+          kind: 'variable',
+        },
+      });
     }
     await screen.seed?.(page, ctx);
   }
@@ -1104,6 +1161,32 @@ const failFetches = (page: Page) =>
       : route.fallback(),
   );
 
+// Ready = the app has mounted something, no skeleton is showing and the DOM has been quiet for 500 ms
+// (data arriving re-renders it). networkidle is not used: it also counts sockets, fonts and the
+// like, and timed out on bin/empty; requests answered through the service worker are invisible to
+// request events, so those cannot be counted either.
+async function ready(page: Page) {
+  await expect(page.locator('#app > *').first()).toBeVisible();
+  await page.waitForFunction(
+    () =>
+      new Promise<boolean>((resolve) => {
+        let timer = setTimeout(done, 500);
+        const obs = new MutationObserver(() => {
+          clearTimeout(timer);
+          timer = setTimeout(done, 500);
+        });
+        function done() {
+          obs.disconnect();
+          // Skeleton.vue sets no aria-busy, so look for its class as well.
+          resolve(!document.querySelector('[aria-busy="true"], .desk-skeleton'));
+        }
+        obs.observe(document.body, { subtree: true, childList: true, characterData: true });
+      }),
+    undefined,
+    { timeout: 15_000 },
+  );
+}
+
 async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: ScreenState) {
   await screen.mock?.(page);
   if (state === 'loading') await holdFetches(page);
@@ -1111,7 +1194,7 @@ async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: Scree
   else if (state === 'empty') await screen.force?.empty?.setup?.(page);
   await page.goto(routeOf(screen, ctx));
   if (state !== 'loading') {
-    await page.waitForLoadState('networkidle');
+    await ready(page);
     if (state !== 'default') await screen.force?.[state]?.after?.(page);
   }
   if (state === 'default') await screen.afterLoad?.(page);
@@ -1181,7 +1264,9 @@ for (const vp of viewports) {
       overflow: getComputedStyle(el).textOverflow,
       label: el.getAttribute('title') ?? el.getAttribute('aria-label') ?? el.textContent,
     }));
-    expect(m.over).toBe(true);
+    // Spec 006 T044: the Categories panel grows to fill the row (flex 1 1 380px), so at 1280 the
+    // 48-character name fits whole; it only has to overflow where the panel is a phone's width.
+    if (vp.width < 768) expect(m.over).toBe(true);
     expect(m.overflow).toBe('ellipsis');
     expect(m.label).toContain(EDGE_CATEGORY);
 
@@ -1236,17 +1321,17 @@ for (const vp of viewports) {
 }
 
 // Finish-review: at 360 the first viewport holds the departure tile, the smaller tiles and the head
-// of the entries board (the widget strip sits after the tiles and is empty with no widgets), and the
-// add sheet's submit button is inside the viewport without scrolling.
-test('@visual screen month entries board starts inside the first viewport 360', async ({
+// of the first board (Categories since spec 006 T044; the widget strip sits after the tiles and is
+// empty with no widgets), and the add sheet's submit button is inside the viewport without scrolling.
+test('@visual screen month categories board starts inside the first viewport 360', async ({
   page,
 }) => {
   const screen = SCREENS.find((s) => s.name === 'month')!;
   await page.setViewportSize({ width: 360, height: 800 });
   const ctx = await prepare(page, screen);
   await openScreen(page, screen, ctx, 'default');
-  const box = (await page.locator('[data-panel="entries"]').boundingBox())!;
-  expect(box.y, 'entries panel top').toBeLessThan(800);
+  const box = (await page.locator('[data-panel="categories"]').boundingBox())!;
+  expect(box.y, 'categories panel top').toBeLessThan(800);
 });
 
 test('@visual screen add-sheet submit is visible without scrolling 360', async ({ page }) => {
@@ -1268,11 +1353,12 @@ for (const vp of viewports) {
     const ctx = await prepare(page, screen);
     await openScreen(page, screen, ctx, 'default');
     await expect(page.locator('main')).toHaveCount(1);
+    await expect(page.locator('main h1')).toBeVisible();
     const left = (sel: string) =>
       page.evaluate((s) => document.querySelector(s)!.getBoundingClientRect().left, sel);
     const settingsLeft = await left('main h1');
     await page.goto('/');
-    await page.waitForLoadState('networkidle');
+    await expect(page.locator('main')).toBeVisible();
     const homeLeft = await left('main');
     const homeInner = await page.evaluate(() => {
       const m = document.querySelector('main')!;

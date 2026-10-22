@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, ref } from 'vue';
 import type { CategoryResponseT } from '@desk/contracts';
 import {
   Button,
@@ -9,6 +9,7 @@ import {
   ErrorState,
   Input,
   MenuButton,
+  PanelFrame,
   Select,
   Skeleton,
   useToast,
@@ -64,6 +65,70 @@ const kindOptions = [
   { value: 'variable', label: 'Variable' },
   { value: 'one_off', label: 'One-off' },
 ];
+const kindLabel = (kind: string | null) =>
+  kind ? (kindOptions.find((o) => o.value === kind)?.label ?? kind) : '—';
+
+/** Empty or zero means no budget: the API takes a positive budget or null. Throws on too many
+ *  decimal places for the currency. */
+function toBudgetMinor(major: string): number | null {
+  const trimmed = major.trim().replace(/\.$/, '');
+  if (!/[1-9]/.test(trimmed)) return null; // also covers "0.00": Money itself refuses zero
+  return parseMajor(
+    trimmed.startsWith('.') ? `0${trimmed}` : trimmed,
+    session.user?.defaultCurrency ?? 'GBP',
+  ).minor;
+}
+
+async function patchCategory(c: CategoryResponseT, body: Record<string, unknown>) {
+  try {
+    await apiFetch(`/categories/${c.id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    await load();
+  } catch (err) {
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  }
+}
+
+function setKind(c: CategoryResponseT, value: string) {
+  void patchCategory(c, { defaultKind: value || null });
+}
+
+// Inline budget edit: one row at a time; Enter or leaving the field saves, Escape cancels.
+const budgetEditId = ref<string | null>(null);
+const budgetDraft = ref('');
+let budgetInput: HTMLInputElement | null = null;
+const setBudgetInput = (el: unknown) => {
+  budgetInput = el as HTMLInputElement | null;
+};
+async function startBudget(c: CategoryResponseT) {
+  budgetDraft.value =
+    c.budgetMinor != null
+      ? formatMajor({ minor: c.budgetMinor, currency: session.user?.defaultCurrency ?? 'GBP' })
+      : '';
+  budgetEditId.value = c.id;
+  await nextTick();
+  budgetInput?.focus();
+}
+/** Keeps digits and the first decimal point only. */
+function onBudgetInput(e: Event) {
+  const el = e.target as HTMLInputElement;
+  let v = el.value.replace(/[^\d.]/g, '');
+  const dot = v.indexOf('.');
+  if (dot >= 0) v = v.slice(0, dot + 1) + v.slice(dot + 1).replace(/\./g, '');
+  el.value = v;
+  budgetDraft.value = v;
+}
+function commitBudget(c: CategoryResponseT) {
+  if (budgetEditId.value !== c.id) return; // Enter already saved; this is the blur that follows
+  let minor: number | null;
+  try {
+    minor = toBudgetMinor(budgetDraft.value);
+  } catch {
+    toast.push('Too many decimal places for your currency.', 'critical');
+    return;
+  }
+  budgetEditId.value = null;
+  if (minor !== c.budgetMinor) void patchCategory(c, { budgetMinor: minor });
+}
 
 async function load() {
   loading.value = true;
@@ -106,9 +171,13 @@ function openEdit(c: CategoryResponseT) {
 }
 
 async function save() {
-  const budgetMinor = form.value.budgetMajor
-    ? parseMajor(form.value.budgetMajor, session.user?.defaultCurrency ?? 'GBP').minor
-    : null;
+  let budgetMinor: number | null;
+  try {
+    budgetMinor = toBudgetMinor(String(form.value.budgetMajor ?? ''));
+  } catch {
+    toast.push('Too many decimal places for your currency.', 'critical');
+    return;
+  }
   const payload = {
     name: form.value.name,
     colour: form.value.colour,
@@ -177,40 +246,78 @@ async function remove(c: CategoryResponseT) {
       <button type="button" @click="dismissReviewBanner">Dismiss</button>
     </div>
 
-    <Skeleton v-if="loading" height="12rem" />
-    <ErrorState v-else-if="error" :code="error ?? undefined" />
-    <EmptyState v-else-if="categories.length === 0" title="No categories yet" />
+    <PanelFrame v-if="loading || error || categories.length === 0" heading="Categories">
+      <Skeleton v-if="loading" height="12rem" />
+      <ErrorState v-else-if="error" :code="error ?? undefined" />
+      <EmptyState v-else title="No categories yet" />
+    </PanelFrame>
     <template v-else>
-      <DataTable :columns="columns" dense caption="Categories" class="desk-categories-table">
-        <tr v-for="c in active" :key="c.id">
-          <td>
-            <span class="desk-item">
-              <span class="desk-categories-name">
-                <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
-                <Button
-                  variant="ghost"
-                  class="desk-categories-edit"
-                  :aria-label="`Edit ${c.name}`"
-                  @click="openEdit(c)"
-                  >{{ c.name }}</Button
-                >
+      <PanelFrame heading="Active">
+        <DataTable :columns="columns" dense caption="Categories" class="desk-categories-table">
+          <tr v-for="c in active" :key="c.id">
+            <td>
+              <span class="desk-item">
+                <span class="desk-categories-name">
+                  <span class="desk-categories-swatch" :style="{ backgroundColor: c.colour }" />
+                  <Button
+                    variant="ghost"
+                    class="desk-categories-edit"
+                    :aria-label="`Edit ${c.name}`"
+                    @click="openEdit(c)"
+                    >{{ c.name }}</Button
+                  >
+                </span>
+                <span class="desk-item-actions">
+                  <MenuButton
+                    :label="`Actions for ${c.name}`"
+                    :items="rowActions(c)"
+                    @select="(id) => onRowAction(id, c)"
+                  />
+                </span>
               </span>
-              <span class="desk-item-actions">
-                <MenuButton
-                  :label="`Actions for ${c.name}`"
-                  :items="rowActions(c)"
-                  @select="(id) => onRowAction(id, c)"
-                />
-              </span>
-            </span>
-          </td>
-          <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
-          <td class="desk-col--amount">{{ budgetText(c) }}</td>
-        </tr>
-      </DataTable>
+            </td>
+            <td class="desk-col--md">
+              <select
+                class="desk-categories-kind"
+                :aria-label="`Kind for ${c.name}`"
+                :value="c.defaultKind ?? ''"
+                @change="setKind(c, ($event.target as HTMLSelectElement).value)"
+              >
+                <option v-for="o in kindOptions" :key="o.value" :value="o.value">
+                  {{ kindLabel(o.value || null) }}
+                </option>
+              </select>
+            </td>
+            <td class="desk-col--amount">
+              <input
+                v-if="budgetEditId === c.id"
+                :ref="setBudgetInput"
+                class="desk-categories-budget-input"
+                :aria-label="`Budget for ${c.name}`"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder="No budget"
+                :value="budgetDraft"
+                @input="onBudgetInput"
+                @keydown.enter.prevent="commitBudget(c)"
+                @keydown.escape="budgetEditId = null"
+                @blur="commitBudget(c)"
+              />
+              <button
+                v-else
+                type="button"
+                class="desk-categories-budget"
+                :aria-label="`Budget for ${c.name}`"
+                @click="startBudget(c)"
+              >
+                {{ budgetText(c) }}
+              </button>
+            </td>
+          </tr>
+        </DataTable>
+      </PanelFrame>
 
-      <template v-if="archived.length > 0">
-        <h2>Archived</h2>
+      <PanelFrame v-if="archived.length > 0" heading="Archived">
         <DataTable
           :columns="columns"
           dense
@@ -229,11 +336,11 @@ async function remove(c: CategoryResponseT) {
                 </span>
               </span>
             </td>
-            <td class="desk-col--md">{{ c.defaultKind ?? '—' }}</td>
+            <td class="desk-col--md">{{ kindLabel(c.defaultKind) }}</td>
             <td class="desk-col--amount">{{ budgetText(c) }}</td>
           </tr>
         </DataTable>
-      </template>
+      </PanelFrame>
     </template>
 
     <Dialog
@@ -262,6 +369,13 @@ async function remove(c: CategoryResponseT) {
 </template>
 
 <style scoped>
+.desk-categories-view h1 {
+  margin: 0;
+  font-size: var(--text-2xl);
+  line-height: var(--leading-2xl);
+  font-weight: 600;
+  letter-spacing: var(--tracking-tight);
+}
 .desk-categories-view {
   max-width: var(--content-max);
   margin: 0 auto;
@@ -309,8 +423,55 @@ async function remove(c: CategoryResponseT) {
   height: var(--space-3);
   display: inline-block;
 }
-.desk-categories-table :deep(.desk-item-actions) {
+/* The class lands on DataTable's inner <table> (inheritAttrs: false), which carries no scope id
+   from this view, so the whole selector sits in :deep(); .desk-data-table outranks DataTable's
+   own column rule. The name and its "…" menu share one line. */
+:deep(.desk-categories-table.desk-data-table .desk-item) {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+:deep(.desk-categories-table.desk-data-table .desk-item-actions) {
   gap: 0;
+}
+/* Inline edits read as plain cell text until hovered or focused. */
+.desk-categories-kind,
+.desk-categories-budget,
+.desk-categories-budget-input {
+  min-height: var(--target-min);
+  padding: 0 var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.desk-categories-kind:hover,
+.desk-categories-budget:hover {
+  border-color: var(--color-border);
+}
+.desk-categories-kind:focus-visible,
+.desk-categories-budget:focus-visible,
+.desk-categories-budget-input:focus {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 1px;
+}
+.desk-categories-budget {
+  inline-size: 100%;
+  text-align: end;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.desk-categories-budget-input {
+  inline-size: 100%;
+  border-color: var(--color-border);
+  background: var(--color-surface);
+  text-align: end;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  cursor: text;
 }
 .desk-categories-table-archived {
   opacity: 0.7;

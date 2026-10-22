@@ -12,6 +12,7 @@ export { default as Skeleton } from './components/Skeleton.vue';
 export { default as EmptyState } from './components/EmptyState.vue';
 export { default as ErrorState } from './components/ErrorState.vue';
 export { default as PanelFrame } from './components/PanelFrame.vue';
+export { default as BackgroundMotion } from './components/BackgroundMotion.vue';
 export { default as Tile } from './components/Tile.vue';
 export { default as DataTable } from './components/DataTable.vue';
 export { useToast } from './composables/useToast.js';

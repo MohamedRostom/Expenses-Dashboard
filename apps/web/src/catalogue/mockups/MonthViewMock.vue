@@ -185,7 +185,7 @@ onBeforeUnmount(() => {
           >
             <span class="mk-label">{{ over ? 'Over budget this month' : 'Left this month' }}</span>
             <Skeleton v-if="state === 'loading'" height="3rem" width="12rem" />
-            <span v-else class="mk-cell mk-cell--seam">
+            <span v-else class="mk-cell">
               <span
                 :key="left"
                 :data-tile-primary="attr('figure')"

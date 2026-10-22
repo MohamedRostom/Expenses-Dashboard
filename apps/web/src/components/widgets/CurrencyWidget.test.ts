@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick } from 'vue';
 import type { Component } from 'vue';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CurrencyRowT, WidgetT } from '@desk/contracts';
 
 vi.mock('../../api/widgets.js', () => ({
@@ -24,6 +24,12 @@ const flush = async () => {
   await new Promise((r) => setTimeout(r, 0));
   await nextTick();
 };
+
+// Cold-importing the sheet's component graph takes several seconds under full parallel load and
+// was charged to the first settings test's 5 s timeout; warm the module cache once instead.
+beforeAll(async () => {
+  await Promise.all([import('./CurrencyWidget.vue'), import('./WidgetSettingsSheet.vue')]);
+}, 60_000);
 
 /** The file's single createApp call site (vue/one-component-per-file counts each call). */
 const newApp = (c: Component, props: Record<string, unknown>) => createApp(c, props);

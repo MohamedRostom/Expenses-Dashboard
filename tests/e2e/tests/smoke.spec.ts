@@ -1,13 +1,22 @@
-import { expect, test as base, type Page } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
+import {
+  csrfHeaders as apiCsrf,
+  deleteAccount,
+  newCredentials,
+  registerAccount,
+  test as base,
+  type Credentials,
+} from '../fixtures/local-account.js';
 
 // T111 @local: post-deploy smoke, run by deploy-fly.yml against the real staging URL (and by
 // e2e-local on `desk-local`; never blocks a PR — see playwright.config.ts's `local` project).
-// Each test is atomic: it gets its own fresh account (no seeded user, no mail access —
+// Tests are atomic over their data (unique descriptions) and use an account (no seeded user, no mail access —
 // unverified accounts may sign in for their first 7 days, FR-001), arranges any data it needs
 // through the API, exercises exactly one concern through the UI, and the fixture deletes the
 // account afterwards so staging doesn't accumulate users.
-// ponytail: one account per test counts against the register limit of 20 per IP per hour
-// (routes/auth.ts); fine for one smoke per deploy, share an account per worker if runs get denser.
+// T037: staging allows 20 registrations per IP per hour (routes/auth.ts), so tests that only need
+// a signed-in user share ONE account per worker (fixtures/local-account.ts). Tests that change
+// account-level state (sign-up, default currency, deletion) register their own: 3 per run.
 
 // Remote target: every request crosses to the database region and the first may wake a
 // suspended Neon compute, so assertions get more than the 5s default.
@@ -15,65 +24,22 @@ const REMOTE = { timeout: 15_000 };
 // Pinned so the currency test always knows which way it switches.
 const DEFAULT_CURRENCY = 'GBP';
 
-type Credentials = { email: string; password: string };
-
-const test = base.extend<{ credentials: Credentials; account: Credentials; signedInPage: Page }>({
+const test = base.extend<{ credentials: Credentials; freshAccount: Credentials }>({
   /** Unique, unregistered credentials; whatever account ends up using them is deleted after. */
   credentials: async ({ page }, use) => {
-    const credentials = {
-      // Resend's test inbox: accepts mail without delivering to a person, `+label` keeps it unique.
-      email: `delivered+smoke-${Date.now()}-${crypto.randomUUID().slice(0, 8)}@resend.dev`,
-      // Random per test — HibpBreachChecker rejects known-breached passwords at sign-up.
-      password: `smoke-${crypto.randomUUID()}`,
-    };
+    const credentials = newCredentials('smoke');
     await use(credentials);
-    // Best effort, and never throws: the test may have deleted the account itself, or never
-    // signed in, or timed out with the context already closed — an error here would replace the
-    // real failure in the report. Anything left is locked after 7 days by login().
-    try {
-      await page.request.delete('/me', {
-        data: { password: credentials.password },
-        headers: await csrfHeaders(page),
-      });
-    } catch {
-      // context gone
-    }
+    await deleteAccount(page.request, credentials);
   },
 
-  /** A signed-in, onboarded account, created through the API rather than the UI. */
-  account: async ({ page, credentials }, use) => {
-    // Any GET issues the __Host-desk_csrf cookie the POSTs below must echo.
-    expect((await page.request.get('/healthz')).ok()).toBe(true);
-    const register = await page.request.post('/auth/register', {
-      data: { ...credentials, defaultCurrency: DEFAULT_CURRENCY, timeZone: 'Europe/London' },
-      headers: await csrfHeaders(page),
-    });
-    expect(register.status()).toBe(202);
-    const login = await page.request.post('/auth/login', {
-      data: credentials,
-      headers: await csrfHeaders(page),
-    });
-    expect(login.ok()).toBe(true);
-    const onboarded = await page.request.patch('/me', {
-      data: { onboardingCompletedAt: new Date().toISOString() },
-      headers: await csrfHeaders(page),
-    });
-    expect(onboarded.ok()).toBe(true);
+  /** A signed-in, onboarded account of this test's own, created through the API. */
+  freshAccount: async ({ page, credentials }, use) => {
+    await registerAccount(page.request, credentials, DEFAULT_CURRENCY);
     await use(credentials);
-  },
-
-  /** The page, signed in as a fresh `account`, for tests that only need a signed-in user. */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- depending on it is what signs in
-  signedInPage: async ({ page, account }, use) => {
-    await use(page);
   },
 });
 
-/** apiFetch sends the __Host-desk_csrf cookie as X-CSRF-Token; page.request doesn't. */
-async function csrfHeaders(page: Page): Promise<Record<string, string>> {
-  const cookie = (await page.context().cookies()).find((c) => c.name === '__Host-desk_csrf');
-  return cookie ? { 'X-CSRF-Token': cookie.value } : {};
-}
+const csrfHeaders = (page: Page) => apiCsrf(page.request);
 
 /** Arrange step: an expense of 10.00 USD dated today, created via the API. */
 async function createExpense(page: Page, description: string): Promise<void> {
@@ -93,7 +59,8 @@ async function createExpense(page: Page, description: string): Promise<void> {
 
 /** CurrencyPicker only emits on clicking a suggestion (populated from GET /currencies). */
 async function pickCurrency(page: Page, label: RegExp, code: string): Promise<void> {
-  await page.getByLabel(label).fill(code);
+  // The Settings region carries the same name as its combobox, so ask for the combobox.
+  await page.getByRole('combobox', { name: label }).fill(code);
   await page.getByText(new RegExp(`^${code} —`)).click();
 }
 
@@ -196,8 +163,10 @@ test.describe('post-deploy smoke @local', () => {
   });
 
   test('changing the default currency re-derives the month total', async ({
-    signedInPage: page,
+    page,
+    freshAccount,
   }) => {
+    expect(freshAccount.email).toContain('@'); // own account: this test changes its settings
     // The re-derive job waits up to 30s for Fly's in-process runner.
     test.setTimeout(150_000);
     await createExpense(page, `Smoke currency ${Date.now()}`);
@@ -211,7 +180,7 @@ test.describe('post-deploy smoke @local', () => {
     await expect(spentTile(page)).toContainText(new RegExp(`${toCurrency}\\s*$`), REMOTE);
   });
 
-  test('a deleted account can no longer sign in', async ({ page, account }) => {
+  test('a deleted account can no longer sign in', async ({ page, freshAccount: account }) => {
     // No Settings UI for account deletion yet, so the API is the action under test.
     const res = await page.request.delete('/me', {
       data: { password: account.password },

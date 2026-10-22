@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Button, Select, useToast } from '@desk/ui';
+import { Button, PanelFrame, Select, useToast } from '@desk/ui';
 import type {
   CaptureMappingResponseT,
   CategoryResponseT,
@@ -121,82 +121,86 @@ function allLabels(): string[] {
       a bearer credential in the URL.
     </p>
 
-    <section>
-      <h2>Capture address</h2>
-      <p v-if="loading">Loading…</p>
-      <p v-else-if="loadError" role="alert" class="error-text">{{ loadError }}</p>
-      <template v-else>
-        <ul v-if="tokens.length > 0" class="token-list">
-          <li v-for="t in tokens" :key="t.id">
-            {{ t.label }} — {{ t.revokedAt ? 'revoked' : 'active' }}
-            <span v-if="t.lastUsedAt"> · last used {{ formatDateTime(t.lastUsedAt) }}</span>
-          </li>
-        </ul>
-        <p v-else>No capture address yet.</p>
-      </template>
+    <div class="capture-grid board-grid">
+      <PanelFrame heading="Capture address">
+        <div class="capture-body">
+          <p v-if="loading">Loading…</p>
+          <p v-else-if="loadError" role="alert" class="error-text">{{ loadError }}</p>
+          <template v-else>
+            <ul v-if="tokens.length > 0" class="token-list">
+              <li v-for="t in tokens" :key="t.id">
+                {{ t.label }} — {{ t.revokedAt ? 'revoked' : 'active' }}
+                <span v-if="t.lastUsedAt"> · last used {{ formatDateTime(t.lastUsedAt) }}</span>
+              </li>
+            </ul>
+            <p v-else>No capture address yet.</p>
+          </template>
 
-      <div v-if="revealedUrl" class="revealed">
-        <p>
-          <strong>Your new address (shown once — copy it now):</strong>
-        </p>
-        <code>{{ revealedUrl }}</code>
-        <Button variant="secondary" @click="copyUrl">Copy</Button>
-      </div>
+          <div v-if="revealedUrl" class="revealed">
+            <p>
+              <strong>Your new address (shown once — copy it now):</strong>
+            </p>
+            <code>{{ revealedUrl }}</code>
+            <Button variant="secondary" @click="copyUrl">Copy</Button>
+          </div>
 
-      <p role="alert" class="warn-text">
-        Rotating issues a new address and immediately invalidates the old one — update any
-        automations before you rotate.
-      </p>
-      <Button :loading="rotating" :disabled="rotating" @click="rotate">
-        {{ tokens.length > 0 ? 'Rotate address' : 'Create capture address' }}
-      </Button>
+          <p role="alert" class="warn-text">
+            Rotating issues a new address and immediately invalidates the old one — update any
+            automations before you rotate.
+          </p>
+          <Button :loading="rotating" :disabled="rotating" @click="rotate">
+            {{ tokens.length > 0 ? 'Rotate address' : 'Create capture address' }}
+          </Button>
 
-      <details>
-        <summary>iOS Shortcut example</summary>
-        <p>
-          Add a "Get Contents of URL" action: Method <code>POST</code>, Request Body
-          <code>JSON</code> with fields <code>amount</code>, <code>currency</code>,
-          <code>description</code>, and optionally <code>category</code> and <code>id</code>; URL is
-          the address above.
-        </p>
-      </details>
-    </section>
+          <details>
+            <summary>iOS Shortcut example</summary>
+            <p>
+              Add a "Get Contents of URL" action: Method <code>POST</code>, Request Body
+              <code>JSON</code> with fields <code>amount</code>, <code>currency</code>,
+              <code>description</code>, and optionally <code>category</code> and <code>id</code>;
+              URL is the address above.
+            </p>
+          </details>
+        </div>
+      </PanelFrame>
 
-    <section>
-      <h2>Category mapping</h2>
-      <p>Map the free-text <code>category</code> label your automation sends to a category.</p>
-      <table v-if="allLabels().length > 0" class="mapping-table">
-        <thead>
-          <tr>
-            <th>Label</th>
-            <th>Category</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="label in allLabels()" :key="label">
-            <td>{{ label }}</td>
-            <td>
-              <Select
-                :model-value="mappings[label] ?? ''"
-                :options="categoryOptions()"
-                @update:model-value="(v) => setLabelCategory(label, v)"
-              />
-            </td>
-            <td>
-              <span v-if="!mappings[label]" class="unmapped-badge">unmapped</span>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else>No labels captured yet.</p>
-    </section>
+      <PanelFrame heading="Category mapping">
+        <div class="capture-body">
+          <p>Map the free-text <code>category</code> label your automation sends to a category.</p>
+          <table v-if="allLabels().length > 0" class="mapping-table">
+            <thead>
+              <tr>
+                <th>Label</th>
+                <th>Category</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="label in allLabels()" :key="label">
+                <td>{{ label }}</td>
+                <td>
+                  <Select
+                    :model-value="mappings[label] ?? ''"
+                    :options="categoryOptions()"
+                    @update:model-value="(v) => setLabelCategory(label, v)"
+                  />
+                </td>
+                <td>
+                  <span v-if="!mappings[label]" class="unmapped-badge">unmapped</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <p v-else>No labels captured yet.</p>
+        </div>
+      </PanelFrame>
+    </div>
   </main>
 </template>
 
 <style scoped>
 .capture-view {
-  max-width: 40rem;
+  max-width: var(--content-max);
   margin: 0 auto;
   padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   display: flex;
@@ -206,7 +210,6 @@ function allLabels(): string[] {
   color: var(--color-fg);
 }
 h1,
-h2,
 p {
   margin: 0;
 }
@@ -216,18 +219,22 @@ h1 {
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
 }
-h2 {
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--color-fg-muted);
+.capture-grid {
+  align-items: start;
+  /* A flex-column child with margin-inline auto would shrink to content; span the page instead. */
+  inline-size: 100%;
+  max-width: none;
+  margin-inline: 0;
 }
-section {
+.capture-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+/* Buttons keep their own width, like every other panel action. */
+.capture-body > :deep(.desk-btn) {
+  align-self: start;
 }
 .token-list {
   list-style: none;
@@ -242,9 +249,7 @@ section {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
-  padding: var(--space-3);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-raised);
+  padding-inline-start: var(--space-3);
   border-inline-start: var(--space-1) solid var(--color-accent);
 }
 .revealed code {
@@ -253,8 +258,7 @@ section {
 }
 .error-text,
 .warn-text {
-  padding: var(--space-3);
-  background: var(--color-surface-raised);
+  padding-inline-start: var(--space-3);
   border-inline-start: var(--space-1) solid var(--color-critical);
 }
 .warn-text {

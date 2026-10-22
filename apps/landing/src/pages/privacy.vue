@@ -14,7 +14,7 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
 </script>
 
 <template>
-  <main class="page">
+  <main class="page surface">
     <p class="draft-notice">
       Draft placeholder — not reviewed by counsel. Replace before any production launch.
     </p>
@@ -75,10 +75,10 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
   overflow-wrap: anywhere;
   max-width: 65ch;
   margin: 0 auto;
-  padding: var(--space-6) var(--gutter-fluid) var(--space-8);
+  padding: var(--space-6) var(--space-4);
+  margin-block: var(--space-6);
   font-family: var(--font-sans);
   color: var(--color-fg);
-  background: var(--color-bg);
 }
 .provider {
   border-top: 1px solid var(--color-border);

@@ -10,13 +10,13 @@ const failed = reactive(new Set<string>());
 <template>
   <main class="page">
     <div class="intro">
-      <section class="hero">
+      <section class="hero surface">
         <h1>{{ content.productName }}</h1>
         <p class="tagline">{{ content.tagline }}</p>
         <a :href="content.signUpUrl" class="cta-link">Sign up free</a>
       </section>
 
-      <section class="steps" aria-labelledby="how-heading">
+      <section class="steps surface" aria-labelledby="how-heading">
         <h2 id="how-heading" class="section-title">How it works</h2>
         <ol>
           <li v-for="(step, i) in content.steps" :key="step.title">
@@ -30,7 +30,7 @@ const failed = reactive(new Set<string>());
       </section>
     </div>
 
-    <section class="screenshots" aria-label="Screenshots">
+    <section class="screenshots surface" aria-label="Screenshots">
       <figure
         v-for="shot in content.screenshots"
         v-show="!failed.has(shot.light)"
@@ -66,12 +66,16 @@ const failed = reactive(new Set<string>());
   font-size: var(--text-md);
   line-height: var(--leading-md);
   color: var(--color-fg);
-  background: var(--color-bg);
 }
 .intro {
   display: grid;
   gap: var(--space-6);
   align-items: start;
+}
+.hero,
+.steps,
+.screenshots {
+  padding: var(--space-4);
 }
 .hero h1 {
   font-size: var(--text-2xl);
@@ -116,9 +120,6 @@ const failed = reactive(new Set<string>());
   list-style: none;
   margin: 0;
   padding: 0;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
 }
 .steps li {
   display: grid;

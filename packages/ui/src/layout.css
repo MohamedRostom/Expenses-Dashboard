@@ -1,0 +1,19 @@
+/* The shared panel layout (DESIGN.md Layout, research R7): one column at 360, two at 768, the full
+   grid on desktop, with no breakpoints. Tile rows are separate and keep minmax(220px, 1fr). */
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+  gap: var(--space-6);
+  max-width: 1160px;
+  margin-inline: auto;
+}
+.board-grid > * {
+  min-width: 0;
+}
+
+/* Chrome and Edge on Windows paint a select's open list from the select's own background, so a
+   transparent select gets a white list even under color-scheme: dark. Options carry the theme. */
+option {
+  background-color: var(--color-surface);
+  color: var(--color-fg);
+}

@@ -26,7 +26,7 @@ onUnmounted(() => {
 
 <template>
   <main class="today-view">
-    <div class="panels">
+    <div class="panels board-grid">
       <CalendarPanel />
       <InboxPanel />
     </div>
@@ -45,18 +45,6 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
-}
-
-.panels {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: var(--space-6);
-}
-
-@media (min-width: 1024px) {
-  .panels {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 
 .sr-only {

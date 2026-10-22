@@ -1,7 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import type { FunctionalComponent, SetupContext } from 'vue';
 import { createApp, nextTick } from 'vue';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, describe, expect, it, vi } from 'vitest';
 import type { WidgetT } from '@desk/contracts';
 
 vi.mock('../../api/widgets.js', () => ({}));
@@ -21,6 +21,13 @@ const widget = {
   state: 'ready',
   asOf: '2026-10-03T12:00:00Z',
 } as unknown as WidgetT;
+
+// Cold-importing the component graph takes several seconds under full parallel load and was
+// being charged to the first test's 5 s timeout; warm the module cache once instead.
+beforeAll(async () => {
+  await import('./WidgetSettingsSheet.vue');
+  await import('../../stores/widgets.js');
+}, 60_000);
 
 describe('WidgetSettingsSheet errors', () => {
   afterEach(() => (document.body.innerHTML = ''));

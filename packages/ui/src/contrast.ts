@@ -21,3 +21,18 @@ export function contrastRatio(hexA: string, hexB: string): number {
   const darker = Math.min(lumA, lumB);
   return (lighter + 0.05) / (darker + 0.05);
 }
+
+/** `fg` at `alpha` (0..1) composited over opaque `bg`, as `#rrggbb` (SC-004 worst-case backdrops). */
+export function compositeOver(fg: string, alpha: number, bg: string): string {
+  const ch = (hex: string, i: number): number => parseInt(hex.replace('#', '').slice(i, i + 2), 16);
+  return (
+    '#' +
+    [0, 2, 4]
+      .map((i) =>
+        Math.round(ch(fg, i) * alpha + ch(bg, i) * (1 - alpha))
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  );
+}

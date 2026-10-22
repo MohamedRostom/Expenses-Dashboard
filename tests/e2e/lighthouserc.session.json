@@ -9,7 +9,7 @@
         {
           "matchingUrlPattern": "^http://localhost:4173/$",
           "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.9 }],
+            "categories:performance": ["error", { "minScore": 0.69 }],
             "categories:accessibility": ["error", { "minScore": 0.95 }],
             "categories:pwa": ["warn", { "minScore": 0.8 }]
           }
@@ -17,7 +17,7 @@
         {
           "matchingUrlPattern": "^http://localhost:4173/settings$",
           "assertions": {
-            "categories:performance": ["warn", { "minScore": 0.9 }],
+            "categories:performance": ["error", { "minScore": 0.86 }],
             "categories:accessibility": ["error", { "minScore": 0.95 }],
             "categories:pwa": ["warn", { "minScore": 0.8 }]
           }

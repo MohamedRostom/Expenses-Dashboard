@@ -69,6 +69,13 @@ describe('OnboardingView', () => {
     document.body.innerHTML = '';
   });
 
+  it('each step sits in a panel whose heading carries the step count', async () => {
+    const { el, app } = await mount();
+    expect(el.querySelector('section.desk-panel-frame h3')?.textContent).toBe('Step 1 of 3');
+    expect(el.querySelector('h1')?.textContent).toBe('Set your default currency');
+    app.unmount();
+  });
+
   it('Skip marks onboarding complete in the store and lands on home', async () => {
     const { el, router, app } = await mount();
     click(el, 'Skip');

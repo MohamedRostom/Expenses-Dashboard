@@ -156,6 +156,8 @@ Not scheduled; captured so Phase 1's OAuth design leaves room for it.
   - **`appearance.accent` flag (US5, accent presets in Settings):** off in production until T042 is merged, the owner has approved T059's swatches (`needs-rostom`) and SC-009 passes.
   - **`needs-rostom`:** SC-006 (a new contributor builds a panel from the documented blocks in under 30 minutes, timed by a person other than the agent; DESIGN.md §Building a new panel). Not yet run: the agent run recorded there is not SC-006.
   - **`needs-rostom`:** SC-002 (at least four of five outsiders pick the unlabeled "after" mock-ups as more finished; before screenshots in `docs/design/before/`, after at `/__ui/mockups/*`). Not yet run: no date, no result.
+- Premium identity and background motion (ADR-0007, spec `specs/006-premium-motion-identity/`): translucent panels on every screen (a look change, no flag) and four appearance controls with a moving background layer (Particles, Aurora drift and others). Built on local branch `phase-5/006-premium-motion`, not pushed. Gate: `appearance.motion`, off in production; announce with `docs/runbooks/announce-motion.md`.
+  - **`needs-rostom`:** SC-001 and SC-007 (people-based checks, per `specs/006-premium-motion-identity/spec.md`). Not yet run: no date, no result.
 - Shared budgets (two users, one category set) — depends on the multi-user isolation done right in Phase 1.
 - Receipt attachments (R2 storage) and OCR of amounts.
 - Bank feeds via Open Banking (provider to be chosen; no bank integration in v1 per ADR-0003).

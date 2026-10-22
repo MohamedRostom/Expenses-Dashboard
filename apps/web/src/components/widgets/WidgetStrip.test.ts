@@ -1,6 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick } from 'vue';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { WidgetT, WidgetTypeT } from '@desk/contracts';
 
 vi.mock('../../api/widgets.js', () => ({
@@ -50,6 +50,12 @@ async function mount(widgets: WidgetT[], types: WidgetTypeT[] = [], typesError?:
   await nextTick();
   return { el, app };
 }
+
+// Cold-importing the component graph takes several seconds under full parallel load and was
+// being charged to the first test's 5 s timeout; warm the module cache once instead.
+beforeAll(async () => {
+  await import('./WidgetStrip.vue');
+}, 60_000);
 
 describe('WidgetStrip', () => {
   beforeEach(() => vi.clearAllMocks());

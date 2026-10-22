@@ -1,4 +1,6 @@
 import '@desk/ui/tokens.css';
+import '@desk/ui/surface.css';
+import '@desk/ui/layout.css';
 import { createPinia } from 'pinia';
 import { createApp } from 'vue';
 import App from './App.vue';

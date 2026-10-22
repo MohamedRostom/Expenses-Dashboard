@@ -10,6 +10,11 @@ export interface User {
   theme: 'light' | 'dark' | 'system';
   /** Accent preset id from UserResponse (spec 004 US5). */
   accent?: AccentId;
+  /** Spec 006 background-motion prefs from UserResponse. */
+  motionPreset?: string;
+  motionColour?: string;
+  panelsTranslucent?: boolean;
+  motionPaused?: boolean;
   timeZone: string;
   onboardingCompletedAt?: string | null;
   /** From UserResponse; false until the address is confirmed (FR-001). */
@@ -70,10 +75,16 @@ export const useSessionStore = defineStore('session', {
         throw err;
       }
     },
+    /** Signs out locally even if the request fails; the server session then expires on its own. */
     async logout() {
-      await apiFetch<void>('/auth/logout', { method: 'POST' });
-      this.user = null;
-      writeCachedUser(null);
+      try {
+        await apiFetch<void>('/auth/logout', { method: 'POST' });
+      } catch {
+        // offline or server error: still drop the local session
+      } finally {
+        this.user = null;
+        writeCachedUser(null);
+      }
     },
   },
 });

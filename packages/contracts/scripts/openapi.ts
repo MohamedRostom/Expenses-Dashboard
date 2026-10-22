@@ -51,6 +51,7 @@ const routes: [string, string, string, string | null, string | null][] = [
   ['GET', '/currencies', 'List ISO 4217 currencies', null, 'CurrenciesResponse'],
   ['GET', '/jobs/:id', 'Background job status', null, 'JobResponse'],
   ['GET', '/flags', 'Resolved feature flags', null, 'FlagsResponse'],
+  ['GET', '/flags/public', 'Public feature flags (allowlist, no session)', null, 'FlagsResponse'],
   ['GET', '/expenses', 'List expenses', 'ListExpensesQuery', 'ListExpensesResponse'],
   [
     'POST',

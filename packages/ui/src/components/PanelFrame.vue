@@ -81,12 +81,14 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
 
 <template>
   <section v-if="heading" class="desk-panel-frame" :aria-labelledby="headingId" role="region">
-    <h3 :id="headingId" class="desk-panel-frame-heading">{{ heading }}</h3>
-    <!-- Loaded content: a state (kind) always wins over the slot, so error and empty stay as they were. -->
-    <div v-if="!kind" class="desk-panel-frame-flap"><slot /></div>
-    <PanelFrame v-else :kind="kind" :code="code" :title="title" :description="description">
-      <template v-if="$slots.action" #action><slot name="action" /></template>
-    </PanelFrame>
+    <!-- The heading is the panel's label, inside the glass. A state (kind) always wins over the slot. -->
+    <div class="desk-panel-frame-flap surface">
+      <h3 :id="headingId" class="desk-panel-frame-heading">{{ heading }}</h3>
+      <slot v-if="!kind" />
+      <PanelFrame v-else :kind="kind" :code="code" :title="title" :description="description">
+        <template v-if="$slots.action" #action><slot name="action" /></template>
+      </PanelFrame>
+    </div>
   </section>
   <Skeleton v-else-if="kind === 'loading'" height="8rem" />
   <EmptyState
@@ -129,18 +131,29 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
   gap: var(--space-3);
   min-width: 0;
 }
-/* Title role heading over a raised flap; the flap has no side padding so a board can run edge to edge. */
+/* The label role (DESIGN.md Typography): small spaced capitals, muted, top-left inside the panel. */
 .desk-panel-frame-heading {
   margin: 0;
-  font-size: var(--text-lg);
-  line-height: var(--leading-lg);
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
   font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--color-fg-muted);
+}
+/* From 768 a table that is the panel's direct child is inset by the panel padding with its first cell
+   flush, so label, row rule and first-cell text share one inset (the board). Nested tables keep theirs. */
+@media (min-width: 768px) {
+  .desk-panel-frame-flap > :deep(.desk-data-table-wrap) {
+    margin-inline: var(--space-4);
+  }
+  .desk-panel-frame-flap > :deep(.desk-data-table-wrap) tr > :first-child {
+    padding-inline-start: 0;
+  }
 }
 .desk-panel-frame-flap {
-  padding: var(--space-2) 0;
-  background: var(--color-surface);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-raised);
+  padding: 0 0 var(--space-2);
   overflow: hidden;
 }
 </style>

@@ -6,7 +6,7 @@ import {
   type AccountT,
   type CapabilityT,
 } from '@desk/contracts';
-import { Button, PALETTE_COLOURS } from '@desk/ui';
+import { Button, PALETTE_COLOURS, PanelFrame } from '@desk/ui';
 import {
   getConnections,
   getProviders,
@@ -241,172 +241,184 @@ async function confirmDisconnect() {
     </div>
     <div v-else-if="connected" class="success-banner">Account connected successfully</div>
 
-    <section class="providers">
-      <h2>Add a Provider</h2>
-      <p v-if="isLimitReached" class="limit-message">
-        You can connect up to 10 accounts. Disconnect an account to add another.
-      </p>
+    <div class="connections-grid board-grid">
+      <PanelFrame heading="Add a provider" class="providers">
+        <div class="panel-body">
+          <p v-if="isLimitReached" class="limit-message">
+            You can connect up to 10 accounts. Disconnect an account to add another.
+          </p>
 
-      <div class="provider-grid">
-        <div v-for="provider in providers" :key="provider.id" class="provider-card">
-          <h3>{{ providerName(provider.id) }}</h3>
-          <!-- T073/FR-016: same source as the landing privacy page. -->
-          <details class="privacy-details">
-            <summary>What Desk reads and stores</summary>
-            <dl>
-              <dt>Reads</dt>
-              <dd class="reads">{{ PROVIDER_PRIVACY_TEXT[provider.id].reads }}</dd>
-              <dt>Stores</dt>
-              <dd class="stores">{{ PROVIDER_PRIVACY_TEXT[provider.id].stores }}</dd>
-              <dt>How long</dt>
-              <dd class="retention">{{ PROVIDER_PRIVACY_TEXT[provider.id].retention }}</dd>
-              <dt>Revoking access</dt>
-              <dd class="revoke">{{ PROVIDER_PRIVACY_TEXT[provider.id].revoke }}</dd>
-              <dt>Permissions</dt>
-              <dd class="scopes">
-                <ul>
-                  <li v-for="scope in PROVIDER_PRIVACY_TEXT[provider.id].scopes" :key="scope">
-                    {{ scope }}
-                  </li>
-                </ul>
-              </dd>
-            </dl>
-          </details>
+          <div class="provider-grid">
+            <div v-for="provider in providers" :key="provider.id" class="provider-card">
+              <h4>{{ providerName(provider.id) }}</h4>
+              <!-- T073/FR-016: same source as the landing privacy page. -->
+              <details class="privacy-details">
+                <summary>What Desk reads and stores</summary>
+                <dl>
+                  <dt>Reads</dt>
+                  <dd class="reads">{{ PROVIDER_PRIVACY_TEXT[provider.id].reads }}</dd>
+                  <dt>Stores</dt>
+                  <dd class="stores">{{ PROVIDER_PRIVACY_TEXT[provider.id].stores }}</dd>
+                  <dt>How long</dt>
+                  <dd class="retention">{{ PROVIDER_PRIVACY_TEXT[provider.id].retention }}</dd>
+                  <dt>Revoking access</dt>
+                  <dd class="revoke">{{ PROVIDER_PRIVACY_TEXT[provider.id].revoke }}</dd>
+                  <dt>Permissions</dt>
+                  <dd class="scopes">
+                    <ul>
+                      <li v-for="scope in PROVIDER_PRIVACY_TEXT[provider.id].scopes" :key="scope">
+                        {{ scope }}
+                      </li>
+                    </ul>
+                  </dd>
+                </dl>
+              </details>
 
-          <div v-if="provider.id === 'google'" class="capabilities">
-            <Button :disabled="isLimitReached" @click="navigateToOAuth(provider.id, 'calendar')">
-              Connect Calendar
-            </Button>
-            <p v-if="!provider.capabilities.includes('mail')" class="note">
-              Gmail is currently disabled pending a security assessment. Check back soon.
-            </p>
-          </div>
+              <div v-if="provider.id === 'google'" class="capabilities">
+                <Button
+                  :disabled="isLimitReached"
+                  @click="navigateToOAuth(provider.id, 'calendar')"
+                >
+                  Connect Calendar
+                </Button>
+                <p v-if="!provider.capabilities.includes('mail')" class="note">
+                  Gmail is currently disabled pending a security assessment. Check back soon.
+                </p>
+              </div>
 
-          <div v-else-if="provider.id === 'standards'" class="capabilities">
-            <Button :disabled="isLimitReached" @click="showStandardsForm = true">
-              Add another provider
-            </Button>
-          </div>
+              <div v-else-if="provider.id === 'standards'" class="capabilities">
+                <Button :disabled="isLimitReached" @click="showStandardsForm = true">
+                  Add another provider
+                </Button>
+              </div>
 
-          <div v-else class="capabilities">
-            <Button
-              :disabled="isLimitReached"
-              @click="navigateToOAuth(provider.id, provider.capabilities.join(','))"
-            >
-              Connect {{ providerName(provider.id) }}
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      <StandardsForm
-        v-if="showStandardsForm && standardsProvider"
-        :presets="standardsProvider.presets ?? []"
-        class="standards-form-panel"
-        @success="onStandardsConnected"
-      />
-    </section>
-
-    <section class="accounts">
-      <h2>Your Accounts</h2>
-
-      <div v-if="accounts.length === 0" class="empty-state">
-        <p>No accounts connected yet. Connect a provider above to get started.</p>
-      </div>
-
-      <div v-else class="accounts-list">
-        <div v-for="account in accounts" :key="account.id" class="account-card">
-          <div class="account-header">
-            <div>
-              <input
-                type="text"
-                class="label-input"
-                aria-label="Account label"
-                :value="account.label"
-                @change="onLabelChange(account, $event)"
-              />
-              <p class="provider">{{ providerName(account.provider) }} · {{ account.address }}</p>
+              <div v-else class="capabilities">
+                <Button
+                  :disabled="isLimitReached"
+                  @click="navigateToOAuth(provider.id, provider.capabilities.join(','))"
+                >
+                  Connect {{ providerName(provider.id) }}
+                </Button>
+              </div>
             </div>
-            <div class="account-status" :class="account.status">
-              {{ statusLabel(account.status) }}
-            </div>
-          </div>
-
-          <div role="radiogroup" class="colour-group" :aria-label="`Colour for ${account.label}`">
-            <button
-              v-for="(swatch, index) in PALETTE_COLOURS"
-              :key="swatch.id"
-              type="button"
-              role="radio"
-              class="colour-swatch"
-              :style="{ '--swatch-color': `var(--palette-${swatch.id})` }"
-              :aria-checked="account.colour === swatch.id"
-              :aria-label="swatch.name"
-              :tabindex="account.colour === swatch.id ? 0 : -1"
-              @click="selectColour(account, swatch.id)"
-              @keydown="onColourKeydown(account, index, $event)"
-            ></button>
-          </div>
-
-          <div class="account-details">
-            <div><strong>Capabilities:</strong> {{ account.capabilities.join(', ') }}</div>
-            <div v-if="account.lastRefreshAt">
-              <strong>Last refresh:</strong> {{ formatDate(account.lastRefreshAt) }}
-            </div>
-            <div v-if="account.lastError">
-              <strong>Error:</strong> {{ accountErrorCopy(account.lastError) }}
-            </div>
-          </div>
-
-          <div v-if="account.calendars.length > 0" class="calendar-checklist">
-            <p class="checklist-title">Calendars shown on Today</p>
-            <label v-for="cal in account.calendars" :key="cal.id" class="calendar-item">
-              <input
-                type="checkbox"
-                :aria-label="cal.name"
-                :checked="cal.enabled"
-                @change="toggleCalendar(account, cal.id, $event)"
-              />
-              {{ cal.name }}<span v-if="cal.isPrimary" class="primary-tag"> (primary)</span>
-            </label>
-          </div>
-
-          <div class="account-actions">
-            <Button variant="secondary" @click="togglePause(account)">
-              {{ account.status === 'paused' ? 'Resume' : 'Pause' }}
-            </Button>
-
-            <Button
-              v-if="account.status === 'reconnect_needed' || account.status === 'error'"
-              variant="secondary"
-              @click="startReconnect(account.id)"
-            >
-              Reconnect
-            </Button>
-
-            <a
-              v-for="capability in missingCapabilities(account)"
-              :key="capability"
-              class="add-capability-link"
-              :href="addCapabilityUrl(account, capability)"
-            >
-              Add {{ capabilityLabel(capability) }}
-            </a>
-
-            <Button variant="danger" @click="askDisconnect(account)">Disconnect</Button>
           </div>
 
           <StandardsForm
-            v-if="passwordNeededFor === account.id && reconnectAccount"
-            mode="reconnect"
-            :presets="[]"
-            :reconnect-account="reconnectAccount"
+            v-if="showStandardsForm && standardsProvider"
+            :presets="standardsProvider.presets ?? []"
             class="standards-form-panel"
-            @success="onStandardsReconnected"
+            @success="onStandardsConnected"
           />
         </div>
-      </div>
-    </section>
+      </PanelFrame>
+
+      <PanelFrame heading="Your accounts" class="accounts">
+        <div class="panel-body">
+          <div v-if="accounts.length === 0" class="empty-state">
+            <p>No accounts connected yet. Connect a provider above to get started.</p>
+          </div>
+
+          <div v-else class="accounts-list">
+            <div v-for="account in accounts" :key="account.id" class="account-card">
+              <div class="account-header">
+                <div>
+                  <input
+                    type="text"
+                    class="label-input"
+                    aria-label="Account label"
+                    :value="account.label"
+                    @change="onLabelChange(account, $event)"
+                  />
+                  <p class="provider">
+                    {{ providerName(account.provider) }} · {{ account.address }}
+                  </p>
+                </div>
+                <div class="account-status" :class="account.status">
+                  {{ statusLabel(account.status) }}
+                </div>
+              </div>
+
+              <div
+                role="radiogroup"
+                class="colour-group"
+                :aria-label="`Colour for ${account.label}`"
+              >
+                <button
+                  v-for="(swatch, index) in PALETTE_COLOURS"
+                  :key="swatch.id"
+                  type="button"
+                  role="radio"
+                  class="colour-swatch"
+                  :style="{ '--swatch-color': `var(--palette-${swatch.id})` }"
+                  :aria-checked="account.colour === swatch.id"
+                  :aria-label="swatch.name"
+                  :tabindex="account.colour === swatch.id ? 0 : -1"
+                  @click="selectColour(account, swatch.id)"
+                  @keydown="onColourKeydown(account, index, $event)"
+                ></button>
+              </div>
+
+              <div class="account-details">
+                <div><strong>Capabilities:</strong> {{ account.capabilities.join(', ') }}</div>
+                <div v-if="account.lastRefreshAt">
+                  <strong>Last refresh:</strong> {{ formatDate(account.lastRefreshAt) }}
+                </div>
+                <div v-if="account.lastError">
+                  <strong>Error:</strong> {{ accountErrorCopy(account.lastError) }}
+                </div>
+              </div>
+
+              <div v-if="account.calendars.length > 0" class="calendar-checklist">
+                <p class="checklist-title">Calendars shown on Today</p>
+                <label v-for="cal in account.calendars" :key="cal.id" class="calendar-item">
+                  <input
+                    type="checkbox"
+                    :aria-label="cal.name"
+                    :checked="cal.enabled"
+                    @change="toggleCalendar(account, cal.id, $event)"
+                  />
+                  {{ cal.name }}<span v-if="cal.isPrimary" class="primary-tag"> (primary)</span>
+                </label>
+              </div>
+
+              <div class="account-actions">
+                <Button variant="secondary" @click="togglePause(account)">
+                  {{ account.status === 'paused' ? 'Resume' : 'Pause' }}
+                </Button>
+
+                <Button
+                  v-if="account.status === 'reconnect_needed' || account.status === 'error'"
+                  variant="secondary"
+                  @click="startReconnect(account.id)"
+                >
+                  Reconnect
+                </Button>
+
+                <a
+                  v-for="capability in missingCapabilities(account)"
+                  :key="capability"
+                  class="add-capability-link"
+                  :href="addCapabilityUrl(account, capability)"
+                >
+                  Add {{ capabilityLabel(capability) }}
+                </a>
+
+                <Button variant="danger" @click="askDisconnect(account)">Disconnect</Button>
+              </div>
+
+              <StandardsForm
+                v-if="passwordNeededFor === account.id && reconnectAccount"
+                mode="reconnect"
+                :presets="[]"
+                :reconnect-account="reconnectAccount"
+                class="standards-form-panel"
+                @success="onStandardsReconnected"
+              />
+            </div>
+          </div>
+        </div>
+      </PanelFrame>
+    </div>
 
     <dialog v-if="disconnectTarget" open class="disconnect-dialog" aria-label="Disconnect account">
       <p>
@@ -436,8 +448,7 @@ async function confirmDisconnect() {
   color: var(--color-fg);
 }
 h1,
-h2,
-h3 {
+h4 {
   margin: 0;
 }
 h1 {
@@ -446,32 +457,29 @@ h1 {
   font-weight: 600;
   letter-spacing: var(--tracking-tight);
 }
-h2 {
-  font-size: var(--text-xs);
-  line-height: var(--leading-xs);
-  font-weight: 600;
-  letter-spacing: var(--tracking-wide);
-  text-transform: uppercase;
-  color: var(--color-fg-muted);
-}
-h3 {
+h4 {
   font-size: var(--text-lg);
   line-height: var(--leading-lg);
   font-weight: 600;
 }
-section {
+.connections-grid {
+  inline-size: 100%;
+  max-width: none;
+  margin-inline: 0;
+  align-items: start;
+}
+.panel-body {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
 }
 p {
   margin: 0;
 }
 .error-banner,
 .success-banner {
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-raised);
+  padding: var(--space-1) var(--space-3);
   border-inline-start: var(--space-1) solid var(--color-accent);
 }
 .error-banner {
@@ -485,19 +493,23 @@ p {
   line-height: var(--leading-sm);
 }
 .provider-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-  gap: var(--space-4);
+  display: flex;
+  flex-direction: column;
 }
+/* Items inside a panel are ruled rows, not nested boxes. */
 .provider-card,
 .account-card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-4);
-  background: var(--color-surface);
-  box-shadow: var(--shadow-raised);
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
   min-width: 0;
+}
+.provider-card:first-child,
+.account-card:first-child {
+  border-top: 0;
+  padding-top: var(--space-2);
 }
 .privacy-details summary {
   display: flex;
@@ -533,7 +545,6 @@ p {
   align-items: flex-start;
 }
 .empty-state {
-  padding: var(--space-8) var(--space-4);
   color: var(--color-fg-muted);
 }
 .accounts-list {

@@ -3,6 +3,7 @@
    explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10). */
 [data-theme='light'],
 :root {
+  color-scheme: light;
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace;
   --color-bg: #e8eaeb;
@@ -17,7 +18,24 @@
   --color-warn: #8a5a00;
   --color-critical: #b00020;
   --color-selection: #d8e6de;
-  --shadow-raised: 0 1px 2px rgb(20 23 27 / 0.08), 0 1px 3px rgb(20 23 27 / 0.06);
+  --shadow-raised: 0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08);
+  --color-surface-glass: rgb(255 255 255 / 0.68);
+  --color-glass-line: rgb(20 23 27 / 0.1);
+  --motion-alpha-aurora: 0.49;
+  --motion-alpha-aurora-blue: 0.35;
+  --motion-alpha-aurora-amber: 0.32;
+  --motion-alpha-grid: 0.042;
+  --motion-grid-line: var(--color-fg); /* Board Ink lines in light (DESIGN.md Background layer) */
+  --motion-aurora-blue: #8fb3ff; /* Platform blue, fixed Aurora companion */
+  --motion-aurora-amber: #f5c27a; /* Lamp amber, fixed Aurora companion */
+  /* Signed-out backdrop palette, after the Desk sign (ADR-0007 amendment 2026-10-18) */
+  --auth-backdrop-base: #e6eaf1;
+  --auth-backdrop-1: #7f9bff; /* cobalt */
+  --auth-backdrop-2: #a9d4ff; /* ice */
+  --auth-backdrop-3: #9aa6b8; /* steel */
+  --auth-backdrop-4: #b8c6e0; /* navy, lifted for light */
+  --motion-alpha-particles: 0.63;
+  --motion-alpha-grain: 0.118;
   --shadow-overlay: 0 8px 24px rgb(20 23 27 / 0.16), 0 2px 6px rgb(20 23 27 / 0.08);
   --text-xs: 0.75rem;
   --text-sm: 0.875rem;
@@ -26,6 +44,8 @@
   --text-xl: 1.375rem;
   --text-2xl: 1.75rem;
   --text-display: 2.5rem;
+  /* board secondary tile figure */
+  --text-figure: 1.625rem;
   --text-display-fluid: clamp(2rem, 1.804rem + 0.8701vw, 2.5rem);
   --leading-xs: 1rem;
   --leading-sm: 1.25rem;
@@ -52,6 +72,8 @@
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 8px;
+  --radius-xl: 16px;
+  --blur-surface: 20px;
   --motion-stagger: 40ms;
   --motion-fast: 120ms;
   --motion-base: 200ms;
@@ -78,6 +100,7 @@
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
+    color-scheme: dark;
     --color-bg: #0e1114;
     --color-surface: #171b20;
     --color-surface-raised: #1f242a;
@@ -90,7 +113,23 @@
     --color-warn: #ffb000;
     --color-critical: #ff6b6b;
     --color-selection: #20332b;
-    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
+    --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38);
+    --color-surface-glass: rgb(21 26 33 / 0.66);
+    --color-glass-line: rgb(242 242 238 / 0.11);
+    --motion-alpha-aurora: 0.39;
+    --motion-alpha-aurora-blue: 0.32;
+    --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
+    --motion-aurora-amber: rgb(140 96 30);
+    --auth-backdrop-base: #07080b;
+    --auth-backdrop-1: #2f5bff;
+    --auth-backdrop-2: #5aa8ff;
+    --auth-backdrop-3: #8a94a6;
+    --auth-backdrop-4: #10264d;
+    --motion-alpha-aurora-amber: 0.28;
+    --motion-alpha-grid: 0.098;
+    --motion-grid-line: var(--motion-tint, var(--color-fg));
+    --motion-alpha-particles: 0.53;
+    --motion-alpha-grain: 0.157;
     --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
     --palette-teal: #5fd6b8;
     --palette-blue: #7fb2ff;
@@ -104,6 +143,7 @@
 }
 :root[data-theme='dark'],
 [data-theme='dark'] {
+  color-scheme: dark;
   --color-bg: #0e1114;
   --color-surface: #171b20;
   --color-surface-raised: #1f242a;
@@ -116,7 +156,23 @@
   --color-warn: #ffb000;
   --color-critical: #ff6b6b;
   --color-selection: #20332b;
-  --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 3px rgb(0 0 0 / 0.35);
+  --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38);
+  --color-surface-glass: rgb(21 26 33 / 0.66);
+  --color-glass-line: rgb(242 242 238 / 0.11);
+  --motion-alpha-aurora: 0.39;
+  --motion-alpha-aurora-blue: 0.32;
+  --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
+  --motion-aurora-amber: rgb(140 96 30);
+  --auth-backdrop-base: #07080b;
+  --auth-backdrop-1: #2f5bff;
+  --auth-backdrop-2: #5aa8ff;
+  --auth-backdrop-3: #8a94a6;
+  --auth-backdrop-4: #10264d;
+  --motion-alpha-aurora-amber: 0.28;
+  --motion-alpha-grid: 0.098;
+  --motion-grid-line: var(--motion-tint, var(--color-fg));
+  --motion-alpha-particles: 0.53;
+  --motion-alpha-grain: 0.157;
   --shadow-overlay: 0 8px 24px rgb(0 0 0 / 0.6), 0 2px 6px rgb(0 0 0 / 0.45);
   --palette-teal: #5fd6b8;
   --palette-blue: #7fb2ff;
