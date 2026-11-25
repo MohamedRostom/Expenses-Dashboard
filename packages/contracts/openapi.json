@@ -1961,6 +1961,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -1991,6 +1995,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -2882,6 +2887,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -2912,6 +2921,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4051,6 +4061,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4077,6 +4091,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4165,6 +4180,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4195,6 +4214,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4533,6 +4553,10 @@
               }
             ]
           },
+          "font": {
+            "type": "string",
+            "enum": ["system", "serif", "rounded", "humanist"]
+          },
           "panelsTranslucent": {
             "type": "boolean"
           },
@@ -4634,6 +4658,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4664,6 +4692,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -6084,6 +6113,10 @@
               }
             ]
           },
+          "font": {
+            "type": "string",
+            "enum": ["system", "serif", "rounded", "humanist"]
+          },
           "timeZone": {
             "type": "string"
           },
@@ -6110,6 +6143,7 @@
           "accentCustom",
           "groundTint",
           "navColour",
+          "font",
           "timeZone",
           "onboardingCompletedAt",
           "emailVerified",
@@ -6205,6 +6239,10 @@
                   }
                 ]
               },
+              "font": {
+                "type": "string",
+                "enum": ["system", "serif", "rounded", "humanist"]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -6231,6 +6269,7 @@
               "accentCustom",
               "groundTint",
               "navColour",
+              "font",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",

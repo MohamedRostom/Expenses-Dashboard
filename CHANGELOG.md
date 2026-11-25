@@ -6,6 +6,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 
 ### Added
 
+- Page font setting: Settings › Appearance › Page font (System, Serif, Rounded, Humanist), saved on the account (`PATCH /me` `font`, migration 0015) behind `appearance.accent`; the choice applies to the whole page, widgets and figures included. Installed fonts only, nothing downloaded.
 - Widgets review: on phones each widget is one tappable summary line; place and the Open-Meteo credit shown once; weather leads with the temperature and a row outlook; sunrise shows the time to the next sun event and a daylight arc; currency has an amount converter; Add widget lists money widgets first; touch-size drag grip and month arrows; a currency rate is flagged stale when the rates job has published nothing for over five days.
 - Appearance on for everyone by default: `appearance.accent` and `appearance.motion` now default on (migration 0014, staging and production included), and the landing site builds with motion unless the `APPEARANCE_MOTION` repo variable is `false`. A per-user override still wins; `pnpm flags set <key> off` turns either back off.
 - Design-critique fixes: the top bar owns the page title, month switcher and Add, a bottom-bar Add, a boot-failure screen, Month shows left per day, converted rows and a quicker add form with filter and bulk delete, Settings tabs with one accent control, warm signed-out pages, full-border status notices with a lamp and a word, and year summary tiles (total, monthly average, highest month).

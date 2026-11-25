@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { MOTION_PRESET_IDS } from '@desk/contracts';
+import { FONT_IDS, MOTION_PRESET_IDS } from '@desk/contracts';
 import { startHarness, type Harness } from './harness.js';
 
 // T013: spec 006 appearance fields on GET/PATCH /me and /me/export.
@@ -149,5 +149,41 @@ describe('me appearance (spec 006)', () => {
       });
       expect(res.status).toBe(401);
     });
+  });
+});
+
+describe('me font (page font setting)', () => {
+  let h: Harness;
+
+  beforeAll(async () => {
+    h = await startHarness();
+  }, 120_000);
+
+  afterAll(async () => {
+    await h.close();
+  });
+
+  it('defaults to the system font', async () => {
+    const user = await h.asUser('font-default@example.com');
+    expect((await j(await user.get('/me'))).user.font).toBe('system');
+  });
+
+  it('PATCH /me sets every font and it round-trips through /me and the export', async () => {
+    const user = await h.asUser('font-patch@example.com');
+    for (const id of FONT_IDS) {
+      const res = await user.patch('/me', { font: id });
+      expect(res.status).toBe(200);
+      expect((await j(res)).user.font).toBe(id);
+    }
+    await user.patch('/me', { font: 'serif' });
+    expect((await j(await user.get('/me'))).user.font).toBe('serif');
+    expect((await j(await user.get('/me/export'))).user.font).toBe('serif');
+  });
+
+  it('rejects an unknown font with 400 and keeps the saved one', async () => {
+    const user = await h.asUser('font-bad@example.com');
+    const res = await user.patch('/me', { font: 'comic-sans' });
+    expect(res.status).toBe(400);
+    expect((await j(await user.get('/me'))).user.font).toBe('system');
   });
 });

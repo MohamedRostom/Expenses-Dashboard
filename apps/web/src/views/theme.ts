@@ -1,4 +1,4 @@
-import { ACCENT_IDS, MOTION_DARK_TINT, MOTION_PRESET_IDS } from '@desk/contracts';
+import { ACCENT_IDS, FONT_IDS, MOTION_DARK_TINT, MOTION_PRESET_IDS } from '@desk/contracts';
 import { GROUND_TINT, onColour, safeAccent } from '@desk/ui';
 
 /** Maps a user theme preference to the DOM attribute value per CLAUDE.md's
@@ -98,5 +98,18 @@ export function applyMotion(
     el.setAttribute('data-motion-paused', '');
   } else {
     el.removeAttribute('data-motion-paused');
+  }
+}
+
+/** Page font on <html> (Settings › Appearance): tokens.css maps each `data-font` to one stack for
+ * words and figures. System, an unknown id, signed out (null) or `appearance.accent` off removes
+ * it, so the default stacks come back. */
+export function applyFont(font: string | null | undefined, enabled: boolean): void {
+  if (typeof document === 'undefined') return;
+  const known = (FONT_IDS as readonly string[]).includes(font ?? '');
+  if (enabled && known && font !== 'system') {
+    document.documentElement.setAttribute('data-font', font!);
+  } else {
+    document.documentElement.removeAttribute('data-font');
   }
 }

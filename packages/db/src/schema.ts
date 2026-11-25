@@ -44,6 +44,8 @@ export const users = pgTable('users', {
   accentCustom: text('accent_custom'),
   groundTint: text('ground_tint'),
   navColour: text('nav_colour'),
+  // Page font preset (FONT_IDS); words and figures both use it.
+  font: text('font').notNull().default('system'),
   timeZone: text('time_zone').notNull().default('UTC'),
   temperatureUnit: text('temperature_unit').notNull().default('C'),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),

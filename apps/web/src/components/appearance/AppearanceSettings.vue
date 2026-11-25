@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { Button, GROUND_TINT, safeAccent, useToast } from '@desk/ui';
-import { ACCENT_IDS, MOTION_PRESET_IDS, MOTION_SWATCHES } from '@desk/contracts';
-import type { AccentId, MotionPresetId, PatchMeResponseT } from '@desk/contracts';
+import { ACCENT_IDS, FONT_IDS, MOTION_PRESET_IDS, MOTION_SWATCHES } from '@desk/contracts';
+import type { AccentId, FontId, MotionPresetId, PatchMeResponseT } from '@desk/contracts';
 import { ApiError, apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
 import { applyAccent } from '../../views/theme.js';
@@ -41,6 +41,7 @@ const SWATCH_NAMES: Record<string, string> = {
 
 type Patch = {
   accent?: AccentId;
+  font?: FontId;
   motionPreset?: MotionPresetId;
   motionColour?: string;
   panelsTranslucent?: boolean;
@@ -58,6 +59,15 @@ const COLOURS: { key: ColourKey; label: string; start: string }[] = [
   { key: 'navColour', label: 'Selected menu item', start: '#6b7280' },
 ];
 const picked = (key: ColourKey) => session.user?.[key] ?? null;
+
+// Page font: installed fonts only (tokens.css), applied to words and figures alike.
+const FONT_NAMES: Record<FontId, { label: string; blurb: string }> = {
+  system: { label: 'System', blurb: "Your device's own font. The default." },
+  serif: { label: 'Serif', blurb: 'A book-like font with small strokes.' },
+  rounded: { label: 'Rounded', blurb: 'Soft, rounded letter ends.' },
+  humanist: { label: 'Humanist', blurb: 'Open, handwriting-shaped letters.' },
+};
+const font = computed(() => session.user?.font ?? 'system');
 
 const preset = computed(() => session.user?.motionPreset ?? 'particles');
 const colour = computed(() => (session.user?.motionColour ?? '#7fd1a8').toLowerCase());
@@ -257,6 +267,33 @@ onBeforeUnmount(() => {
           </label>
         </fieldset>
       </div>
+    </div>
+
+    <div v-if="colours" class="desk-appearance-group" role="radiogroup" aria-label="Page font">
+      <label
+        v-for="id in FONT_IDS"
+        :key="id"
+        class="desk-appearance-preset"
+        :data-checked="font === id"
+      >
+        <input
+          type="radio"
+          name="settings-font"
+          :value="id"
+          :checked="font === id"
+          :aria-labelledby="`desk-font-${id}-name`"
+          :aria-describedby="`desk-font-${id}-blurb`"
+          @change="queue({ font: id })"
+        />
+        <span class="desk-appearance-text">
+          <span :id="`desk-font-${id}-name`" class="desk-appearance-name">{{
+            FONT_NAMES[id].label
+          }}</span>
+          <span :id="`desk-font-${id}-blurb`" class="desk-appearance-blurb">{{
+            FONT_NAMES[id].blurb
+          }}</span>
+        </span>
+      </label>
     </div>
 
     <div

@@ -171,6 +171,16 @@ describe('Concourse Board identity values (ADR-0006)', () => {
       "ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace",
     );
   });
+  it.each(['serif', 'rounded', 'humanist'])(
+    'page font %s: one installed-font stack for words and figures, nothing downloaded',
+    (id) => {
+      const t = rule(`:root[data-font='${id}']`);
+      const stack = t.get('--font-sans');
+      expect(stack).toMatch(/, (serif|sans-serif)$/);
+      expect(t.get('--font-mono')).toBe(stack);
+      expect(css).not.toMatch(/@font-face/);
+    },
+  );
   it('has 2/4/8px radii and 0.08em wide tracking', () => {
     expect([light.get('--radius-sm'), light.get('--radius-md'), light.get('--radius-lg')]).toEqual([
       '2px',

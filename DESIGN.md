@@ -287,6 +287,8 @@ A person may pick any colour for three things: the accent, the ground's tint (bo
 ### Named Rules
 **The Tabular Figures Rule.** Every amount, rate and date is set in the figure face with `font-variant-numeric: tabular-nums`, so columns align digit for digit. Amount inputs follow the same rule.
 
+**The Page Font Rule** (decided 2026-11-25). Settings › Appearance offers a page font, saved on the account and behind `appearance.accent`: System (the two stacks above, the default), Serif, Rounded or Humanist. A chosen preset replaces both the word and the figure font everywhere, widgets included, by setting `data-font` on `<html>` so `tokens.css` points `--font-sans` and `--font-mono` at one stack. Presets are installed fonts only (no `@font-face`, nothing downloaded). Figures keep `tabular-nums`; in a proportional preset whose font lacks tabular digits, columns may align less tightly, which the user accepts by choosing it.
+
 **The Fixed Columns Rule.** A column's position and width never change when its values do. Values change; the board does not.
 
 ## Layout

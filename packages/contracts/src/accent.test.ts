@@ -19,6 +19,7 @@ const user = {
   accentCustom: null,
   groundTint: null,
   navColour: null,
+  font: 'system',
 };
 
 describe('accent ids', () => {

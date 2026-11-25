@@ -1,4 +1,5 @@
 export { ACCENT_IDS, type AccentId } from './accent.js';
+export { FONT_IDS, type FontId } from './font.js';
 export {
   MOTION_PRESET_IDS,
   MOTION_SWATCHES,

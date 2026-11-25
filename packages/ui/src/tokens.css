@@ -316,3 +316,24 @@
   --color-accent-fg: #f2f2ee;
   --color-selection: #20332b;
 }
+
+/* Page font (Settings › Appearance): installed fonts only, nothing downloaded. The chosen stack
+ * replaces both the word and the figure font; figures keep tabular-nums wherever they set it. */
+:root[data-font='serif'] {
+  --font-sans: ui-serif, Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+  --font-mono: ui-serif, Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+}
+:root[data-font='rounded'] {
+  --font-sans:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT',
+    'Arial Rounded MT Bold', Calibri, source-sans-pro, sans-serif;
+  --font-mono:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT',
+    'Arial Rounded MT Bold', Calibri, source-sans-pro, sans-serif;
+}
+:root[data-font='humanist'] {
+  --font-sans:
+    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
+  --font-mono:
+    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
+}

@@ -13,7 +13,13 @@ import { bootError } from './bootError.js';
 const reloadApp = () => location.reload();
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyAccent, applyFreeColours, applyMotion, applyTheme } from './views/theme.js';
+import {
+  applyAccent,
+  applyFont,
+  applyFreeColours,
+  applyMotion,
+  applyTheme,
+} from './views/theme.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -87,6 +93,12 @@ watch(
     ] as const,
   () => applyFreeColours(session.user, flags.isOn('appearance.accent')),
   { immediate: true, flush: 'post' },
+);
+// Page font: words and figures. Signed out keeps the default stacks.
+watch(
+  () => [session.user?.font, flags.isOn('appearance.accent')] as const,
+  ([font, on]) => applyFont(font, on),
+  { immediate: true },
 );
 // Flags follow the auth state: public set signed out, full set signed in (the store dedupes).
 watch(

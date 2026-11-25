@@ -26,6 +26,7 @@ import {
   type ExportDocumentT,
   type ConfirmEmailResponseT,
   type AccentId,
+  type FontId,
   type MotionPresetId,
 } from '@desk/contracts';
 import type { AppVariables, JobsDep } from '../app.js';
@@ -67,6 +68,7 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     accentCustom: u.accentCustom,
     groundTint: u.groundTint,
     navColour: u.navColour,
+    font: u.font as FontId,
     timeZone: u.timeZone,
     temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
@@ -102,6 +104,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.accent !== undefined) patch.accent = patchBody.accent;
     if (patchBody.motionPreset !== undefined) patch.motionPreset = patchBody.motionPreset;
+    if (patchBody.font !== undefined) patch.font = patchBody.font;
     if (patchBody.motionColour !== undefined)
       patch.motionColour = patchBody.motionColour.toLowerCase();
     for (const k of ['accentCustom', 'groundTint', 'navColour'] as const) {

@@ -19,6 +19,8 @@ export interface User {
   accentCustom?: string | null;
   groundTint?: string | null;
   navColour?: string | null;
+  /** Page font preset (FONT_IDS); absent or 'system' is the default. */
+  font?: string;
   timeZone: string;
   onboardingCompletedAt?: string | null;
   /** From UserResponse; false until the address is confirmed (FR-001). */

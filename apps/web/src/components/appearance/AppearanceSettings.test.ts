@@ -500,3 +500,42 @@ describe('AppearanceSettings free colours (ADR-0008)', () => {
     expect(bodyOf(api, 1)).toEqual({ groundTint: '#aabbcc' });
   });
 });
+
+describe('AppearanceSettings page font', () => {
+  const fontRadios = (el: HTMLElement) => radios(el, 'Page font');
+
+  it('offers System, Serif, Rounded and Humanist', async () => {
+    const { el } = await setup('light', {}, { colours: true });
+    const labels = fontRadios(el).map((i) => i.closest('label')!);
+    expect(labels.map((l) => l.querySelector('.desk-appearance-name')?.textContent)).toEqual([
+      'System',
+      'Serif',
+      'Rounded',
+      'Humanist',
+    ]);
+  });
+
+  it('checks the saved font, system when none is saved', async () => {
+    const { el } = await setup('light', {}, { colours: true });
+    expect(fontRadios(el).find((i) => i.checked)?.value).toBe('system');
+    document.body.innerHTML = '';
+    const again = await setup('light', { font: 'serif' }, { colours: true });
+    expect(fontRadios(again.el).find((i) => i.checked)?.value).toBe('serif');
+  });
+
+  it('previews at once and saves the pick on the account', async () => {
+    const { el, session, api } = await setup('light', {}, { colours: true });
+    api.mockResolvedValue({ user: { ...baseUser, font: 'rounded' } });
+    const input = fontRadios(el).find((i) => i.value === 'rounded')!;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(session.user?.font).toBe('rounded');
+    await vi.advanceTimersByTimeAsync(401);
+    expect(bodyOf(api, 0)).toEqual({ font: 'rounded' });
+  });
+
+  it('is absent when the colours prop (appearance.accent) is off', async () => {
+    const { el } = await setup('light', {}, { colours: false });
+    expect(fontRadios(el)).toHaveLength(0);
+  });
+});

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { MOTION_DARK_TINT } from '@desk/contracts';
 import { contrastRatio, GROUND_TINT, onColour, safeAccent } from '@desk/ui';
-import { applyAccent, applyFreeColours, applyMotion, applyTheme } from './theme.js';
+import { applyAccent, applyFont, applyFreeColours, applyMotion, applyTheme } from './theme.js';
 
 describe('applyTheme', () => {
   afterEach(() => {
@@ -212,5 +212,26 @@ describe('applyFreeColours (ADR-0008)', () => {
   it('ignores a value that is not #rrggbb', () => {
     applyFreeColours({ accentCustom: 'red', groundTint: '#fff', navColour: undefined }, true);
     for (const k of VARS) expect(v(k)).toBe('');
+  });
+});
+
+describe('applyFont (page font setting)', () => {
+  afterEach(() => document.documentElement.removeAttribute('data-font'));
+
+  it('sets data-font for a chosen font, which tokens.css maps for words and figures', () => {
+    applyFont('serif', true);
+    expect(document.documentElement.getAttribute('data-font')).toBe('serif');
+  });
+  it('removes it for system, an unknown id, signed out (null) or the flag off', () => {
+    for (const [font, on] of [
+      ['system', true],
+      ['comic', true],
+      [null, true],
+      ['serif', false],
+    ] as const) {
+      document.documentElement.setAttribute('data-font', 'rounded');
+      applyFont(font, on);
+      expect(document.documentElement.hasAttribute('data-font')).toBe(false);
+    }
   });
 });
