@@ -1,4 +1,5 @@
 import { ACCENT_IDS, MOTION_DARK_TINT, MOTION_PRESET_IDS } from '@desk/contracts';
+import { GROUND_TINT, onColour, safeAccent } from '@desk/ui';
 
 /** Maps a user theme preference to the DOM attribute value per CLAUDE.md's
  * three-state convention. 'system' removes data-theme so prefers-color-scheme
@@ -23,6 +24,35 @@ export function applyAccent(accent: string | null | undefined, enabled: boolean)
   } else {
     document.documentElement.removeAttribute('data-accent');
   }
+}
+
+export interface FreeColours {
+  accentCustom?: string | null | undefined;
+  groundTint?: string | null | undefined;
+  navColour?: string | null | undefined;
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+const hexOrNull = (v: string | null | undefined) => (v && HEX.test(v) ? v.toLowerCase() : null);
+
+/** Free colours (ADR-0008): the accent, the ground's tint and the selected nav item, as inline
+ * variables on <html>. A colour is never rejected: text on it is black or white (`onColour`) and
+ * the accent is drawn nudged until a bar in it shows (`safeAccent`). A null colour removes its
+ * variables, so the preset accent / default tint / default nav highlight come back. `prefs` null
+ * (signed out) or the flag off removes all of them. Call again when the theme changes. */
+export function applyFreeColours(prefs: FreeColours | null, enabled: boolean): void {
+  if (typeof document === 'undefined') return;
+  const style = document.documentElement.style;
+  const set = (names: string[], values: string[] | null) =>
+    names.forEach((n, i) => (values ? style.setProperty(n, values[i]!) : style.removeProperty(n)));
+  const on = enabled && prefs !== null;
+  const tint = on ? hexOrNull(prefs.groundTint) : null;
+  const accent = on ? hexOrNull(prefs.accentCustom) : null;
+  const nav = on ? hexOrNull(prefs.navColour) : null;
+  const drawn = accent ? safeAccent(accent, isDark(), tint ?? GROUND_TINT) : null;
+  set(['--ground-tint'], tint ? [tint] : null);
+  set(['--color-accent', '--color-accent-fg'], drawn ? [drawn, onColour(drawn)] : null);
+  set(['--nav-colour', '--nav-colour-fg'], nav ? [nav, onColour(nav)] : null);
 }
 
 export interface MotionPrefs {

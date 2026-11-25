@@ -20,7 +20,7 @@ async function signedIn(page: Page, tag: string): Promise<void> {
     env: { ...process.env, DATABASE_URL: DB_URL },
     stdio: 'pipe',
   });
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await page.waitForLoadState('networkidle');
 }
 
@@ -76,7 +76,7 @@ test('axe is clean over the lightest and darkest custom colour', async ({ page }
     await page.goto('/');
     await page.waitForLoadState('networkidle');
     await axeCheck(page);
-    await page.goto('/settings');
+    await page.goto('/settings#sg-look');
     await page.waitForLoadState('networkidle');
   }
 });

@@ -105,7 +105,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside));
   color: var(--color-fg);
   background: transparent;
   border: 1px solid transparent;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   min-width: var(--space-8);
   min-height: var(--space-8);
@@ -130,7 +130,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside));
   z-index: 10;
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
   box-shadow: var(--shadow-overlay);
 }
 .desk-menu-item {
@@ -145,7 +145,7 @@ onBeforeUnmount(() => document.removeEventListener('pointerdown', onOutside));
   color: var(--color-fg);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   cursor: pointer;
 }
 .desk-menu-item:hover {

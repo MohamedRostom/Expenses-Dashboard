@@ -82,7 +82,9 @@ async function refreshUntilAllowed(page: Page, timeoutMs = 90_000): Promise<void
 async function waitForTodayPayload(
   page: Page,
   predicate: (body: TodayPayload) => boolean,
-  timeoutMs = 40_000,
+  // Two 30s JOB_TICK_MS ticks plus margin: under parallel load a kicked run can miss the job,
+  // which then waits for the next tick (40s, one tick plus 10s, flaked).
+  timeoutMs = 75_000,
 ): Promise<TodayPayload> {
   let last: TodayPayload | undefined;
   await expect(async () => {
@@ -308,7 +310,7 @@ test.describe('Today calendar panel @ci', () => {
   });
 
   test('a Microsoft event appears after refresh with the right account chip', async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const email = `today-microsoft-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
     const key = await connect(page, 'microsoft');
@@ -348,7 +350,7 @@ test.describe('Today calendar panel @ci', () => {
   test('auto-refreshes stale cached data on open, and a stale account shows its last-refresh time', async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const email = `today-stale-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
@@ -377,7 +379,7 @@ test.describe('Today calendar panel @ci', () => {
   });
 
   test('shows a reconnect notice once the mock revokes access, axe clean', async ({ page }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const email = `today-reconnect-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
@@ -413,7 +415,7 @@ test.describe('Today calendar panel @ci', () => {
   test('T058: after a simulated 30-day idle purge, panels show loading rather than stale rows until the refresh completes', async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const email = `today-purge-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');
@@ -462,7 +464,7 @@ test.describe('Today render performance @mobile', () => {
   test('renders cached calendar content within one second of navigating to /today', async ({
     page,
   }) => {
-    test.setTimeout(120_000);
+    test.setTimeout(240_000);
     const email = `today-perf-${crypto.randomUUID()}@example.com`;
     await signUpAndVerify(page, email);
     const key = await connect(page, 'google');

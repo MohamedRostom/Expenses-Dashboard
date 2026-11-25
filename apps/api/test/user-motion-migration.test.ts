@@ -54,3 +54,47 @@ describe('users motion columns migration', () => {
     for (const id of MOTION_PRESET_IDS) expect(sql).toContain(`'${id}'`);
   });
 });
+
+describe('users free colours migration (0013)', () => {
+  let container: StartedPostgreSqlContainer;
+
+  beforeAll(async () => {
+    container = await new PostgreSqlContainer('postgres:16-alpine').start();
+    await runMigrations(container.getConnectionUri());
+  });
+
+  afterAll(async () => {
+    await container?.stop();
+  });
+
+  it('defaults to NULL and rejects anything but lowercase #rrggbb', async () => {
+    const { db, close } = createDb(container.getConnectionUri());
+    try {
+      const [u] = await db
+        .insert(users)
+        .values({ email: 'free@desk.test', defaultCurrency: 'GBP' })
+        .returning();
+      expect([u!.accentCustom, u!.groundTint, u!.navColour]).toEqual([null, null, null]);
+      await db
+        .update(users)
+        .set({ accentCustom: '#aabbcc', groundTint: '#000000', navColour: '#ffffff' })
+        .where(eq(users.id, u!.id));
+      await db
+        .update(users)
+        .set({ accentCustom: null, groundTint: null, navColour: null })
+        .where(eq(users.id, u!.id));
+      for (const bad of ['#FFF', '#AABBCC', 'red', '']) {
+        for (const col of ['accentCustom', 'groundTint', 'navColour'] as const) {
+          await expect(
+            db
+              .update(users)
+              .set({ [col]: bad })
+              .where(eq(users.id, u!.id)),
+          ).rejects.toThrow();
+        }
+      }
+    } finally {
+      await close();
+    }
+  });
+});

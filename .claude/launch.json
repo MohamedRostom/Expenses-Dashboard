@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "web-catalogue",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": [
+        "/c",
+        "set VITE_UI_CATALOGUE=true&& pnpm --filter @desk/web exec vite --port 5199 --strictPort"
+      ],
+      "port": 5199
+    }
+  ]
+}

@@ -87,14 +87,17 @@ describe('db seed', () => {
       }
     });
 
-    it('seeds the appearance.accent flag off', async () => {
+    // Theme selection and colours are on for everyone by default (Rostom, 2026-11-20; migration 0014).
+    it('has both appearance flags on by default', async () => {
       const url = container.getConnectionUri();
       await seed(url);
       const { db, close } = createDb(url);
       try {
-        const rows = await db.select().from(flags).where(eq(flags.key, 'appearance.accent'));
-        expect(rows).toHaveLength(1);
-        expect(rows[0]!.defaultOn).toBe(false);
+        const rows = await db.select().from(flags).where(like(flags.key, 'appearance.%'));
+        expect(rows.map((r) => [r.key, r.defaultOn]).sort()).toEqual([
+          ['appearance.accent', true],
+          ['appearance.motion', true],
+        ]);
       } finally {
         await close();
       }

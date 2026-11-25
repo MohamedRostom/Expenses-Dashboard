@@ -2,7 +2,7 @@
 /** The widget frame: a raised flap with header, drag grip, menu and banner (DESIGN.md Components,
  * compact widget variant). Moved out of @desk/ui's PanelFrame (T042): the copy and the Categories
  * link are widget-specific. Loading and error bodies are PanelFrame states. */
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { PanelFrame } from '@desk/ui';
 import type { WidgetT } from '@desk/contracts';
 
@@ -24,6 +24,23 @@ const emit = defineEmits<{
 }>();
 
 const w = computed(() => props.widget);
+
+// A <details> menu stays open by itself: close it after a choice (focus back on the summary, so a
+// dialog opened by the choice restores focus somewhere visible), on Escape, and on an outside click.
+const menu = ref<HTMLDetailsElement | null>(null);
+function closeMenu(refocus: boolean) {
+  if (!menu.value?.open) return;
+  menu.value.open = false;
+  if (refocus) menu.value.querySelector('summary')?.focus();
+}
+function onItemClick(e: MouseEvent) {
+  if ((e.target as HTMLElement).closest('button')) closeMenu(true);
+}
+function onOutsideClick(e: MouseEvent) {
+  if (!menu.value?.contains(e.target as Node)) closeMenu(false);
+}
+onMounted(() => document.addEventListener('click', onOutsideClick));
+onUnmounted(() => document.removeEventListener('click', onOutsideClick));
 function onGripDown(e: PointerEvent) {
   (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
   emit('dragStart', e);
@@ -92,9 +109,9 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
       >
       <h3 class="desk-widget-title" data-testid="widget-title">{{ frameTitle }}</h3>
       <span class="desk-widget-asof">as of {{ asOf }}</span>
-      <details class="desk-widget-menu">
+      <details ref="menu" class="desk-widget-menu" @keydown.esc="closeMenu(true)">
         <summary :aria-label="`${frameTitle} menu`">&#8943;</summary>
-        <div class="desk-widget-menu-items">
+        <div class="desk-widget-menu-items" @click.capture="onItemClick">
           <button type="button" :disabled="index === 0" @click="$emit('move', -1)">Move up</button>
           <button type="button" :disabled="index === (count ?? 0) - 1" @click="$emit('move', 1)">
             Move down
@@ -126,13 +143,19 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 /* A raised flap with a fixed height: figures arriving never push the expenses below (FR-001). */
 .desk-widget-frame {
   height: 12rem;
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
   font-family: var(--font-sans);
   color: var(--color-fg);
+}
+/* The menu is taller than the frame, so the frame must not clip (only the body does). Every frame
+ * is its own stacking context (backdrop-filter), so the open one rises above later frames and
+ * panels (z 1) but stays under the bars (9, 10) and dialogs (100). */
+.desk-widget-frame:has(.desk-widget-menu[open]) {
+  position: relative;
+  z-index: 5;
 }
 .desk-widget-head {
   display: flex;
@@ -183,7 +206,7 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   flex-direction: column;
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-overlay);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
 }
 .desk-widget-menu-items button {
   background: none;

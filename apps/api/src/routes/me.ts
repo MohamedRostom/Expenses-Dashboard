@@ -64,6 +64,9 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     motionColour: u.motionColour,
     panelsTranslucent: u.panelsTranslucent,
     motionPaused: u.motionPaused,
+    accentCustom: u.accentCustom,
+    groundTint: u.groundTint,
+    navColour: u.navColour,
     timeZone: u.timeZone,
     temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
@@ -101,6 +104,9 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     if (patchBody.motionPreset !== undefined) patch.motionPreset = patchBody.motionPreset;
     if (patchBody.motionColour !== undefined)
       patch.motionColour = patchBody.motionColour.toLowerCase();
+    for (const k of ['accentCustom', 'groundTint', 'navColour'] as const) {
+      if (patchBody[k] !== undefined) patch[k] = patchBody[k]?.toLowerCase() ?? null;
+    }
     if (patchBody.panelsTranslucent !== undefined)
       patch.panelsTranslucent = patchBody.panelsTranslucent;
     if (patchBody.motionPaused !== undefined) patch.motionPaused = patchBody.motionPaused;

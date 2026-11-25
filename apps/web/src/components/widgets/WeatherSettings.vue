@@ -76,7 +76,7 @@ async function setUnit(unit: TemperatureUnitT) {
   min-block-size: var(--target-min);
   padding-inline: var(--space-3);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }

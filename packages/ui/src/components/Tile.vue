@@ -26,6 +26,7 @@ defineProps<{
       {
         'desk-tile-block--primary': primary,
         'desk-tile-block--critical': primary && variant === 'critical',
+        'desk-tile-block--filled': primary && variant !== 'critical',
       },
     ]"
     data-tile
@@ -76,6 +77,22 @@ defineProps<{
   box-shadow:
     var(--shadow-raised),
     inset 0 0 0 1px var(--color-accent);
+}
+/* The departure tile is the one filled tile (ADR-0008): the accent itself. The doubled class beats the
+   `.surface` opaque fallbacks, which would otherwise turn it raised-white under accent-coloured text. */
+.surface.desk-tile-block--filled {
+  background: var(--color-accent);
+  border-color: transparent;
+  box-shadow: var(--shadow-raised);
+  color: var(--color-accent-fg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.desk-tile-block--filled .desk-tile-label,
+.desk-tile-block--filled .desk-forecast-basis,
+.desk-tile-block--filled .desk-tile-status,
+.desk-tile-block--filled .desk-tile-action :deep(a) {
+  color: inherit;
 }
 .desk-tile-block--critical {
   border-color: var(--color-critical);

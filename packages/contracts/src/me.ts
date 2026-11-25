@@ -20,6 +20,22 @@ export const PatchMeRequest = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/)
     .optional(),
+  /** Free colours (ADR-0008): hex in any case, or null to reset; stored lowercase. */
+  accentCustom: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
+  groundTint: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
+  navColour: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable()
+    .optional(),
   panelsTranslucent: z.boolean().optional(),
   motionPaused: z.boolean().optional(),
   defaultCurrency: z.string().length(3).optional(),

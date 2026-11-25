@@ -92,6 +92,15 @@ describe('Tile accent ring (T044)', () => {
   });
 });
 
+describe('Tile labels (E7)', () => {
+  it('has no font-size literal, so no label is under 12px (0.75rem)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/Tile.vue', 'utf8');
+    expect(src.match(/font-size:[ \t]*(?!var\()[^;\s][^;]*;/g)).toBeNull();
+    expect(src).toMatch(/\.desk-tile-label[^{]*\{[^}]*font-size:\s*var\(--text-xs\)/);
+  });
+});
+
 describe('Tile hero (T048)', () => {
   it('the hero figure sits plainly in the ring: no seam cell or hinge ticks', async () => {
     const el = await mount({ label: 'Left', value: '£1.00', primary: true });
@@ -113,5 +122,20 @@ describe('Tile hero (T048)', () => {
     expect(rule).toContain('white-space: nowrap');
     const plain = await mount({ label: 'Left', value: '£1.00', primary: true });
     expect(plain.querySelector('.desk-tile-value--words')).toBeNull();
+  });
+});
+
+describe('Tile filled departure tile (ADR-0008)', () => {
+  it('fills a primary tile, but never a critical one or a plain one (status is not a fill)', async () => {
+    const filled = '.desk-tile-block--filled';
+    expect(
+      (await mount({ label: 'L', value: '1', primary: true })).querySelector(filled),
+    ).not.toBeNull();
+    expect(
+      (await mount({ label: 'L', value: '1', primary: true, variant: 'critical' })).querySelector(
+        filled,
+      ),
+    ).toBeNull();
+    expect((await mount({ label: 'L', value: '1' })).querySelector(filled)).toBeNull();
   });
 });

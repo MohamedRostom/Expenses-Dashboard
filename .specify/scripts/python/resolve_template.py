@@ -50,12 +50,19 @@ def main(argv: list[str] | None = None) -> int:
                     "TEMPLATE_NAME": args.template_name,
                     "TEMPLATE_CONTENT": content,
                 },
-                ensure_ascii=False,
+                # ASCII escapes keep the JSON intact on a legacy Windows stdout code page.
+                ensure_ascii=True,
                 separators=(",", ":"),
             )
         )
     else:
-        sys.stdout.write(content)
+        buffer = getattr(sys.stdout, "buffer", None)
+        if buffer is not None:
+            sys.stdout.flush()
+            buffer.write(content.encode("utf-8"))
+            buffer.flush()
+        else:
+            sys.stdout.write(content)
     return 0
 
 

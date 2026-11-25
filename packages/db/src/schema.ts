@@ -40,6 +40,10 @@ export const users = pgTable('users', {
   motionColour: text('motion_colour').notNull().default('#7fd1a8'),
   panelsTranslucent: boolean('panels_translucent').notNull().default(true),
   motionPaused: boolean('motion_paused').notNull().default(false),
+  // Free colours (ADR-0008): lowercase #rrggbb, NULL = the default.
+  accentCustom: text('accent_custom'),
+  groundTint: text('ground_tint'),
+  navColour: text('nav_colour'),
   timeZone: text('time_zone').notNull().default('UTC'),
   temperatureUnit: text('temperature_unit').notNull().default('C'),
   onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),

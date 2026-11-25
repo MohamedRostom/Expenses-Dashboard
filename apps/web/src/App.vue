@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { START_LOCATION, useRoute, useRouter } from 'vue-router';
 import { BackgroundMotion, Toast } from '@desk/ui';
+import AppSidebar from './components/shell/AppSidebar.vue';
+import BottomBar from './components/shell/BottomBar.vue';
+import TopBar from './components/shell/TopBar.vue';
 import FeedbackWidget from './components/FeedbackWidget.vue';
 import AuthBackdrop from './components/AuthBackdrop.vue';
+import BootError from './components/BootError.vue';
+import { bootError } from './bootError.js';
+
+const reloadApp = () => location.reload();
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
-import { applyAccent, applyMotion, applyTheme } from './views/theme.js';
+import { applyAccent, applyFreeColours, applyMotion, applyTheme } from './views/theme.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -65,6 +72,22 @@ watch(
     }),
   { immediate: true, flush: 'post' },
 );
+// ADR-0008 free colours: accent, ground tint and nav highlight. Signed out shows none (user is
+// null). "Dark" is read from the effective theme, so the theme and the system scheme are inputs.
+watch(
+  () =>
+    [
+      session.user?.theme,
+      session.user?.accentCustom,
+      session.user?.groundTint,
+      session.user?.navColour,
+      !!session.user,
+      flags.isOn('appearance.accent'),
+      scheme.value,
+    ] as const,
+  () => applyFreeColours(session.user, flags.isOn('appearance.accent')),
+  { immediate: true, flush: 'post' },
+);
 // Flags follow the auth state: public set signed out, full set signed in (the store dedupes).
 watch(
   () => !!session.user,
@@ -79,29 +102,56 @@ const showNav = computed(
 const SIGNED_OUT_PAGES = new Set(['login', 'register', 'verify', 'forgot', 'reset']);
 const onSignedOutPage = computed(() => SIGNED_OUT_PAGES.has(String(route.name)));
 
-// Show Today link only when the flag is on
-const showTodayLink = computed(() => flags.isOn('panels.today'));
+// Keyboard and screen-reader users land on the new screen, not on the nav they just used: focus the
+// main container after each route change, but not on the first load and not for hash or query-only
+// changes (they would steal focus from anchor jumps). The skip link focuses it directly, so the
+// router never sees a "#main" hash.
+const mainEl = ref<HTMLElement | null>(null);
+function skipToMain(e: Event) {
+  e.preventDefault();
+  mainEl.value?.focus();
+}
+const stopFocusHook = router.afterEach((to, from, failure) => {
+  if (failure || from === START_LOCATION || to.path === from.path) return;
+  // A screen that already moved focus into itself (a dialog, an autofocused field) keeps it.
+  void nextTick(() => {
+    const main = mainEl.value;
+    const at = document.activeElement;
+    if (main && !(at && at !== main && main.contains(at))) main.focus();
+  });
+});
+onBeforeUnmount(stopFocusHook);
 </script>
 
 <template>
-  <header v-if="showNav" class="desk-header">
-    <nav class="desk-nav" aria-label="Main">
-      <RouterLink :to="{ name: 'home' }">Month</RouterLink>
-      <RouterLink :to="{ name: 'year' }">Year</RouterLink>
-      <RouterLink v-if="showTodayLink" :to="{ name: 'today' }">Today</RouterLink>
-      <RouterLink :to="{ name: 'categories' }">Categories</RouterLink>
-      <RouterLink :to="{ name: 'import' }">Import</RouterLink>
-      <RouterLink :to="{ name: 'bin' }">Bin</RouterLink>
-      <RouterLink :to="{ name: 'settings' }">Settings</RouterLink>
-      <RouterLink :to="{ name: 'settings-connectors' }">Connectors</RouterLink>
-      <button type="button" class="desk-nav-signout" @click="signOut">Sign out</button>
-    </nav>
-  </header>
+  <a v-if="showNav" href="#main" class="desk-skip-link" data-testid="skip-link" @click="skipToMain">
+    Skip to content
+  </a>
   <!-- Signed-out pages cycle their own backdrop (ADR-0007 amendment 2026-10-18); moving only
        while appearance.motion is on, a still scene otherwise. -->
   <AuthBackdrop v-if="onSignedOutPage" :animate="flags.isOn('appearance.motion')" />
   <BackgroundMotion v-else />
-  <RouterView />
+  <AppSidebar v-if="showNav" @sign-out="signOut" />
+  <BottomBar v-if="showNav" />
+  <!-- Every view renders its own <main>, so this is a plain focus target (no role), not a second
+       landmark. Signed in it is the content frame: the sidebar / bottom-bar inset lives here, so
+       screens add no page padding for the shell. -->
+  <div
+    id="main"
+    ref="mainEl"
+    tabindex="-1"
+    data-testid="main-content"
+    :class="{ 'desk-frame': showNav }"
+  >
+    <TopBar v-if="showNav" />
+    <!-- A failed boot (session call down, no cached user) shows an error, not a blank page. -->
+    <BootError
+      v-if="bootError"
+      v-bind="bootError.code ? { code: bootError.code } : {}"
+      @retry="reloadApp"
+    />
+    <RouterView v-else />
+  </div>
   <!-- The dev-only catalogue and mock-ups (/__ui) show their own chrome only. -->
   <FeedbackWidget v-if="!route.path.startsWith('/__ui')" />
   <Toast />
@@ -114,74 +164,44 @@ body {
   background: var(--color-bg);
   color: var(--color-fg);
 }
-/* The raised flap strip (DESIGN.md Layout, Navigation): text links in a wrapping row, the current
- * page marked by a 2px accent underline (the accent is never text colour), Sign out at the far end. */
-.desk-header {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  box-shadow: var(--shadow-raised);
+:root {
+  --shell-side-w: 13rem;
 }
-.desk-nav {
-  display: flex;
-  /* T097: 7 links + Sign out never fit one 390px row; wrapping keeps every link reachable with no
-   * scroll container or JS-driven menu. */
-  flex-wrap: wrap;
-  column-gap: var(--space-4);
-  max-width: var(--content-max);
-  margin: 0 auto;
-  padding: var(--space-1) var(--gutter);
-  font-family: var(--font-sans);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-.desk-nav a,
-.desk-nav-signout {
+/* Skip link: first focusable element, visible only on focus. */
+.desk-skip-link {
+  position: fixed;
+  z-index: 300;
+  top: var(--space-2);
+  left: var(--space-2);
   display: inline-flex;
   align-items: center;
-  min-height: var(--target-min);
-  padding: 0;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  background: none;
-  font: inherit;
-  color: var(--color-fg-muted);
-  text-decoration: none;
-  cursor: pointer;
-  transition:
-    color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
-}
-.desk-nav a:hover,
-.desk-nav-signout:hover {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
   color: var(--color-fg);
+  box-shadow: var(--shadow-overlay);
+  font-weight: 600;
+  transform: translateY(-200%);
 }
-.desk-nav a[aria-current='page'] {
-  color: var(--color-fg);
-  border-bottom-color: var(--color-accent);
-}
-.desk-nav a:focus-visible,
-.desk-nav-signout:focus-visible {
+.desk-skip-link:focus-visible {
+  transform: none;
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
-.desk-nav-signout {
-  margin-left: auto;
+#main:focus {
+  outline: none;
 }
-@media (min-width: 768px) {
-  .desk-nav {
-    padding-inline: var(--gutter-fluid);
+/* The shell's content inset (ADR-0008): room for the floating bottom bar and the safe area below
+ * 1024px, for the sidebar from 1024px. Screens add no page padding for either. */
+@media (max-width: 1023px) {
+  .desk-frame {
+    padding-bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
   }
 }
 @media (min-width: 1024px) {
-  .desk-nav a,
-  .desk-nav-signout {
-    min-height: var(--space-10);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .desk-nav a,
-  .desk-nav-signout {
-    transition: none;
+  .desk-frame {
+    padding-left: calc(var(--shell-side-w) + var(--space-4));
   }
 }
 </style>

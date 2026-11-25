@@ -160,13 +160,16 @@ test.describe('post-deploy smoke @local', () => {
   test('deleting an expense removes it from the month', async ({ signedInPage: page }) => {
     const description = `Smoke delete ${Date.now()}`;
     await createExpense(page, description);
-    // MonthView's delete uses window.confirm(); Playwright cancels native dialogs by default.
-    page.on('dialog', (d) => d.accept());
+    // Delete confirms in an in-app dialog; a native one would be a regression.
+    page.on('dialog', (d) => {
+      throw new Error(`native ${d.type()} dialog fired: ${d.message()}`);
+    });
 
     await page.goto('/');
     await row(page, description)
       .getByRole('button', { name: /delete/i })
       .click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
 
     // Assert the row, not the text: the undo banner repeats it for 6s.
     await expect(row(page, description)).toHaveCount(0, REMOTE);

@@ -61,12 +61,14 @@ describe('WidgetStrip', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => (document.body.innerHTML = ''));
 
-  it('with no widgets shows one short line and the add button', async () => {
+  it('with no widgets shows no empty-state line, only a quiet add button', async () => {
     const { el, app } = await mount([], [type('currency', 'Currency')]);
-    expect(el.querySelector('[data-testid="widget-empty"]')?.textContent?.trim()).toBe(
-      'No widgets yet',
-    );
-    expect(el.querySelector('[data-testid="add-widget"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="widget-empty"]')).toBeNull();
+    expect(el.textContent).not.toContain('No widgets yet');
+    expect(el.querySelector('.desk-widget-grid')).toBeNull();
+    const add = el.querySelector('[data-testid="add-widget"]')!;
+    expect(add.textContent).toContain('Add widget (0 of');
+    expect(add.className).toContain('ghost');
     app.unmount();
   });
 
@@ -194,6 +196,65 @@ describe('WidgetStrip', () => {
     expect(el.querySelector('[data-testid="widget-frame"]')).not.toBeNull();
     expect(el.querySelector('.desk-skeleton, [class*="skeleton"]')).not.toBeNull();
     app.unmount();
+  });
+
+  describe('Remove confirms in the app, never with window.confirm', () => {
+    // Embedded browsers and installed PWAs return false from confirm() without showing anything.
+    const stubConfirm = () =>
+      vi.spyOn(window, 'confirm').mockImplementation(() => {
+        throw new Error('window.confirm must not be called');
+      });
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await nextTick();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+    const inDialog = (label: string) =>
+      [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(
+        (b) => b.textContent?.trim() === label,
+      );
+    const clickMenuRemove = async (el: HTMLElement) => {
+      [...el.querySelectorAll<HTMLButtonElement>('.desk-widget-menu-items button')]
+        .find((b) => b.textContent?.trim() === 'Remove')
+        ?.click();
+      await flush();
+    };
+
+    it('opens an in-app dialog naming the widget, and removes only after Remove is chosen', async () => {
+      const confirmSpy = stubConfirm();
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.deleteWidget).mockResolvedValue(undefined as never);
+      const { el, app } = await mount([widget('a', { kind: 'fixed_costs' })]);
+      await clickMenuRemove(el);
+      expect(dialog()?.getAttribute('aria-labelledby')).toBeTruthy();
+      expect(dialog()?.textContent).toMatch(/fixed costs/i);
+      expect(api.deleteWidget).not.toHaveBeenCalled();
+      inDialog('Remove')!.click();
+      await flush();
+      expect(api.deleteWidget).toHaveBeenCalledWith('a');
+      expect(confirmSpy).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      app.unmount();
+    });
+
+    it('Cancel and Escape leave the widget alone', async () => {
+      const confirmSpy = stubConfirm();
+      const api = await import('../../api/widgets.js');
+      const { el, app } = await mount([widget('a', { kind: 'fixed_costs' })]);
+      await clickMenuRemove(el);
+      inDialog('Cancel')!.click();
+      await flush();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      await clickMenuRemove(el);
+      dialog()!.parentElement!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await flush();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      expect(api.deleteWidget).not.toHaveBeenCalled();
+      expect(confirmSpy).not.toHaveBeenCalled();
+      app.unmount();
+    });
   });
 
   describe('arrange (T052)', () => {

@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
+import { ApiError } from './api/client.js';
+import { bootError } from './bootError.js';
 // Only the sign-in screen ships in the entry chunk; every other view loads on navigation.
 import LoginView from './views/LoginView.vue';
 
@@ -121,6 +123,11 @@ if (import.meta.env.VITE_UI_CATALOGUE === 'true') {
       path: '/__ui/mockups/widgets',
       component: () => import('./catalogue/mockups/WidgetsMock.vue'),
     },
+    {
+      // Direction round for a proposed ADR-0008 ("Glassy V2"); not an accepted identity.
+      path: '/__ui/mockups/glassy-month',
+      component: () => import('./catalogue/mockups/GlassyMonthMock.vue'),
+    },
   );
 }
 
@@ -138,7 +145,14 @@ router.beforeEach(async (to) => {
   const session = useSessionStore();
   if (!sessionLoaded && session.user === null) {
     sessionLoaded = true;
-    await session.load();
+    try {
+      await session.load();
+    } catch (err) {
+      // A failed boot (e.g. /me 500 with no cached user) must show an error, not a blank page.
+      bootError.value = { code: err instanceof ApiError ? err.code : undefined };
+      sessionLoaded = false;
+      return true;
+    }
   }
   if (!session.user) return { name: 'login', query: { redirect: to.fullPath } };
 

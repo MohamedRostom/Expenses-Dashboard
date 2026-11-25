@@ -32,8 +32,8 @@ withDefaults(
   line-height: var(--leading-sm);
   font-weight: 600;
   min-height: var(--target-min);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-5);
+  border-radius: var(--radius-pill);
   border: 1px solid transparent;
   cursor: pointer;
   display: inline-flex;
@@ -53,10 +53,6 @@ withDefaults(
   font-size: var(--text-xs);
   padding: var(--space-1) var(--space-3);
 }
-.desk-btn:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
-}
 .desk-btn.primary {
   background: var(--color-accent);
   color: var(--color-accent-fg);
@@ -74,6 +70,17 @@ withDefaults(
 .desk-btn.danger {
   background: var(--color-critical);
   color: var(--color-bg);
+}
+/* Disabled reads by fill, not opacity alone; after the variants so it wins at equal specificity. */
+.desk-btn:disabled {
+  cursor: not-allowed;
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
+  color: var(--color-fg-muted);
+}
+.desk-btn.secondary:disabled,
+.desk-btn.ghost:disabled {
+  background: transparent;
+  border-color: var(--color-fg-muted);
 }
 .desk-btn-spinner {
   position: absolute;

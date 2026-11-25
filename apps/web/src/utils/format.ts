@@ -25,6 +25,16 @@ export function formatDate(dateStr: string, locale?: string): string {
   );
 }
 
+/** "Nov 2026" from "2026-11". Formatted in UTC from a UTC date, so the zone never shifts the month. */
+export function formatMonth(month: string, locale?: string): string {
+  const [year, m] = month.split('-').map(Number);
+  return new Intl.DateTimeFormat(locale, {
+    month: 'short',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year as number, (m as number) - 1, 1)));
+}
+
 /** Locale-formatted date+time from a full ISO timestamp (e.g. a session's lastSeenAt, a
  * version's editedAt) — unlike formatDate this is a real instant, not a bare calendar date, so
  * the ordinary UTC-parse-then-local-format Date behavior is exactly what's wanted here. */

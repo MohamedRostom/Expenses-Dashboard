@@ -13,6 +13,19 @@ export const UserResponse = z.object({
   motionColour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   panelsTranslucent: z.boolean(),
   motionPaused: z.boolean(),
+  /** Free colours (ADR-0008): hex, or null for the default. */
+  accentCustom: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
+  groundTint: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
+  navColour: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
   timeZone: z.string(),
   onboardingCompletedAt: z.string().nullable(),
   /** False until the address is confirmed; Settings shows it and offers a resend (FR-001). */

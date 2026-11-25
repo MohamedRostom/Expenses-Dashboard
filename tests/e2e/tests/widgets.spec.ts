@@ -67,7 +67,9 @@ async function mockWidgets(
 }
 
 async function addExpense(page: Page, description: string): Promise<void> {
-  await page.getByRole('button', { name: /add expense/i }).click();
+  // The top-bar Add button is hidden below 1024px; the n shortcut opens the sheet at every width.
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('n');
   await page.getByLabel(/description/i).fill(description);
   await page.getByLabel(/^amount$/i).fill('12');
   await page
@@ -91,18 +93,20 @@ test('the month view renders its expenses before the strip appears', async ({ pa
   await page.reload();
 
   await expect(page.getByText('Strip order')).toBeVisible();
-  await expect(page.getByText('No widgets yet')).toBeHidden();
-  await expect(page.getByText('No widgets yet')).toBeVisible({ timeout: 10_000 });
+  // An empty strip has no line of its own any more: the add button is what shows the strip mounted.
+  await expect(page.getByTestId('add-widget')).toBeVisible({ timeout: 10_000 });
+  await expect(page.locator('.desk-widget-grid')).toHaveCount(0);
 });
 
-test('with no widgets the strip shows one short line and the add button', async ({ page }) => {
+test('with no widgets the strip shows only a quiet add button', async ({ page }) => {
   await mockWidgets(page, (route) => route.fulfill({ json: list([]) }));
   await signUpAndVerify(page, uniqueEmail('widgets-empty'), PASSWORD);
   await addExpense(page, 'Empty strip');
 
   const strip = page.getByTestId('widget-strip');
-  await expect(strip.getByTestId('widget-empty')).toHaveText('No widgets yet');
   await expect(strip.getByTestId('add-widget')).toBeVisible();
+  await expect(strip.getByTestId('add-widget')).toContainText('Add widget (0 of');
+  await expect(strip.locator('.desk-widget-grid')).toHaveCount(0);
   await axeCheck(page);
 });
 
@@ -118,7 +122,7 @@ test('a failed widgets load shows the error copy, not the empty state', async ({
 
   const strip = page.getByTestId('widget-strip');
   await expect(strip.getByText('Something went wrong')).toBeVisible();
-  await expect(page.getByText('No widgets yet')).toBeHidden();
+  await expect(strip.locator('.desk-widget-grid')).toHaveCount(0);
 });
 
 test('add widget lists each kind with a description and a preview', async ({ page }) => {
@@ -406,6 +410,18 @@ const widgetsOf = async (page: Page) =>
   (await apiJson<{ widgets: ApiWidget[] }>(page, 'get', '/widgets')).widgets;
 
 const frame = (page: Page, title: string) => page.getByRole('article', { name: title }).first();
+
+// Remove asks in an in-app dialog. A native confirm() answers false at once in embedded browsers
+// and installed PWAs (so Remove silently did nothing), and Playwright's auto-accept hid that.
+const failOnNativeDialog = (d: { type(): string; message(): string }) => {
+  throw new Error(`native ${d.type()} dialog fired: ${d.message()}`);
+};
+async function confirmRemove(page: Page, name: string) {
+  const dialog = page.getByRole('dialog', { name: new RegExp(`remove the ${name} widget`, 'i') });
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Remove', exact: true }).click();
+  await expect(dialog).toBeHidden();
+}
 const titles = (page: Page) => page.getByTestId('widget-title').allTextContents(); // textContent: the CSS capitals don't leak in
 
 async function addWidget(page: Page, name: string): Promise<void> {
@@ -602,9 +618,10 @@ test.describe('weather and sunrise (shared mock state, serial)', () => {
     expect(await (await page.request.get('/me/export')).text()).toContain(place.name);
 
     await page.goto('/');
-    page.once('dialog', (d) => void d.accept());
+    page.on('dialog', failOnNativeDialog);
     await frame(page, 'Weather').getByLabel('Weather menu').click();
     await frame(page, 'Weather').getByRole('button', { name: 'Remove' }).click();
+    await confirmRemove(page, 'weather');
     await expect(page.getByRole('article', { name: 'Weather' })).toHaveCount(0);
 
     await page.goto('/settings');
@@ -848,7 +865,15 @@ test.describe('expense widgets (US4)', () => {
     const tile = (label: string) =>
       page.locator('.desk-tile', { hasText: label }).locator('.desk-tile-value');
     await expect(pace).toContainText(await tile('Spent').innerText(), { timeout: 5000 });
-    await expect(pace).toContainText(`of ${await tile('Budget').innerText()}`);
+    // The month view has no Budget tile any more (the hero shows what is left), so the month's
+    // budget comes from the same API summary the tiles read; the widget must print that figure.
+    const { summary } = await apiJson<{ summary: { budgeted: number } }>(
+      page,
+      'get',
+      `/expenses?month=${today.slice(0, 7)}`,
+    );
+    const shown = /of (\S+ [A-Z]{3})/.exec(await pace.innerText())![1]!;
+    expect(shown.replace(/\D/g, '')).toBe(String(summary.budgeted));
     await expect(pace).toContainText(/\d+% · \d+ days? left/);
     await expect(pace).toContainText('a day to stay on budget');
     const colour = () =>
@@ -920,4 +945,78 @@ test('currency and weather widgets can be added through the Add sheet alone', as
   await dialog.getByTestId('place-candidate').first().click();
   await expect(dialog).toBeHidden();
   await expect(frame(page, 'Weather')).toContainText('°C', { timeout: 10_000 });
+});
+
+// A person, not Playwright: the button must be on screen and be what a click at its centre hits.
+// Playwright's own click scrolls clipped content into view, which hid the 12rem frame clipping the menu.
+test.describe('widget menu is reachable by a person', () => {
+  for (const size of [
+    { width: 1280, height: 800 },
+    { width: 360, height: 740 },
+  ]) {
+    test(`Settings and Remove are hittable at ${size.width} wide; Remove removes`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(size);
+      await signedIn(page, `menu-hit-${size.width}`);
+      await addWidget(page, 'Spend pace');
+      await addWidget(page, 'Fixed costs');
+      // The worst place for a menu: the last frame with the page scrolled to its end.
+      await page.evaluate('window.scrollTo(0, document.documentElement.scrollHeight)');
+      const last = frame(page, 'Fixed costs');
+      await last.getByLabel('Fixed costs menu').click();
+      for (const name of ['Settings', 'Remove']) {
+        const button = last.getByRole('button', { name });
+        const box = await button.boundingBox();
+        expect(box, `${name} box`).not.toBeNull();
+        const { x, y, width, height } = box!;
+        expect(x).toBeGreaterThanOrEqual(0);
+        expect(y).toBeGreaterThanOrEqual(0);
+        expect(x + width).toBeLessThanOrEqual(size.width);
+        expect(y + height).toBeLessThanOrEqual(size.height);
+        const hit = await button.evaluate((el) => {
+          const r = el.getBoundingClientRect();
+          return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el;
+        });
+        expect(hit, `${name} is what a click at its centre hits`).toBe(true);
+      }
+      page.on('dialog', failOnNativeDialog);
+      await last.getByRole('button', { name: 'Remove' }).click();
+      await confirmRemove(page, 'fixed costs');
+      await expect(page.getByRole('article', { name: 'Fixed costs' })).toHaveCount(0);
+    });
+  }
+});
+
+test('widget menu closes after a choice, on Escape and on a click outside; Cancel keeps the widget', async ({
+  page,
+}) => {
+  page.on('dialog', failOnNativeDialog);
+  await signedIn(page, 'menu-close');
+  await addWidget(page, 'Spend pace');
+  const f = frame(page, 'Spend pace');
+  const menu = f.locator('details.desk-widget-menu');
+  const summary = f.getByLabel('Spend pace menu');
+
+  await summary.click();
+  await expect(menu).toHaveAttribute('open', '');
+  await page.keyboard.press('Escape');
+  await expect(menu).not.toHaveAttribute('open', '');
+  await expect(summary).toBeFocused();
+
+  await summary.click();
+  await expect(menu).toHaveAttribute('open', '');
+  await page.getByTestId('widget-strip').click({ position: { x: 2, y: 2 } });
+  await expect(menu).not.toHaveAttribute('open', '');
+
+  await summary.click();
+  await f.getByRole('button', { name: 'Remove' }).click();
+  await expect(menu).not.toHaveAttribute('open', '');
+  const dialog = page.getByRole('dialog', { name: /remove the spend pace widget/i });
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Cancel' })).toBeFocused();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(summary).toBeFocused();
+  await expect(frame(page, 'Spend pace')).toBeVisible();
 });

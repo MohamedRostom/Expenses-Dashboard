@@ -1928,6 +1928,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -1955,6 +1988,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -2813,6 +2849,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -2840,6 +2909,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -3946,6 +4018,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -3969,6 +4074,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4024,6 +4132,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4051,6 +4192,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -4356,6 +4500,39 @@
             "type": "string",
             "pattern": "^#[0-9a-fA-F]{6}$"
           },
+          "accentCustom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groundTint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "navColour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "panelsTranslucent": {
             "type": "boolean"
           },
@@ -4424,6 +4601,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -4451,6 +4661,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",
@@ -5838,6 +6051,39 @@
           "motionPaused": {
             "type": "boolean"
           },
+          "accentCustom": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "groundTint": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "navColour": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^#[0-9a-fA-F]{6}$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "timeZone": {
             "type": "string"
           },
@@ -5861,6 +6107,9 @@
           "motionColour",
           "panelsTranslucent",
           "motionPaused",
+          "accentCustom",
+          "groundTint",
+          "navColour",
           "timeZone",
           "onboardingCompletedAt",
           "emailVerified",
@@ -5923,6 +6172,39 @@
               "motionPaused": {
                 "type": "boolean"
               },
+              "accentCustom": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "groundTint": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "navColour": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^#[0-9a-fA-F]{6}$"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
               "timeZone": {
                 "type": "string"
               },
@@ -5946,6 +6228,9 @@
               "motionColour",
               "panelsTranslucent",
               "motionPaused",
+              "accentCustom",
+              "groundTint",
+              "navColour",
               "timeZone",
               "onboardingCompletedAt",
               "emailVerified",

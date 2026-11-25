@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ALL_FLAGS } from '@desk/db';
 
 /** Every variable the Node entry point reads. Keep .env.example in sync. */
 const envObjectSchema = z.object({
@@ -57,17 +58,19 @@ const envObjectSchema = z.object({
     .string()
     .optional()
     .transform((s) => s === 'true'),
-  // Comma list of flag keys switched on globally at startup (node.ts). Set only by
-  // deploy-preview.yml so a PR preview shows the features under review; refused on production.
+  // Comma list of flag keys switched on globally at startup (node.ts), or `all` for every flag
+  // (ALL_FLAGS). Set only by deploy-preview.yml so a PR preview shows the features under review;
+  // refused on production.
   FLAGS_ON: z
     .string()
     .optional()
-    .transform((s) =>
-      s
+    .transform((s) => {
+      const keys = s
         ?.split(',')
         .map((k) => k.trim())
-        .filter(Boolean),
-    ),
+        .filter(Boolean);
+      return keys?.includes('all') ? [...ALL_FLAGS] : keys;
+    }),
   FLY_APP_NAME: z.string().optional(),
 });
 

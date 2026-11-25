@@ -25,7 +25,7 @@ describe('ImportView', () => {
 
   it('step 1 sits in a panel and keeps a labelled file input', async () => {
     const { el, app } = await mount();
-    expect(el.querySelector('h1')?.textContent).toBe('Import expenses');
+    expect(el.querySelector('h1')).toBeNull();
     const region = el.querySelector('section.desk-panel-frame');
     expect(region?.querySelector('h3')?.textContent).toContain('Choose a CSV file');
     const input = el.querySelector<HTMLInputElement>('[data-testid="import-file-input"]');

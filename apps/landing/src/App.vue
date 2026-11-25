@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { BackgroundMotion } from '@desk/ui';
 
-// Off unless the landing site is built with the flag on (FR-021); the html attributes the layer
-// needs are written at build time in vite.config.ts.
-const motion = import.meta.env.VITE_APPEARANCE_MOTION === 'true';
+// Always mounted: the warm ground is part of the look (ADR-0008). Only the moving preset sits
+// behind the build flag (FR-021): vite.config.ts writes <html data-motion> as "particles" with the
+// flag on and "none" (ground only) without it.
 </script>
 
 <template>
-  <BackgroundMotion v-if="motion" />
+  <BackgroundMotion />
   <router-view />
 </template>
 

@@ -109,11 +109,12 @@ test('add-expense-foreign', async ({ page }) => {
   const dialog = page.getByRole('dialog');
   await expect(dialog).toBeVisible();
   await expectFocusRing(p);
-  await p.keyboard.type('Hotel');
-  await focusWith(p, dialog.getByLabel('Amount', { exact: true }));
+  // Focus lands on Amount (the form asks amount first), then Currency, then Description.
   await p.keyboard.type('30');
   await focusWith(p, dialog.getByLabel('Currency'));
   await p.keyboard.type('EUR');
+  await focusWith(p, dialog.getByLabel('Description'));
+  await p.keyboard.type('Hotel');
   // Tabbing away commits a typed valid code (CurrencyPicker onBlur).
   await focusWith(p, dialog.getByRole('button', { name: /^add expense$/i }));
   await p.keyboard.press('Enter');

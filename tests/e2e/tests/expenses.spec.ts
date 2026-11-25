@@ -46,9 +46,11 @@ async function addExpense(
 test('add expenses in three currencies, edit, delete, restore, shortcuts, locale formatting', async ({
   page,
 }) => {
-  // MonthView.vue's onDelete uses a native window.confirm() — Playwright auto-dismisses (cancels)
-  // native dialogs unless a handler accepts them, so without this Delete silently did nothing.
-  page.on('dialog', (d) => d.accept());
+  // Delete confirms in an in-app dialog; a native confirm()/alert() is a regression (it returns
+  // false at once in embedded browsers and PWAs, which silently did nothing).
+  page.on('dialog', (d) => {
+    throw new Error(`native ${d.type()} dialog fired: ${d.message()}`);
+  });
 
   const email = uniqueEmail('expenses');
   await signUpAndVerify(page, email, PASSWORD);
@@ -60,7 +62,9 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   // while an editable target has focus).
   await page.locator('body').click({ position: { x: 5, y: 5 } });
   await page.keyboard.press('n');
-  await expect(page.getByRole('heading', { name: /add expense/i })).toBeVisible();
+  await expect(
+    page.getByRole('dialog').getByRole('heading', { name: /add expense/i }),
+  ).toBeVisible();
   await page.getByLabel(/description/i).fill('Groceries GBP');
   await page.getByLabel(/^amount$/i).fill('10');
   // RegisterView.vue's guessCurrency() picks by browser locale (defaults to GBP only for an
@@ -130,6 +134,7 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
   await row('Hotel USD updated')
     .getByRole('button', { name: /delete/i })
     .click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   // Scoped to the entries table, not the whole page: the delete undo banner ("Deleted 'Hotel USD
   // updated'.") also contains this text, so an unscoped getByText matched it too even though the
   // row itself was correctly gone.
@@ -164,4 +169,117 @@ test('add expenses in three currencies, edit, delete, restore, shortcuts, locale
 
   // 9. axeCheck on MonthView with expenses present.
   await axeCheck(page);
+});
+
+test('filter the entries, then delete several at once with one grouped undo', async ({ page }) => {
+  page.on('dialog', (d) => {
+    throw new Error(`native ${d.type()} dialog fired: ${d.message()}`);
+  });
+  await signUpAndVerify(page, uniqueEmail('bulk'), PASSWORD);
+  await expect(page).toHaveURL('/');
+  for (const description of ['Bulk coffee', 'Bulk tea', 'Keep lunch']) {
+    await addExpense(page, { description, amount: '5', currency: '' });
+    await expect(page.getByText(description)).toBeVisible();
+  }
+
+  const table = page.locator('.desk-entries-table');
+  await page.getByLabel('Filter entries').fill('bulk');
+  await expect(table.getByText('Keep lunch')).toHaveCount(0);
+  await expect(table.getByText('Bulk coffee')).toBeVisible();
+  await page.getByLabel('Filter entries').fill('no such entry');
+  await expect(page.getByText('No entries match')).toBeVisible();
+  await page.getByLabel('Filter entries').fill('bulk');
+
+  await page.getByLabel('Select Bulk coffee').check();
+  await page.getByLabel('Select Bulk tea').check();
+  await page.getByRole('button', { name: 'Delete selected (2)' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(table.getByText('Bulk coffee')).toHaveCount(0);
+  await expect(table.getByText('Bulk tea')).toHaveCount(0);
+
+  const banner = page.getByRole('status').filter({ hasText: 'Deleted 2 entries.' });
+  await expect(banner).toBeVisible();
+  await banner.getByRole('button', { name: 'Undo' }).click();
+  await expect(table.getByText('Bulk coffee')).toBeVisible();
+  await expect(table.getByText('Bulk tea')).toBeVisible();
+});
+
+test('at 360 wide the bottom-bar Add opens the add form and saving lands on Month with the entry', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 360, height: 800 });
+  await signUpAndVerify(page, uniqueEmail('bottom-add'), PASSWORD);
+  await expect(page).toHaveURL('/');
+  await page.getByRole('link', { name: 'Add', exact: true }).click();
+  await expect(page).toHaveURL(/\/add$/);
+  await page.getByLabel(/description/i).fill('Bottom bar coffee');
+  await page.getByLabel(/^amount$/i).fill('3');
+  await page.getByRole('button', { name: /^add expense$/i }).click();
+  await expect(page).toHaveURL('/');
+  await expect(page.getByText('Bottom bar coffee')).toBeVisible();
+});
+
+test('a foreign-currency row shows the converted style and its rate line', async ({ page }) => {
+  await signUpAndVerify(page, uniqueEmail('converted'), PASSWORD);
+  await expect(page).toHaveURL('/');
+  // The default currency follows the browser locale, so pick one that differs from it.
+  const home = (await page.locator('.desk-tile', { hasText: 'Spent' }).innerText()).match(
+    /\b([A-Z]{3})\b/,
+  )?.[1];
+  const foreign = home === 'EUR' ? 'USD' : 'EUR';
+  await addExpense(page, { description: 'Converted lunch', amount: '20', currency: foreign });
+  const row = page.locator('.desk-entries-converted', { hasText: 'Converted lunch' });
+  // The compose stack's fake rates know only fixed past dates, so today's row stays "rate pending".
+  // Answer the month fetch as if the rate job had run, then reload.
+  await page.route(/\/expenses\?month=/, async (route) => {
+    const res = await route.fetch();
+    const body = (await res.json()) as { expenses: Record<string, unknown>[] };
+    body.expenses = body.expenses.map((e) =>
+      e['currencyOriginal'] === foreign
+        ? {
+            ...e,
+            rateToDefault: '0.86',
+            rateDate: e['date'],
+            rateSource: 'ecb',
+            rateOverridden: false,
+            amountDefault: Math.round(Number(e['amountOriginal']) * 0.86),
+          }
+        : e,
+    );
+    await route.fulfill({ response: res, json: body });
+  });
+  await page.reload();
+  await expect(row).toBeVisible();
+  // The rate sits in its own full-width row under the entry, read with it through aria-describedby.
+  const rate = page.locator('.desk-entries-rate-row .desk-item-rate').first();
+  await expect(rate).toContainText(new RegExp(`1 ${foreign} = 0[.]86 [A-Z]{3} · rate of .* · ECB`));
+  await expect(row.locator('.desk-item-name')).toHaveAttribute(
+    'aria-describedby',
+    (await rate.getAttribute('id'))!,
+  );
+});
+
+test('the ? key opens the keyboard shortcuts dialog', async ({ page }) => {
+  await signUpAndVerify(page, uniqueEmail('shortcuts'), PASSWORD);
+  await expect(page).toHaveURL('/');
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('?');
+  await expect(page.getByRole('dialog', { name: 'Keyboard shortcuts' })).toBeVisible();
+});
+
+test('when every GET fails the app shows an error with a Retry button, not a blank page', async ({
+  page,
+}) => {
+  await page.route('**/*', (route) =>
+    route.request().resourceType() === 'fetch' && route.request().method() === 'GET'
+      ? route.fulfill({
+          status: 500,
+          contentType: 'application/json',
+          body: JSON.stringify({ error: { code: 'internal', message: 'Something went wrong' } }),
+        })
+      : route.fallback(),
+  );
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
+  await expect(page.locator('.desk-error-state, [role="alert"]').first()).toBeVisible();
 });

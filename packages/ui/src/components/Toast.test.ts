@@ -2,8 +2,10 @@
 import { createApp, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Toast from './Toast.vue';
+import { readFileSync } from 'node:fs';
 import { useToast } from '../composables/useToast.js';
 
+const toastSource = readFileSync('src/components/Toast.vue', 'utf8');
 const { toasts, push } = useToast();
 beforeEach(() => {
   vi.useFakeTimers();
@@ -24,6 +26,13 @@ const gone = () => {
 };
 
 describe('Toast', () => {
+  it('sits above the floating bottom bar and the safe area below 1024px', () => {
+    expect(toastSource).toMatch(
+      /@media \(max-width: 1023px\)[^{]*\{[^{]*\{[^}]*bottom:[^;]*safe-area-inset-bottom/,
+    );
+    expect(toastSource).toMatch(/desk-bottom-bar/);
+  });
+
   it('animates enter and leave through a TransitionGroup named desk-toast', async () => {
     push('a');
     await nextTick();
@@ -80,6 +89,25 @@ describe('Toast', () => {
     vi.advanceTimersByTime(1);
     await nextTick();
     expect(gone()).toBe(true);
+  });
+
+  it.each([
+    ['success', 'Done'],
+    ['warn', 'Warning'],
+    ['critical', 'Error'],
+  ] as const)('%s tone shows a lamp and its word, not colour alone', async (tone, word) => {
+    push('Saved it', tone);
+    await nextTick();
+    expect(el()!.querySelector('.desk-toast-lamp')).not.toBeNull();
+    expect(el()!.querySelector('.desk-toast-tone')!.textContent).toBe(word);
+    expect(el()!.textContent).toContain('Saved it');
+  });
+
+  it('the default tone has no lamp or word, and no tone uses a 4px side stripe', async () => {
+    push('plain', 'info');
+    await nextTick();
+    expect(el()!.querySelector('.desk-toast-lamp')).toBeNull();
+    expect(toastSource).not.toMatch(/border-left/);
   });
 
   it('has a success tone class', async () => {

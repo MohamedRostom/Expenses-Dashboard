@@ -130,7 +130,8 @@ function onRefresh() {
   >
     <div class="panel-body">
       <p v-if="!online" class="offline-note" role="status" data-testid="offline-note">
-        <strong>Inbox is offline.</strong> These messages are as last loaded; Refresh is paused.
+        <span class="desk-notice-lamp" aria-hidden="true" /><strong>Inbox is offline.</strong> These
+        messages are as last loaded; Refresh is paused.
       </p>
 
       <template v-if="!hasAccounts">
@@ -174,7 +175,8 @@ function onRefresh() {
 
         <div v-if="reconnectAccounts.length > 0" class="reconnect-notices">
           <p v-for="account in reconnectAccounts" :key="account.id" class="reconnect-notice">
-            {{ account.label }} needs reconnecting.
+            <span class="desk-notice-lamp" aria-hidden="true" />{{ account.label }} needs
+            reconnecting.
             <a class="reconnect-link" :href="account.reconnectUrl">Reconnect {{ account.label }}</a>
           </p>
         </div>
@@ -243,7 +245,7 @@ function onRefresh() {
 .offline-note {
   margin: 0 0 var(--space-3);
   padding: var(--space-2) var(--space-3);
-  border-inline-start: 4px solid var(--color-warn);
+  border: 1px solid var(--color-warn);
   background: var(--color-surface-raised);
   font-size: var(--text-sm);
 }
@@ -269,8 +271,17 @@ function onRefresh() {
   color: var(--color-fg-muted);
 }
 .reconnect-notice {
-  border-inline-start: 4px solid var(--color-warn);
-  padding-inline-start: var(--space-2);
+  border: 1px solid var(--color-warn);
+  padding: var(--space-1) var(--space-2);
+}
+.desk-notice-lamp {
+  display: inline-block;
+  inline-size: var(--space-1);
+  block-size: var(--space-1);
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--color-warn);
 }
 .reconnect-link {
   display: inline-flex;
@@ -320,7 +331,7 @@ function onRefresh() {
   font-size: var(--text-sm);
   font-weight: 600;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--color-surface-raised);
   color: var(--color-fg);
   cursor: pointer;

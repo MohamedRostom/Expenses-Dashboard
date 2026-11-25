@@ -21,7 +21,7 @@ export default defineConfig({
         ? html
             .replace('<html ', '<html data-motion="particles" ')
             .replace('</head>', `<style>${tintCss}</style></head>`)
-        : html,
+        : html.replace('<html ', '<html data-motion="none" '),
   },
   server: {
     port: 5174,

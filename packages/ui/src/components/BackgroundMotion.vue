@@ -1,10 +1,12 @@
 <script setup lang="ts">
 // No props and no script: the preset, tint and pause state are read by CSS from the attributes on
 // <html> (data-motion, data-motion-paused, --motion-tint). See DESIGN.md "Background layer".
+// The warm ground (ADR-0008) is always drawn, still, from --ground-tint; the presets sit above it.
 </script>
 
 <template>
   <div class="desk-motion" aria-hidden="true" data-testid="background-motion">
+    <div class="desk-motion__ground" />
     <div class="desk-motion__aurora">
       <i class="desk-motion__blob" />
       <i class="desk-motion__blob" />
@@ -42,6 +44,43 @@
 .desk-motion > * {
   position: absolute;
   display: none;
+}
+/* Warm ground (ADR-0008): always shown, never animated. Every stop is the user's --ground-tint mixed
+   into --ground-base at no more than --ground-cap percent (tokens.css; the factors and caps equal
+   STOP_FACTORS and GROUND_CAP in glassyColours.ts, which the contrast test uses). */
+.desk-motion .desk-motion__ground {
+  --ground-s1: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 1 * 1%),
+    var(--ground-base)
+  );
+  --ground-s2: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.8 * 1%),
+    var(--ground-base)
+  );
+  --ground-s3: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.55 * 1%),
+    var(--ground-base)
+  );
+  --ground-s4: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.4 * 1%),
+    var(--ground-base)
+  );
+  --ground-s5: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.5 * 1%),
+    var(--ground-base)
+  );
+  display: block;
+  inset: 0;
+  background:
+    radial-gradient(60% 50% at 12% 18%, var(--ground-s4) 0%, transparent 70%),
+    radial-gradient(50% 60% at 88% 12%, var(--ground-s2) 0%, transparent 70%),
+    radial-gradient(70% 60% at 72% 92%, var(--ground-s1) 0%, transparent 70%),
+    radial-gradient(50% 50% at 18% 88%, var(--ground-s3) 0%, transparent 70%), var(--ground-s5);
 }
 :root[data-motion='aurora'] .desk-motion__aurora,
 :root[data-motion='grid'] .desk-motion__grid,

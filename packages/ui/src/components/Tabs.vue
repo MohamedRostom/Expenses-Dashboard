@@ -65,29 +65,30 @@ function onKey(e: KeyboardEvent) {
 <style scoped>
 .desk-tablist {
   display: flex;
-  gap: var(--space-4);
-  border-bottom: 1px solid var(--color-border);
+  flex-wrap: wrap;
+  gap: var(--space-1);
 }
 .desk-tab {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
-  padding: var(--space-2) var(--space-1);
+  font-weight: 600;
+  padding: var(--space-2) var(--space-4);
   background: transparent;
   color: var(--color-fg-muted);
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition:
     color var(--motion-fast) var(--ease-standard),
-    border-color var(--motion-fast) var(--ease-standard);
+    background-color var(--motion-fast) var(--ease-standard);
 }
 .desk-tab:hover {
   color: var(--color-fg);
 }
 .desk-tab.selected {
   color: var(--color-fg);
-  border-bottom-color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-fg) 12%, transparent);
 }
 .desk-tab:focus-visible {
   outline: 2px solid var(--color-focus);

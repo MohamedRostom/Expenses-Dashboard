@@ -3,10 +3,23 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { useSessionStore } from './stores/session.js';
 import { useFlagsStore } from './stores/flags.js';
 import { router } from './router.js';
+import { bootError } from './bootError.js';
+import { ApiError } from './api/client.js';
 
 describe('router auth guard', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
+  });
+
+  // First on purpose: the guard loads the session once per page load (module-level flag).
+  it('sets bootError instead of aborting when /me fails with a non-401 and nothing is cached', async () => {
+    const session = useSessionStore();
+    vi.spyOn(session, 'load').mockRejectedValue(new ApiError('internal', 'boom', 500));
+
+    await router.push('/');
+
+    expect(bootError.value).toEqual({ code: 'internal' });
+    expect(router.currentRoute.value.path).toBe('/');
   });
 
   it('redirects an unauthenticated visitor from a requiresAuth route to /login', async () => {

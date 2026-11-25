@@ -237,7 +237,6 @@ async function remove(c: CategoryResponseT) {
 <template>
   <main class="desk-categories-view">
     <header class="desk-categories-header">
-      <h1>Categories</h1>
       <Button @click="openAdd">Add category</Button>
     </header>
 
@@ -369,13 +368,6 @@ async function remove(c: CategoryResponseT) {
 </template>
 
 <style scoped>
-.desk-categories-view h1 {
-  margin: 0;
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
-}
 .desk-categories-view {
   max-width: var(--content-max);
   margin: 0 auto;
@@ -388,7 +380,7 @@ async function remove(c: CategoryResponseT) {
 }
 .desk-categories-header {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-3);
@@ -400,10 +392,22 @@ async function remove(c: CategoryResponseT) {
   gap: var(--space-4);
   padding: var(--space-2) var(--space-3);
   border-inline-start: var(--space-1) solid var(--color-warn);
+  border-radius: var(--radius-xl);
   background: var(--color-surface);
   box-shadow: var(--shadow-raised);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
+}
+.desk-review-banner button {
+  min-height: var(--target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
 }
 .desk-categories-name {
   display: flex;
@@ -442,7 +446,7 @@ async function remove(c: CategoryResponseT) {
   min-height: var(--target-min);
   padding: 0 var(--space-2);
   border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-field);
   background: transparent;
   color: inherit;
   font: inherit;

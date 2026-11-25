@@ -103,4 +103,12 @@ describe('PanelFrame heading inside the glass (T048)', () => {
     ])
       expect(rule).toContain(t);
   });
+
+  it('moves a row lamp into the panel inset when the first cell is flush, so it never covers text', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/PanelFrame.vue', 'utf8');
+    expect(src).toMatch(
+      /tr > :first-child \.desk-row-lamp \{\s*left: calc\(-1 \* var\(--space-3\)\);/,
+    );
+  });
 });

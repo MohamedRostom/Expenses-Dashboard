@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { createApp, nextTick } from 'vue';
 import { describe, expect, it } from 'vitest';
 import BackgroundMotion from './BackgroundMotion.vue';
+import { GROUND_CAP, STOP_FACTORS } from '../glassyColours.js';
 
 const source = readFileSync(join(process.cwd(), 'src/components/BackgroundMotion.vue'), 'utf-8');
 const css = source.split('<style')[1] ?? '';
@@ -17,6 +18,27 @@ describe('BackgroundMotion', () => {
     const root = el.firstElementChild!;
     expect(root.getAttribute('aria-hidden')).toBe('true');
     expect(root.getAttribute('data-testid')).toBe('background-motion');
+  });
+
+  it('always renders a still warm ground (ADR-0008), whatever data-motion says', () => {
+    const ground = css.match(/\.desk-motion__ground\s*\{[^}]*\}/)![0];
+    expect(source).toContain('desk-motion__ground');
+    expect(ground).not.toContain('display: none');
+    expect(ground).not.toContain('animation');
+    expect(css).not.toMatch(/data-motion=[^\]]*\][^{]*desk-motion__ground/);
+    expect(css).toContain('@media print');
+  });
+
+  it('derives every ground stop from --ground-tint, capped by --ground-cap, with the glassyColours factors', () => {
+    expect(css).toContain('var(--ground-tint)');
+    expect(css).toContain('var(--ground-base)');
+    const factors = [...css.matchAll(/var\(--ground-cap\) \* ([0-9.]+) \* 1%/g)].map((m) =>
+      Number(m[1]),
+    );
+    expect(factors.sort()).toEqual([...STOP_FACTORS].sort());
+    // The caps themselves live in tokens.css and are checked against glassyColours there.
+    expect(GROUND_CAP.light).toBeLessThanOrEqual(0.4);
+    expect(GROUND_CAP.dark).toBeLessThanOrEqual(0.3);
   });
 
   it('has a rule per preset keyed on the html data-motion attribute', () => {

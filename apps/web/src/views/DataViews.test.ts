@@ -77,6 +77,7 @@ describe('T040 data screens', () => {
   });
 
   it('Year view puts the total in the primary Tile', async () => {
+    document.body.insertAdjacentHTML('beforeend', '<div id="top-bar-actions"></div>');
     apiFetch.mockResolvedValue({
       year: 2026,
       currency: 'GBP',

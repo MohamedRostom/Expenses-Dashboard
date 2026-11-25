@@ -3,6 +3,7 @@ import { createApp, h, nextTick } from 'vue';
 import { afterEach, describe, expect, it } from 'vitest';
 type WidgetT = { kind: string } & Record<string, unknown>;
 import PanelFrame from './WidgetFrame.vue';
+import source from './WidgetFrame.vue?raw';
 
 const widget = (over: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -104,6 +105,46 @@ describe('WidgetFrame menu (T052)', () => {
   });
 });
 
+describe('WidgetFrame menu closes', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  const open = (el: HTMLElement) => {
+    const d = el.querySelector('details')!;
+    d.open = true;
+    return d;
+  };
+
+  it('after an item is chosen, with focus back on the summary', async () => {
+    const { el, events } = await mount({});
+    const d = open(el);
+    btn(el, 'Duplicate')?.click();
+    expect(d.open).toBe(false);
+    expect(events.duplicate).toHaveLength(1);
+    expect(document.activeElement).toBe(d.querySelector('summary'));
+  });
+
+  it('on Escape, with focus back on the summary', async () => {
+    const { el } = await mount({});
+    const d = open(el);
+    btn(el, 'Settings')!.focus();
+    btn(el, 'Settings')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(d.open).toBe(false);
+    expect(document.activeElement).toBe(d.querySelector('summary'));
+  });
+
+  it('on a click outside, but not on a click inside', async () => {
+    const { el } = await mount({});
+    const d = open(el);
+    d.querySelector('.desk-widget-menu-items')!.dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    expect(d.open).toBe(true);
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(d.open).toBe(false);
+  });
+});
+
 describe('WidgetFrame offline copy', () => {
   afterEach(() => (document.body.innerHTML = ''));
 
@@ -152,5 +193,20 @@ describe('WidgetFrame surface (T012)', () => {
       true,
     );
     expect(el.querySelector('.desk-widget-menu-items')?.classList.contains('surface')).toBe(false);
+  });
+});
+
+describe('WidgetFrame menu is not clipped', () => {
+  // Declarations of the rule whose selector is exactly `sel`; fails loudly when it is absent.
+  const rule = (sel: string) => {
+    const start = source.indexOf(`\n${sel} {`);
+    expect(start, `rule ${sel}`).toBeGreaterThan(-1);
+    return source.slice(start, source.indexOf('}', start));
+  };
+  it('the frame does not clip overflow, so the menu can extend past 12rem', () => {
+    expect(rule('.desk-widget-frame')).not.toMatch(/overflow:\s*hidden/);
+  });
+  it('a frame with its menu open is raised above sibling panels', () => {
+    expect(rule('.desk-widget-frame:has(.desk-widget-menu[open])')).toMatch(/z-index:\s*\d+/);
   });
 });

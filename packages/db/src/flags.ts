@@ -1,6 +1,20 @@
 import { and, eq } from 'drizzle-orm';
 import { flags, userFlags, users } from './schema.js';
+import { WIDGET_KINDS } from '@desk/core';
 import type { Db } from './index.js';
+
+/** Every boolean flag key. FLAGS_ON=all (preview deploys) switches on exactly these. A new flag
+ * goes here and in seed.ts; apps/api/test/all-flags.test.ts fails if either is missed. */
+export const ALL_FLAGS: readonly string[] = [
+  'panels.today',
+  'panels.google_calendar',
+  'panels.google_mail',
+  'panels.microsoft',
+  'panels.standards',
+  'appearance.accent',
+  'appearance.motion',
+  ...WIDGET_KINDS.map((k) => `widgets.${k}`),
+];
 
 /** Effective flag value for a user: their per-user override if one exists, else the flag's
  * global default_on, else false for an unknown key. */

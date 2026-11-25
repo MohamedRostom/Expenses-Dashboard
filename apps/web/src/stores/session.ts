@@ -15,6 +15,10 @@ export interface User {
   motionColour?: string;
   panelsTranslucent?: boolean;
   motionPaused?: boolean;
+  /** Free colours (ADR-0008): #rrggbb or null for the default. */
+  accentCustom?: string | null;
+  groundTint?: string | null;
+  navColour?: string | null;
   timeZone: string;
   onboardingCompletedAt?: string | null;
   /** From UserResponse; false until the address is confirmed (FR-001). */

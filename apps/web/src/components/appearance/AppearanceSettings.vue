@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref } from 'vue';
-import { Button } from '@desk/ui';
-import { MOTION_PRESET_IDS, MOTION_SWATCHES } from '@desk/contracts';
-import type { MotionPresetId, PatchMeResponseT } from '@desk/contracts';
+import { Button, GROUND_TINT, safeAccent, useToast } from '@desk/ui';
+import { ACCENT_IDS, MOTION_PRESET_IDS, MOTION_SWATCHES } from '@desk/contracts';
+import type { AccentId, MotionPresetId, PatchMeResponseT } from '@desk/contracts';
 import { ApiError, apiFetch } from '../../api/client.js';
 import { useSessionStore } from '../../stores/session.js';
+import { applyAccent } from '../../views/theme.js';
 
 /** Settings › Appearance › background motion (spec 006 US1). Every control previews at once by
  * writing session.user (App.vue's watch re-runs applyMotion) and saves through one coalesced
  * queue (research R9): 400 ms after the last change, one PATCH /me in flight, fields merged. */
-const props = defineProps<{ theme: string }>();
+const props = withDefaults(
+  defineProps<{
+    theme: string;
+    /** Background motion controls (appearance.motion). */
+    motion?: boolean;
+    /** Free colour controls (appearance.accent, ADR-0008). */
+    colours?: boolean;
+  }>(),
+  { motion: true, colours: false },
+);
 
 const session = useSessionStore();
 
@@ -30,11 +40,24 @@ const SWATCH_NAMES: Record<string, string> = {
 };
 
 type Patch = {
+  accent?: AccentId;
   motionPreset?: MotionPresetId;
   motionColour?: string;
   panelsTranslucent?: boolean;
   motionPaused?: boolean;
+  accentCustom?: string | null;
+  groundTint?: string | null;
+  navColour?: string | null;
 };
+
+type ColourKey = 'accentCustom' | 'groundTint' | 'navColour';
+// Where each picker starts when nothing is saved; the saved value stays null until one is picked.
+const COLOURS: { key: ColourKey; label: string; start: string }[] = [
+  { key: 'accentCustom', label: 'Accent colour', start: '#0e3d2a' },
+  { key: 'groundTint', label: 'Background colour', start: GROUND_TINT },
+  { key: 'navColour', label: 'Selected menu item', start: '#6b7280' },
+];
+const picked = (key: ColourKey) => session.user?.[key] ?? null;
 
 const preset = computed(() => session.user?.motionPreset ?? 'particles');
 const colour = computed(() => (session.user?.motionColour ?? '#7fd1a8').toLowerCase());
@@ -47,6 +70,17 @@ const dark = computed(() =>
     ? typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
     : props.theme === 'dark',
 );
+
+// "Drawn a little darker" note: the accent the screen draws (safeAccent, as in applyFreeColours)
+// differs from the picked one.
+const accentNote = computed(() => {
+  const hex = picked('accentCustom');
+  if (!hex) return '';
+  const drawn = safeAccent(hex, dark.value, picked('groundTint') ?? GROUND_TINT);
+  return drawn.toLowerCase() === hex.toLowerCase()
+    ? ''
+    : `Drawn a little ${dark.value ? 'lighter' : 'darker'} so bars stay visible.`;
+});
 
 // Radio-group keyboard pattern: one swatch in the tab order (the checked one, else the first),
 // arrow keys move to and pick the next one.
@@ -62,6 +96,43 @@ function onSwatchKey(e: KeyboardEvent, i: number) {
   queue({ motionColour: next.hex });
   const buttons = (e.currentTarget as HTMLElement).parentElement?.querySelectorAll('button');
   (buttons?.[(i + step + n) % n] as HTMLElement | undefined)?.focus();
+}
+
+const toast = useToast();
+const ACCENT_NAMES: Record<AccentId, string> = {
+  'signal-green': 'Signal Green',
+  'concourse-blue': 'Concourse Blue',
+  'platform-teal': 'Platform Teal',
+  violet: 'Violet',
+  slate: 'Slate',
+  plum: 'Plum',
+};
+const accent = computed(() => session.user?.accent ?? 'signal-green');
+// Each swatch resolves its own preset colour from tokens.css, which needs a concrete theme.
+const swatchTheme = computed(() => (dark.value ? 'dark' : 'light'));
+
+// Optimistic: apply at once, put the old accent back if the save fails. A custom colour overrides
+// a preset (applyFreeColours), so picking a preset also clears it. Only the latest pick may write
+// back: an earlier pick's late response or failure must not revert a newer one.
+let accentSeq = 0;
+async function changeAccent(value: AccentId) {
+  const seq = ++accentSeq;
+  const previous = { accent: accent.value, accentCustom: picked('accentCustom') };
+  delete pending.accentCustom;
+  preview({ accent: value, accentCustom: null });
+  applyAccent(value, true);
+  try {
+    const res = await apiFetch<PatchMeResponseT>('/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ accent: value, accentCustom: null }),
+    });
+    if (seq === accentSeq && res.user) session.user = res.user as typeof session.user;
+  } catch (err) {
+    if (seq !== accentSeq) return;
+    preview(previous);
+    applyAccent(previous.accent, true);
+    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
+  }
 }
 
 const error = ref('');
@@ -139,7 +210,57 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="desk-appearance">
+    <div v-if="colours" class="desk-appearance-group desk-colour-rows">
+      <div v-for="c in COLOURS" :key="c.key" class="desk-colour-row">
+        <label class="desk-colour-label">
+          <input
+            type="color"
+            :value="picked(c.key) ?? c.start"
+            @input="preview({ [c.key]: ($event.target as HTMLInputElement).value })"
+            @change="queue({ [c.key]: ($event.target as HTMLInputElement).value })"
+          />
+          <span>{{ c.label }}</span>
+        </label>
+        <Button
+          type="button"
+          variant="secondary"
+          :aria-label="`Reset ${c.label.toLowerCase()}`"
+          :disabled="!picked(c.key)"
+          @click="queue({ [c.key]: null })"
+          >Reset</Button
+        >
+        <p v-if="c.key === 'accentCustom' && accentNote" class="desk-appearance-hint">
+          {{ accentNote }}
+        </p>
+        <fieldset
+          v-if="c.key === 'accentCustom'"
+          class="desk-accent-presets"
+          role="radiogroup"
+          aria-label="Accent colour presets"
+        >
+          <legend class="desk-accent-legend">Accent colour presets</legend>
+          <label
+            v-for="id in ACCENT_IDS"
+            :key="id"
+            class="desk-accent-preset"
+            :data-accent="id"
+            :data-theme="swatchTheme"
+          >
+            <input
+              type="radio"
+              name="settings-accent"
+              :value="id"
+              :checked="accent === id && !picked('accentCustom')"
+              @change="changeAccent(id)"
+            />
+            <span>{{ ACCENT_NAMES[id] }}</span>
+          </label>
+        </fieldset>
+      </div>
+    </div>
+
     <div
+      v-if="motion"
       class="desk-appearance-group"
       role="radiogroup"
       aria-label="Background motion"
@@ -177,7 +298,7 @@ onBeforeUnmount(() => {
     </div>
 
     <div
-      v-if="!dark"
+      v-if="motion && !dark"
       class="desk-appearance-group desk-appearance-colours"
       role="radiogroup"
       aria-label="Motion colour"
@@ -212,7 +333,7 @@ onBeforeUnmount(() => {
       <p v-if="preset === 'none'" class="desk-appearance-hint">Applies when a motion is on.</p>
     </div>
 
-    <div class="desk-appearance-switches">
+    <div v-if="motion" class="desk-appearance-switches">
       <button
         type="button"
         role="switch"
@@ -255,6 +376,109 @@ onBeforeUnmount(() => {
   grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
   gap: var(--space-2);
 }
+.desk-colour-rows {
+  grid-template-columns: 1fr;
+}
+.desk-colour-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+.desk-colour-label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--target-min);
+  min-inline-size: 14rem;
+  cursor: pointer;
+}
+.desk-colour-label input {
+  inline-size: var(--target-min);
+  block-size: var(--target-min);
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+.desk-colour-label input::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+.desk-colour-label input::-webkit-color-swatch,
+.desk-colour-label input::-moz-color-swatch {
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+}
+.desk-colour-label:has(input:focus-visible) {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+/* Accent presets: native radios drawn as round swatches in the preset's own colour (tokens.css
+   resolves it from data-accent and data-theme). Selected = ring plus inner rule, not colour alone;
+   the name always sits beside the swatch. */
+.desk-accent-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  inline-size: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.desk-accent-legend {
+  inline-size: 100%;
+  padding: 0;
+  margin-block-end: var(--space-1);
+  color: var(--color-fg-muted);
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-weight: 600;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+.desk-accent-preset {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  cursor: pointer;
+}
+.desk-accent-preset input {
+  appearance: none;
+  flex: none;
+  inline-size: var(--space-6);
+  block-size: var(--space-6);
+  margin: 0;
+  border-radius: 50%;
+  background: var(--color-accent);
+  cursor: pointer;
+}
+.desk-accent-preset input:checked {
+  outline: 2px solid var(--color-fg);
+  outline-offset: 2px;
+  box-shadow: inset 0 0 0 var(--space-1) var(--color-accent-fg);
+}
+.desk-accent-preset input:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-accent-preset input:checked + span {
+  font-weight: 600;
+}
+@media (max-width: 767px) {
+  .desk-accent-presets {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .desk-accent-legend {
+    grid-column: 1 / -1;
+  }
+  .desk-accent-preset input {
+    inline-size: var(--target-min);
+    block-size: var(--target-min);
+  }
+}
 .desk-appearance-hint {
   grid-column: 1 / -1;
   margin: 0;
@@ -270,7 +494,7 @@ onBeforeUnmount(() => {
   min-height: var(--target-min);
   padding: var(--space-2);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-field);
   cursor: pointer;
 }
 .desk-appearance-preset[data-checked='true'] {
@@ -295,7 +519,7 @@ onBeforeUnmount(() => {
 .motion-thumb {
   flex: none;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
 }
 .desk-appearance-text {
   display: flex;
@@ -384,7 +608,7 @@ onBeforeUnmount(() => {
   inline-size: var(--space-10);
   block-size: var(--space-6);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
+  border-radius: var(--radius-pill);
   background: var(--color-surface-raised);
 }
 .desk-appearance-track::after {

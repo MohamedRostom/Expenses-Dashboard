@@ -10,15 +10,19 @@ const blockOf = (selector: string) => {
   return css.slice(i, css.indexOf('}', i));
 };
 
-describe('.surface (T012, DESIGN.md Glass)', () => {
+describe('.surface (T012, DESIGN.md Glass, ADR-0008)', () => {
   const base = blockOf('.surface {');
   it('is glass: glass fill, hairline, blur (both prefixes), xl radius, raised shadow', () => {
     expect(base).toContain('var(--color-surface-glass)');
     expect(base).toContain('var(--color-glass-line)');
-    expect(base).toContain('backdrop-filter: blur(var(--blur-surface)) saturate(140%)');
-    expect(base).toContain('-webkit-backdrop-filter: blur(var(--blur-surface)) saturate(140%)');
+    expect(base).toContain('backdrop-filter: blur(var(--blur-surface)) saturate(150%)');
+    expect(base).toContain('-webkit-backdrop-filter: blur(var(--blur-surface)) saturate(150%)');
     expect(base).toContain('var(--radius-xl)');
     expect(base).toContain('var(--shadow-raised)');
+  });
+  it('has a strong variant for the sidebar and top bar', () => {
+    const strong = blockOf('.surface-strong {');
+    expect(strong).toContain('var(--color-surface-glass-strong)');
   });
   it.each([
     '@supports not (backdrop-filter: blur(1px))',

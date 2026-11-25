@@ -10,6 +10,7 @@ import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import ConfirmDialog from '../ConfirmDialog.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -68,10 +69,19 @@ async function onAdd(body: WidgetCreateT) {
   adding.value = false;
 }
 
-async function onRemove(id: string, name: string) {
-  if (!confirm(`Remove the ${name} widget?`)) return;
+// `removing` keeps its value after close so the title does not blank while the dialog fades out.
+const removing = ref<{ id: string; name: string } | null>(null);
+const removeOpen = ref(false);
+function askRemove(id: string, name: string) {
+  removing.value = { id, name };
+  removeOpen.value = true;
+}
+async function confirmRemove() {
+  removeOpen.value = false;
+  const target = removing.value;
+  if (!target) return;
   try {
-    await store.remove(id);
+    await store.remove(target.id);
   } catch (err) {
     toast.push(message(err, 'Failed to remove widget.'), 'critical');
   }
@@ -149,16 +159,9 @@ async function onDragEnd() {
 <template>
   <section class="desk-widget-strip" aria-label="Widgets" data-testid="widget-strip">
     <div class="desk-widget-strip-head">
-      <p
-        v-if="loaded && !store.error && store.widgets.length === 0"
-        class="desk-widget-empty"
-        data-testid="widget-empty"
-      >
-        No widgets yet
-      </p>
       <Button
         data-testid="add-widget"
-        variant="secondary"
+        :variant="store.widgets.length === 0 ? 'ghost' : 'secondary'"
         :disabled="atLimit"
         @click="adding = true"
       >
@@ -187,7 +190,7 @@ async function onDragEnd() {
         @drag-move="onDragMove"
         @drag-end="onDragEnd"
         @settings="settingsId = w.id"
-        @remove="onRemove(w.id, label(w.kind).toLowerCase())"
+        @remove="askRemove(w.id, label(w.kind))"
       >
         <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
         <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
@@ -214,6 +217,15 @@ async function onDragEnd() {
       :add="onAdd"
       @close="adding = false"
     />
+    <ConfirmDialog
+      :open="removeOpen"
+      :title="`Remove the ${removing?.name.toLowerCase() ?? ''} widget?`"
+      confirm-label="Remove"
+      @confirm="confirmRemove"
+      @cancel="removeOpen = false"
+    >
+      <p>You can add it again from Add widget.</p>
+    </ConfirmDialog>
     <WidgetSettingsSheet
       :open="settingsId !== null"
       :widget="settingsWidget"
@@ -233,12 +245,6 @@ async function onDragEnd() {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
-}
-.desk-widget-empty {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--color-fg-muted);
 }
 .desk-widget-grid {
   display: grid;

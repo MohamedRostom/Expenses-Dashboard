@@ -23,7 +23,7 @@ async function signedIn(page: Page, tag: string): Promise<string> {
   const email = uniqueEmail(tag);
   await signUpAndVerify(page, email, PASSWORD);
   setUserFlag(email);
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await page.waitForLoadState('networkidle');
   return email;
 }
@@ -47,7 +47,7 @@ const saved = (page: Page) =>
 
 test('with the flag off the picker is absent', async ({ page }) => {
   await signUpAndVerify(page, uniqueEmail('off'), PASSWORD);
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'Theme' })).toBeVisible();
   await expect(presets(page)).toHaveCount(0);
@@ -125,7 +125,7 @@ test('every preset is drawn on every signed-in screen, and None draws nothing', 
   test.setTimeout(120_000);
   await signedIn(page, 'screens');
   for (const [name, layer] of Object.entries(LAYERS)) {
-    await page.goto('/settings');
+    await page.goto('/settings#sg-look');
     const done = saved(page);
     await preset(page, name).check();
     await done;
@@ -136,7 +136,7 @@ test('every preset is drawn on every signed-in screen, and None draws nothing', 
     }
   }
 
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   const done = saved(page);
   await preset(page, 'None').check();
   await done;
@@ -181,7 +181,7 @@ test('axe is clean on Settings with the picker, in light and dark', async ({ pag
   await signedIn(page, 'axe');
   for (const scheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme: scheme });
-    await page.goto('/settings');
+    await page.goto('/settings#sg-look');
     await page.waitForLoadState('networkidle');
     await expect(presets(page)).toBeVisible();
     await axeCheck(page);

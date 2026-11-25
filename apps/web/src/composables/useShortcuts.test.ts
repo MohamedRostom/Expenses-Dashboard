@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { matchShortcut, isEditableTarget } from './useShortcuts.js';
+import { matchShortcut, isEditableTarget, SHORTCUTS } from './useShortcuts.js';
 
 describe('matchShortcut', () => {
   it('maps n/[/] to their handlers', () => {
     expect(matchShortcut('n')).toBe('onNew');
     expect(matchShortcut('[')).toBe('onPrevMonth');
     expect(matchShortcut(']')).toBe('onNextMonth');
+  });
+
+  it('maps ? to onHelp and lists every shortcut for the help dialog', () => {
+    expect(matchShortcut('?')).toBe('onHelp');
+    expect(SHORTCUTS.map((s) => s.key)).toEqual(['n', '[', ']', '?']);
   });
 
   it('returns null for other keys', () => {

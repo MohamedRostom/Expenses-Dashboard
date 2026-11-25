@@ -1,5 +1,8 @@
 process.env.TZ = 'UTC';
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createPinia, setActivePinia } from 'pinia';
 import { createRouter, createMemoryHistory } from 'vue-router';
 import { createApp, nextTick } from 'vue';
@@ -268,6 +271,17 @@ describe('InboxPanel', () => {
     });
     const link = el.querySelector('a.reconnect-link') as HTMLAnchorElement;
     expect(link.href).toBe('https://desk.test/settings/connections?reconnect=acc-1');
+    const notice = el.querySelector('.reconnect-notice')!;
+    expect(notice.querySelector('.desk-notice-lamp')).not.toBeNull();
+    expect(notice.textContent).toContain('needs reconnecting');
+  });
+
+  it('marks notices with a lamp and a full border, not a 4px side stripe (DESIGN.md)', () => {
+    const src = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), 'InboxPanel.vue'),
+      'utf8',
+    );
+    expect(src).not.toMatch(/border-inline-start:\s*4px solid var\(--color-warn\)/);
   });
 
   it('shows code-specific error copy', async () => {
@@ -308,6 +322,7 @@ describe('InboxPanel', () => {
       const note = el.querySelector('[data-testid="offline-note"]');
       expect(note?.getAttribute('role')).toBe('status');
       expect(note?.textContent).toContain('Inbox is offline');
+      expect(note?.querySelector('.desk-notice-lamp')).not.toBeNull();
       expect(note?.textContent).not.toContain('Calendar is offline');
       expect(el.querySelector('.account-chips')).not.toBeNull();
     });

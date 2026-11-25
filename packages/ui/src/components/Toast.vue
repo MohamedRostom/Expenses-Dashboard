@@ -9,6 +9,8 @@ const props = defineProps<{
   messages?: ToastMessage[];
 }>();
 const { toasts, dismiss, pause, resume } = useToast();
+// Status is never colour alone: every tone but the default prints its word beside the lamp.
+const TONE_WORD: Record<string, string> = { success: 'Done', warn: 'Warning', critical: 'Error' };
 const shown = computed(() => props.messages ?? toasts);
 
 // Timer pauses while hovered or focused; resumes only when neither holds it.
@@ -48,6 +50,9 @@ function undo(t: ToastMessage) {
         @focusin="hold(t.id, 'focus', true)"
         @focusout="hold(t.id, 'focus', false)"
       >
+        <strong v-if="TONE_WORD[t.variant ?? 'info']" class="desk-toast-tone">
+          <span class="desk-toast-lamp" aria-hidden="true" />{{ TONE_WORD[t.variant ?? 'info'] }}
+        </strong>
         {{ t.text }}
         <Button
           v-if="t.undo"
@@ -73,6 +78,12 @@ function undo(t: ToastMessage) {
   gap: var(--space-2);
   z-index: 200;
 }
+/* Below 1024px the signed-in shell floats a bottom bar (about 5.5rem tall); keep toasts above it. */
+@media (max-width: 1023px) {
+  body:has(.desk-bottom-bar) .desk-toast-stack {
+    bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+  }
+}
 .desk-toast {
   display: flex;
   align-items: center;
@@ -83,20 +94,36 @@ function undo(t: ToastMessage) {
   background: var(--color-surface-raised);
   color: var(--color-fg);
   padding: var(--space-3) var(--space-4);
-  border-left: 4px solid var(--color-border);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   cursor: pointer;
   box-shadow: var(--shadow-overlay);
 }
-/* The 4px leading lamp carries the status: green saved, amber, red. */
+/* A full 1px border in the tone colour, plus a 4px lamp and the tone word (no side stripes). */
 .desk-toast.success {
-  border-left-color: var(--color-accent);
+  --tone: var(--color-accent);
+  border-color: var(--tone);
 }
 .desk-toast.warn {
-  border-left-color: var(--color-warn);
+  --tone: var(--color-warn);
+  border-color: var(--tone);
 }
 .desk-toast.critical {
-  border-left-color: var(--color-critical);
+  --tone: var(--color-critical);
+  border-color: var(--tone);
+}
+.desk-toast-tone {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-weight: 600;
+}
+.desk-toast-lamp {
+  inline-size: var(--space-1);
+  block-size: var(--space-1);
+  border-radius: 50%;
+  background: var(--tone);
 }
 .desk-toast:focus-visible {
   outline: 2px solid var(--color-focus);
