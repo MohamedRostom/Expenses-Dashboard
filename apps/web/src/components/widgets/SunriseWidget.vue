@@ -24,17 +24,30 @@ const length = computed(() => {
     <p v-if="figures.polar === 'day'">Sun up all day</p>
     <p v-else-if="figures.polar === 'night'">Sun down all day</p>
     <template v-else-if="figures.sunrise && figures.sunset">
-      <p class="desk-sunrise-num">Sunrise {{ hhmm(figures.sunrise) }}</p>
-      <p class="desk-sunrise-num">Sunset {{ hhmm(figures.sunset) }}</p>
+      <p>
+        Sunrise <span class="desk-sunrise-num">{{ hhmm(figures.sunrise) }}</span>
+      </p>
+      <p>
+        Sunset <span class="desk-sunrise-num">{{ hhmm(figures.sunset) }}</span>
+      </p>
     </template>
-    <p class="desk-sunrise-num">Day length {{ length }}</p>
+    <p>
+      Day length <span class="desk-sunrise-num">{{ length }}</span>
+    </p>
     <p class="desk-sunrise-meta">{{ figures.attribution }}</p>
   </div>
 </template>
 
 <style scoped>
+.desk-sunrise {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+}
 .desk-sunrise p {
-  margin: var(--space-1) 0;
+  margin: 0;
 }
 .desk-sunrise-num {
   font-family: var(--font-mono);

@@ -22,6 +22,11 @@ async function mount(figures: Figures) {
 }
 
 describe('SunriseWidget', () => {
+  it('sets labels in the UI face and only the figures in mono', async () => {
+    const el = await mount(BASE);
+    const nums = [...el.querySelectorAll('.desk-sunrise-num')].map((n) => n.textContent?.trim());
+    expect(nums).toEqual(['06:58', '18:21', '11 h 23 min']);
+  });
   it('shows place-local sunrise, sunset, day length and attribution, no zone', async () => {
     const text = (await mount(BASE)).textContent ?? '';
     expect(text).toContain('06:58');

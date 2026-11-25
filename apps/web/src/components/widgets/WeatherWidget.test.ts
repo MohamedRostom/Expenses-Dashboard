@@ -29,6 +29,15 @@ async function mount(unit: TemperatureUnitT) {
 }
 
 describe('WeatherWidget', () => {
+  it('sets the H and L labels in the UI face and only the figures in mono', async () => {
+    const el = await mount('C');
+    const range = el.querySelector('.desk-weather-range')!;
+    expect(range.classList.contains('desk-weather-num')).toBe(false);
+    expect([...range.querySelectorAll('.desk-weather-num')].map((n) => n.textContent)).toEqual([
+      '22°',
+      '10°',
+    ]);
+  });
   it('shows place, temperature, condition, icon, high/low, outlook, as-of and attribution', async () => {
     const el = await mount('C');
     const text = el.textContent ?? '';

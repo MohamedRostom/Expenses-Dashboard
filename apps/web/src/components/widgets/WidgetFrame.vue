@@ -123,7 +123,7 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
       </details>
     </header>
     <p v-if="banner" class="desk-widget-banner" role="status">{{ banner }}</p>
-    <div class="desk-widget-body">
+    <div class="desk-widget-body" tabindex="0" role="region" :aria-label="`${frameTitle} figures`">
       <slot v-if="body === 'figures'" />
       <p v-else-if="body === 'nothing'" class="desk-widget-nothing">
         {{ w.kind === 'spend_pace' ? 'No budget set.' : 'No fixed-cost categories yet.' }}
@@ -241,6 +241,13 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 .desk-widget-body {
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  /* The frame keeps its fixed height (FR-001); figures that do not fit scroll instead of being cut off. */
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.desk-widget-body:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-field);
 }
 </style>

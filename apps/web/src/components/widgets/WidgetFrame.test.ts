@@ -206,6 +206,15 @@ describe('WidgetFrame menu is not clipped', () => {
   it('the frame does not clip overflow, so the menu can extend past 12rem', () => {
     expect(rule('.desk-widget-frame')).not.toMatch(/overflow:\s*hidden/);
   });
+  it('figures taller than the 12rem frame scroll inside the body instead of being cut off', () => {
+    expect(rule('.desk-widget-body')).toMatch(/overflow-y:\s*auto/);
+  });
+  it('the scrolling body is reachable by keyboard and named (axe scrollable-region-focusable)', () => {
+    const body = source.match(/<div[^>]*class="desk-widget-body"[^>]*>/)?.[0] ?? '';
+    expect(body).toContain('tabindex="0"');
+    expect(body).toContain('role="region"');
+    expect(body).toMatch(/:aria-label="`\$\{frameTitle\} figures`"/);
+  });
   it('a frame with its menu open is raised above sibling panels', () => {
     expect(rule('.desk-widget-frame:has(.desk-widget-menu[open])')).toMatch(/z-index:\s*\d+/);
   });

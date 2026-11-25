@@ -51,7 +51,8 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
     </div>
     <p class="desk-weather-condition">{{ figures.condition }}</p>
     <p class="desk-weather-range">
-      H {{ show(figures.todayMaxC) }}° · L {{ show(figures.todayMinC) }}°
+      H <span class="desk-weather-num">{{ show(figures.todayMaxC) }}°</span> · L
+      <span class="desk-weather-num">{{ show(figures.todayMinC) }}°</span>
     </p>
     <ul class="desk-weather-outlook">
       <li v-for="d in figures.outlook" :key="d.date" data-testid="outlook-day">
@@ -95,7 +96,6 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
   gap: var(--space-2);
 }
 .desk-weather-temp,
-.desk-weather-range,
 .desk-weather-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
