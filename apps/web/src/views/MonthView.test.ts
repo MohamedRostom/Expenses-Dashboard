@@ -160,8 +160,8 @@ describe('MonthView expense delete confirms in the app, never with window.confir
     el.querySelector<HTMLButtonElement>('button[aria-label="Delete"]')!.click();
     await flush();
     inDialog('Cancel')!.click();
-    await flush();
-    expect(dialog()).toBeNull();
+    // The dialog closes asynchronously; one fixed flush was too short on slower CI runners.
+    await vi.waitFor(() => expect(dialog()).toBeNull());
     expect(await deleteCalls()).toHaveLength(0);
   });
 });
