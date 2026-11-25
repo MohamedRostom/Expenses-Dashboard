@@ -802,3 +802,14 @@ describe('MonthView month-load error (retry)', () => {
     mocked.mockImplementation(impl);
   });
 });
+
+describe('MonthView month switcher arrows (review 2026-11-25)', () => {
+  it('are square touch targets, not wide pills', async () => {
+    const { default: source } = await import('./MonthView.vue?raw');
+    const start = source.indexOf('\n.desk-month-switcher .desk-btn {');
+    expect(start).toBeGreaterThan(-1);
+    const rule = source.slice(start, source.indexOf('}', start));
+    expect(rule).toContain('inline-size: var(--target-min)');
+    expect(rule).toContain('padding-inline: 0');
+  });
+});

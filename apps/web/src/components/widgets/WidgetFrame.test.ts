@@ -219,3 +219,97 @@ describe('WidgetFrame menu is not clipped', () => {
     expect(rule('.desk-widget-frame:has(.desk-widget-menu[open])')).toMatch(/z-index:\s*\d+/);
   });
 });
+
+describe('WidgetFrame header: no repeated lines (review 2026-11-25)', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('shows the place as a subtitle beside the title', async () => {
+    const { el } = await mount({ subtitle: 'Cambridge' });
+    expect(el.querySelector('[data-testid="widget-subtitle"]')?.textContent).toBe('Cambridge');
+  });
+  it('a generic stale reading is said once, in the as-of chip, not as a second banner line', async () => {
+    const { el } = await mount({ widget: widget({ state: 'stale' }) });
+    expect(el.querySelector('.desk-widget-banner')).toBeNull();
+    const chip = el.querySelector('.desk-widget-asof')!;
+    expect(chip.textContent).toContain('last reading');
+    expect(chip.getAttribute('data-stale')).toBe('true');
+  });
+  it('a stale reading with a specific cause keeps its banner', async () => {
+    const { el } = await mount({ widget: widget({ state: 'stale', cause: 'source_unreachable' }) });
+    expect(el.querySelector('.desk-widget-banner')?.textContent).toContain("Couldn't reach");
+  });
+  it('sunrise times do not go out of date: no as-of chip and no stale note', async () => {
+    const { el } = await mount({ widget: widget({ kind: 'sunrise', state: 'stale' }) });
+    expect(el.querySelector('.desk-widget-asof')).toBeNull();
+    expect(el.querySelector('.desk-widget-banner')).toBeNull();
+  });
+  it('the drag grip is at least a touch target in size', () => {
+    const start = source.indexOf('\n.desk-widget-grip {');
+    expect(source.slice(start, source.indexOf('}', start))).toContain('var(--target-min)');
+  });
+  it('the grip stays inside its frame (a negative margin pushed it over the previous menu)', () => {
+    const start = source.indexOf('\n.desk-widget-grip {');
+    expect(source.slice(start, source.indexOf('}', start))).not.toMatch(/margin[^;]*\* -1/);
+  });
+  it("the header fits a 14rem column: the as-of chip takes its own line, not the menu's place", () => {
+    const rule = (sel: string) => {
+      const start = source.indexOf(`\n${sel} {`);
+      return source.slice(start, source.indexOf('}', start));
+    };
+    expect(rule('.desk-widget-head')).toContain('flex-wrap: wrap');
+    expect(rule('.desk-widget-asof')).toContain('flex-basis: 100%');
+  });
+});
+
+describe('WidgetFrame compact (phones): one line that expands', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('collapsed: a button with the summary, aria-expanded false, figures hidden', async () => {
+    const { el } = await mount({ compact: true, summary: '5° Overcast · H 7° L 1°' });
+    const toggle = el.querySelector<HTMLButtonElement>('[data-testid="widget-toggle"]')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('5° Overcast');
+    expect(el.querySelector('.figs')).toBeNull();
+  });
+  it('tapping expands to the full figures and back', async () => {
+    const { el } = await mount({ compact: true, summary: 'x' });
+    const toggle = el.querySelector<HTMLButtonElement>('[data-testid="widget-toggle"]')!;
+    toggle.click();
+    await nextTick();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelector('.figs')).not.toBeNull();
+    toggle.click();
+    await nextTick();
+    expect(el.querySelector('.figs')).toBeNull();
+  });
+  it('not compact: no toggle, figures shown', async () => {
+    const { el } = await mount({});
+    expect(el.querySelector('[data-testid="widget-toggle"]')).toBeNull();
+    expect(el.querySelector('.figs')).not.toBeNull();
+  });
+});
+
+describe('WidgetFrame compact keeps status visible', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('an unavailable widget says so even while collapsed', async () => {
+    const { el } = await mount({
+      compact: true,
+      summary: null,
+      widget: widget({ state: 'unavailable', figures: undefined }),
+    });
+    expect(el.querySelector('.desk-widget-banner')?.textContent).toContain('unavailable right now');
+  });
+});
+
+describe('WidgetFrame compact header stays one line', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('collapsed and fresh: no as-of chip beside the summary; stale still shows it', async () => {
+    const fresh = await mount({ compact: true, summary: 'x' });
+    expect(fresh.el.querySelector('.desk-widget-asof')).toBeNull();
+    document.body.innerHTML = '';
+    const stale = await mount({ compact: true, summary: 'x', widget: widget({ state: 'stale' }) });
+    expect(stale.el.querySelector('.desk-widget-asof')?.textContent).toContain('last reading');
+  });
+  it('the as-of chip never wraps', () => {
+    const start = source.indexOf('\n.desk-widget-asof {');
+    expect(source.slice(start, source.indexOf('}', start))).toContain('white-space: nowrap');
+  });
+});

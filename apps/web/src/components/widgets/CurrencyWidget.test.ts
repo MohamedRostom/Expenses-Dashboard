@@ -139,3 +139,22 @@ describe('currency settings', () => {
     app.unmount();
   });
 });
+
+describe('CurrencyWidget converter (review 2026-11-25)', () => {
+  it('converts a typed amount of each currency into the default currency', async () => {
+    const { default: CurrencyWidget } = await import('./CurrencyWidget.vue');
+    const el = document.createElement('div');
+    newApp(CurrencyWidget, { rows: [row({ rate: 0.85033 })], defaultCode: 'GBP' }).mount(el);
+    await nextTick();
+    const input = el.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
+    expect(el.querySelector('label')?.textContent).toContain('Amount');
+    input.value = '100';
+    input.dispatchEvent(new Event('input'));
+    await nextTick();
+    expect(el.textContent).toContain('100 EUR = 85.03 GBP');
+  });
+  it('without a default currency there is no converter', async () => {
+    const { el } = await mountRows([row()]);
+    expect(el.querySelector('input')).toBeNull();
+  });
+});

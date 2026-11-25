@@ -12,6 +12,11 @@ const props = defineProps<{
   count?: number;
   atLimit?: boolean;
   offline?: boolean;
+  /** The widget's place, shown beside the title instead of inside the figures. */
+  subtitle?: string | undefined;
+  /** Phones: the frame is one tappable line (`summary`) that expands to the full figures. */
+  compact?: boolean;
+  summary?: string | null;
 }>();
 const emit = defineEmits<{
   settings: [];
@@ -24,6 +29,9 @@ const emit = defineEmits<{
 }>();
 
 const w = computed(() => props.widget);
+const expanded = ref(false);
+const bodyId = computed(() => `widget-body-${w.value.id}`);
+const showBody = computed(() => !props.compact || expanded.value);
 
 // A <details> menu stays open by itself: close it after a choice (focus back on the summary, so a
 // dialog opened by the choice restores focus somewhere visible), on Escape, and on an outside click.
@@ -68,11 +76,18 @@ const asOf = computed(() =>
   new Date(w.value.asOf).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
 );
 const hasFigures = computed(() => w.value.figures !== undefined);
+// Sunrise and sunset times do not go out of date, so that widget has no as-of chip or stale note.
+const timeless = computed(() => w.value.kind === 'sunrise');
+// A stale reading with no specific cause is said once, in the as-of chip (lamp and words).
+const staleChip = computed(
+  () =>
+    !timeless.value && w.value.state === 'stale' && !(w.value.cause && CAUSE_COPY[w.value.cause]),
+);
 const banner = computed(() => {
   const { state, cause } = w.value;
   if (props.offline && hasFigures.value) return "You're offline — showing the last reading";
   if (state === 'unavailable') return 'This widget is unavailable right now.';
-  if (state === 'stale') return (cause && CAUSE_COPY[cause]) || 'Showing the last reading.';
+  if (state === 'stale') return timeless.value || !cause ? null : (CAUSE_COPY[cause] ?? null);
   if (state === 'error' && hasFigures.value) {
     return (cause && CAUSE_COPY[cause]) || 'Something went wrong. Showing the last reading.';
   }
@@ -91,6 +106,7 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 <template>
   <article
     class="desk-widget-frame surface"
+    :class="{ 'desk-widget-frame--compact': compact }"
     data-testid="widget-frame"
     :data-state="w.state"
     :data-widget-id="w.id"
@@ -107,8 +123,33 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
         @pointercancel="$emit('dragEnd', $event)"
         >&#8942;&#8942;</span
       >
-      <h3 class="desk-widget-title" data-testid="widget-title">{{ frameTitle }}</h3>
-      <span class="desk-widget-asof">as of {{ asOf }}</span>
+      <h3 class="desk-widget-title">
+        <button
+          v-if="compact"
+          type="button"
+          class="desk-widget-toggle"
+          data-testid="widget-toggle"
+          :aria-expanded="expanded"
+          :aria-controls="bodyId"
+          @click="expanded = !expanded"
+        >
+          <span class="desk-widget-name" data-testid="widget-title">{{ frameTitle }}</span>
+          <span v-if="summary" class="desk-widget-summary">{{ summary }}</span>
+        </button>
+        <template v-else>
+          <span class="desk-widget-name" data-testid="widget-title">{{ frameTitle }}</span>
+          <span v-if="subtitle" class="desk-widget-subtitle" data-testid="widget-subtitle">{{
+            subtitle
+          }}</span>
+        </template>
+      </h3>
+      <span
+        v-if="!timeless && (!compact || expanded || staleChip)"
+        class="desk-widget-asof"
+        :data-stale="staleChip || undefined"
+        ><span v-if="staleChip" class="desk-widget-lamp" aria-hidden="true"></span
+        >{{ staleChip ? `${asOf} · last reading` : `as of ${asOf}` }}</span
+      >
       <details ref="menu" class="desk-widget-menu" @keydown.esc="closeMenu(true)">
         <summary :aria-label="`${frameTitle} menu`">&#8943;</summary>
         <div class="desk-widget-menu-items" @click.capture="onItemClick">
@@ -123,7 +164,14 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
       </details>
     </header>
     <p v-if="banner" class="desk-widget-banner" role="status">{{ banner }}</p>
-    <div class="desk-widget-body" tabindex="0" role="region" :aria-label="`${frameTitle} figures`">
+    <div
+      v-if="showBody"
+      :id="bodyId"
+      class="desk-widget-body"
+      tabindex="0"
+      role="region"
+      :aria-label="`${frameTitle} figures`"
+    >
       <slot v-if="body === 'figures'" />
       <p v-else-if="body === 'nothing'" class="desk-widget-nothing">
         {{ w.kind === 'spend_pace' ? 'No budget set.' : 'No fixed-cost categories yet.' }}
@@ -157,12 +205,23 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   position: relative;
   z-index: 5;
 }
+/* Grip, title and menu on one line; the as-of chip wraps to its own line under the title, so a
+ * 14rem column never pushes the menu out of the frame. */
 .desk-widget-head {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2);
+  column-gap: var(--space-2);
+}
+.desk-widget-title {
+  min-inline-size: 0;
 }
 .desk-widget-grip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-inline-size: var(--target-min);
+  min-block-size: var(--target-min);
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -179,7 +238,63 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   text-transform: uppercase;
   color: var(--color-fg-muted);
 }
+.desk-widget-subtitle {
+  margin-inline-start: var(--space-2);
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+}
+/* Phones: the frame grows to its content; the page scrolls, never the widget. */
+.desk-widget-frame--compact {
+  height: auto;
+}
+.desk-widget-frame--compact .desk-widget-body {
+  overflow: visible;
+}
+.desk-widget-toggle {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-1);
+  inline-size: 100%;
+  min-block-size: var(--target-min);
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.desk-widget-summary {
+  font-size: var(--text-sm);
+  line-height: var(--leading-sm);
+  font-weight: 500;
+  letter-spacing: normal;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-fg);
+}
+.desk-widget-asof[data-stale] {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--color-warn);
+}
+.desk-widget-lamp {
+  inline-size: 0.5rem;
+  block-size: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
 .desk-widget-asof {
+  order: 1;
+  flex-basis: 100%;
+  padding-inline-start: calc(var(--target-min) + var(--space-2));
+  margin-block-start: calc(var(--space-2) * -1);
+  white-space: nowrap;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--text-xs);

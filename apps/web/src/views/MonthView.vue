@@ -851,6 +851,12 @@ const entryColumns: BoardColumn[] = [
   align-items: center;
   gap: var(--space-2);
 }
+.desk-month-switcher .desk-btn {
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  padding-inline: 0;
+  justify-content: center;
+}
 /* The bottom bar carries Add below 1024px (the n shortcut works at every width). */
 @media (max-width: 1023px) {
   .desk-topbar-add {

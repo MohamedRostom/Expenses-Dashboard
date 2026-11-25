@@ -370,4 +370,22 @@ describe('currency widget', () => {
     expect(w.state).toBe('stale');
     expect(w.figures.rows[0].rateDate).toBe('2026-09-29');
   });
+
+  it('every rate is stale once the newest published date is more than 5 days old (rates job stopped)', async () => {
+    await seedEurGbp(); // newest published date in the table is 2026-09-30
+    h.clock.set(new Date('2026-10-20T12:00:00Z'));
+    const u = await h.asUser('wc-stopped@example.com');
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
+    const w = await figures(u);
+    expect(w.figures.rows[0].rateDate).toBe('2026-09-30');
+    expect(w.state).toBe('stale');
+  });
+
+  it('a Friday rate read on Monday is not stale (no publication at the weekend)', async () => {
+    await seedEurGbp(); // 2026-09-30 is a Wednesday; read it the following Monday
+    h.clock.set(new Date('2026-10-05T12:00:00Z'));
+    const u = await h.asUser('wc-weekend@example.com');
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
+    expect((await figures(u)).state).toBe('ready');
+  });
 });

@@ -353,3 +353,56 @@ describe('WidgetStrip', () => {
     });
   });
 });
+
+describe('WidgetStrip: place and credit once, compact on phones (review 2026-11-25)', () => {
+  const SUN = {
+    place: 'Cambridge',
+    sunrise: '2026-11-25T07:36',
+    sunset: '2026-11-25T15:55',
+    daylightSeconds: 29940,
+    placeTimeZone: 'Europe/London',
+    showZone: false,
+    attribution: 'Weather data by Open-Meteo.com',
+  };
+  const WEATHER = {
+    place: 'Cambridge',
+    temperatureC: 5,
+    condition: 'Overcast',
+    icon: 'cloud',
+    todayMaxC: 7,
+    todayMinC: 1,
+    outlook: [],
+    observedAt: '2026-11-25T18:00:00Z',
+    attribution: 'Weather data by Open-Meteo.com',
+  };
+  const both = () => [
+    widget('w', { kind: 'weather', figures: WEATHER } as Partial<WidgetT>),
+    widget('s', { kind: 'sunrise', figures: SUN } as Partial<WidgetT>),
+  ];
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+
+  it('the place is a subtitle on each frame and the Open-Meteo credit appears once', async () => {
+    const { el } = await mount(both());
+    const subs = [...el.querySelectorAll('[data-testid="widget-subtitle"]')].map(
+      (s) => s.textContent,
+    );
+    expect(subs).toEqual(['Cambridge', 'Cambridge']);
+    expect(el.textContent?.match(/Weather data by Open-Meteo\.com/g)).toHaveLength(1);
+  });
+
+  it('below 768 px each widget is one tappable summary line', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q.includes('max-width'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { el } = await mount(both());
+    const toggles = [...el.querySelectorAll('[data-testid="widget-toggle"]')];
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]!.textContent).toContain('5° Overcast · H 7° L 1°');
+  });
+});

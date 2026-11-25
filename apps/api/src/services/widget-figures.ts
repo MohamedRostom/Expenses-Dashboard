@@ -122,11 +122,16 @@ const currency: Builder = async (db, user, widget, ctx) => {
   }
   if (rows.every((r) => 'pending' in r)) return { state: 'error', cause: 'rate_unavailable' };
   const latest = (await ctx.latestRateDate()) ?? '';
-  const stale = rows.some((r) => 'rateDate' in r && r.rateDate < latest);
+  // Stale when a newer rate exists, or when nothing has been published for longer than a long
+  // weekend plus a holiday: then the rates job itself has stopped, and the newest rate is old too.
+  const stopped = (newest: string) =>
+    Date.parse(ctx.day) - Date.parse(newest) > RATE_STALE_AFTER_DAYS * 86_400_000;
+  const stale = rows.some((r) => 'rateDate' in r && (r.rateDate < latest || stopped(r.rateDate)));
   return { state: stale ? 'stale' : 'ready', figures: { rows }, ...(newest && { asOf: newest }) };
 };
 
 const STALE_AFTER_MS = 3600_000;
+const RATE_STALE_AFTER_DAYS = 5;
 
 /** T044/T059: the shared reading for the widget's rounded place plus its state and cause. */
 async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContext) {

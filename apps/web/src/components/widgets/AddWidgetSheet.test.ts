@@ -89,6 +89,13 @@ describe('AddWidgetSheet', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => (document.body.innerHTML = ''));
 
+  it('lists the money widgets first: spend pace and fixed costs before currency and weather', async () => {
+    await mount(vi.fn());
+    const kinds = [...body().querySelectorAll('.desk-add-widget-item')].map((li) =>
+      li.getAttribute('data-kind'),
+    );
+    expect(kinds).toEqual(['spend_pace', 'fixed_costs', 'currency', 'weather', 'sunrise']);
+  });
   it('says so when no widget type is enabled, instead of an empty sheet', async () => {
     await mount(
       vi.fn(),

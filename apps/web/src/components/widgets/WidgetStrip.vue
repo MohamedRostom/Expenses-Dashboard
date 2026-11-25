@@ -10,6 +10,9 @@ import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import { WEATHER_ATTRIBUTION } from '@desk/contracts';
+import { useSessionStore } from '../../stores/session.js';
+import { clockIn, summary } from './widget-summary.js';
 import ConfirmDialog from '../ConfirmDialog.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
@@ -22,6 +25,26 @@ const typesError = ref<PanelErrorKind | null>(null);
 const adding = ref(false);
 const settingsId = ref<string | null>(null);
 const loaded = ref(false);
+const session = useSessionStore();
+
+// Phones: each widget is one tappable summary line (the page scrolls, never a widget).
+const phone = typeof matchMedia === 'function' ? matchMedia('(max-width: 767px)') : null;
+const compact = ref(phone?.matches ?? false);
+const onPhone = (e: MediaQueryListEvent) => (compact.value = e.matches);
+// Sun times are relative to now, so the strip ticks once a minute.
+const now = ref(new Date());
+let tick: ReturnType<typeof setInterval> | undefined;
+type Placed = { figures?: { place?: string; placeTimeZone?: string } };
+const placeOf = (w: unknown) => (w as Placed).figures?.place;
+const zoneOf = (w: unknown) =>
+  (w as Placed).figures?.placeTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+const wall = (w: unknown) => clockIn(zoneOf(w), now.value);
+// The Open-Meteo credit (CC-BY) is said once for the strip, not inside every widget.
+const credit = computed(() =>
+  store.widgets.some((w) => (w.kind === 'weather' || w.kind === 'sunrise') && w.figures)
+    ? WEATHER_ATTRIBUTION
+    : null,
+);
 
 const dragOrder = ref<string[] | null>(null);
 const announcement = ref('');
@@ -52,12 +75,16 @@ onMounted(async () => {
   window.addEventListener('online', bump);
   window.addEventListener('offline', bump);
   store.start();
+  phone?.addEventListener('change', onPhone);
+  tick = setInterval(() => (now.value = new Date()), 60_000);
   catalogue.value = await types;
 });
 onUnmounted(() => {
   window.removeEventListener('online', bump);
   window.removeEventListener('offline', bump);
   store.stop();
+  phone?.removeEventListener('change', onPhone);
+  clearInterval(tick);
 });
 
 function message(err: unknown, fallback: string) {
@@ -184,6 +211,9 @@ async function onDragEnd() {
         :count="shown.length"
         :at-limit="atLimit"
         :offline="offline"
+        :subtitle="placeOf(w)"
+        :compact="compact"
+        :summary="summary(w, store.temperatureUnit, wall(w))"
         @move="onMove(w.id, $event)"
         @duplicate="onDuplicate(w.id)"
         @drag-start="onDragStart(w.id)"
@@ -193,13 +223,21 @@ async function onDragEnd() {
         @remove="askRemove(w.id, label(w.kind))"
       >
         <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
-        <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
+        <CurrencyWidget
+          v-if="w.kind === 'currency' && w.figures"
+          :rows="w.figures.rows"
+          :default-code="session.user?.defaultCurrency"
+        />
         <WeatherWidget
           v-else-if="w.kind === 'weather' && w.figures"
           :figures="w.figures"
           :unit="store.temperatureUnit"
         />
-        <SunriseWidget v-else-if="w.kind === 'sunrise' && w.figures" :figures="w.figures" />
+        <SunriseWidget
+          v-else-if="w.kind === 'sunrise' && w.figures"
+          :figures="w.figures"
+          :now="wall(w)"
+        />
         <SpendPaceWidget v-else-if="w.kind === 'spend_pace' && w.figures" :figures="w.figures" />
         <FixedCostsWidget v-else-if="w.kind === 'fixed_costs' && w.figures" :figures="w.figures" />
       </WidgetFrame>
@@ -207,7 +245,9 @@ async function onDragEnd() {
 
     <p class="desk-sr-only" aria-live="polite" data-testid="widget-live">{{ announcement }}</p>
 
-    <p class="desk-widget-attribution"><slot name="attribution" /></p>
+    <p v-if="credit || $slots.attribution" class="desk-widget-attribution">
+      <slot name="attribution">{{ credit }}</slot>
+    </p>
 
     <AddWidgetSheet
       :open="adding"
