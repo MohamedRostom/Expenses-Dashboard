@@ -44,9 +44,16 @@ async function load() {
   }
 }
 
+/** Optimistic: the row leaves the bin at once and comes back if the restore fails. */
 async function onRestore(id: string) {
-  await store.restore(id);
-  deleted.value = deleted.value.filter((e) => e.id !== id);
+  const previous = deleted.value;
+  deleted.value = previous.filter((e) => e.id !== id);
+  try {
+    await store.restore(id);
+  } catch (err) {
+    deleted.value = previous;
+    throw err;
+  }
 }
 
 onMounted(load);

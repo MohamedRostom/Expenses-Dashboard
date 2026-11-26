@@ -131,6 +131,34 @@ describe('Widgets store', () => {
     expect(store.widgets.map((w) => w.id)).toEqual(['a', 'b']);
   });
 
+  it('remove() drops the widget at once and puts it back in its place on failure', async () => {
+    const { api, store } = await setup();
+    store.widgets = [widget({ id: 'a' }), widget({ id: 'b' }), widget({ id: 'c' })];
+    let fail!: (e: unknown) => void;
+    vi.mocked(api.deleteWidget).mockReturnValue(new Promise((_, reject) => (fail = reject)));
+
+    const removing = store.remove('b');
+    expect(store.widgets.map((w) => w.id)).toEqual(['a', 'c']);
+
+    fail(new ApiError('internal', 'x', 500));
+    await expect(removing).rejects.toThrow();
+    expect(store.widgets.map((w) => w.id)).toEqual(['a', 'b', 'c']);
+  });
+
+  it('setTemperatureUnit() switches at once and switches back on failure', async () => {
+    const { store } = await setup();
+    const { apiFetch } = await import('../api/client.js');
+    let fail!: (e: unknown) => void;
+    vi.mocked(apiFetch).mockReturnValue(new Promise((_, reject) => (fail = reject)));
+
+    const saving = store.setTemperatureUnit('F');
+    expect(store.temperatureUnit).toBe('F');
+
+    fail(new ApiError('internal', 'x', 500));
+    await expect(saving).rejects.toThrow();
+    expect(store.temperatureUnit).toBe('C');
+  });
+
   it('duplicate() posts kind and duplicateOf and appends', async () => {
     const { api, store } = await setup();
     store.widgets = [widget({ id: 'a', kind: 'currency' })];
