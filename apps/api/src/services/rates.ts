@@ -8,6 +8,13 @@ import type { RatesProvider, RateOutcome } from '@desk/connectors/rates';
  * lookup misses every single one of those and re-hits the provider needlessly. */
 const MAX_CACHE_LOOKBACK_DAYS = 7;
 
+/** A row for its own date is never rewritten (inserts are ON CONFLICT DO NOTHING, nothing updates
+ * or deletes fx_rates), so an exact-date hit is kept in memory per Db. A fallback hit (Saturday
+ * answered with Friday) is not: a closer row can still arrive.
+ * ponytail: cleared whole at MAX_MEMO entries, an LRU if a process ever needs more pairs × dates. */
+const MAX_MEMO = 10_000;
+const memoByDb = new WeakMap<Db, Map<string, RateOutcome>>();
+
 export type RatesService = {
   /** Cache-through lookup: same-currency shortcut, then fx_rates, then the provider on a miss. */
   getRate(date: string, from: string, to: string): Promise<RateOutcome>;
@@ -25,6 +32,12 @@ export function createRatesService(db: Db, provider: RatesProvider): RatesServic
         return { rate: '1', rateDate: date, source: 'none' };
       }
 
+      let memo = memoByDb.get(db);
+      if (!memo) memoByDb.set(db, (memo = new Map()));
+      const memoKey = `${date}|${from}|${to}`;
+      const remembered = memo.get(memoKey);
+      if (remembered) return remembered;
+
       const lookbackFrom = new Date(date);
       lookbackFrom.setUTCDate(lookbackFrom.getUTCDate() - MAX_CACHE_LOOKBACK_DAYS);
       const [cached] = await db
@@ -41,7 +54,12 @@ export function createRatesService(db: Db, provider: RatesProvider): RatesServic
         .orderBy(desc(fxRates.rateDate))
         .limit(1);
       if (cached) {
-        return { rate: cached.rate, rateDate: cached.rateDate, source: cached.source };
+        const outcome = { rate: cached.rate, rateDate: cached.rateDate, source: cached.source };
+        if (cached.rateDate === date) {
+          if (memo.size >= MAX_MEMO) memo.clear();
+          memo.set(memoKey, outcome);
+        }
+        return outcome;
       }
 
       const outcome = await provider.rate(date, from, to);

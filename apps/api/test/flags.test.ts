@@ -1,11 +1,13 @@
-import { resolveFlag, setGlobalFlag, setUserFlag } from '@desk/db';
+import { vi } from 'vitest';
+import { resolveAllFlags, resolveFlag, setGlobalFlag, setUserFlag } from '@desk/db';
 import { startHarness, type ApiClient, type Harness } from './harness.js';
 
 /**
  * T042a: proves the flags-cli logic (packages/db/src/flags-cli.ts, built on
- * packages/db/src/flags.ts) writes rows that `resolveFlag` picks up immediately — no restart,
- * no cache. There is no `GET /flags` route yet (that's T042), so this proves the effective
- * flag resolution logic a later route handler will call directly.
+ * packages/db/src/flags.ts) writes rows that `resolveFlag` picks up immediately in the same
+ * process — no restart (other processes see a global change within 60 s). There is no
+ * `GET /flags` route yet (that's T042), so this proves the effective flag resolution logic a
+ * later route handler will call directly.
  */
 describe('flags: operator switch reflects on the next read', () => {
   let harness: Harness;
@@ -40,5 +42,30 @@ describe('flags: operator switch reflects on the next read', () => {
 
     expect(await resolveFlag(harness.db, user.userId, 'beta-import')).toBe(true);
     expect(await resolveFlag(harness.db, otherUser.userId, 'beta-import')).toBe(false);
+  });
+
+  // Global flag rows change only by deploy or the flags CLI, yet every gated request reads them.
+  it('reads the global flag rows once a minute, not on every request', async () => {
+    const now = vi.spyOn(Date, 'now');
+    try {
+      now.mockReturnValue(1_000_000);
+      await setGlobalFlag(harness.db, 'cached-flag', true); // clears this process's copy
+      await resolveAllFlags(harness.db, user.userId); // loads it
+
+      let before = harness.queries();
+      expect((await resolveAllFlags(harness.db, user.userId))['cached-flag']).toBe(true);
+      expect(await resolveFlag(harness.db, user.userId, 'cached-flag')).toBe(true);
+      expect(harness.queries() - before).toBe(2); // the two per-user override reads only
+
+      await setGlobalFlag(harness.db, 'cached-flag', false); // shows on the very next read
+      expect(await resolveFlag(harness.db, user.userId, 'cached-flag')).toBe(false);
+
+      now.mockReturnValue(1_000_000 + 60_000); // a minute on: reload (another process may have written)
+      before = harness.queries();
+      await resolveAllFlags(harness.db, user.userId);
+      expect(harness.queries() - before).toBe(2);
+    } finally {
+      now.mockRestore();
+    }
   });
 });

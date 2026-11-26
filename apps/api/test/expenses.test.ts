@@ -177,6 +177,28 @@ describe('expenses', () => {
     expect(expense.rateSource).toBeNull();
   });
 
+  // A stored rate for its own date never changes, so it is read from Postgres once per process.
+  it('a published rate is read from the database once, then from memory', async () => {
+    const provider = new StubRates({ rate: '1.25', rateDate: '2026-08-03', source: 'frankfurter' });
+    const rates = createRatesService(h.db, provider);
+    await rates.getRate('2026-08-03', 'USD', 'GBP'); // provider, stored
+    const stored = await rates.getRate('2026-08-03', 'USD', 'GBP'); // database
+
+    const before = h.queries();
+    // A second service on the same database shares the memory (app.ts builds several).
+    expect(await createRatesService(h.db, provider).getRate('2026-08-03', 'USD', 'GBP')).toEqual(
+      stored,
+    );
+    expect(h.queries() - before).toBe(0);
+
+    // A fallback answer (Saturday gets Friday's rate) can still be replaced by a newer row, so it
+    // keeps going to the database.
+    await rates.getRate('2026-08-08', 'USD', 'GBP');
+    const sat = h.queries();
+    await rates.getRate('2026-08-08', 'USD', 'GBP');
+    expect(h.queries() - sat).toBe(1);
+  });
+
   it('a later-date provider answer leaves the expense pending', async () => {
     const provider = new StubRates({ rate: '1.1', rateDate: '2026-09-20', source: 'frankfurter' });
     const service = createExpensesService(h.db, createRatesService(h.db, provider), h.clock);

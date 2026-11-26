@@ -3,7 +3,8 @@ import { createDb } from './index.js';
 import { setGlobalFlag, setUserFlag } from './flags.js';
 
 /** `pnpm flags set <key> --user <email>|--global on|off` (T042a). Parses argv, writes to
- * `flags`/`user_flags`, effective on the next request (no cache, no restart needed). */
+ * `flags`/`user_flags`, no restart needed: a --user change applies on the next request, a --global
+ * one within a minute (running apps cache the global rows for 60 s, see flags.ts). */
 const USAGE = 'usage: flags set <key> --user <email>|--global on|off';
 
 export async function runFlagsCli(argv: string[], databaseUrl: string | undefined): Promise<void> {
