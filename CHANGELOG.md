@@ -55,6 +55,7 @@ All notable changes to this project are recorded here, following [Keep a Changel
 ### Security
 
 - Standards CalDAV: every request is host-checked, not just the URL the user typed. A CalDAV server could previously point discovery hrefs or redirects at a private address (SSRF), and the background refresh would re-request it. Each hop must now be https on a public address, and redirects are followed by hand (at most five).
+- Host check: an IPv6 address is judged in its canonical form, so `::ffff:a00:5` (10.0.0.5 written in hex), expanded spellings such as `0:0:0:0:0:0:0:1`, and the IPv4-compatible range `::/96` no longer pass as public addresses for CalDAV URLs or IMAP hosts.
 
 ### Fixed
 

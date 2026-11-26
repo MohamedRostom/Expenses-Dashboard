@@ -24,11 +24,23 @@ function isPublicIPv4(ip: string): boolean {
 }
 
 function isPublicIPv6(ip: string): boolean {
-  const norm = ip.toLowerCase();
-  if (norm === '::1' || norm === '::') return false; // loopback / unspecified
-  // IPv4-mapped (::ffff:a.b.c.d) — judge the embedded IPv4 address.
-  const mapped = /^::ffff:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(norm);
-  if (mapped) return isPublicIPv4(mapped[1]!);
+  // Canonicalise first, so every spelling of one address looks the same: the URL parser lowercases,
+  // compresses zeros and rewrites ::ffff:127.0.0.1 to ::ffff:7f00:1. Not a plain IPv6 literal
+  // (garbage, zone id) = not public.
+  let norm: string;
+  try {
+    norm = new URL(`http://[${ip}]/`).hostname.slice(1, -1);
+  } catch {
+    return false;
+  }
+  // IPv4-mapped (::ffff:0:0/96) — judge the embedded IPv4 address.
+  const mapped = /^::ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(norm);
+  if (mapped) {
+    const hi = parseInt(mapped[1]!, 16);
+    const lo = parseInt(mapped[2]!, 16);
+    return isPublicIPv4(`${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`);
+  }
+  if (/^::([0-9a-f]{1,4}(:[0-9a-f]{1,4})?)?$/.test(norm)) return false; // ::/96: unspecified, loopback, IPv4-compatible
   if (/^fe[89ab][0-9a-f]:/.test(norm)) return false; // link-local, fe80::/10
   if (/^f[cd][0-9a-f]{2}:/.test(norm)) return false; // unique local, fc00::/7 (incl. Fly's fdaa::/16)
   return true;
