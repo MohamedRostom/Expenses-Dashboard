@@ -90,6 +90,89 @@ describe('CalDAV CalendarSource', () => {
     });
   });
 
+  // Security review 2026-11-26 (SSRF): the connect-time host check covers only the URL the user
+  // typed; every later hop is chosen by the server (absolute <D:href>, 3xx Location), so each one
+  // must pass assertUrl before a request goes out.
+  describe('assertUrl: every request is host-checked', () => {
+    const INTERNAL = 'http://[fdaa::3]:8080/secret/';
+    const blockInternal = async (url: string) => {
+      if (new URL(url).hostname !== 'caldav.example.test') throw new Error(`blocked ${url}`);
+    };
+
+    it('checks the entry URL and every discovery hop', async () => {
+      const checked: string[] = [];
+      const source = createCalDavSource({
+        fetchImpl: discoveryFetch('') as unknown as typeof fetch,
+        assertUrl: async (url) => {
+          checked.push(url);
+        },
+      });
+      await source.listCalendars(CRED);
+      expect(checked).toEqual([ROOT, PRINCIPAL, HOME]);
+    });
+
+    it('refuses an absolute principal href to an internal host without requesting it', async () => {
+      const requested: string[] = [];
+      const fetchImpl = async (input: string | URL): Promise<Response> => {
+        requested.push(String(input));
+        return new Response(
+          `<?xml version="1.0"?><D:multistatus xmlns:D="DAV:"><D:response><D:propstat><D:prop><D:current-user-principal><D:href>${INTERNAL}</D:href></D:current-user-principal></D:prop></D:propstat></D:response></D:multistatus>`,
+          { status: 207 },
+        );
+      };
+      const source = createCalDavSource({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        assertUrl: blockInternal,
+      });
+      await expect(source.listCalendars(CRED)).rejects.toBeInstanceOf(ProviderError);
+      expect(requested).toEqual([ROOT]);
+    });
+
+    it('refuses a redirect to an internal host without following it', async () => {
+      const requested: { url: string; redirect: RequestRedirect | undefined }[] = [];
+      const fetchImpl = async (input: string | URL, init?: RequestInit): Promise<Response> => {
+        requested.push({ url: String(input), redirect: init?.redirect });
+        return new Response(null, { status: 307, headers: { Location: INTERNAL } });
+      };
+      const source = createCalDavSource({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        assertUrl: blockInternal,
+      });
+      await expect(source.listCalendars(CRED)).rejects.toBeInstanceOf(ProviderError);
+      expect(requested).toEqual([{ url: ROOT, redirect: 'manual' }]);
+    });
+
+    it('follows a redirect to an allowed host, keeping the method', async () => {
+      const MOVED = 'https://caldav.example.test/moved/';
+      const inner = discoveryFetch('');
+      const methods: string[] = [];
+      const fetchImpl = async (input: string | URL, init?: RequestInit): Promise<Response> => {
+        if (String(input) === MOVED) {
+          methods.push(init?.method ?? 'GET');
+          return inner(ROOT, init);
+        }
+        if (String(input) === ROOT && methods.length === 0) {
+          return new Response(null, { status: 301, headers: { Location: '/moved/' } });
+        }
+        return inner(input, init);
+      };
+      const source = createCalDavSource({
+        fetchImpl: fetchImpl as unknown as typeof fetch,
+        assertUrl: blockInternal,
+      });
+      const calendars = await source.listCalendars(CRED);
+      expect(calendars.map((c) => c.id)).toEqual([PERSONAL]);
+      expect(methods).toEqual(['PROPFIND']);
+    });
+
+    it('gives up after too many redirects', async () => {
+      const fetchImpl = async (): Promise<Response> =>
+        new Response(null, { status: 302, headers: { Location: ROOT } });
+      const source = createCalDavSource({ fetchImpl: fetchImpl as unknown as typeof fetch });
+      await expect(source.listCalendars(CRED)).rejects.toBeInstanceOf(ProviderError);
+    });
+  });
+
   describe('fetchWindow: contract test, real client vs fake, over the same fixtures', () => {
     const from = new Date('2026-10-01T00:00:00Z');
     const to = new Date('2026-10-20T00:00:00Z');

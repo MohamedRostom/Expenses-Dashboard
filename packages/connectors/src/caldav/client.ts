@@ -20,6 +20,36 @@ export interface CalDavCredential {
 
 export interface CalDavConfig {
   fetchImpl?: typeof fetch;
+  /** Rejects (throws) a URL the server may not reach. Called before every request, including
+   * server-chosen hops (absolute `<D:href>`, redirect `Location`), so the connect-time host check
+   * can't be bypassed by the CalDAV server itself (SSRF). Omitted = no check (tests, Workers,
+   * where the platform blocks private addresses). */
+  assertUrl?: (url: string) => Promise<void>;
+}
+
+const MAX_REDIRECTS = 5;
+
+/** Wraps fetch so every hop is host-checked and redirects are followed by hand, never by fetch. */
+function guardFetch(
+  fetchImpl: typeof fetch,
+  assertUrl: (url: string) => Promise<void>,
+): typeof fetch {
+  return (async (input: string | URL, init?: RequestInit) => {
+    let url = String(input);
+    for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
+      try {
+        await assertUrl(url);
+      } catch {
+        throw new ProviderError(`caldav: host not allowed (${new URL(url).host})`);
+      }
+      const response = await fetchImpl(url, { ...init, redirect: 'manual' });
+      const location =
+        response.status >= 300 && response.status < 400 ? response.headers.get('location') : null;
+      if (!location) return response;
+      url = new URL(location, url).toString();
+    }
+    throw new ProviderError('caldav: too many redirects');
+  }) as typeof fetch;
 }
 
 export interface CalDavCalendar {
@@ -476,7 +506,7 @@ async function fetchCalendarEvents(
 }
 
 export function createCalDavSource(config: CalDavConfig = {}): CalendarSource {
-  const fetchImpl = config.fetchImpl ?? fetch;
+  const fetchImpl = guardFetch(config.fetchImpl ?? fetch, config.assertUrl ?? (async () => {}));
 
   return {
     async listCalendars(cred: unknown): Promise<CalDavCalendar[]> {

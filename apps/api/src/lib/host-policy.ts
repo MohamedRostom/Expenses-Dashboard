@@ -39,3 +39,18 @@ function isPublicIPv6(ip: string): boolean {
 export function isPublicAddress(ip: string): boolean {
   return IPV4_RE.test(ip) ? isPublicIPv4(ip) : isPublicIPv6(ip);
 }
+
+/** Per-request guard for the CalDAV client (CalDavConfig.assertUrl): https only, and the host must
+ * resolve to public addresses only. Throws otherwise. Runs on every hop, not just the entry URL,
+ * because the server picks later URLs (hrefs, redirects).
+ * ponytail: resolve-then-fetch leaves a DNS-rebinding window; pin the resolved IP if that matters. */
+export function assertPublicUrl(resolver: HostResolver): (url: string) => Promise<void> {
+  return async (url) => {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:') throw new Error(`not https: ${parsed.protocol}`);
+    const addresses = await resolver(parsed.hostname.replace(/^\[|\]$/g, ''));
+    if (addresses.length === 0 || addresses.some((a) => !isPublicAddress(a))) {
+      throw new Error(`not a public host: ${parsed.hostname}`);
+    }
+  };
+}

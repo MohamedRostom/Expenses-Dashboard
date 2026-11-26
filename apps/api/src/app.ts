@@ -54,7 +54,7 @@ import { createMicrosoftMailSource } from '@desk/connectors/microsoft/mail';
 import { ImapMailSource } from '@desk/connectors/imap/client';
 import type { Connect } from '@desk/connectors/imap/socket';
 import { createCalDavSource } from '@desk/connectors/caldav/client';
-import type { HostResolver } from './lib/host-policy.js';
+import { assertPublicUrl, type HostResolver } from './lib/host-policy.js';
 
 export type BuildInfo = Omit<HealthResponseT, 'status' | 'db'>;
 
@@ -174,7 +174,14 @@ export function createApp(deps: AppDeps) {
       }),
       // CalDAV needs no OAuth client config (Basic auth, per-account credential) — always built,
       // so panels.refresh can refresh a standards account's enabled calendars (T070).
-      standards: createCalDavSource(),
+      // Every CalDAV hop (server-chosen hrefs, redirects) is host-checked, not just the URL the
+      // user typed (SSRF, security review 2026-11-26). Skipped where no resolver exists (Workers
+      // blocks private addresses itself) and under STANDARDS_ALLOW_PRIVATE_HOSTS (e2e-ci mocks).
+      standards: createCalDavSource(
+        deps.hostResolver && !deps.standardsAllowPrivateHosts
+          ? { assertUrl: assertPublicUrl(deps.hostResolver) }
+          : {},
+      ),
     };
 
   // Real mail sources built from AppDeps when the caller hasn't supplied fakes (tests do).

@@ -52,6 +52,10 @@ All notable changes to this project are recorded here, following [Keep a Changel
 - Dashboard widgets, spend pace, fixed costs and sunrise (spec 003 Slice D, behind `widgets.spend_pace`, `widgets.fixed_costs` and `widgets.sunrise`, dark in production): month spend pace against budget, fixed costs remaining this month, and sunrise and sunset for a chosen place.
 - Dashboard widgets, Today strip (spec 003 Slice E, behind `panels.today`, dark in production): the same widget strip on the Today page, after the calendar and inbox panels, sharing one store with the month view and rendering even when the panels fail to load.
 
+### Security
+
+- Standards CalDAV: every request is host-checked, not just the URL the user typed. A CalDAV server could previously point discovery hrefs or redirects at a private address (SSRF), and the background refresh would re-request it. Each hop must now be https on a public address, and redirects are followed by hand (at most five).
+
 ### Fixed
 
 - PR preview deploys switch the `widgets.*` and `panels.today` flags on at startup (new `FLAGS_ON` env var, refused on production), so the add-widget sheet no longer opens empty on a preview; when no widget type is enabled the sheet now says "No widgets available yet" instead of showing nothing.
