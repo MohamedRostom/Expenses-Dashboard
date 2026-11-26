@@ -147,7 +147,7 @@ describe('CurrencyWidget converter (review 2026-11-25)', () => {
     newApp(CurrencyWidget, { rows: [row({ rate: 0.85033 })], defaultCode: 'GBP' }).mount(el);
     await nextTick();
     const input = el.querySelector<HTMLInputElement>('input[inputmode="decimal"]')!;
-    expect(el.querySelector('label')?.textContent).toContain('Amount');
+    expect(el.querySelector('label')?.textContent).toBe('Amount to convert'); // not "Amount": the add-expense form owns that name
     input.value = '100';
     input.dispatchEvent(new Event('input'));
     await nextTick();

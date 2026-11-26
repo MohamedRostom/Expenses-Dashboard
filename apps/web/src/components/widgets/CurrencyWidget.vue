@@ -21,7 +21,7 @@ type Change = { pct: number; direction: keyof typeof GLYPH; since?: string };
 
 <template>
   <div v-if="defaultCode && quoted" class="desk-currency-convert">
-    <label :for="id">Amount</label>
+    <label :for="id">Amount to convert</label>
     <input :id="id" v-model="raw" type="text" inputmode="decimal" autocomplete="off" />
   </div>
   <ul class="desk-currency-rows">
