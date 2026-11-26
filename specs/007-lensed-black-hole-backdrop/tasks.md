@@ -10,7 +10,7 @@ Files: `docs/adr/ADR-0009-webgl-background-preset.md`, `tests/e2e/playwright.con
 
 **Wave 1 — independent (different files):**
 
-- [ ] **T001** [P] Write ADR-0009 "WebGL background preset" (Proposed), amending DESIGN.md's Background layer rule to allow one lazily loaded WebGL preset under the same stop rules, with signed-out pages and landing kept on Particles (R10) · docs/adr/ADR-0009-webgl-background-preset.md
+- [ ] **T001** [P] Write ADR-0009 "WebGL background preset" (Accepted by Rostom 2026-11-26), amending DESIGN.md's Background layer rule to allow one lazily loaded WebGL preset under the same stop rules, with signed-out pages and landing kept on Particles (R10) · docs/adr/ADR-0009-webgl-background-preset.md
 - [ ] **T002** [P] Spike: draw a fixed WebGL frame in the `visual` project inside the Playwright container, screenshot it twice and in two runs, and pin `--use-angle=swiftshader` in the visual project's launch arguments if the shots differ (R9) · tests/e2e/playwright.config.ts
 
 ## Phase 2: Foundational
@@ -151,7 +151,7 @@ Files: `DESIGN.md`, `CLAUDE.md`, `CHANGELOG.md`, `tests/e2e/tests/visual.spec.ts
 
 - [ ] **T037** Design tools: `npx -y impeccable@4.1.0 detect` on the changed files and the routes at 360 and 1280, then the `impeccable-finish-reviewer` agent; the commit carries a "Design tools" section
 - [ ] **T038** Validate against Success Criteria: lint, typecheck, unit, API, `worker:build`, OpenAPI not stale, e2e `ci` and `visual` at `--workers=2`
-- [ ] **T039** `needs-rostom`: view it on a real phone and laptop (SC-001, verification step 6), accept or amend ADR-0009, and decide when to turn the flag on
+- [ ] **T039** `needs-rostom`: view it on a real phone and laptop (SC-001, verification step 6) and decide when to turn the flag on
 
 ## Dependencies & Execution Order
 

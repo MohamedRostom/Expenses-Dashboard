@@ -76,7 +76,7 @@ Each open question was searched and settled design first, then performance. Sour
 
 ## R10. Design record
 
-**Decision**: Write ADR-0009 "WebGL background preset", which amends DESIGN.md's Background layer rule ("No script loop, canvas, WebGL or dependency") to allow one lazily loaded WebGL preset under the same stop rules. Status Proposed until Rostom accepts it. Signed-out pages and the landing site keep Particles.
+**Decision**: Write ADR-0009 "WebGL background preset", which amends DESIGN.md's Background layer rule ("No script loop, canvas, WebGL or dependency") to allow one lazily loaded WebGL preset under the same stop rules. Accepted by Rostom on 2026-11-26. Signed-out pages and the landing site keep Particles.
 
 **Rationale**: DESIGN.md is normative and currently forbids WebGL. Constitution VI allows one opt-in pausable loop, which this still is.
 
