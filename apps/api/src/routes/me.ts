@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   users as usersTable,
   sessions as sessionsTable,
@@ -294,19 +294,13 @@ export function createMeRoutes(deps: MeRoutesDeps) {
           and(eq(jobsTable.userId, user.id), inArray(jobsTable.status, ['queued', 'running'])),
         );
 
-      const auditRows = await tx.select().from(auditLog).where(eq(auditLog.userId, user.id));
-      for (const row of auditRows) {
-        await tx
-          .update(auditLog)
-          .set({
-            userId: null,
-            details: {
-              ...(row.details as Record<string, unknown> | null),
-              deletedUserHash: pseudonym,
-            },
-          })
-          .where(eq(auditLog.id, row.id));
-      }
+      await tx
+        .update(auditLog)
+        .set({
+          userId: null,
+          details: sql`coalesce(${auditLog.details}, '{}'::jsonb) || jsonb_build_object('deletedUserHash', ${pseudonym}::text)`,
+        })
+        .where(eq(auditLog.userId, user.id));
 
       await tx.delete(usersTable).where(eq(usersTable.id, user.id));
     });

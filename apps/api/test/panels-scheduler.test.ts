@@ -70,6 +70,33 @@ describe('Panels Scheduler API (T008)', () => {
       expect(jobsBefore[0]?.payload).toEqual({ accountId: uuid });
     });
 
+    it('statement count does not grow with the number of due accounts (no N+1)', async () => {
+      const user = await harness.asUser('scheduler-n1@example.com');
+      const now = harness.clock.now();
+      const addAccounts = async (n: number, tag: string) => {
+        for (let i = 0; i < n; i++) {
+          await harness.db.execute(sql`
+            INSERT INTO connected_accounts
+            (id, user_id, provider, address, label, colour, capabilities, granted_scopes, credential_enc, status, next_refresh_at)
+            VALUES
+            (${crypto.randomUUID()}, ${user.userId}, 'google', ${`${tag}${i}@example.com`}, 'N1', '#1f6e5a', ARRAY['calendar']::text[], ARRAY['calendar.readonly']::text[], decode('00', 'hex'), 'connected', ${now.toISOString()})
+          `);
+        }
+      };
+
+      await addAccounts(1, 'a');
+      let before = harness.queries();
+      await runScheduler();
+      const one = harness.queries() - before;
+
+      await addAccounts(4, 'b');
+      before = harness.queries();
+      await runScheduler();
+      const five = harness.queries() - before;
+
+      expect(five).toBe(one);
+    });
+
     it('does not double-enqueue the same account when scheduler runs twice', async () => {
       const user = await harness.asUser('dedup@example.com');
       const now = harness.clock.now();

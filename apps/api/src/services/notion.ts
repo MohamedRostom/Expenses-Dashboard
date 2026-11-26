@@ -376,21 +376,20 @@ export function createNotionService(
         applied += 1;
       }
 
+      // One category load for the whole pass (not a select per row), only if a row names one.
+      const categoryIdByName = new Map<string, string>();
+      if (result.toLocal.some((e) => e.row.categoryName)) {
+        const cats = await db
+          .select({ id: categoriesTable.id, name: categoriesTable.name })
+          .from(categoriesTable)
+          .where(eq(categoriesTable.userId, userId));
+        for (const c of cats) categoryIdByName.set(c.name, c.id);
+      }
+
       for (const entry of result.toLocal) {
         if (entry.op === 'create') {
-          const category = entry.row.categoryName
-            ? (
-                await db
-                  .select()
-                  .from(categoriesTable)
-                  .where(
-                    and(
-                      eq(categoriesTable.userId, userId),
-                      eq(categoriesTable.name, entry.row.categoryName),
-                    ),
-                  )
-                  .limit(1)
-              )[0]
+          const categoryId = entry.row.categoryName
+            ? categoryIdByName.get(entry.row.categoryName)
             : undefined;
           const { expense } = await expensesService.create(
             userId,
@@ -399,7 +398,7 @@ export function createNotionService(
               description: entry.row.description,
               amount: { minor: entry.row.amountOriginal, currency: entry.row.currencyOriginal },
               date: entry.row.expenseDate,
-              categoryId: category?.id ?? null,
+              categoryId: categoryId ?? null,
               paidWith: entry.row.paidWith as 'card' | 'cash' | 'bank_transfer' | 'other',
               kind: entry.row.kind as 'fixed' | 'variable' | 'one_off',
               notes: entry.row.notes ?? undefined,
@@ -437,25 +436,14 @@ export function createNotionService(
             // direct db.update() left it stale, so an edit made in Notion silently corrupted
             // the default-currency total until the next unrelated re-save. Also resolves the
             // category name (previously ignored entirely on a Notion-side edit).
-            const category = entry.row.categoryName
-              ? (
-                  await db
-                    .select()
-                    .from(categoriesTable)
-                    .where(
-                      and(
-                        eq(categoriesTable.userId, userId),
-                        eq(categoriesTable.name, entry.row.categoryName),
-                      ),
-                    )
-                    .limit(1)
-                )[0]
+            const categoryId = entry.row.categoryName
+              ? categoryIdByName.get(entry.row.categoryName)
               : undefined;
             await expensesService.patch(userId, defaultCurrency, local.id, {
               description: entry.row.description,
               amount: { minor: entry.row.amountOriginal, currency: entry.row.currencyOriginal },
               date: entry.row.expenseDate,
-              categoryId: entry.row.categoryName ? (category?.id ?? null) : undefined,
+              categoryId: entry.row.categoryName ? (categoryId ?? null) : undefined,
               paidWith: entry.row.paidWith as 'card' | 'cash' | 'bank_transfer' | 'other',
               kind: entry.row.kind as 'fixed' | 'variable' | 'one_off',
               notes: entry.row.notes,
@@ -470,20 +458,25 @@ export function createNotionService(
         applied += 1;
       }
 
-      for (const c of result.conflicts) {
-        await writeVersion(
-          c.local.id,
-          userId,
-          'sync_conflict',
-          { local: c.local },
-          c.local.updatedAt,
-        );
-        await writeVersion(
-          c.local.id,
-          userId,
-          'sync_conflict',
-          { remote: c.remote },
-          c.remote.lastEditedTime,
+      if (result.conflicts.length > 0) {
+        // Both snapshots of every conflict in one insert (same fields as writeVersion).
+        await db.insert(expenseVersions).values(
+          result.conflicts.flatMap((c) => [
+            {
+              expenseId: c.local.id,
+              userId,
+              source: 'sync_conflict' as const,
+              snapshot: { local: c.local },
+              editedAt: new Date(c.local.updatedAt),
+            },
+            {
+              expenseId: c.local.id,
+              userId,
+              source: 'sync_conflict' as const,
+              snapshot: { remote: c.remote },
+              editedAt: new Date(c.remote.lastEditedTime),
+            },
+          ]),
         );
       }
 

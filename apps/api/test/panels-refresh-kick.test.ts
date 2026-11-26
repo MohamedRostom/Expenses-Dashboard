@@ -9,6 +9,7 @@ import {
 } from '@desk/db';
 import type { CalendarSource, MailSource } from '@desk/connectors/panels';
 import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
+import { PanelsService } from '../src/services/panels.js';
 import { createSecretBox } from '../src/adapters/secret-box.js';
 import { sealCredential } from '../src/lib/credential.js';
 
@@ -273,5 +274,54 @@ describe('the registered panels.refresh job refreshes mail through AppDeps.mailS
     expect(rows.map((r) => [r.providerMessageId, r.subject, r.unread])).toEqual([
       ['msg-kick', 'Kicked mail', true],
     ]);
+  });
+});
+
+describe('PanelsService.markDue statement count (no N+1)', () => {
+  let harness: Harness;
+
+  beforeAll(async () => {
+    harness = await startHarness();
+  }, 120_000);
+
+  afterAll(async () => {
+    await harness.close();
+  });
+
+  it('does not grow with the number of due accounts', async () => {
+    const service = new PanelsService({
+      db: harness.db,
+      clock: harness.clock,
+      appOrigin: 'http://localhost',
+      enqueue: async () => 'job',
+    });
+    const old = new Date(harness.clock.now().getTime() - 3 * 60 * 1000);
+
+    async function run(n: number, email: string): Promise<number> {
+      const user = await harness.asUser(email);
+      for (let i = 0; i < n; i++) {
+        await harness.db.insert(connectedAccounts).values({
+          userId: user.userId,
+          provider: 'google',
+          address: `${email}-${i}`,
+          label: 'N1',
+          colour: 'teal',
+          capabilities: ['calendar'],
+          grantedScopes: ['calendar.readonly'],
+          credentialEnc: new Uint8Array([1]),
+          status: 'connected',
+          nextRefreshAt: old,
+          lastRefreshAt: old,
+        });
+      }
+      const before = harness.queries();
+      const ids = await service.markDue(user.userId, 60_000);
+      expect(ids).toHaveLength(n);
+      return harness.queries() - before;
+    }
+
+    const one = await run(1, 'markdue-1@example.com');
+    const five = await run(5, 'markdue-5@example.com');
+    expect(five).toBe(one);
   });
 });

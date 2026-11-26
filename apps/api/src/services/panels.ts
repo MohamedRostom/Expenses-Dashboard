@@ -1,4 +1,4 @@
-import { and, eq, gt, isNull, lt } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, lt } from 'drizzle-orm';
 import type { Db } from '@desk/db';
 import { accountCalendars, cachedEvents, cachedMessages, connectedAccounts, users } from '@desk/db';
 import type { TodayResponseT, TodayAccountT, TodayEventT, TodayMessageT } from '@desk/contracts';
@@ -65,17 +65,17 @@ export class PanelsService {
       (a) => !a.lastRefreshAt || a.lastRefreshAt.getTime() < cutoff.getTime(),
     );
 
-    const ids: string[] = [];
-    for (const account of due) {
-      // Set next_refresh_at = now to mark as due
+    const ids = due.map((a) => a.id);
+    // Set next_refresh_at = now on every due account in one statement.
+    if (ids.length > 0) {
       await this.deps.db
         .update(connectedAccounts)
         .set({ nextRefreshAt: now })
-        .where(eq(connectedAccounts.id, account.id));
-
+        .where(inArray(connectedAccounts.id, ids));
+    }
+    for (const id of ids) {
       // Enqueue refresh with dedup (same as scheduler does)
-      await this.deps.enqueue('panels.refresh', { accountId: account.id }, { userId });
-      ids.push(account.id);
+      await this.deps.enqueue('panels.refresh', { accountId: id }, { userId });
     }
 
     return ids;

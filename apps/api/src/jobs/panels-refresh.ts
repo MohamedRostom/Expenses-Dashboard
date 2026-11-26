@@ -1,4 +1,5 @@
-import { and, desc, eq, gt, inArray, lt, notInArray } from 'drizzle-orm';
+import { and, desc, eq, gt, inArray, lt, notInArray, sql } from 'drizzle-orm';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 import type { Db } from '@desk/db';
 import {
   accountCalendars,
@@ -34,6 +35,9 @@ export type PanelsRefreshDeps = {
    * panels.google_mail flag is off for that user, since no source may be registered at all. */
   mailSources?: Partial<Record<'google' | 'microsoft' | 'standards', MailSource>>;
 };
+
+/** The value a multi-row upsert would have inserted for this column (`excluded.<col>`). */
+const excluded = (col: AnyPgColumn) => sql.raw(`excluded."${col.name}"`);
 
 type ConnectedAccountRow = typeof connectedAccounts.$inferSelect;
 
@@ -87,22 +91,23 @@ async function refreshCalendar(
 
   if (calendars.length === 0) {
     const listed = await source.listCalendars(cred);
-    const inserted = [];
-    for (const cal of listed) {
-      const [row] = await deps.db
-        .insert(accountCalendars)
-        .values({
-          userId: account.userId,
-          accountId: account.id,
-          providerCalendarId: cal.id,
-          name: cal.name,
-          isPrimary: cal.isPrimary,
-          enabled: cal.isPrimary,
-          colour: cal.colour ?? null,
-        })
-        .returning();
-      if (row) inserted.push(row);
-    }
+    const inserted =
+      listed.length === 0
+        ? []
+        : await deps.db
+            .insert(accountCalendars)
+            .values(
+              listed.map((cal) => ({
+                userId: account.userId,
+                accountId: account.id,
+                providerCalendarId: cal.id,
+                name: cal.name,
+                isPrimary: cal.isPrimary,
+                enabled: cal.isPrimary,
+                colour: cal.colour ?? null,
+              })),
+            )
+            .returning();
     calendars = inserted;
   }
 
@@ -118,39 +123,43 @@ async function refreshCalendar(
     );
     if (result.rotatedCredential) rotatedCredential = result.rotatedCredential;
 
-    const keptIds: string[] = [];
+    // Keyed by provider id so a duplicate in one batch can't trip "affect row a second time".
+    const kept = new Map<string, typeof cachedEvents.$inferInsert>();
     for (const ev of result.events) {
       if (ev.declined) continue;
-      keptIds.push(ev.providerEventId);
+      kept.set(ev.providerEventId, {
+        userId: account.userId,
+        accountId: account.id,
+        calendarId: calendar.id,
+        providerEventId: ev.providerEventId,
+        title: ev.title,
+        startsAt: ev.startsAt,
+        endsAt: ev.endsAt,
+        allDay: ev.allDay,
+        timeZone: ev.timeZone ?? null,
+        location: ev.location ?? null,
+        tentative: ev.tentative,
+        link: ev.link ?? null,
+        seenAt: now,
+      });
+    }
+    const keptIds = [...kept.keys()];
+    if (kept.size > 0) {
       await deps.db
         .insert(cachedEvents)
-        .values({
-          userId: account.userId,
-          accountId: account.id,
-          calendarId: calendar.id,
-          providerEventId: ev.providerEventId,
-          title: ev.title,
-          startsAt: ev.startsAt,
-          endsAt: ev.endsAt,
-          allDay: ev.allDay,
-          timeZone: ev.timeZone ?? null,
-          location: ev.location ?? null,
-          tentative: ev.tentative,
-          link: ev.link ?? null,
-          seenAt: now,
-        })
+        .values([...kept.values()])
         .onConflictDoUpdate({
           target: [cachedEvents.calendarId, cachedEvents.providerEventId],
           set: {
-            title: ev.title,
-            startsAt: ev.startsAt,
-            endsAt: ev.endsAt,
-            allDay: ev.allDay,
-            timeZone: ev.timeZone ?? null,
-            location: ev.location ?? null,
-            tentative: ev.tentative,
-            link: ev.link ?? null,
-            seenAt: now,
+            title: excluded(cachedEvents.title),
+            startsAt: excluded(cachedEvents.startsAt),
+            endsAt: excluded(cachedEvents.endsAt),
+            allDay: excluded(cachedEvents.allDay),
+            timeZone: excluded(cachedEvents.timeZone),
+            location: excluded(cachedEvents.location),
+            tentative: excluded(cachedEvents.tentative),
+            link: excluded(cachedEvents.link),
+            seenAt: excluded(cachedEvents.seenAt),
             updatedAt: now,
           },
         });
@@ -232,10 +241,12 @@ async function refreshMail(
     account.mailCursor ?? undefined,
   );
 
-  const keptIds: string[] = [];
+  const kept = new Map<string, typeof cachedMessages.$inferInsert>();
   for (const m of result.messages) {
-    keptIds.push(m.providerMessageId);
-    const values = {
+    kept.set(m.providerMessageId, {
+      userId: account.userId,
+      accountId: account.id,
+      providerMessageId: m.providerMessageId,
       fromName: m.fromName ?? null,
       fromAddress: m.fromAddress,
       subject: m.subject,
@@ -244,18 +255,26 @@ async function refreshMail(
       unread: m.unread,
       link: m.link ?? null,
       seenAt: now,
-    };
+    });
+  }
+  const keptIds = [...kept.keys()];
+  if (kept.size > 0) {
     await deps.db
       .insert(cachedMessages)
-      .values({
-        userId: account.userId,
-        accountId: account.id,
-        providerMessageId: m.providerMessageId,
-        ...values,
-      })
+      .values([...kept.values()])
       .onConflictDoUpdate({
         target: [cachedMessages.accountId, cachedMessages.providerMessageId],
-        set: { ...values, updatedAt: now },
+        set: {
+          fromName: excluded(cachedMessages.fromName),
+          fromAddress: excluded(cachedMessages.fromAddress),
+          subject: excluded(cachedMessages.subject),
+          preview: excluded(cachedMessages.preview),
+          receivedAt: excluded(cachedMessages.receivedAt),
+          unread: excluded(cachedMessages.unread),
+          link: excluded(cachedMessages.link),
+          seenAt: excluded(cachedMessages.seenAt),
+          updatedAt: now,
+        },
       });
   }
 

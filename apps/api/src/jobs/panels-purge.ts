@@ -39,20 +39,20 @@ export function panelsPurgeJob(deps: PanelsPurgeDeps): JobHandler {
       .from(users)
       .where(lt(users.lastActiveAt, cutoff));
 
-    for (const { id: userId } of idleUsers) {
-      await deps.cancelForUser(userId);
-      await deps.db.delete(cachedEvents).where(eq(cachedEvents.userId, userId));
-      await deps.db.delete(cachedMessages).where(eq(cachedMessages.userId, userId));
+    if (idleUsers.length > 0) {
+      const userIds = idleUsers.map((u) => u.id);
+      for (const userId of userIds) await deps.cancelForUser(userId);
+      await deps.db.delete(cachedEvents).where(inArray(cachedEvents.userId, userIds));
+      await deps.db.delete(cachedMessages).where(inArray(cachedMessages.userId, userIds));
       await deps.db
         .update(connectedAccounts)
         .set({ cachePurgedAt: now })
-        .where(eq(connectedAccounts.userId, userId));
-      await deps.db.insert(auditLog).values({
-        userId,
-        actor: 'system',
-        action: 'purge',
-        subject: userId,
-      });
+        .where(inArray(connectedAccounts.userId, userIds));
+      await deps.db
+        .insert(auditLog)
+        .values(
+          userIds.map((userId) => ({ userId, actor: 'system', action: 'purge', subject: userId })),
+        );
     }
 
     // Re-enqueue the purge for +1 day.

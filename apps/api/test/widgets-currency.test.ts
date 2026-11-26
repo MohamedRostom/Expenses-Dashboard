@@ -289,6 +289,18 @@ describe('currency widget', () => {
     ).toEqual([]);
   });
 
+  it('enqueueIfShort checks every code in one query (no N+1)', async () => {
+    for (const base of ['SEK', 'DKK', 'CHF', 'PLN'])
+      await seed('2026-08-01', base, 'CZK', '1.0000000000'); // long history: none is short
+    await enqueueIfShort(h.db, ['SEK'], 'CZK', '2026-09-30'); // warm-up connection
+    const q0 = h.queries();
+    await enqueueIfShort(h.db, ['SEK'], 'CZK', '2026-09-30');
+    const one = h.queries() - q0;
+    const q1 = h.queries();
+    await enqueueIfShort(h.db, ['SEK', 'DKK', 'CHF', 'PLN'], 'CZK', '2026-09-30');
+    expect(h.queries() - q1).toBe(one);
+  });
+
   it('one pair throwing in the warm loop still enqueues the short widget pair (T092)', async () => {
     h.clock.set(WED);
     const u = await setUser('wc-warm-throw@example.com', { defaultCurrency: 'NOK' });

@@ -219,4 +219,19 @@ describe('panels.purge job (T055)', () => {
     );
     expect((rows as unknown as unknown[]).length).toBeGreaterThan(0);
   });
+
+  it('statement count does not grow with the number of idle users (no N+1)', async () => {
+    await seedIdleAccount('n1-a@example.com');
+    let before = harness.queries();
+    await runPurge();
+    const one = harness.queries() - before;
+
+    for (let i = 0; i < 4; i++) await seedIdleAccount(`n1-b${i}@example.com`);
+    before = harness.queries();
+    await runPurge();
+    const five = harness.queries() - before;
+
+    // cancelForUser runs on the job runner's own client, so it is not in this count.
+    expect(five).toBe(one);
+  });
 });

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { expenseVersions, notionConnections } from '@desk/db';
+import { expenses as expensesTable, expenseVersions, notionConnections } from '@desk/db';
 import { startHarness, type Harness } from './harness.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
@@ -234,6 +234,80 @@ describe('Notion OAuth + connection', () => {
     expect(second.status).toBe(200);
     expect(secondBody.applied).toBe(0);
     void firstBody;
+  });
+
+  // N+1 guards. Per-entry Notion calls and expense writes legitimately scale with N, so each
+  // test varies only the thing under test and keeps everything else identical.
+  const remoteProps = (description: string, category: string | null) => ({
+    Expense: { title: [{ plain_text: description }] },
+    Amount: { number: 5 },
+    Currency: { select: { name: 'GBP' } },
+    Date: { date: { start: '2026-09-10' } },
+    ...(category ? { Category: { select: { name: category } } } : {}),
+    'Paid with': { select: { name: 'card' } },
+    Kind: { select: { name: 'variable' } },
+    'Added via': { select: { name: 'notion' } },
+  });
+  const connect = async (email: string, direction: string) => {
+    const user = await h.asUser(email);
+    await connectViaOAuth(user.sessionToken);
+    await user.put('/notion/connection', {
+      databaseId: `db-${email}`,
+      dataSourceId: `ds-${email}`,
+      direction,
+    });
+    return user;
+  };
+
+  it('importing pages with a category costs the same queries as without (no per-row category lookup)', async () => {
+    const measure = async (tag: string, category: string | null) => {
+      const user = await connect(`notion-cat-${tag}@test.com`, 'from_notion');
+      const pageIds: string[] = [];
+      for (let i = 0; i < 5; i++) {
+        const p = await h.notionFake.createPage('ds', remoteProps(`${tag} ${i}`, category));
+        pageIds.push(p.id);
+      }
+      const before = h.queries();
+      const body = (await (await user.post('/notion/sync')).json()) as { applied: number };
+      const delta = h.queries() - before;
+      expect(body.applied).toBe(5);
+      for (const id of pageIds) await h.notionFake.archivePage(id);
+      return delta;
+    };
+    const without = await measure('plain', null);
+    const withCategory = await measure('cat', 'Groceries');
+    // one category load for the whole pass, not one per row
+    expect(withCategory).toBeLessThanOrEqual(without + 1);
+  });
+
+  it('recording sync conflicts costs the same queries for 1 conflict as for 5', async () => {
+    const measure = async (n: number) => {
+      const user = await connect(`notion-conflict-${n}@test.com`, 'to_notion');
+      for (let i = 0; i < n; i++) {
+        const res = await user.post('/expenses', {
+          description: `Local ${n} ${i}`,
+          amount: { minor: 100, currency: 'GBP' },
+          date: '2026-09-10',
+          categoryId: null,
+          paidWith: 'card',
+          kind: 'variable',
+        });
+        const { expense } = (await res.json()) as { expense: { id: string } };
+        // remote edited after the local row, content differs: a conflict the remote side wins,
+        // which a to_notion-only connection records but does not apply.
+        const page = await h.notionFake.createPage('ds', remoteProps(`Remote ${n} ${i}`, null));
+        await h.db
+          .update(expensesTable)
+          .set({ notionPageId: page.id })
+          .where(eq(expensesTable.id, expense.id));
+      }
+      const before = h.queries();
+      const body = (await (await user.post('/notion/sync')).json()) as { conflicts: number };
+      const delta = h.queries() - before;
+      expect(body.conflicts).toBe(n);
+      return delta;
+    };
+    expect(await measure(5)).toBe(await measure(1));
   });
 
   it('applies a sync and writes expense_versions for created/updated rows', async () => {

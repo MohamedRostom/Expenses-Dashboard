@@ -32,23 +32,29 @@ export function panelsSchedulerJob(deps: PanelsSchedulerDeps): JobHandler {
         ),
       );
 
-    // Enqueue one job per account, deduped (check if one is already pending/running)
-    for (const account of dueAccounts) {
-      // Check if a panels.refresh job is already queued for this account
-      const existingJob = await deps.db
-        .select()
+    // One query for the accounts that already have a panels.refresh queued or running.
+    const queued = new Set<string>();
+    if (dueAccounts.length > 0) {
+      const accountIdOf = sql<string>`${jobsTable.payload}->>'accountId'`;
+      const rows = await deps.db
+        .select({ accountId: accountIdOf })
         .from(jobsTable)
         .where(
           and(
             eq(jobsTable.name, 'panels.refresh'),
             inArray(jobsTable.status, ['queued', 'running']),
-            sql`${jobsTable.payload}->>'accountId' = ${account.id}`,
+            inArray(
+              accountIdOf,
+              dueAccounts.map((a) => a.id),
+            ),
           ),
-        )
-        .limit(1);
+        );
+      for (const r of rows) queued.add(r.accountId);
+    }
 
-      // Only enqueue if no pending job exists for this account
-      if (existingJob.length === 0) {
+    // Enqueue one job per account, skipping any with a pending job
+    for (const account of dueAccounts) {
+      if (!queued.has(account.id)) {
         await deps.enqueue('panels.refresh', { accountId: account.id }, { userId: account.userId });
       }
     }

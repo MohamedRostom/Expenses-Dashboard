@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import { and, eq, isNotNull, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import {
   importProfiles,
   importBatches,
@@ -253,12 +253,22 @@ export function createImportsService(db: Db, expensesService: ExpensesService) {
     // of the fix, not the atomicity half.
     let created = rows.filter((r) => r.expenseId !== null).length;
 
+    const toSkip = rows.filter((r) => r.expenseId === null && skip.has(r.rowNumber));
+    if (toSkip.length > 0) {
+      await db
+        .update(importRows)
+        .set({ status: 'skipped' })
+        .where(
+          inArray(
+            importRows.id,
+            toSkip.map((r) => r.id),
+          ),
+        );
+    }
+
     for (const row of rows) {
       if (row.expenseId !== null) continue;
-      if (skip.has(row.rowNumber)) {
-        await db.update(importRows).set({ status: 'skipped' }).where(eq(importRows.id, row.id));
-        continue;
-      }
+      if (skip.has(row.rowNumber)) continue;
       if (row.status !== 'ok') continue;
 
       const parsed = row.parsed as ParsedRow;
@@ -306,15 +316,16 @@ export function createImportsService(db: Db, expensesService: ExpensesService) {
     }
 
     const rows = await db.select().from(importRows).where(eq(importRows.batchId, batchId));
-    let undone = 0;
     const now = new Date();
-    for (const row of rows) {
-      if (!row.expenseId) continue;
-      await db
+    const expenseIds = rows.flatMap((r) => (r.expenseId ? [r.expenseId] : []));
+    let undone = 0;
+    if (expenseIds.length > 0) {
+      const binned = await db
         .update(expensesTable)
         .set({ deletedAt: now })
-        .where(and(eq(expensesTable.id, row.expenseId), eq(expensesTable.userId, userId)));
-      undone++;
+        .where(and(inArray(expensesTable.id, expenseIds), eq(expensesTable.userId, userId)))
+        .returning({ id: expensesTable.id });
+      undone = binned.length;
     }
 
     const [updated] = await db

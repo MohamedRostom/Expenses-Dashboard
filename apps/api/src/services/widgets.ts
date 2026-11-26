@@ -328,9 +328,11 @@ export function createWidgetsService(db: Db, clock: { now(): Date } = { now: () 
           throw new ApiError('validation_failed', 'ids must list every widget exactly once', 422);
         }
         // the (user_id, position) unique is deferred, so intermediate clashes are fine
-        for (const [position, id] of ids.entries()) {
-          await tx.update(widgetsTable).set({ position }).where(eq(widgetsTable.id, id));
-        }
+        const cases = ids.map((id, position) => sql`when ${id}::uuid then ${position}::int`);
+        await tx
+          .update(widgetsTable)
+          .set({ position: sql`case ${widgetsTable.id} ${sql.join(cases, sql` `)} end` })
+          .where(inArray(widgetsTable.id, ids));
         await audit(tx, user.id, 'widget.reorder', user.id);
       });
       return (await select(db, user.id)).map((r) => toRow(r.w, r.p));

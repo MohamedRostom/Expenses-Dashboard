@@ -9,8 +9,13 @@ import {
 // T043: proves the batching/progress/idempotency shape against a fake in-memory RowSource,
 // since expenses/categories (the real data source) don't exist yet (Phase 2 US2).
 
-function fakeSource(rows: ConvertibleRow[]): { source: RowSource; converted: ConvertibleRow[] } {
+function fakeSource(rows: ConvertibleRow[]): {
+  source: RowSource;
+  converted: ConvertibleRow[];
+  applyCalls: number[];
+} {
   const converted: ConvertibleRow[] = [];
+  const applyCalls: number[] = [];
   const source: RowSource = {
     async countTotal() {
       return rows.length;
@@ -18,11 +23,12 @@ function fakeSource(rows: ConvertibleRow[]): { source: RowSource; converted: Con
     async fetchBatch(_userId, offset, limit) {
       return rows.slice(offset, offset + limit);
     },
-    async applyConversion(row) {
-      converted.push(row);
+    async applyConversions(items) {
+      applyCalls.push(items.length);
+      converted.push(...items.map((i) => i.row));
     },
   };
-  return { source, converted };
+  return { source, converted, applyCalls };
 }
 
 describe('runCurrencyChange', () => {
@@ -49,9 +55,32 @@ describe('runCurrencyChange', () => {
     expect(progress.length).toBeGreaterThan(2);
   });
 
+  it('looks each currency up once and applies each batch in one call', async () => {
+    const rows: ConvertibleRow[] = Array.from({ length: BATCH_SIZE + 10 }, (_, i) => ({
+      id: `row-${i}`,
+      amountMinor: 100,
+      currency: i % 2 ? 'GBP' : 'USD',
+    }));
+    const { source, applyCalls } = fakeSource(rows);
+    let lookups = 0;
+
+    await runCurrencyChange(
+      { userId: 'u1', fromCurrency: 'GBP', toCurrency: 'EUR', changeDate: '2026-09-18' },
+      source,
+      async () => {
+        lookups += 1;
+        return { rate: '1.1' };
+      },
+      { updateProgress: async () => {} },
+    );
+
+    expect(lookups).toBe(2); // distinct currencies, not rows
+    expect(applyCalls).toEqual([BATCH_SIZE, 10]); // one write per batch
+  });
+
   it('skips a row whose rate is unsupported, leaving it for rates.retry', async () => {
     const rows: ConvertibleRow[] = [{ id: 'row-1', amountMinor: 100, currency: 'GBP' }];
-    const { source, converted } = fakeSource(rows);
+    const { source, converted, applyCalls } = fakeSource(rows);
 
     await runCurrencyChange(
       { userId: 'u1', fromCurrency: 'GBP', toCurrency: 'EUR', changeDate: '2026-09-18' },
@@ -61,6 +90,7 @@ describe('runCurrencyChange', () => {
     );
 
     expect(converted).toHaveLength(0);
+    expect(applyCalls).toEqual([]); // nothing resolved: no empty write
   });
 
   it('is a no-op against zero rows', async () => {

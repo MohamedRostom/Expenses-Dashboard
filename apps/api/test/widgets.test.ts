@@ -259,6 +259,19 @@ describe('widgets', () => {
       expect(await order(u)).toEqual([b, c, a]);
     });
 
+    it('PUT /widgets/order issues the same number of queries for 2 widgets as for 5 (no N+1)', async () => {
+      const measure = async (n: number) => {
+        const u = await h.asUser(`w-reorder-nplus1-${n}@example.com`);
+        const ids = await seed(u, n);
+        const before = h.queries();
+        expect((await u.put('/widgets/order', { ids: ids.reverse() })).status).toBe(200);
+        return h.queries() - before;
+      };
+      const two = await measure(2);
+      const five = await measure(5);
+      expect(five).toBe(two);
+    });
+
     it('PUT /widgets/order: foreign or unknown id is 404, missing or repeated id is 422', async () => {
       const u = await h.asUser('w-reorder-bad@example.com');
       const other = await h.asUser('w-reorder-other@example.com');

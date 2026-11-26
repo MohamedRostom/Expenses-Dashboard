@@ -49,9 +49,11 @@ async function warm(
     // Daily retry for widget pairs whose history is still short (research R12): at most one
     // queued backfill per pair across all users. Runs before the warm loop so one failing pair
     // cannot starve it.
+    const basesByQuote = new Map<string, string[]>();
     for (const { base, quote } of await widgetPairs(db)) {
-      await enqueueIfShort(db, [base], quote, today);
+      basesByQuote.set(quote, [...(basesByQuote.get(quote) ?? []), base]);
     }
+    for (const [quote, bases] of basesByQuote) await enqueueIfShort(db, bases, quote, today);
 
     let done = 0;
     await ctx.updateProgress(done, pairs.length);
