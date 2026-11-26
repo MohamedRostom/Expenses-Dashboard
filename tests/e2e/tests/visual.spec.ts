@@ -971,6 +971,21 @@ export const SCREENS: Screen[] = [
     panels: ['[data-testid="widget-strip"]'],
   },
   {
+    // Review 2026-11-26: the currency tile with its frame expanded (on phones the frame is one line
+    // until tapped open), so the tile layout is checked at 360 as well as 1280.
+    name: 'widgets-currency-expanded',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[data-widget-id="w1"]'],
+    afterLoad: async (page) => {
+      const toggle = page.locator('[data-widget-id="w1"]').getByTestId('widget-toggle');
+      if (await toggle.isVisible()) await toggle.click();
+      await expect(page.locator('[data-widget-id="w1"] .desk-currency-row')).toBeVisible();
+    },
+  },
+  {
     // T042: the add-widget sheet (Dialog) open over the strip.
     name: 'widgets-add-sheet',
     route: '/',
