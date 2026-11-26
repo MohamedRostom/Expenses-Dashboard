@@ -301,8 +301,32 @@ describe('currency widget', () => {
       },
       range: rates.range.bind(rates),
     };
-    await expect(ratesWarmJob(h.db, throwing, h.clock)({}, ctx)).rejects.toThrow('boom');
+    // A failing pair is logged and skipped, never rethrown: the job re-queues itself hourly, and a
+    // runner retry on top of that successor would fork the chain.
+    await expect(ratesWarmJob(h.db, throwing, h.clock)({}, ctx)).resolves.toBeUndefined();
     expect((await queued()).map((p) => `${p.base}:${p.quote}`)).toContain('EUR:NOK');
+  });
+
+  it('rates.warm queues its next run an hour later, also when a pair fails (hourly refresh)', async () => {
+    h.clock.set(WED);
+    const calls: { name: string; runAfter?: Date }[] = [];
+    const enqueue = async (name: string, _p: unknown, opts?: { runAfter?: Date }) => {
+      calls.push({ name, ...(opts?.runAfter ? { runAfter: opts.runAfter } : {}) });
+      return 'id';
+    };
+    const throwing = {
+      rate: async () => {
+        throw new Error('boom');
+      },
+      range: rates.range.bind(rates),
+    };
+    for (const provider of [rates, throwing]) {
+      calls.length = 0;
+      await ratesWarmJob(h.db, provider, h.clock, enqueue)({}, ctx);
+      expect(calls).toEqual([
+        { name: 'rates.warm', runAfter: new Date(WED.getTime() + 60 * 60 * 1000) },
+      ]);
+    }
   });
 
   it('a pair with no fx_rates row is an error with rate_unavailable', async () => {

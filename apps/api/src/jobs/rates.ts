@@ -10,12 +10,35 @@ import { enqueueIfShort, widgetPairs } from './widgets-rates-backfill.js';
 
 const NINETY_DAYS_MS = 90 * 24 * 60 * 60 * 1000;
 
+const HOUR_MS = 60 * 60 * 1000;
+
+type Enqueue = (name: string, payload: unknown, opts?: { runAfter?: Date }) => Promise<string>;
+
+/** Hourly: warms today's rate for every recent pair, then queues its own next run (+1 hour), so
+ * rates never freeze while the app runs. A failing pair is logged and skipped, never rethrown: a
+ * runner retry on top of the queued successor would fork the chain. */
 export function ratesWarmJob(
   db: Db,
   provider: RatesProvider,
   clock: { now(): Date } = { now: () => new Date() },
+  enqueue?: Enqueue,
 ): JobHandler {
   return async (_payload, ctx) => {
+    try {
+      await warm(db, provider, clock, ctx);
+    } finally {
+      await enqueue?.('rates.warm', {}, { runAfter: new Date(clock.now().getTime() + HOUR_MS) });
+    }
+  };
+}
+
+async function warm(
+  db: Db,
+  provider: RatesProvider,
+  clock: { now(): Date },
+  ctx: Parameters<JobHandler>[1],
+): Promise<void> {
+  {
     const cutoff = new Date(clock.now().getTime() - NINETY_DAYS_MS).toISOString().slice(0, 10);
     const pairs = await db
       .selectDistinct({ base: fxRates.base, quote: fxRates.quote })
@@ -34,23 +57,27 @@ export function ratesWarmJob(
     await ctx.updateProgress(done, pairs.length);
 
     for (const { base, quote } of pairs) {
-      const outcome = await provider.rate(today, base, quote);
-      if (!('unsupported' in outcome)) {
-        await db
-          .insert(fxRates)
-          .values({
-            rateDate: outcome.rateDate,
-            base,
-            quote,
-            rate: outcome.rate,
-            source: outcome.source,
-          })
-          .onConflictDoNothing();
+      try {
+        const outcome = await provider.rate(today, base, quote);
+        if (!('unsupported' in outcome)) {
+          await db
+            .insert(fxRates)
+            .values({
+              rateDate: outcome.rateDate,
+              base,
+              quote,
+              rate: outcome.rate,
+              source: outcome.source,
+            })
+            .onConflictDoNothing();
+        }
+      } catch (e) {
+        console.error(`rates.warm ${base}:${quote} failed`, e instanceof Error ? e.message : e);
       }
       done += 1;
       await ctx.updateProgress(done, pairs.length);
     }
-  };
+  }
 }
 
 /** ponytail: expenses table (the thing that would hold unresolved `rate_source = 'unsupported'`

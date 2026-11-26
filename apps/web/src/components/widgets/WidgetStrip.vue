@@ -60,6 +60,20 @@ const shown = computed(() => {
 const atLimit = computed(() => store.widgets.length >= store.limit);
 const settingsWidget = computed(() => store.widgets.find((w) => w.id === settingsId.value) ?? null);
 
+// Refresh button: the server re-fetches the sources, then the strip reloads. Figures also refresh
+// on their own: the strip polls every five minutes and the server refreshes rates hourly.
+const refreshing = ref(false);
+async function refresh() {
+  refreshing.value = true;
+  try {
+    await store.refreshNow();
+  } catch {
+    // store.error carries the failure; the strip shows it.
+  } finally {
+    refreshing.value = false;
+  }
+}
+
 onMounted(async () => {
   // The catalogue is independent of the widget list; fetch both at once.
   const types = store.types().catch((err) => {
@@ -194,6 +208,18 @@ async function onDragEnd() {
       >
         Add widget ({{ store.widgets.length }} of {{ store.limit }})
       </Button>
+      <Button
+        v-if="store.widgets.length > 0"
+        data-testid="refresh-widgets"
+        class="desk-widget-refresh"
+        variant="ghost"
+        aria-label="Refresh widgets"
+        title="Refresh widgets"
+        :disabled="refreshing"
+        :aria-busy="refreshing || undefined"
+        @click="refresh"
+        ><span aria-hidden="true">&#8635;</span></Button
+      >
     </div>
 
     <PanelFrame
@@ -285,6 +311,13 @@ async function onDragEnd() {
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
+}
+.desk-widget-refresh {
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  padding-inline: 0;
+  justify-content: center;
+  font-size: var(--text-lg);
 }
 .desk-widget-grid {
   display: grid;

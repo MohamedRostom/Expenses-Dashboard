@@ -127,6 +127,18 @@ export const useWidgetsStore = defineStore('widgets', {
       }
     },
 
+    /** The strip's refresh button: ask the server to re-fetch the sources now (a 429 "just
+     * asked" is fine), then reload what it has. */
+    async refreshNow() {
+      try {
+        await postWidgetsRefresh();
+      } catch (err) {
+        if (!(err instanceof ApiError && err.code === 'rate_limited')) throw err;
+      } finally {
+        await this.load();
+      }
+    },
+
     /** Five-minute poll, paused while the tab is hidden; on return, refresh then reload. */
     start() {
       let p = polls.get(this);

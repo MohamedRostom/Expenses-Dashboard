@@ -406,3 +406,43 @@ describe('WidgetStrip: place and credit once, compact on phones (review 2026-11-
     expect(toggles[0]!.textContent).toContain('5° Overcast · H 7° L 1°');
   });
 });
+
+describe('WidgetStrip: refresh button', () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => (document.body.innerHTML = ''));
+  const settle = async () => {
+    for (let i = 0; i < 5; i++) await nextTick();
+    await new Promise((r) => setTimeout(r, 0));
+    await nextTick();
+  };
+
+  it('asks the server to refresh, then reloads the strip; a touch-size button with a name', async () => {
+    const api = await import('../../api/widgets.js');
+    vi.mocked(api.postWidgetsRefresh).mockResolvedValue({ queued: 1 });
+    const { el } = await mount([widget('w1')]);
+    const btn = el.querySelector<HTMLButtonElement>('[data-testid="refresh-widgets"]')!;
+    expect(btn.getAttribute('aria-label')).toBe('Refresh widgets');
+    const loadsBefore = vi.mocked(api.getWidgets).mock.calls.length;
+    btn.click();
+    await settle();
+    expect(api.postWidgetsRefresh).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(api.getWidgets).mock.calls.length).toBe(loadsBefore + 1);
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('a "too soon" 429 still reloads; no widgets means no button', async () => {
+    const api = await import('../../api/widgets.js');
+    const { ApiError } = await import('../../api/client.js');
+    vi.mocked(api.postWidgetsRefresh).mockRejectedValue(
+      new ApiError('rate_limited', 'Refresh was just requested', 429),
+    );
+    const { el } = await mount([widget('w1')]);
+    const loadsBefore = vi.mocked(api.getWidgets).mock.calls.length;
+    el.querySelector<HTMLButtonElement>('[data-testid="refresh-widgets"]')!.click();
+    await settle();
+    expect(vi.mocked(api.getWidgets).mock.calls.length).toBe(loadsBefore + 1);
+    document.body.innerHTML = '';
+    const empty = await mount([]);
+    expect(empty.el.querySelector('[data-testid="refresh-widgets"]')).toBeNull();
+  });
+});

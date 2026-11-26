@@ -249,14 +249,19 @@ describe('widgets weather jobs', () => {
   describe('ensureWidgetJobs', () => {
     it('enqueues each job once, deduped by queued or running rows', async () => {
       await h.db.execute(
-        sql`DELETE FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge')`,
+        sql`DELETE FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge', 'rates.warm')`,
       );
       await ensureWidgetJobs(h.db, t0);
       await ensureWidgetJobs(h.db, t0);
       const n = await rows(
-        sql`SELECT name FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge') ORDER BY name`,
+        sql`SELECT name FROM jobs WHERE name IN ('widgets.weather_refresh', 'widgets.purge', 'rates.warm') ORDER BY name`,
       );
-      expect(n.map((r) => r['name'])).toEqual(['widgets.purge', 'widgets.weather_refresh']);
+      // rates.warm: the hourly rate refresh; nothing else ever queued it, so rates froze.
+      expect(n.map((r) => r['name'])).toEqual([
+        'rates.warm',
+        'widgets.purge',
+        'widgets.weather_refresh',
+      ]);
     });
   });
 
