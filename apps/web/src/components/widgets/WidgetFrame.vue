@@ -49,10 +49,45 @@ function onOutsideClick(e: MouseEvent) {
 }
 onMounted(() => document.addEventListener('click', onOutsideClick));
 onUnmounted(() => document.removeEventListener('click', onOutsideClick));
-function onGripDown(e: PointerEvent) {
-  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+// The menu button is also the drag handle: a tap opens the menu; holding it (touch) or pressing and
+// moving past the slop (mouse) picks the widget up. Keyboard users keep Move up / Move down.
+const HOLD_MS = 400;
+const SLOP_PX = 8;
+const dragging = ref(false);
+let press: { x: number; y: number; timer: ReturnType<typeof setTimeout> } | null = null;
+let swallowClick = false;
+function startDrag(e: PointerEvent) {
+  if (press) clearTimeout(press.timer);
+  press = null;
+  dragging.value = true;
+  closeMenu(false);
+  navigator.vibrate?.(10);
   emit('dragStart', e);
 }
+function onHandleDown(e: PointerEvent) {
+  if (e.button > 0) return;
+  swallowClick = false;
+  (e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId);
+  press = { x: e.clientX, y: e.clientY, timer: setTimeout(() => startDrag(e), HOLD_MS) };
+}
+function onHandleMove(e: PointerEvent) {
+  if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > SLOP_PX) startDrag(e);
+  if (dragging.value) emit('dragMove', e);
+}
+function onHandleUp(e: PointerEvent) {
+  if (press) clearTimeout(press.timer);
+  press = null;
+  if (!dragging.value) return;
+  dragging.value = false;
+  swallowClick = e.type === 'pointerup';
+  emit('dragEnd', e);
+}
+function onHandleClick(e: MouseEvent) {
+  if (!swallowClick) return;
+  swallowClick = false;
+  e.preventDefault();
+}
+onUnmounted(() => press && clearTimeout(press.timer));
 
 type Cause = NonNullable<WidgetT['cause']>;
 const TITLES: Record<WidgetT['kind'], string> = {
@@ -110,19 +145,10 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
     data-testid="widget-frame"
     :data-state="w.state"
     :data-widget-id="w.id"
+    :data-dragging="dragging || undefined"
     :aria-label="frameTitle"
   >
     <header class="desk-widget-head">
-      <span
-        class="desk-widget-grip"
-        data-testid="widget-grip"
-        aria-hidden="true"
-        @pointerdown="onGripDown"
-        @pointermove="$emit('dragMove', $event)"
-        @pointerup="$emit('dragEnd', $event)"
-        @pointercancel="$emit('dragEnd', $event)"
-        >&#8942;&#8942;</span
-      >
       <h3 class="desk-widget-title">
         <button
           v-if="compact"
@@ -151,7 +177,19 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
         >{{ staleChip ? `${asOf} · last reading` : `as of ${asOf}` }}</span
       >
       <details ref="menu" class="desk-widget-menu" @keydown.esc="closeMenu(true)">
-        <summary :aria-label="`${frameTitle} menu`">&#8943;</summary>
+        <summary
+          :aria-label="`${frameTitle} menu`"
+          title="Menu — hold to move"
+          data-testid="widget-grip"
+          @pointerdown="onHandleDown"
+          @pointermove="onHandleMove"
+          @pointerup="onHandleUp"
+          @pointercancel="onHandleUp"
+          @click="onHandleClick"
+          @contextmenu.prevent
+        >
+          &#8943;
+        </summary>
         <div class="desk-widget-menu-items" @click.capture="onItemClick">
           <button type="button" :disabled="index === 0" @click="$emit('move', -1)">Move up</button>
           <button type="button" :disabled="index === (count ?? 0) - 1" @click="$emit('move', 1)">
@@ -205,8 +243,8 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   position: relative;
   z-index: 5;
 }
-/* Grip, title and menu on one line; the as-of chip wraps to its own line under the title, so a
- * 14rem column never pushes the menu out of the frame. */
+/* Title and menu on one line; the as-of chip wraps to its own line under the title, so a 14rem
+ * column never pushes the menu out of the frame. The menu button doubles as the drag handle. */
 .desk-widget-head {
   display: flex;
   flex-wrap: wrap;
@@ -216,17 +254,11 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 .desk-widget-title {
   min-inline-size: 0;
 }
-.desk-widget-grip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-inline-size: var(--target-min);
-  min-block-size: var(--target-min);
-  cursor: grab;
-  touch-action: none;
-  user-select: none;
-  color: var(--color-fg-muted);
-  letter-spacing: -0.2em;
+/* Picked up: lifted on the accent ring while the menu button is held and dragged. */
+.desk-widget-frame[data-dragging] {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  cursor: grabbing;
 }
 .desk-widget-title {
   margin: 0;
@@ -292,8 +324,7 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
 .desk-widget-asof {
   order: 1;
   flex-basis: 100%;
-  padding-inline-start: calc(var(--target-min) + var(--space-2));
-  margin-block-start: calc(var(--space-2) * -1);
+  margin-block-start: calc(var(--space-1) * -1);
   white-space: nowrap;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -301,8 +332,10 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   line-height: var(--leading-xs);
   color: var(--color-fg-muted);
 }
+/* The 44px button reaches into the frame's top-right padding: same hit area, shorter header. */
 .desk-widget-menu {
   position: relative;
+  margin: calc(var(--space-2) * -1) calc(var(--space-2) * -1) calc(var(--space-2) * -1) 0;
 }
 .desk-widget-menu summary {
   display: flex;
@@ -310,8 +343,22 @@ const body = computed<'figures' | 'loading' | 'error' | 'nothing'>(() => {
   justify-content: center;
   min-block-size: var(--target-min);
   min-inline-size: var(--target-min);
-  cursor: pointer;
+  border-radius: var(--radius-pill);
+  cursor: grab;
   list-style: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  color: var(--color-fg-muted);
+}
+.desk-widget-menu summary:hover,
+.desk-widget-menu[open] summary {
+  background: color-mix(in srgb, var(--color-fg) 8%, transparent);
+  color: var(--color-fg);
+}
+.desk-widget-menu summary::-webkit-details-marker {
+  display: none;
 }
 .desk-widget-menu-items {
   position: absolute;

@@ -3,6 +3,7 @@ import { createApp, nextTick } from 'vue';
 import type { Component } from 'vue';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { CurrencyRowT, WidgetT } from '@desk/contracts';
+import source from './CurrencyWidget.vue?raw';
 
 vi.mock('../../api/widgets.js', () => ({
   patchWidget: vi.fn(),
@@ -91,6 +92,46 @@ describe('CurrencyWidget', () => {
     expect(el.textContent).toContain('your default currency');
     expect(el.textContent).not.toMatch(/\d\.\d/);
     app.unmount();
+  });
+});
+
+describe('CurrencyWidget layout (review 2026-11-26)', () => {
+  it('each quoted row is a tile: code badge, headline rate, and one chip per change with its direction', async () => {
+    const { el, app } = await mountRows([row()]);
+    const tile = el.querySelector('.desk-currency-row')!;
+    expect(tile.querySelector('.desk-currency-code')?.textContent).toBe('EUR');
+    expect(tile.querySelector('.desk-currency-rate')?.textContent).toBe('1.1634');
+    const chips = [...tile.querySelectorAll<HTMLElement>('.desk-currency-change')];
+    expect(chips.map((c) => c.dataset.direction)).toEqual(['up', 'down']);
+    // Direction is in words as well as the glyph (never colour alone).
+    expect(chips[0]!.textContent).toMatch(/Day.*up 0\.4%/s);
+    expect(chips[1]!.textContent).toMatch(/30 days.*down 1\.2%/s);
+    app.unmount();
+  });
+  it('"since" lives inside its chip (tooltip and accessible text), so a tile never grows a third line', async () => {
+    const { el, app } = await mountRows([row()]);
+    const month = el.querySelectorAll<HTMLElement>('.desk-currency-change')[1]!;
+    expect(month.title).toBe('since 2026-09-02');
+    expect(month.querySelector('.desk-currency-since')?.textContent).toBe('since 2026-09-02');
+    expect(el.querySelector('.desk-currency-changes > .desk-currency-since')).toBeNull();
+    app.unmount();
+  });
+  it('the code badge is a neutral label, not the accent (the accent is for actions and spend)', () => {
+    const start = source.indexOf('\n.desk-currency-code {');
+    expect(source.slice(start, source.indexOf('}', start))).not.toContain('--color-accent');
+  });
+  it('the converted amount is part of its row, not a separate sentence', async () => {
+    const { default: CurrencyWidget } = await import('./CurrencyWidget.vue');
+    const el = document.createElement('div');
+    newApp(CurrencyWidget, { rows: [row({ rate: 2 })], defaultCode: 'GBP' }).mount(el);
+    await nextTick();
+    const input = el.querySelector<HTMLInputElement>('input')!;
+    input.value = '3';
+    input.dispatchEvent(new Event('input'));
+    await nextTick();
+    expect(el.querySelector('.desk-currency-row .desk-currency-result')?.textContent).toContain(
+      '3 EUR = 6 GBP',
+    );
   });
 });
 

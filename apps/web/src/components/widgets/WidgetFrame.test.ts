@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { createApp, h, nextTick } from 'vue';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 type WidgetT = { kind: string } & Record<string, unknown>;
 import PanelFrame from './WidgetFrame.vue';
 import source from './WidgetFrame.vue?raw';
@@ -82,26 +82,76 @@ describe('WidgetFrame menu (T052)', () => {
     const { el } = await mount({ atLimit: true });
     expect(btn(el, 'Duplicate')?.disabled).toBe(true);
   });
+});
 
-  it('drag handle captures the pointer and relays move and up', async () => {
+describe('WidgetFrame: the menu button is also the drag handle (review 2026-11-26)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+  const handleOf = (el: HTMLElement) =>
+    el.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+  const fire = (target: HTMLElement, type: string, x = 5, y = 6) => {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    Object.assign(e, { pointerId: 7, clientX: x, clientY: y });
+    target.dispatchEvent(e);
+    return e;
+  };
+
+  it('there is no separate grip: the handle is the menu summary', async () => {
+    const { el } = await mount({});
+    expect(handleOf(el).tagName).toBe('SUMMARY');
+    expect(el.querySelectorAll('.desk-widget-grip')).toHaveLength(0);
+  });
+
+  it('holding the handle starts a drag, relays moves, and the release does not open the menu', async () => {
+    vi.useFakeTimers();
     const { el, events } = await mount({});
-    const grip = el.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+    const handle = handleOf(el);
     let captured: number | null = null;
-    grip.setPointerCapture = (id: number) => {
-      captured = id;
-    };
-    const ev = (type: string) => {
-      const e = new Event(type, { bubbles: true });
-      Object.assign(e, { pointerId: 7, clientX: 5, clientY: 6 });
-      return e;
-    };
-    grip.dispatchEvent(ev('pointerdown'));
-    grip.dispatchEvent(ev('pointermove'));
-    grip.dispatchEvent(ev('pointerup'));
+    handle.setPointerCapture = (id: number) => void (captured = id);
+    fire(handle, 'pointerdown');
+    expect(events.dragStart).toBeUndefined();
+    vi.advanceTimersByTime(450);
     expect(captured).toBe(7);
     expect(events.dragStart).toHaveLength(1);
+    fire(handle, 'pointermove', 6, 7);
+    fire(handle, 'pointerup', 6, 7);
     expect(events.dragMove).toHaveLength(1);
     expect(events.dragEnd).toHaveLength(1);
+    expect(fire(handle, 'click').defaultPrevented).toBe(true);
+  });
+
+  it('pressing and moving past the slop starts a drag at once (mouse drag)', async () => {
+    const { el, events } = await mount({});
+    const handle = handleOf(el);
+    fire(handle, 'pointerdown', 0, 0);
+    fire(handle, 'pointermove', 0, 30);
+    expect(events.dragStart).toHaveLength(1);
+    expect(events.dragMove).toHaveLength(1);
+  });
+
+  it('a short tap is a tap: no drag, and the click opens the menu as before', async () => {
+    vi.useFakeTimers();
+    const { el, events } = await mount({});
+    const handle = handleOf(el);
+    fire(handle, 'pointerdown');
+    vi.advanceTimersByTime(100);
+    fire(handle, 'pointerup');
+    vi.advanceTimersByTime(1000);
+    expect(events.dragStart).toBeUndefined();
+    expect(events.dragEnd).toBeUndefined();
+    expect(fire(handle, 'click').defaultPrevented).toBe(false);
+  });
+
+  it('the handle stays a touch target, blocks page scroll while held, and has no long-press menu', async () => {
+    const { el } = await mount({});
+    const handle = handleOf(el);
+    expect(fire(handle, 'contextmenu').defaultPrevented).toBe(true);
+    const start = source.indexOf('\n.desk-widget-menu summary {');
+    const rule = source.slice(start, source.indexOf('}', start));
+    expect(rule).toContain('var(--target-min)');
+    expect(rule).toContain('touch-action: none');
   });
 });
 
@@ -242,14 +292,6 @@ describe('WidgetFrame header: no repeated lines (review 2026-11-25)', () => {
     expect(el.querySelector('.desk-widget-asof')).toBeNull();
     expect(el.querySelector('.desk-widget-banner')).toBeNull();
   });
-  it('the drag grip is at least a touch target in size', () => {
-    const start = source.indexOf('\n.desk-widget-grip {');
-    expect(source.slice(start, source.indexOf('}', start))).toContain('var(--target-min)');
-  });
-  it('the grip stays inside its frame (a negative margin pushed it over the previous menu)', () => {
-    const start = source.indexOf('\n.desk-widget-grip {');
-    expect(source.slice(start, source.indexOf('}', start))).not.toMatch(/margin[^;]*\* -1/);
-  });
   it("the header fits a 14rem column: the as-of chip takes its own line, not the menu's place", () => {
     const rule = (sel: string) => {
       const start = source.indexOf(`\n${sel} {`);
@@ -257,6 +299,14 @@ describe('WidgetFrame header: no repeated lines (review 2026-11-25)', () => {
     };
     expect(rule('.desk-widget-head')).toContain('flex-wrap: wrap');
     expect(rule('.desk-widget-asof')).toContain('flex-basis: 100%');
+  });
+  it('with no grip, the as-of chip sits flush under the title (no indent past a grip)', () => {
+    const start = source.indexOf('\n.desk-widget-asof {');
+    expect(source.slice(start, source.indexOf('}', start))).not.toContain('padding-inline-start');
+  });
+  it('the menu button reaches into the frame padding, so the header takes less height', () => {
+    const start = source.indexOf('\n.desk-widget-menu {');
+    expect(source.slice(start, source.indexOf('}', start))).toMatch(/margin:[^;]*\* -1/);
   });
 });
 
