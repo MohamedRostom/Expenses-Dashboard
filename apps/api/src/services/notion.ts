@@ -144,7 +144,7 @@ export function createNotionService(
   }
 
   function client(accessToken: string): NotionClient {
-    return new NotionClient(accessToken, config.fetchImpl ?? fetch, config.apiBase, {
+    return new NotionClient(accessToken, config.fetchImpl, config.apiBase, {
       clientId: config.clientId,
       clientSecret: config.clientSecret,
     });
@@ -249,6 +249,13 @@ export function createNotionService(
           updatedAt: clock.now(),
         })
         .where(eq(notionConnections.userId, userId));
+      if (existing.workspaceId !== token.workspace_id) {
+        // The old workspace's page ids mean nothing in the new one (as in setConnection).
+        await db
+          .update(expensesTable)
+          .set({ notionPageId: null, notionLastEditedAt: null })
+          .where(eq(expensesTable.userId, userId));
+      }
       // The sync job stops at reconnect_needed/disconnected; restart it when the same table
       // stays connected (a new workspace waits for setConnection's first-connection enqueue).
       const loopStopped =

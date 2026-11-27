@@ -21,7 +21,8 @@ const BASE_URL = 'https://api.frankfurter.dev/v1';
  * (apps/api/src/services/rates.ts), not this client's.
  */
 export class FrankfurterRates implements RatesProvider {
-  constructor(private readonly fetchImpl: typeof fetch = fetch) {}
+  // Unbound: workerd rejects the global fetch called as a method ("Illegal invocation").
+  constructor(private readonly fetchImpl: typeof fetch = (input, init) => fetch(input, init)) {}
 
   async rate(date: string, from: CurrencyCode, to: CurrencyCode): Promise<RateOutcome> {
     const url = `${BASE_URL}/${date}?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;

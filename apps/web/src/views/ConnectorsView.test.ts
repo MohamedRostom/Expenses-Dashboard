@@ -155,6 +155,35 @@ describe('ConnectorsView connect outcomes (spec 005 T028)', () => {
     ).toBe(true);
   });
 
+  it('Sync now that ends in reconnect_needed says access was lost, not "Synced"', async () => {
+    apiFetch.mockImplementation(async (url: string) => {
+      if (url === '/notion/sync') {
+        return {
+          status: 'reconnect_needed',
+          lastSyncAt: null,
+          lastError: null,
+          applied: 0,
+          skipped: 0,
+          conflicts: 0,
+        };
+      }
+      if (url === '/notion/databases') return { databases: [] };
+      return { connection: { status: 'connected', direction: 'both', workspaceName: 'W' } };
+    });
+    const el = await mount();
+    const sync = await vi.waitFor(() => {
+      const b = [...el.querySelectorAll('button')].find((x) => x.textContent?.includes('Sync now'));
+      if (!b) throw new Error('no Sync now button yet');
+      return b;
+    });
+    sync.click();
+    await vi.waitFor(() => expect(push).toHaveBeenCalled());
+    const [message, tone] = push.mock.calls[0]!;
+    expect(message).toMatch(/reconnect/i);
+    expect(message).not.toMatch(/Synced/);
+    expect(tone).toBe('critical');
+  });
+
   it('a 409 from the databases list switches to the Reconnect Notion state, no toast', async () => {
     const conflict = await apiError('conflict', 409);
     apiFetch.mockImplementation(async (url: string) => {

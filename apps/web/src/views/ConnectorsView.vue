@@ -153,12 +153,16 @@ async function syncNow() {
   syncing.value = true;
   try {
     const res = await apiFetch<SyncNotionResponseT>('/notion/sync', { method: 'POST' });
-    toast.push(
-      res.status === 'error'
-        ? `Sync failed: ${res.lastError ?? 'unknown error'}`
-        : `Synced (${res.applied} applied, ${res.skipped} skipped).`,
-      res.status === 'error' ? 'critical' : undefined,
-    );
+    if (res.status === 'reconnect_needed') {
+      toast.push('Notion no longer accepts this connection. Reconnect Notion to sync.', 'critical');
+    } else {
+      toast.push(
+        res.status === 'error'
+          ? `Sync failed: ${res.lastError ?? 'unknown error'}`
+          : `Synced (${res.applied} applied, ${res.skipped} skipped).`,
+        res.status === 'error' ? 'critical' : undefined,
+      );
+    }
     await load();
   } catch (err) {
     toast.push(err instanceof ApiError ? err.message : 'Sync failed.', 'critical');

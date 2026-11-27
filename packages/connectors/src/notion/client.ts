@@ -36,14 +36,16 @@ export interface QueryDataSourceResult {
 }
 
 /** Real Notion API client (data sources, 2025-09-03). Honours the 3 rps limit with a token
- * bucket and retries a single 429 after its Retry-After. A 401 throws NotionAuthError so the
- * caller (the sync service, a later task) can mark the connection status='error'. */
+ * bucket and retries a single 429 after its Retry-After. A 401 throws NotionAuthError; the
+ * service renews the token once (refreshToken) and, if that is refused, marks the connection
+ * reconnect_needed. */
 export class NotionClient {
   private readonly bucket = new TokenBucket(3);
 
   constructor(
     private readonly accessToken: string,
-    private readonly fetchImpl: typeof fetch = fetch,
+    // Unbound: workerd rejects the global fetch called as a method ("Illegal invocation").
+    private readonly fetchImpl: typeof fetch = (input, init) => fetch(input, init),
     private readonly baseUrl: string = BASE_URL,
     /** Needed only by refreshToken/revokeToken (Basic auth). */
     private readonly oauth?: { clientId: string; clientSecret: string },

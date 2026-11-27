@@ -366,6 +366,72 @@ describe('Notion OAuth + connection', () => {
     expect(conn!.cursor).toBeNull();
   });
 
+  // PR #49 review, FR-001.6: a used link can't connect again. The attempt cookie is cleared on
+  // every callback (R5); a client that re-sends it anyway carries an already-spent code, which
+  // Notion refuses, so the replay ends in failed and changes nothing.
+  it('replaying a used link with its cookie still attached stores nothing new', async () => {
+    const u = await h.asUser('notion-replay-cookie@test.com');
+    const spent = new Set<string>();
+    const app = appWith(u.userId, {
+      fetchImpl: async (input, init) => {
+        if (!String(input).includes('/oauth/token')) {
+          return new Response('{"results":[{"id":"p"}],"has_more":false}', { status: 200 });
+        }
+        const { code } = JSON.parse(String(init?.body)) as { code: string };
+        if (spent.has(code)) return new Response('{"error":"invalid_grant"}', { status: 400 });
+        spent.add(code);
+        return Response.json({
+          access_token: `at-${spent.size}`,
+          refresh_token: `rt-${spent.size}`,
+          workspace_id: 'w',
+          workspace_name: 'W',
+          bot_id: 'b',
+        });
+      },
+    });
+    const { pair, state } = await startAttempt(u.sessionToken);
+    const replay = () =>
+      app.request(`/notion/callback?code=c1&state=${state}`, { headers: { cookie: pair } });
+
+    await expectOutcome(await replay(), 'connected');
+    const first = await rowFor(u.userId);
+    await expectOutcome(await replay(), 'failed');
+    expect(await rowFor(u.userId)).toEqual(first);
+  });
+
+  // PR #49 review: ownership matrix for the configured /notion/* routes (CLAUDE.md, no exceptions).
+  it("ownership: user B can neither see nor change user A's Notion connection", async () => {
+    const a = await h.asUser('notion-own-a@test.com');
+    const b = await h.asUser('notion-own-b@test.com');
+    const table = (id: string) => ({
+      databaseId: `db-${id}`,
+      dataSourceId: `ds-${id}`,
+      direction: 'both',
+    });
+    await connectViaOAuth(a.sessionToken);
+    await a.put('/notion/connection', table('a'));
+    const before = await rowFor(a.userId);
+
+    expect((await b.get('/notion/connection')).status).toBe(404);
+    expect((await b.get('/notion/databases')).status).toBe(404);
+    expect((await b.put('/notion/connection', table('b'))).status).toBe(404);
+    expect((await b.post('/notion/databases', { parentPageId: 'p', title: 'T' })).status).toBe(404);
+    expect((await b.post('/notion/sync', {})).status).toBe(404);
+    expect((await b.delete('/notion/connection')).status).toBe(404);
+    expect(await rowFor(a.userId)).toEqual(before);
+
+    // Another user's connection losing access doesn't touch A's (a fresh user: B's 404 sync
+    // above already started B's 10 s sync-now debounce).
+    const c = await h.asUser('notion-own-c@test.com');
+    await connectViaOAuth(c.sessionToken);
+    await c.put('/notion/connection', table('c'));
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    const synced = (await (await c.post('/notion/sync', {})).json()) as { status: string };
+    expect(synced.status).toBe('reconnect_needed');
+    expect(await rowFor(a.userId)).toEqual(before);
+  });
+
   it('DELETE connection keeps expense rows and their notion_page_id links', async () => {
     const user = await h.asUser('notion-disconnect@test.com');
     await connectViaOAuth(user.sessionToken);
@@ -724,6 +790,82 @@ describe('Notion token renewal and revoke', () => {
     h.notionFake.failNextWith('unauthorized');
     h.notionFake.failNextWith('refresh_refused');
     await expect(svc.createDatabase(id, 'page', 'T')).rejects.toMatchObject({ status: 409 });
+  });
+
+  // PR #49 review: a new workspace's database can't hold the old workspace's pages.
+  it('connecting a different workspace clears every expense link to the old one', async () => {
+    const { svc } = rig();
+    const u = await h.asUser('notion-new-workspace@test.com');
+    const token = { access_token: 'at', refresh_token: 'rt', workspace_name: 'W', bot_id: 'b' };
+    await svc.connect(u.userId, { ...token, workspace_id: 'w1' });
+    await svc.setConnection(u.userId, { databaseId: 'd1', dataSourceId: 'ds1', direction: 'both' });
+    const res = await u.post('/expenses', {
+      description: 'Tea',
+      amount: { minor: 250, currency: 'GBP' },
+      date: '2026-09-03',
+      categoryId: null,
+      paidWith: 'card',
+      kind: 'variable',
+    });
+    const { expense } = (await res.json()) as { expense: { id: string } };
+    await h.db
+      .update(expensesTable)
+      .set({ notionPageId: 'page-w1', notionLastEditedAt: new Date() })
+      .where(eq(expensesTable.id, expense.id));
+
+    await svc.connect(u.userId, { ...token, workspace_id: 'w2' });
+    const [row] = await h.db.select().from(expensesTable).where(eq(expensesTable.id, expense.id));
+    expect(row!.notionPageId).toBeNull();
+    expect(row!.notionLastEditedAt).toBeNull();
+  });
+
+  // PR #49 review: the three withFreshToken branches a concurrent renewal can reach.
+  describe('renewal races', () => {
+    const seal = async (t: string) => new TextEncoder().encode(await box.seal(t));
+    /** Rig whose renewal call first runs `onRefresh` (e.g. another process renewing). */
+    function raceRig(onRefresh: () => Promise<void>) {
+      const auth: string[] = [];
+      const r = rig((next) => async (input, init) => {
+        if (String(input).includes('/oauth/token')) await onRefresh();
+        else auth.push(new Headers(init?.headers).get('authorization') ?? '');
+        return next(input, init);
+      });
+      return { ...r, auth };
+    }
+    let id = '';
+    const otherProcessRenews = async () => {
+      await h.db
+        .update(notionConnections)
+        .set({ accessTokenEnc: await seal('at-other'), refreshTokenEnc: await seal('rt-other') })
+        .where(eq(notionConnections.userId, id));
+    };
+
+    it('another process renewed first: its stored token is used, nothing overwritten', async () => {
+      const { svc, auth } = raceRig(otherProcessRenews);
+      id = await connected(svc, 'notion-race-cas@test.com');
+      h.notionFake.failNextWith('unauthorized');
+      expect((await svc.syncNow(id)).status).toBe('connected');
+      expect(auth.at(-1)).toBe('Bearer at-other');
+      expect(await open((await rowFor(id))!.refreshTokenEnc)).toBe('rt-other');
+    });
+
+    it('renewal refused because another process spent the token: retried, still connected', async () => {
+      const { svc, auth } = raceRig(otherProcessRenews);
+      id = await connected(svc, 'notion-race-refused@test.com');
+      h.notionFake.failNextWith('unauthorized');
+      h.notionFake.failNextWith('refresh_refused');
+      expect((await svc.syncNow(id)).status).toBe('connected');
+      expect(auth.at(-1)).toBe('Bearer at-other');
+      expect((await rowFor(id))!.status).toBe('connected');
+    });
+
+    it('renewal succeeds but the retry is refused too: reconnect_needed', async () => {
+      const { svc } = raceRig(async () => h.notionFake.failNextWith('unauthorized'));
+      id = await connected(svc, 'notion-race-retry401@test.com');
+      h.notionFake.failNextWith('unauthorized');
+      expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+      expect((await rowFor(id))!.status).toBe('reconnect_needed');
+    });
   });
 
   it('SC-001.4: the job reschedules within 5 minutes, and refused renewal flags the same run', async () => {
