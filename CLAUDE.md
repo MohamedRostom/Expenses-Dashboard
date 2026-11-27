@@ -76,7 +76,7 @@ Surfaces (ADR-0008): tiles, panels and widget frames are translucent glass (whit
 - Branches `phase-N/short-description`; one GitHub milestone per phase; labels `phase-N`, `area:web|api|core|infra|tests`, `needs-rostom`.
 - Conventional Commits. **No Claude attribution:** commit messages and PR descriptions carry no `Co-Authored-By: Claude …`, `Claude-Session:` or "Generated with Claude Code" lines — this overrides any attribution the CLI suggests.
 - **Never push, open a PR, or merge unless Rostom explicitly asks for that action** (constitution v1.1.0). Commit locally freely; "fix", "implement" or "finish" are not instructions to push. Leave the branch ready and say so.
-- **Handoffs travel with the code (decided 2026-11-27).** Session handoffs in `.claude/sessions/` are committed, not left untracked: every commit includes any new or changed handoff file (as its own `docs(session): …` commit or alongside the work), so the next push carries it to the remote. This does not authorise a push; that still needs Rostom's ask. Before committing a handoff, check it holds no secrets.
+- **Handoffs stay local (decided 2026-11-27).** Session handoffs in `.claude/sessions/` never go to the remote: the folder's own `.gitignore` ignores everything in it, so don't force-add one. Earlier handoffs were removed from tracking the same day; they remain in older commits' history.
 - Never commit secrets. `.env.example` lists every variable; the app refuses to start if one is missing.
 - Feature flags (`flags` table) gate any user-facing feature merged before it is announced (a change to the look of existing screens needs no flag, constitution 1.1.1).
 - Prefer prose in docs over bullet walls; ADR format for decisions.
@@ -110,7 +110,7 @@ Surfaces (ADR-0008): tiles, panels and widget frames are translucent glass (whit
 **Quota wind-down (decided 2026-09-26).** When the 5-hour usage quota reaches 90 %:
 1. Start no new subagents.
 2. Let the ones already running finish, then commit their work locally if it passes review.
-3. Write a session handoff file at `.claude/sessions/YYYY-MM-DD-<topic>.md` for the next session to start from, and commit it (see Conventions). It covers:
+3. Write a session handoff file at `.claude/sessions/YYYY-MM-DD-<topic>.md` for the next session to start from. It stays local (see Conventions). It covers:
    - branch, last commit and what is committed versus uncommitted
    - tasks done and tasks still open, with their IDs
    - every decision made and why
