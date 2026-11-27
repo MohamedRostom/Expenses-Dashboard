@@ -141,7 +141,7 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 ## Phase 7: Polish & Cross-Cutting Concerns
 
-- [ ] T040 [P] Run `pnpm worker:build` and the full API, web and e2e-ci suites; confirm coverage on `apps/api` is not lower than on `main`; confirm the Lighthouse budgets (perf ≥ 90, a11y ≥ 95) still pass for `/settings/connectors` and `/` in the ci run (constitution definition of done)
+- [x] T040 [P] Run `pnpm worker:build` and the full API, web and e2e-ci suites; confirm coverage on `apps/api` is not lower than on `main`; confirm the Lighthouse budgets (perf ≥ 90, a11y ≥ 95) still pass for `/settings/connectors` and `/` in the ci run (constitution definition of done) · Done locally 2026-11-27: unit 3,128, API 579 (91 % lines), worker:build, OpenAPI not stale, e2e ci 213 (209 passed, 2 Today timing tests flaky under two workers and green alone, 2 skipped by design), ci-no-notion 1/1. Lighthouse runs only in CI's e2e job; confirm it on the first CI run of this branch.
 - [x] T041 [P] Add a CHANGELOG line under `[Unreleased] → Fixed` for BUG-001 in `CHANGELOG.md`
 - [ ] T042 Walk every table in `specs/005-fix-found-bugs/quickstart.md` and record results in the PR description
 - [ ] T043 After the tag carrying this fix passes the staging smoke, set BUG-001's Bug Register row in `specs/005-fix-found-bugs/spec.md` to `Fixed in vX.Y.Z` and record SC-001.2 from the first real staging connect
