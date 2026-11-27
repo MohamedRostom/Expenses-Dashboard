@@ -22,8 +22,8 @@ Working name: "Desk" — a real product name is an open decision (ADR-0002). Do 
 - `docs/adr/ADR-0008-glassy-v2-identity.md` — visual identity "Glassy V2" (**accepted 2026-11-24**, direction approved 2026-11-14), superseding ADR-0007: 24 px glass panels and pill controls over a still warm CSS ground (the default backdrop), the month view laid out as in Rostom's Figma frame (filled departure tile, four stat tiles, entries beside chart and category budgets), a glass sidebar from 1024 and a floating bottom pill bar below it, and free colours for accent, ground tint and selected nav item; amended constitution Principle VI (v1.4.0). The ADR's open questions are accepted as built (its "As built" notes are the decisions). Design: root `DESIGN.md`. Mock-up: `/__ui/mockups/glassy-month`. No spec 007 yet.
 - `docs/adr/ADR-0007-premium-identity.md` — visual identity "Premium identity with ambient motion" (accepted 2026-10-16, superseded by ADR-0008 2026-11-24), superseding ADR-0006: glass panels with 16 px corners over one opt-in, user-chosen background motion; amended constitution Principle VI (v1.3.0). Spec: `specs/006-premium-motion-identity/`, design: root `DESIGN.md`.
 - `docs/adr/ADR-0006-visual-identity.md` — visual identity "Concourse Board" (accepted 2026-10-10, superseded by ADR-0007 2026-10-16), replacing IBM Plex and the Ledger Green; amended constitution Principle VI (v1.2.0). Spec: `specs/004-web-ui-refresh/`, design: root `DESIGN.md`.
-- `docs/adr/ADR-0009-in-process-cache.md` — global flag rows cached in process memory for 60 s and exact-date exchange rates memoised (accepted 2026-11-27); a `flags --global` change reaches other processes within a minute.
-- `docs/adr/ADR-0010-outbound-host-policy.md` — every request to a user-influenced host (each CalDAV hop and redirect) must be https to a public address (accepted 2026-11-27); skipped on Workers on an untested assumption that T044 must confirm.
+- `docs/adr/ADR-0010-in-process-cache.md` — global flag rows cached in process memory for 60 s and exact-date exchange rates memoised (accepted 2026-11-27); a `flags --global` change reaches other processes within a minute.
+- `docs/adr/ADR-0011-outbound-host-policy.md` — every request to a user-influenced host (each CalDAV hop and redirect) must be https to a public address (accepted 2026-11-27); skipped on Workers on an untested assumption that T044 must confirm.
 - `docs/adr/ADR-0002-naming-and-providers.md` — the five open decisions (product name, email provider, Neon-from-day-one, licence, analytics). Until it is accepted, treat them as undecided and ask.
 
 ## Decisions already made (do not reopen without an ADR)
@@ -76,6 +76,7 @@ Surfaces (ADR-0008): tiles, panels and widget frames are translucent glass (whit
 - Branches `phase-N/short-description`; one GitHub milestone per phase; labels `phase-N`, `area:web|api|core|infra|tests`, `needs-rostom`.
 - Conventional Commits. **No Claude attribution:** commit messages and PR descriptions carry no `Co-Authored-By: Claude …`, `Claude-Session:` or "Generated with Claude Code" lines — this overrides any attribution the CLI suggests.
 - **Never push, open a PR, or merge unless Rostom explicitly asks for that action** (constitution v1.1.0). Commit locally freely; "fix", "implement" or "finish" are not instructions to push. Leave the branch ready and say so.
+- **Handoffs travel with the code (decided 2026-11-27).** Session handoffs in `.claude/sessions/` are committed, not left untracked: every commit includes any new or changed handoff file (as its own `docs(session): …` commit or alongside the work), so the next push carries it to the remote. This does not authorise a push; that still needs Rostom's ask. Before committing a handoff, check it holds no secrets.
 - Never commit secrets. `.env.example` lists every variable; the app refuses to start if one is missing.
 - Feature flags (`flags` table) gate any user-facing feature merged before it is announced (a change to the look of existing screens needs no flag, constitution 1.1.1).
 - Prefer prose in docs over bullet walls; ADR format for decisions.
@@ -109,7 +110,7 @@ Surfaces (ADR-0008): tiles, panels and widget frames are translucent glass (whit
 **Quota wind-down (decided 2026-09-26).** When the 5-hour usage quota reaches 90 %:
 1. Start no new subagents.
 2. Let the ones already running finish, then commit their work locally if it passes review.
-3. Write a session handoff file at `.claude/sessions/YYYY-MM-DD-<topic>.md` for the next session to start from. It covers:
+3. Write a session handoff file at `.claude/sessions/YYYY-MM-DD-<topic>.md` for the next session to start from, and commit it (see Conventions). It covers:
    - branch, last commit and what is committed versus uncommitted
    - tasks done and tasks still open, with their IDs
    - every decision made and why

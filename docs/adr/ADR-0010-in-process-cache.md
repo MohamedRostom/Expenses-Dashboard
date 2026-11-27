@@ -1,4 +1,4 @@
-# ADR-0009: Keep rarely changing data in process memory
+# ADR-0010: Keep rarely changing data in process memory
 
 **Status:** Accepted
 **Date:** 2026-11-27

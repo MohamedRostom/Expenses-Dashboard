@@ -1,4 +1,4 @@
-# ADR-0010: Check every outbound host a user can choose
+# ADR-0011: Check every outbound host a user can choose
 
 **Status:** Accepted
 **Date:** 2026-11-27 (the code landed 2026-11-26)
