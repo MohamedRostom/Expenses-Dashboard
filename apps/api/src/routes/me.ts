@@ -51,6 +51,8 @@ export type MeRoutesDeps = {
   appOrigin: string;
   /** Revokes every connected account at its provider before the DELETE /me cascade. */
   connections: ConnectionsService;
+  /** Revokes the Notion token (best effort, never throws) before the DELETE /me cascade. */
+  revokeNotion?: ((userId: string) => Promise<void>) | undefined;
   jobs?: JobsDep;
 };
 
@@ -285,6 +287,7 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     // so it can't race a revoked/soon-to-be-deleted account.
     await jobs?.cancelForUser?.(user.id);
     await connections.revokeAllForUser(user.id);
+    await deps.revokeNotion?.(user.id);
 
     await db.transaction(async (tx) => {
       await tx

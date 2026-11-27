@@ -258,6 +258,8 @@ export function createApp(deps: AppDeps) {
       appOrigin: deps.appOrigin,
       limiter: deps.limiter,
       connections: connectionsService,
+      // Lazy: notionService is built further down.
+      revokeNotion: (userId) => notionService?.revokeAtNotion(userId) ?? Promise.resolve(),
       jobs: deps.jobs,
     }),
   );
@@ -271,6 +273,7 @@ export function createApp(deps: AppDeps) {
         createExpensesService(deps.db, createRatesService(deps.db, deps.rates), deps.clock),
         deps.clock,
         deps.jobs?.enqueue.bind(deps.jobs),
+        deps.logger ?? defaultLogger,
       )
     : undefined;
 
@@ -280,7 +283,11 @@ export function createApp(deps: AppDeps) {
   if (notionService && deps.jobs) {
     registerJob(
       'notion.sync',
-      notionSyncJob({ notion: notionService, enqueue: deps.jobs.enqueue.bind(deps.jobs) }),
+      notionSyncJob({
+        notion: notionService,
+        enqueue: deps.jobs.enqueue.bind(deps.jobs),
+        clock: deps.clock,
+      }),
     );
   }
 

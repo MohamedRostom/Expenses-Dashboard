@@ -64,8 +64,11 @@ export function createNotionRoutes(deps: NotionRoutesDeps) {
   const outcomeRedirect = (c: Context, outcome: NotionConnectOutcomeT) =>
     c.redirect(`/settings/connectors?notion=${NotionConnectOutcome.parse(outcome)}`, 302);
 
-  // The one place a failed connect attempt lands; a later brief adds logging here.
-  const failed = (c: Context) => outcomeRedirect(c, 'failed');
+  // The one place a failed connect attempt lands (and is logged: code only, never a secret).
+  const failed = async (c: Context, outcome: string, userId: string | null, cause: unknown) => {
+    await deps.notion.logFailure('notion.oauth', outcome, userId, cause);
+    return outcomeRedirect(c, 'failed');
+  };
 
   app.get('/notion/callback', async (c) => {
     const user = c.get('user');
@@ -74,7 +77,10 @@ export function createNotionRoutes(deps: NotionRoutesDeps) {
 
     const error = c.req.query('error');
     if (error === 'access_denied') return outcomeRedirect(c, 'denied');
-    if (error) return failed(c);
+    if (error) {
+      const code = /^[\w.-]{1,64}$/.test(error) ? error : 'unknown';
+      return await failed(c, 'authorize_failed', user?.id ?? null, code);
+    }
 
     const [savedState, savedUserId] = saved?.split('.') ?? [];
     const returnedState = c.req.query('state');
@@ -90,15 +96,15 @@ export function createNotionRoutes(deps: NotionRoutesDeps) {
 
     try {
       const code = c.req.query('code');
-      if (!code) return failed(c);
+      if (!code) return await failed(c, 'authorize_failed', user.id, 'missing_code');
       const token = await deps.notion.exchangeCode(code, redirectUri);
       await deps.notion.connect(user.id, token);
       // The connection is stored from here on; the shared-pages check is advisory, so if it
       // fails the honest answer is still "connected" (sync surfaces any later problem).
       const shared = await deps.notion.hasSharedContent(token.access_token).catch(() => true);
       return outcomeRedirect(c, shared ? 'connected' : 'no_pages');
-    } catch {
-      return failed(c);
+    } catch (err) {
+      return await failed(c, 'exchange_failed', user.id, err);
     }
   });
 

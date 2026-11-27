@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { expenses as expensesTable, expenseVersions, notionConnections } from '@desk/db';
 import { Hono } from 'hono';
@@ -8,6 +8,8 @@ import { createNotionService } from '../src/services/notion.js';
 import { createNotionRoutes } from '../src/routes/notion.js';
 import type { ExpensesService } from '../src/services/expenses.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
+import { notionSyncJob } from '../src/jobs/notion-sync.js';
+import { createNotionMockApp } from '../../../infra/mocks/src/notion-fake-routes.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
 const CSRF_TOKEN = 'test-csrf-token';
@@ -401,29 +403,6 @@ describe('Notion OAuth + connection', () => {
     expect(row!.notionPageId).toBe('page-kept');
   });
 
-  it('error state on a revoked token surfaces on the connection and stops the sync', async () => {
-    const user = await h.asUser('notion-revoked@test.com');
-    await connectViaOAuth(user.sessionToken);
-    await user.put('/notion/connection', {
-      databaseId: 'db-e',
-      dataSourceId: 'ds-e',
-      direction: 'both',
-    });
-
-    h.notionFake.failNextWith('unauthorized');
-    const syncRes = await user.post('/notion/sync');
-    expect(syncRes.status).toBe(200);
-    const body = (await syncRes.json()) as { status: string };
-    expect(body.status).toBe('error');
-
-    const connRes = await user.get('/notion/connection');
-    const connBody = (await connRes.json()) as {
-      connection: { status: string; lastError: string | null };
-    };
-    expect(connBody.connection.status).toBe('error');
-    expect(connBody.connection.lastError).toBeTruthy();
-  });
-
   it('sync-now debounces repeat calls within the window', async () => {
     const user = await h.asUser('notion-debounce@test.com');
     await connectViaOAuth(user.sessionToken);
@@ -555,5 +534,201 @@ describe('Notion OAuth + connection', () => {
       .from(expenseVersions)
       .where(eq(expenseVersions.expenseId, expense.id));
     expect(rows.length).toBeGreaterThan(0);
+  });
+});
+
+// Spec 005 T032/T033 (BUG-001): token renewal, reconnect_needed and revoke-on-disconnect, against
+// a service of the test's own so the clock and the Notion fetch are scriptable.
+describe('Notion token renewal and revoke', () => {
+  const box = createSecretBox(TEST_SECRET_BOX_KEY);
+  const open = async (b: Uint8Array | null) =>
+    box.open(new TextDecoder().decode(b ?? new Uint8Array()));
+
+  function rig(wrap?: (next: typeof fetch) => typeof fetch) {
+    const clock = { t: new Date('2026-10-01T00:00:00Z') };
+    const mock = createNotionMockApp(h.notionFake);
+    const calls = { n: 0 };
+    const real: typeof fetch = async (input, init) => {
+      calls.n += 1;
+      return mock.request(String(input).replace('https://notion.mock', ''), init);
+    };
+    const svc = createNotionService(
+      h.db,
+      box,
+      {
+        clientId: 'cid',
+        clientSecret: 'csecret',
+        appOrigin: 'https://app.test',
+        apiBase: 'https://notion.mock',
+        fetchImpl: wrap ? wrap(real) : real,
+      },
+      {} as ExpensesService,
+      { now: () => clock.t },
+    );
+    return {
+      svc,
+      clock,
+      calls,
+      advance: () => {
+        clock.t = new Date(clock.t.getTime() + 11_000);
+      },
+    };
+  }
+
+  async function connected(svc: ReturnType<typeof rig>['svc'], email: string, withRefresh = true) {
+    const u = await h.asUser(email);
+    await svc.connect(u.userId, {
+      access_token: 'at-old',
+      ...(withRefresh && { refresh_token: 'rt-old' }),
+      workspace_id: 'w',
+      workspace_name: 'W',
+      bot_id: 'b',
+    });
+    await svc.setConnection(u.userId, {
+      databaseId: 'd',
+      dataSourceId: 'ds',
+      direction: 'to_notion',
+    });
+    return u.userId;
+  }
+
+  it('401 then a successful renewal: sync succeeds, both tokens replaced', async () => {
+    const { svc } = rig();
+    const id = await connected(svc, 'notion-renew-ok@test.com');
+    h.notionFake.failNextWith('unauthorized');
+    const res = await svc.syncNow(id);
+    expect(res.status).toBe('connected');
+    const row = await rowFor(id);
+    expect(row!.status).toBe('connected');
+    expect(await open(row!.accessTokenEnc)).toMatch(/^fake-notion-access-token-/);
+    expect(await open(row!.refreshTokenEnc)).toMatch(/^fake-notion-refresh-token-/);
+  });
+
+  it('401 then a refused renewal: reconnect_needed, then no Notion calls at all', async () => {
+    const { svc, calls, advance } = rig();
+    const id = await connected(svc, 'notion-renew-refused@test.com');
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+    expect((await rowFor(id))!.status).toBe('reconnect_needed');
+
+    advance();
+    const before = calls.n;
+    expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+    expect(calls.n).toBe(before);
+
+    // the debounced write trigger does nothing either
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    svc.triggerSyncSoon(id);
+    await vi.advanceTimersByTimeAsync(11_000);
+    vi.useRealTimers();
+    await new Promise((r) => setTimeout(r, 300));
+    expect(calls.n).toBe(before);
+  });
+
+  it('legacy row without a refresh token: 401 goes straight to reconnect_needed', async () => {
+    const { svc } = rig();
+    const id = await connected(svc, 'notion-legacy@test.com', false);
+    expect((await rowFor(id))!.refreshTokenEnc).toBeNull();
+    h.notionFake.failNextWith('unauthorized');
+    expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+  });
+
+  it('a transient 5xx is status error and the next sync retries; reconnect restores connected', async () => {
+    let failOnce = true;
+    const { svc, advance } = rig((next) => async (input, init) => {
+      if (failOnce && String(input).includes('/query')) {
+        failOnce = false;
+        return new Response('{}', { status: 503 });
+      }
+      return next(input, init);
+    });
+    const id = await connected(svc, 'notion-transient@test.com');
+    expect((await svc.syncNow(id)).status).toBe('error');
+    advance();
+    expect((await svc.syncNow(id)).status).toBe('connected');
+
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    advance();
+    expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+    await svc.connect(id, {
+      access_token: 'at-new',
+      refresh_token: 'rt-new',
+      workspace_id: 'w',
+      workspace_name: 'W',
+      bot_id: 'b',
+    });
+    expect((await rowFor(id))!.status).toBe('connected');
+  });
+
+  it('SC-001.4: the job reschedules within 5 minutes, and refused renewal flags the same run', async () => {
+    const { svc, clock } = rig();
+    const id = await connected(svc, 'notion-job@test.com');
+    const scheduled: Array<{ runAfter?: Date | undefined }> = [];
+    const job = notionSyncJob({
+      notion: svc,
+      clock: { now: () => clock.t },
+      enqueue: async (_n, _p, opts) => {
+        scheduled.push({ runAfter: opts?.runAfter });
+        return 'j';
+      },
+    });
+    await job({ userId: id }, { updateProgress: async () => {} });
+    expect(scheduled).toHaveLength(1);
+    expect(scheduled[0]!.runAfter!.getTime() - clock.t.getTime()).toBeLessThanOrEqual(5 * 60_000);
+
+    clock.t = new Date(clock.t.getTime() + 11_000);
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    await job({ userId: id }, { updateProgress: async () => {} });
+    expect((await rowFor(id))!.status).toBe('reconnect_needed');
+    expect(scheduled).toHaveLength(1); // nothing rescheduled for reconnect_needed
+  });
+
+  it('DELETE /notion/connection revokes at Notion and clears both tokens, even if revoke fails', async () => {
+    const { svc } = rig();
+    const id = await connected(svc, 'notion-revoke-ok@test.com');
+    h.notionFake.revoked.length = 0;
+    await svc.disconnectConnection(id);
+    expect(h.notionFake.revoked).toEqual(['at-old']);
+    let row = await rowFor(id);
+    expect(row!.status).toBe('disconnected');
+    expect(row!.accessTokenEnc.length).toBe(0);
+    expect(row!.refreshTokenEnc).toBeNull();
+
+    const id2 = await connected(svc, 'notion-revoke-500@test.com');
+    h.notionFake.failNextWith('revoke_error');
+    await svc.disconnectConnection(id2);
+    row = await rowFor(id2);
+    expect(row!.accessTokenEnc.length).toBe(0);
+    expect(row!.refreshTokenEnc).toBeNull();
+  });
+
+  it('a revoke that never answers is abandoned after 5 s and the tokens are still cleared', async () => {
+    const { svc } = rig(
+      (next) => (input, init) =>
+        String(input).includes('/oauth/revoke')
+          ? new Promise<Response>((_res, rej) =>
+              init?.signal?.addEventListener('abort', () => rej(new Error('aborted'))),
+            )
+          : next(input, init),
+    );
+    const id = await connected(svc, 'notion-revoke-hang@test.com');
+    await svc.disconnectConnection(id);
+    expect((await rowFor(id))!.accessTokenEnc.length).toBe(0);
+  }, 15_000);
+
+  it('DELETE /me revokes at Notion first and still deletes the account when revoke fails', async () => {
+    for (const fail of [false, true]) {
+      const u = await h.asUser(`notion-me-${fail}@test.com`);
+      await connectViaOAuth(u.sessionToken);
+      h.notionFake.revoked.length = 0;
+      if (fail) h.notionFake.failNextWith('revoke_error');
+      const res = await u.delete('/me', { password: 'test-password' });
+      expect(res.status).toBe(204);
+      expect(h.notionFake.revoked).toEqual(['fake-notion-access-token']);
+      expect(await rowFor(u.userId)).toBeUndefined();
+    }
   });
 });
