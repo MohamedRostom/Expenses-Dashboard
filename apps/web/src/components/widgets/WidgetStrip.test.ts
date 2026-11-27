@@ -61,12 +61,14 @@ describe('WidgetStrip', () => {
   beforeEach(() => vi.clearAllMocks());
   afterEach(() => (document.body.innerHTML = ''));
 
-  it('with no widgets shows one short line and the add button', async () => {
+  it('with no widgets shows no empty-state line, only a quiet add button', async () => {
     const { el, app } = await mount([], [type('currency', 'Currency')]);
-    expect(el.querySelector('[data-testid="widget-empty"]')?.textContent?.trim()).toBe(
-      'No widgets yet',
-    );
-    expect(el.querySelector('[data-testid="add-widget"]')).not.toBeNull();
+    expect(el.querySelector('[data-testid="widget-empty"]')).toBeNull();
+    expect(el.textContent).not.toContain('No widgets yet');
+    expect(el.querySelector('.desk-widget-grid')).toBeNull();
+    const add = el.querySelector('[data-testid="add-widget"]')!;
+    expect(add.textContent).toContain('Add widget (0 of');
+    expect(add.className).toContain('ghost');
     app.unmount();
   });
 
@@ -196,6 +198,65 @@ describe('WidgetStrip', () => {
     app.unmount();
   });
 
+  describe('Remove confirms in the app, never with window.confirm', () => {
+    // Embedded browsers and installed PWAs return false from confirm() without showing anything.
+    const stubConfirm = () =>
+      vi.spyOn(window, 'confirm').mockImplementation(() => {
+        throw new Error('window.confirm must not be called');
+      });
+    const flush = async () => {
+      for (let i = 0; i < 5; i++) await nextTick();
+      await new Promise((r) => setTimeout(r, 0));
+    };
+    const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+    const inDialog = (label: string) =>
+      [...(dialog()?.querySelectorAll<HTMLButtonElement>('button') ?? [])].find(
+        (b) => b.textContent?.trim() === label,
+      );
+    const clickMenuRemove = async (el: HTMLElement) => {
+      [...el.querySelectorAll<HTMLButtonElement>('.desk-widget-menu-items button')]
+        .find((b) => b.textContent?.trim() === 'Remove')
+        ?.click();
+      await flush();
+    };
+
+    it('opens an in-app dialog naming the widget, and removes only after Remove is chosen', async () => {
+      const confirmSpy = stubConfirm();
+      const api = await import('../../api/widgets.js');
+      vi.mocked(api.deleteWidget).mockResolvedValue(undefined as never);
+      const { el, app } = await mount([widget('a', { kind: 'fixed_costs' })]);
+      await clickMenuRemove(el);
+      expect(dialog()?.getAttribute('aria-labelledby')).toBeTruthy();
+      expect(dialog()?.textContent).toMatch(/fixed costs/i);
+      expect(api.deleteWidget).not.toHaveBeenCalled();
+      inDialog('Remove')!.click();
+      await flush();
+      expect(api.deleteWidget).toHaveBeenCalledWith('a');
+      expect(confirmSpy).not.toHaveBeenCalled();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      app.unmount();
+    });
+
+    it('Cancel and Escape leave the widget alone', async () => {
+      const confirmSpy = stubConfirm();
+      const api = await import('../../api/widgets.js');
+      const { el, app } = await mount([widget('a', { kind: 'fixed_costs' })]);
+      await clickMenuRemove(el);
+      inDialog('Cancel')!.click();
+      await flush();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      await clickMenuRemove(el);
+      dialog()!.parentElement!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await flush();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      expect(api.deleteWidget).not.toHaveBeenCalled();
+      expect(confirmSpy).not.toHaveBeenCalled();
+      app.unmount();
+    });
+  });
+
   describe('arrange (T052)', () => {
     const three = () => [
       widget('a', { kind: 'fixed_costs' }),
@@ -290,5 +351,98 @@ describe('WidgetStrip', () => {
       expect(api.putWidgetsOrder).not.toHaveBeenCalled();
       app.unmount();
     });
+  });
+});
+
+describe('WidgetStrip: place and credit once, compact on phones (review 2026-11-25)', () => {
+  const SUN = {
+    place: 'Cambridge',
+    sunrise: '2026-11-25T07:36',
+    sunset: '2026-11-25T15:55',
+    daylightSeconds: 29940,
+    placeTimeZone: 'Europe/London',
+    showZone: false,
+    attribution: 'Weather data by Open-Meteo.com',
+  };
+  const WEATHER = {
+    place: 'Cambridge',
+    temperatureC: 5,
+    condition: 'Overcast',
+    icon: 'cloud',
+    todayMaxC: 7,
+    todayMinC: 1,
+    outlook: [],
+    observedAt: '2026-11-25T18:00:00Z',
+    attribution: 'Weather data by Open-Meteo.com',
+  };
+  const both = () => [
+    widget('w', { kind: 'weather', figures: WEATHER } as Partial<WidgetT>),
+    widget('s', { kind: 'sunrise', figures: SUN } as Partial<WidgetT>),
+  ];
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    document.body.innerHTML = '';
+  });
+
+  it('the place is a subtitle on each frame and the Open-Meteo credit appears once', async () => {
+    const { el } = await mount(both());
+    const subs = [...el.querySelectorAll('[data-testid="widget-subtitle"]')].map(
+      (s) => s.textContent,
+    );
+    expect(subs).toEqual(['Cambridge', 'Cambridge']);
+    expect(el.textContent?.match(/Weather data by Open-Meteo\.com/g)).toHaveLength(1);
+  });
+
+  it('below 768 px each widget is one tappable summary line', async () => {
+    vi.stubGlobal('matchMedia', (q: string) => ({
+      matches: q.includes('max-width'),
+      media: q,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    }));
+    const { el } = await mount(both());
+    const toggles = [...el.querySelectorAll('[data-testid="widget-toggle"]')];
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]!.textContent).toContain('5° Overcast · H 7° L 1°');
+  });
+});
+
+describe('WidgetStrip: refresh button', () => {
+  beforeEach(() => vi.clearAllMocks());
+  afterEach(() => (document.body.innerHTML = ''));
+  const settle = async () => {
+    for (let i = 0; i < 5; i++) await nextTick();
+    await new Promise((r) => setTimeout(r, 0));
+    await nextTick();
+  };
+
+  it('asks the server to refresh, then reloads the strip; a touch-size button with a name', async () => {
+    const api = await import('../../api/widgets.js');
+    vi.mocked(api.postWidgetsRefresh).mockResolvedValue({ queued: 1 });
+    const { el } = await mount([widget('w1')]);
+    const btn = el.querySelector<HTMLButtonElement>('[data-testid="refresh-widgets"]')!;
+    expect(btn.getAttribute('aria-label')).toBe('Refresh widgets');
+    const loadsBefore = vi.mocked(api.getWidgets).mock.calls.length;
+    btn.click();
+    await settle();
+    expect(api.postWidgetsRefresh).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(api.getWidgets).mock.calls.length).toBe(loadsBefore + 1);
+    expect(btn.disabled).toBe(false);
+  });
+
+  it('a "too soon" 429 still reloads; no widgets means no button', async () => {
+    const api = await import('../../api/widgets.js');
+    const { ApiError } = await import('../../api/client.js');
+    vi.mocked(api.postWidgetsRefresh).mockRejectedValue(
+      new ApiError('rate_limited', 'Refresh was just requested', 429),
+    );
+    const { el } = await mount([widget('w1')]);
+    const loadsBefore = vi.mocked(api.getWidgets).mock.calls.length;
+    el.querySelector<HTMLButtonElement>('[data-testid="refresh-widgets"]')!.click();
+    await settle();
+    expect(vi.mocked(api.getWidgets).mock.calls.length).toBe(loadsBefore + 1);
+    document.body.innerHTML = '';
+    const empty = await mount([]);
+    expect(empty.el.querySelector('[data-testid="refresh-widgets"]')).toBeNull();
   });
 });

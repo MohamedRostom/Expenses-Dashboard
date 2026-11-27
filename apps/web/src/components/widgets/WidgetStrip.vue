@@ -10,6 +10,10 @@ import SunriseWidget from './SunriseWidget.vue';
 import SpendPaceWidget from './SpendPaceWidget.vue';
 import FixedCostsWidget from './FixedCostsWidget.vue';
 import { toPanelErrorKind, type PanelErrorKind } from '../../utils/errors.js';
+import { WEATHER_ATTRIBUTION } from '@desk/contracts';
+import { useSessionStore } from '../../stores/session.js';
+import { clockIn, summary } from './widget-summary.js';
+import ConfirmDialog from '../ConfirmDialog.vue';
 import WidgetFrame from './WidgetFrame.vue';
 import AddWidgetSheet from './AddWidgetSheet.vue';
 import WidgetSettingsSheet from './WidgetSettingsSheet.vue';
@@ -21,6 +25,26 @@ const typesError = ref<PanelErrorKind | null>(null);
 const adding = ref(false);
 const settingsId = ref<string | null>(null);
 const loaded = ref(false);
+const session = useSessionStore();
+
+// Phones: each widget is one tappable summary line (the page scrolls, never a widget).
+const phone = typeof matchMedia === 'function' ? matchMedia('(max-width: 767px)') : null;
+const compact = ref(phone?.matches ?? false);
+const onPhone = (e: MediaQueryListEvent) => (compact.value = e.matches);
+// Sun times are relative to now, so the strip ticks once a minute.
+const now = ref(new Date());
+let tick: ReturnType<typeof setInterval> | undefined;
+type Placed = { figures?: { place?: string; placeTimeZone?: string } };
+const placeOf = (w: unknown) => (w as Placed).figures?.place;
+const zoneOf = (w: unknown) =>
+  (w as Placed).figures?.placeTimeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+const wall = (w: unknown) => clockIn(zoneOf(w), now.value);
+// The Open-Meteo credit (CC-BY) is said once for the strip, not inside every widget.
+const credit = computed(() =>
+  store.widgets.some((w) => (w.kind === 'weather' || w.kind === 'sunrise') && w.figures)
+    ? WEATHER_ATTRIBUTION
+    : null,
+);
 
 const dragOrder = ref<string[] | null>(null);
 const announcement = ref('');
@@ -35,6 +59,20 @@ const shown = computed(() => {
 
 const atLimit = computed(() => store.widgets.length >= store.limit);
 const settingsWidget = computed(() => store.widgets.find((w) => w.id === settingsId.value) ?? null);
+
+// Refresh button: the server re-fetches the sources, then the strip reloads. Figures also refresh
+// on their own: the strip polls every five minutes and the server refreshes rates hourly.
+const refreshing = ref(false);
+async function refresh() {
+  refreshing.value = true;
+  try {
+    await store.refreshNow();
+  } catch {
+    // store.error carries the failure; the strip shows it.
+  } finally {
+    refreshing.value = false;
+  }
+}
 
 onMounted(async () => {
   // The catalogue is independent of the widget list; fetch both at once.
@@ -51,12 +89,16 @@ onMounted(async () => {
   window.addEventListener('online', bump);
   window.addEventListener('offline', bump);
   store.start();
+  phone?.addEventListener('change', onPhone);
+  tick = setInterval(() => (now.value = new Date()), 60_000);
   catalogue.value = await types;
 });
 onUnmounted(() => {
   window.removeEventListener('online', bump);
   window.removeEventListener('offline', bump);
   store.stop();
+  phone?.removeEventListener('change', onPhone);
+  clearInterval(tick);
 });
 
 function message(err: unknown, fallback: string) {
@@ -68,10 +110,19 @@ async function onAdd(body: WidgetCreateT) {
   adding.value = false;
 }
 
-async function onRemove(id: string, name: string) {
-  if (!confirm(`Remove the ${name} widget?`)) return;
+// `removing` keeps its value after close so the title does not blank while the dialog fades out.
+const removing = ref<{ id: string; name: string } | null>(null);
+const removeOpen = ref(false);
+function askRemove(id: string, name: string) {
+  removing.value = { id, name };
+  removeOpen.value = true;
+}
+async function confirmRemove() {
+  removeOpen.value = false;
+  const target = removing.value;
+  if (!target) return;
   try {
-    await store.remove(id);
+    await store.remove(target.id);
   } catch (err) {
     toast.push(message(err, 'Failed to remove widget.'), 'critical');
   }
@@ -149,21 +200,26 @@ async function onDragEnd() {
 <template>
   <section class="desk-widget-strip" aria-label="Widgets" data-testid="widget-strip">
     <div class="desk-widget-strip-head">
-      <p
-        v-if="loaded && !store.error && store.widgets.length === 0"
-        class="desk-widget-empty"
-        data-testid="widget-empty"
-      >
-        No widgets yet
-      </p>
       <Button
         data-testid="add-widget"
-        variant="secondary"
+        :variant="store.widgets.length === 0 ? 'ghost' : 'secondary'"
         :disabled="atLimit"
         @click="adding = true"
       >
         Add widget ({{ store.widgets.length }} of {{ store.limit }})
       </Button>
+      <Button
+        v-if="store.widgets.length > 0"
+        data-testid="refresh-widgets"
+        class="desk-widget-refresh"
+        variant="ghost"
+        aria-label="Refresh widgets"
+        title="Refresh widgets"
+        :disabled="refreshing"
+        :aria-busy="refreshing || undefined"
+        @click="refresh"
+        ><span aria-hidden="true">&#8635;</span></Button
+      >
     </div>
 
     <PanelFrame
@@ -181,22 +237,33 @@ async function onDragEnd() {
         :count="shown.length"
         :at-limit="atLimit"
         :offline="offline"
+        :subtitle="placeOf(w)"
+        :compact="compact"
+        :summary="summary(w, store.temperatureUnit, wall(w))"
         @move="onMove(w.id, $event)"
         @duplicate="onDuplicate(w.id)"
         @drag-start="onDragStart(w.id)"
         @drag-move="onDragMove"
         @drag-end="onDragEnd"
         @settings="settingsId = w.id"
-        @remove="onRemove(w.id, label(w.kind).toLowerCase())"
+        @remove="askRemove(w.id, label(w.kind))"
       >
         <!-- WidgetFrame shows the skeleton/error when figures are absent. -->
-        <CurrencyWidget v-if="w.kind === 'currency' && w.figures" :rows="w.figures.rows" />
+        <CurrencyWidget
+          v-if="w.kind === 'currency' && w.figures"
+          :rows="w.figures.rows"
+          :default-code="session.user?.defaultCurrency"
+        />
         <WeatherWidget
           v-else-if="w.kind === 'weather' && w.figures"
           :figures="w.figures"
           :unit="store.temperatureUnit"
         />
-        <SunriseWidget v-else-if="w.kind === 'sunrise' && w.figures" :figures="w.figures" />
+        <SunriseWidget
+          v-else-if="w.kind === 'sunrise' && w.figures"
+          :figures="w.figures"
+          :now="wall(w)"
+        />
         <SpendPaceWidget v-else-if="w.kind === 'spend_pace' && w.figures" :figures="w.figures" />
         <FixedCostsWidget v-else-if="w.kind === 'fixed_costs' && w.figures" :figures="w.figures" />
       </WidgetFrame>
@@ -204,7 +271,9 @@ async function onDragEnd() {
 
     <p class="desk-sr-only" aria-live="polite" data-testid="widget-live">{{ announcement }}</p>
 
-    <p class="desk-widget-attribution"><slot name="attribution" /></p>
+    <p v-if="credit || $slots.attribution" class="desk-widget-attribution">
+      <slot name="attribution">{{ credit }}</slot>
+    </p>
 
     <AddWidgetSheet
       :open="adding"
@@ -214,6 +283,15 @@ async function onDragEnd() {
       :add="onAdd"
       @close="adding = false"
     />
+    <ConfirmDialog
+      :open="removeOpen"
+      :title="`Remove the ${removing?.name.toLowerCase() ?? ''} widget?`"
+      confirm-label="Remove"
+      @confirm="confirmRemove"
+      @cancel="removeOpen = false"
+    >
+      <p>You can add it again from Add widget.</p>
+    </ConfirmDialog>
     <WidgetSettingsSheet
       :open="settingsId !== null"
       :widget="settingsWidget"
@@ -234,11 +312,12 @@ async function onDragEnd() {
   justify-content: space-between;
   gap: var(--space-3);
 }
-.desk-widget-empty {
-  margin: 0;
-  font-size: var(--text-sm);
-  line-height: var(--leading-sm);
-  color: var(--color-fg-muted);
+.desk-widget-refresh {
+  inline-size: var(--target-min);
+  min-inline-size: var(--target-min);
+  padding-inline: 0;
+  justify-content: center;
+  font-size: var(--text-lg);
 }
 .desk-widget-grid {
   display: grid;

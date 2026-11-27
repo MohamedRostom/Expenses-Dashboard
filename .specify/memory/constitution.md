@@ -1,5 +1,12 @@
 <!--
 Sync Impact Report
+- Version change: 1.3.0 -> 1.4.0 (accepted by the owner 2026-11-24, ADR-0008)
+- Modified principles: VI (design tokens: the identity is now the one recorded in the root
+  `DESIGN.md` under ADR-0008 "Glassy V2", superseding ADR-0007; one accent for actions and
+  spend, any colour by choice; a still warm ground is always drawn and adds no loop)
+- Amendment ADR: docs/adr/ADR-0008-glassy-v2-identity.md (accepted 2026-11-24)
+
+Previous report:
 - Version change: 1.2.0 -> 1.3.0 (accepted by the owner 2026-10-16, spec 006 T004)
 - Modified principles: VI (design tokens: the identity is now the one recorded in the root
   `DESIGN.md` under ADR-0007 "Premium identity with ambient motion", superseding ADR-0006;
@@ -94,9 +101,9 @@ feature merged before it is announced sits behind a feature flag in the `flags` 
 to the look of existing screens is not a feature and needs no flag. What ships MUST look
 finished: every panel has skeleton, empty and error states; error copy branches on the error
 code, never one generic banner; charts are a small hand-written SVG layer following the
-project's dataviz rules; design tokens (the identity in the root `DESIGN.md`, ADR-0007: system UI
-words, system mono tabular figures, one accent (Signal Green by default, user-selectable from
-the presets in `DESIGN.md`), three theme states, translucent panels over the ground) come from
+project's dataviz rules; design tokens (the identity in the root `DESIGN.md`, ADR-0008: system UI
+words, system mono tabular figures, one accent for actions and spend (Signal Green by default,
+any colour by the user's choice), three theme states, translucent panels over a still warm ground) come from
 `packages/ui`, not from ad-hoc CSS. Nothing on screen loops except the skeleton pulse and one
 opt-in background layer, which is chosen and pausable by the user, still under reduced motion,
 and never competes with the figures. Rationale: complexity is paid for at 3 am, and a
@@ -165,4 +172,4 @@ complexity (a new abstraction, dependency or service) MUST be justified in the P
 against Principle VI. `CLAUDE.md` is the runtime guidance file for agents and contributors and
 MUST be updated in the same PR as any decision that changes it.
 
-**Version**: 1.3.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-10-16
+**Version**: 1.4.0 | **Ratified**: 2026-09-16 | **Last Amended**: 2026-11-24

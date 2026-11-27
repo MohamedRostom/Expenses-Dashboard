@@ -136,6 +136,25 @@ describe('weather figures', () => {
     expect((await weatherOf(u)).state).toBe('empty');
   });
 
+  it('reading lookups cost one query however many weather and sunrise widgets there are', async () => {
+    await seedReading();
+    const places = [PLACE, { ...PLACE, name: 'Leeds', lat: 53.8, lon: -1.55 }];
+    const one = await h.asUser('ww-n1-one@example.com');
+    await one.post('/widgets', { kind: 'weather', settings: {}, place: PLACE });
+    const many = await h.asUser('ww-n1-many@example.com');
+    for (const place of places)
+      for (const kind of ['weather', 'sunrise'])
+        await many.post('/widgets', { kind, settings: {}, place });
+    await one.get('/widgets'); // warm-up
+    const q0 = h.queries();
+    expect((await one.get('/widgets')).status).toBe(200);
+    const single = h.queries() - q0;
+    const q1 = h.queries();
+    const res = await j(await many.get('/widgets'));
+    expect(res.widgets).toHaveLength(4);
+    expect(h.queries() - q1).toBe(single);
+  });
+
   it('a widget without a place is error / place_not_found', async () => {
     const u = await withWidget('ww-noplace@example.com');
     await h.db.execute(

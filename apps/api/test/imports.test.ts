@@ -183,6 +183,40 @@ describe('imports', () => {
     void committed;
   });
 
+  it('undo and commit-skip issue the same number of queries for 1 row as for 5 (no N+1)', async () => {
+    let day = 20;
+    const batchOf = async (n: number) => {
+      day++;
+      const csv =
+        'date,amount,currency,description\n' +
+        Array.from({ length: n }, (_, i) => `2026-09-${day},5.00,GBP,nplus1 ${n} ${i}`).join('\n') +
+        '\n';
+      const res = await upload(user, csv);
+      return ((await res.json()) as { batch: { id: string } }).batch.id;
+    };
+    const measureSkip = async (n: number) => {
+      const id = await batchOf(n);
+      const before = harness.queries();
+      const res = await user.post(`/imports/${id}/commit`, {
+        skipRows: Array.from({ length: n }, (_, i) => i + 1),
+      });
+      expect(res.status).toBe(200);
+      const { batch } = (await res.json()) as { batch: { rows: { status: string }[] } };
+      expect(batch.rows.every((r) => r.status === 'skipped')).toBe(true);
+      return harness.queries() - before;
+    };
+    const measureUndo = async (n: number) => {
+      const id = await batchOf(n);
+      expect((await user.post(`/imports/${id}/commit`, {})).status).toBe(200);
+      const before = harness.queries();
+      const res = await user.post(`/imports/${id}/undo`, {});
+      expect(((await res.json()) as { undone: number }).undone).toBe(n);
+      return harness.queries() - before;
+    };
+    expect(await measureSkip(5)).toBe(await measureSkip(1));
+    expect(await measureUndo(5)).toBe(await measureUndo(1));
+  });
+
   it('profiles: create, list and reuse a named mapping', async () => {
     const put = await user.put('/imports/profiles/my-bank', { mapping: MAPPING });
     expect(put.status).toBe(200);

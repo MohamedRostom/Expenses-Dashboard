@@ -29,3 +29,5 @@ export { PALETTE_COLOURS } from './palette.js';
 export { contrastRatio } from './contrast.js';
 export { defineStory, collectStories } from './stories.js';
 export type { Story, StoryCase } from './stories.js';
+
+export * from './glassyColours.js';

@@ -4,6 +4,7 @@ import { RouterView, createMemoryHistory, createRouter } from 'vue-router';
 import MonthViewMock from './MonthViewMock.vue';
 import AddExpenseMock from './AddExpenseMock.vue';
 import SettingsMock from './SettingsMock.vue';
+import GlassyMonthMock from './GlassyMonthMock.vue';
 
 export const flush = async () => {
   for (let i = 0; i < 4; i++) await nextTick();
@@ -16,6 +17,7 @@ export async function mountAt(url: string) {
       { path: '/__ui/mockups/month-view', component: MonthViewMock },
       { path: '/__ui/mockups/add-expense', component: AddExpenseMock },
       { path: '/__ui/mockups/settings', component: SettingsMock },
+      { path: '/__ui/mockups/glassy-month', component: GlassyMonthMock },
     ],
   });
   await router.push(url);

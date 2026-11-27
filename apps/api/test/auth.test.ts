@@ -30,6 +30,7 @@ describe('auth', () => {
     password = 'a-good-long-password',
   ): Promise<{
     cookie: string;
+    body: { user: Record<string, unknown> };
   }> {
     await h.app.request('/auth/register', {
       method: 'POST',
@@ -56,7 +57,10 @@ describe('auth', () => {
     const setCookie = res.headers.get('set-cookie') ?? '';
     const cookieVal = setCookie.match(new RegExp(`${SESSION_COOKIE}=([^;]+)`))?.[1];
     if (!cookieVal) throw new Error('verify did not set session cookie');
-    return { cookie: `${SESSION_COOKIE}=${cookieVal}` };
+    return {
+      cookie: `${SESSION_COOKIE}=${cookieVal}`,
+      body: (await res.json()) as { user: Record<string, unknown> },
+    };
   }
 
   it('register always returns 202', async () => {
@@ -203,6 +207,19 @@ describe('auth', () => {
 
     const rows = await h.db.select().from(sessionsTable).where(eq(sessionsTable.userId, user!.id));
     expect(rows.some((r) => r.revokedAt === null)).toBe(true);
+  });
+
+  it('verify and login return the three free colours (ADR-0008): null by default, the stored value once set', async () => {
+    const email = `colours-${crypto.randomUUID()}@example.com`;
+    const { body } = await registerAndVerify(email);
+    const NULLS = { accentCustom: null, groundTint: null, navColour: null };
+    expect(body.user).toMatchObject(NULLS);
+
+    const set = { accentCustom: '#aabbcc', groundTint: '#a8501f', navColour: '#00ff99' };
+    await h.db.update(usersTable).set(set).where(eq(usersTable.email, email));
+    const res = await login(email);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { user: unknown }).user).toMatchObject(set);
   });
 
   it('login rotates the session (new cookie value each login)', async () => {

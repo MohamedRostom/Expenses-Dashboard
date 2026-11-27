@@ -3,6 +3,7 @@ import { basename, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { contrastRatio } from './contrast.js';
+import { GLASS, GROUND_CAP, GROUND_TINT } from './glassyColours.js';
 
 const root = fileURLToPath(new URL('../../..', import.meta.url));
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -65,6 +66,9 @@ const names = [
   '--radius-sm',
   '--radius-md',
   '--radius-lg',
+  '--radius-xl',
+  '--radius-pill',
+  '--radius-field',
   ...shadows,
   ...colours,
   '--motion-fast',
@@ -167,6 +171,16 @@ describe('Concourse Board identity values (ADR-0006)', () => {
       "ui-monospace, 'Cascadia Mono', 'Segoe UI Mono', 'Roboto Mono', Menlo, monospace",
     );
   });
+  it.each(['serif', 'rounded', 'humanist'])(
+    'page font %s: one installed-font stack for words and figures, nothing downloaded',
+    (id) => {
+      const t = rule(`:root[data-font='${id}']`);
+      const stack = t.get('--font-sans');
+      expect(stack).toMatch(/, (serif|sans-serif)$/);
+      expect(t.get('--font-mono')).toBe(stack);
+      expect(css).not.toMatch(/@font-face/);
+    },
+  );
   it('has 2/4/8px radii and 0.08em wide tracking', () => {
     expect([light.get('--radius-sm'), light.get('--radius-md'), light.get('--radius-lg')]).toEqual([
       '2px',
@@ -465,11 +479,16 @@ describe('accent presets (FR-019)', () => {
   }
 });
 
-// Spec 006 T007: glass surface, blur, radius and motion alpha ceilings (DESIGN.md, ADR-0007).
-describe('glass and motion tokens (ADR-0007)', () => {
+// Glass, radius and ground tokens (DESIGN.md, ADR-0008 Glassy V2, which replaced ADR-0007's
+// 16px radius, 68/66% glass, 20px blur). The glass numbers come from glassyColours.ts, where the
+// composite contrast test fixes them.
+describe('glass, radius and ground tokens (ADR-0008)', () => {
   const lightExpect: Record<string, string> = {
-    '--color-surface-glass': 'rgb(255 255 255 / 0.68)',
-    '--color-glass-line': 'rgb(20 23 27 / 0.1)',
+    '--color-surface-glass': `rgb(255 255 255 / ${GLASS.light.alpha})`,
+    '--color-surface-glass-strong': `rgb(255 255 255 / ${GLASS.light.strong})`,
+    '--color-glass-line': 'rgb(255 255 255 / 0.6)',
+    '--ground-base': '#ffffff',
+    '--ground-cap': String(GROUND_CAP.light * 100),
     '--shadow-raised': '0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08)',
     '--motion-alpha-aurora': '0.49',
     '--motion-alpha-aurora-blue': '0.35',
@@ -481,8 +500,11 @@ describe('glass and motion tokens (ADR-0007)', () => {
     '--motion-alpha-grain': '0.118',
   };
   const darkExpect: Record<string, string> = {
-    '--color-surface-glass': 'rgb(21 26 33 / 0.66)',
-    '--color-glass-line': 'rgb(242 242 238 / 0.11)',
+    '--color-surface-glass': `rgb(26 21 18 / ${GLASS.dark.alpha})`,
+    '--color-surface-glass-strong': `rgb(26 21 18 / ${GLASS.dark.strong})`,
+    '--color-glass-line': 'rgb(255 255 255 / 0.12)',
+    '--ground-base': '#000000',
+    '--ground-cap': String(GROUND_CAP.dark * 100),
     '--shadow-raised': 'inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38)',
     '--motion-alpha-aurora': '0.39',
     '--motion-alpha-aurora-blue': '0.32',
@@ -503,9 +525,16 @@ describe('glass and motion tokens (ADR-0007)', () => {
       expect(tokens.get(name)).toBe(value),
     );
   }
-  it('defines blur and radius once on the light selector', () => {
-    expect(light.get('--blur-surface')).toBe('20px');
-    expect(light.get('--radius-xl')).toBe('16px');
+  it('defines blur, the radius scale and the ground tint once on the light selector', () => {
+    expect(light.get('--blur-surface')).toBe('24px');
+    expect(light.get('--radius-xl')).toBe('24px');
+    expect(light.get('--radius-pill')).toBe('9999px');
+    expect(light.get('--radius-field')).toBe('12px');
+    expect(light.get('--ground-tint')).toBe(GROUND_TINT);
+  });
+  it('the ground tint is not redefined in the dark blocks (a user colour applies to both themes)', () => {
+    expect(systemDark.has('--ground-tint')).toBe(false);
+    expect(explicitDark.has('--ground-tint')).toBe(false);
   });
 });
 

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ACCENT_IDS } from './accent.js';
+import { FONT_IDS } from './font.js';
 import { MOTION_PRESET_IDS } from './motion.js';
 
 /** Shape of the `user` object returned by auth and /me endpoints. */
@@ -13,6 +14,21 @@ export const UserResponse = z.object({
   motionColour: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   panelsTranslucent: z.boolean(),
   motionPaused: z.boolean(),
+  /** Free colours (ADR-0008): hex, or null for the default. */
+  accentCustom: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
+  groundTint: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
+  navColour: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .nullable(),
+  /** Page font preset; 'system' is the default. */
+  font: z.enum(FONT_IDS),
   timeZone: z.string(),
   onboardingCompletedAt: z.string().nullable(),
   /** False until the address is confirmed; Settings shows it and offers a resend (FR-001). */

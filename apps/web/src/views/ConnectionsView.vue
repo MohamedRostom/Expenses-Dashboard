@@ -227,8 +227,6 @@ async function confirmDisconnect() {
 
 <template>
   <main class="connections-view">
-    <h1>Connected Accounts</h1>
-
     <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
     <div v-if="errorCode" class="error-banner" role="alert">{{ connectErrorCopy(errorCode) }}</div>
 
@@ -447,15 +445,8 @@ async function confirmDisconnect() {
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
-h1,
 h4 {
   margin: 0;
-}
-h1 {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
 }
 h4 {
   font-size: var(--text-lg);
@@ -574,7 +565,7 @@ p {
 .label-input:hover,
 .label-input:focus {
   border-color: var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-field);
 }
 .label-input:focus-visible,
 .calendar-item input:focus-visible,
@@ -620,7 +611,7 @@ p {
   position: absolute;
   inset: var(--space-2);
   background: var(--swatch-color);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
   outline: 2px solid transparent;
   outline-offset: 2px;
 }
@@ -673,7 +664,7 @@ p {
   max-width: 26rem;
   padding: var(--space-6);
   border: 0;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-overlay);
   color: var(--color-fg);
   background: var(--color-surface-raised);

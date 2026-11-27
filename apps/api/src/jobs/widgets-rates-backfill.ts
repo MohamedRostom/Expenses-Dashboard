@@ -24,15 +24,6 @@ const logBase = {
 };
 const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** True when fx_rates for the pair has no row at or before `day - 30` (the history is short). */
-export async function historyIsShort(db: Db, base: string, quote: string, day: string) {
-  const [r] = await db
-    .select({ first: min(fxRates.rateDate) })
-    .from(fxRates)
-    .where(and(eq(fxRates.base, base), eq(fxRates.quote, quote)));
-  return !r?.first || r.first > isoDay(Date.parse(day) - REACH_DAYS * DAY_MS);
-}
-
 /** Queues one backfill per pair, deduped by key against queued/running jobs. Inserts straight
  * into `jobs` (as PATCH /me does for currency.change) so no runner dependency is needed. */
 export async function enqueueRatesBackfill(db: Db, base: string, quote: string) {
@@ -64,12 +55,21 @@ export async function enqueueRatesBackfill(db: Db, base: string, quote: string) 
     await db.insert(jobs).values({ name: BACKFILL_JOB, payload: { base, quote, key } });
 }
 
-/** Enqueues a backfill for each code whose history for (code, quote) is short. */
+/** Enqueues a backfill for each code whose history for (code, quote) is short, i.e. has no
+ * fx_rates row at or before `day - 30`. One query covers every code. */
 export async function enqueueIfShort(db: Db, codes: string[], quote: string, day: string) {
-  for (const code of new Set(codes)) {
-    if (code !== quote && (await historyIsShort(db, code, quote, day))) {
-      await enqueueRatesBackfill(db, code, quote);
-    }
+  const wanted = [...new Set(codes)].filter((c) => c !== quote);
+  if (wanted.length === 0) return;
+  const firsts = await db
+    .select({ base: fxRates.base, first: min(fxRates.rateDate) })
+    .from(fxRates)
+    .where(and(eq(fxRates.quote, quote), inArray(fxRates.base, wanted)))
+    .groupBy(fxRates.base);
+  const first = new Map(firsts.map((r) => [r.base, r.first]));
+  const reach = isoDay(Date.parse(day) - REACH_DAYS * DAY_MS);
+  for (const code of wanted) {
+    const f = first.get(code);
+    if (!f || f > reach) await enqueueRatesBackfill(db, code, quote);
   }
 }
 

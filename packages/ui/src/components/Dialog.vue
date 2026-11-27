@@ -108,7 +108,7 @@ watch(
   font-family: var(--font-sans);
   background: var(--color-surface-raised);
   color: var(--color-fg);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-overlay);
   padding: var(--space-4);
   min-width: 280px;
@@ -134,7 +134,7 @@ watch(
   width: 100%;
   max-width: 100%;
   padding-bottom: 0;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 /* Desktop panel: pinned to the right edge, full height. */
 .desk-dialog-backdrop--side {
@@ -144,7 +144,7 @@ watch(
 .desk-dialog--side {
   height: 100%;
   max-height: 100dvh;
-  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
 }
 /* Responsive sheet: bottom at phone width, side panel from 1024px. */
 .desk-dialog-backdrop--sheet {
@@ -154,7 +154,7 @@ watch(
   width: 100%;
   max-width: 100%;
   padding-bottom: 0;
-  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 @media (min-width: 1024px) {
   .desk-dialog-backdrop--sheet {
@@ -167,7 +167,7 @@ watch(
     max-width: 100%;
     height: 100%;
     max-height: 100dvh;
-    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
   }
 }
 /* Catalogue example: sits in the flow of its cell instead of covering the viewport. */

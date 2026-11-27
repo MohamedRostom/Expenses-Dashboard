@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { Dialog, Button, EmptyState, PanelFrame } from '@desk/ui';
 import type { WidgetCreateT, WidgetKindT, WidgetTypeT } from '@desk/contracts';
 import { ApiError } from '../../api/client.js';
@@ -67,6 +67,14 @@ const PREVIEW: Record<WidgetKindT, string> = {
   spend_pace: '62% of budget, 9 days left',
   fixed_costs: '3 fixed costs still to pay',
 };
+
+// Money first: the widgets about the user's own spending lead, then the outside-world ones.
+const ORDER = ['spend_pace', 'fixed_costs', 'currency', 'weather', 'sunrise'];
+const offered = computed(() =>
+  props.types
+    .filter((x) => x.enabled)
+    .sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind)),
+);
 </script>
 
 <template>
@@ -92,7 +100,7 @@ const PREVIEW: Record<WidgetKindT, string> = {
       description="New widget types appear here as they are switched on."
     />
     <ul v-else class="desk-add-widget-list">
-      <li v-for="t in types.filter((x) => x.enabled)" :key="t.kind" class="desk-add-widget-item">
+      <li v-for="t in offered" :key="t.kind" class="desk-add-widget-item" :data-kind="t.kind">
         <div>
           <p class="desk-add-widget-name">{{ t.name }}</p>
           <p class="desk-add-widget-desc">{{ t.description }}</p>

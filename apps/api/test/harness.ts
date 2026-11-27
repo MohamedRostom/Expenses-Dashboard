@@ -60,6 +60,9 @@ export type Harness = {
   notionFake: FakeNotion;
   /** The OpenMeteoFake backing `weather` � addPlace / pauseSource / failAll, and `.calls` counters. */
   weatherFake: OpenMeteoFake;
+  /** Statements sent through `db` so far. N+1 tests compare the delta for 1 row vs many: it
+   * must not grow with the row count. */
+  queries(): number;
   close(): Promise<void>;
 };
 
@@ -122,7 +125,8 @@ export async function startHarness(
   const url = container.getConnectionUri();
   await runMigrations(url);
 
-  const { db, close: closeDb } = createDb(url);
+  let queryCount = 0;
+  const { db, close: closeDb } = createDb(url, { debug: () => void queryCount++ });
   const rawClient = postgres(url);
   const queryDb: QueryDb = {
     query: async (sql, params) => ({ rows: await rawClient.unsafe(sql, params as never[]) }),
@@ -223,6 +227,7 @@ export async function startHarness(
     asUser,
     notionFake,
     weatherFake,
+    queries: () => queryCount,
     async close() {
       await rawClient.end();
       await closeDb();

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { Button, PanelFrame, Select, useToast } from '@desk/ui';
+import { Button, ErrorState, PanelFrame, Select, useToast } from '@desk/ui';
 import type {
   CaptureMappingResponseT,
   CategoryResponseT,
@@ -15,6 +15,8 @@ const toast = useToast();
 const tokens = ref<ListCaptureTokensResponseT['tokens']>([]);
 const loading = ref(true);
 const loadError = ref('');
+/** ApiError code of a failed load, so ErrorState words it (empty for a non-API failure). */
+const loadErrorCode = ref<string | undefined>(undefined);
 
 // Only ever populated right after issue/rotate — never fetched or persisted.
 const revealedUrl = ref('');
@@ -29,11 +31,13 @@ const mappingSaving = ref(false);
 async function loadTokens() {
   loading.value = true;
   loadError.value = '';
+  loadErrorCode.value = undefined;
   try {
     const res = await apiFetch<ListCaptureTokensResponseT>('/capture/tokens');
     tokens.value = res.tokens;
   } catch (err) {
     loadError.value = err instanceof ApiError ? err.message : 'Failed to load capture tokens.';
+    loadErrorCode.value = err instanceof ApiError ? err.code : undefined;
   } finally {
     loading.value = false;
   }
@@ -115,7 +119,6 @@ function allLabels(): string[] {
 
 <template>
   <main class="capture-view">
-    <h1>Phone capture</h1>
     <p>
       Send an expense with one HTTPS request from your phone — no session, just the address below as
       a bearer credential in the URL.
@@ -125,7 +128,7 @@ function allLabels(): string[] {
       <PanelFrame heading="Capture address">
         <div class="capture-body">
           <p v-if="loading">Loading…</p>
-          <p v-else-if="loadError" role="alert" class="error-text">{{ loadError }}</p>
+          <ErrorState v-else-if="loadError" v-bind="loadErrorCode ? { code: loadErrorCode } : {}" />
           <template v-else>
             <ul v-if="tokens.length > 0" class="token-list">
               <li v-for="t in tokens" :key="t.id">
@@ -144,9 +147,9 @@ function allLabels(): string[] {
             <Button variant="secondary" @click="copyUrl">Copy</Button>
           </div>
 
-          <p role="alert" class="warn-text">
-            Rotating issues a new address and immediately invalidates the old one — update any
-            automations before you rotate.
+          <p v-if="tokens.length > 0" role="alert" class="warn-text">
+            <span class="desk-notice-lamp" aria-hidden="true" />Rotating issues a new address and
+            immediately invalidates the old one — update any automations before you rotate.
           </p>
           <Button :loading="rotating" :disabled="rotating" @click="rotate">
             {{ tokens.length > 0 ? 'Rotate address' : 'Create capture address' }}
@@ -209,15 +212,8 @@ function allLabels(): string[] {
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
-h1,
 p {
   margin: 0;
-}
-h1 {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
 }
 .capture-grid {
   align-items: start;
@@ -249,22 +245,27 @@ h1 {
   flex-direction: column;
   align-items: flex-start;
   gap: var(--space-2);
-  padding-inline-start: var(--space-3);
-  border-inline-start: var(--space-1) solid var(--color-accent);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-accent);
 }
 .revealed code {
   font-family: var(--font-mono);
   word-break: break-all;
 }
-.error-text,
 .warn-text {
-  padding-inline-start: var(--space-3);
-  border-inline-start: var(--space-1) solid var(--color-critical);
-}
-.warn-text {
-  border-inline-start-color: var(--color-warn);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-warn);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
+}
+.desk-notice-lamp {
+  display: inline-block;
+  inline-size: var(--space-1);
+  block-size: var(--space-1);
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--color-warn);
 }
 summary {
   display: flex;
@@ -300,8 +301,8 @@ summary:focus-visible {
   font-weight: 600;
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
-  padding-inline-start: var(--space-2);
-  border-inline-start: var(--space-1) solid var(--color-warn);
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-warn);
 }
 @media (min-width: 1024px) {
   summary {

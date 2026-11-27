@@ -52,24 +52,26 @@ onMounted(() => {
 
 <template>
   <div class="desk-error-state" :role="announce ? 'alert' : undefined">
-    <p class="desk-error-title">{{ title ?? copy.title }}</p>
+    <p class="desk-error-title">
+      <span class="desk-error-lamp" aria-hidden="true" />{{ title ?? copy.title }}
+    </p>
     <p class="desk-error-desc">{{ description ?? copy.description }}</p>
     <div v-if="$slots.action" class="desk-error-action"><slot name="action" /></div>
   </div>
 </template>
 
 <style scoped>
-/* A lamp-flagged line, not a centred card: the 4px leading bar is the status marker and the title
-   carries the word (DESIGN.md Components, row lamps). */
+/* A lamp-flagged line, not a centred card: a full 1px critical border, a 4px lamp before the title,
+   and the title carries the word (DESIGN.md Components, row lamps; no side stripes). */
 .desk-error-state {
   font-family: var(--font-sans);
   color: var(--color-fg);
   text-align: start;
   padding: var(--space-3) var(--space-4);
-  border-inline-start: 4px solid var(--color-critical);
+  border: 1px solid var(--color-critical);
   background: var(--color-surface-raised);
   box-shadow: var(--shadow-raised);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-field);
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -80,6 +82,15 @@ onMounted(() => {
   font-weight: 600;
   margin: 0;
   color: var(--color-critical);
+}
+.desk-error-lamp {
+  display: inline-block;
+  inline-size: var(--space-1);
+  block-size: var(--space-1);
+  margin-inline-end: var(--space-2);
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--color-critical);
 }
 .desk-error-desc {
   margin: 0;

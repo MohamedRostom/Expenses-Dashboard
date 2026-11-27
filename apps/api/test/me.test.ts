@@ -367,6 +367,36 @@ describe('me', () => {
     expect(messages).toHaveLength(0);
   });
 
+  it('DELETE /me issues the same number of queries for 1 audit row as for 5 (no N+1)', async () => {
+    const measure = async (n: number) => {
+      const user = await h.asUser(`me-delete-nplus1-${n}@example.com`);
+      await h.db.insert(auditLog).values(
+        Array.from({ length: n }, () => ({
+          userId: user.userId,
+          actor: 'user' as const,
+          action: 'nplus1',
+          subject: user.userId,
+        })),
+      );
+      const before = h.queries();
+      expect((await user.delete('/me', { password: 'test-password' })).status).toBe(204);
+      const delta = h.queries() - before;
+      const rows = await h.db.select().from(auditLog).where(eq(auditLog.action, 'nplus1'));
+      expect(
+        rows.filter(
+          (r) =>
+            r.userId === null &&
+            (r.details as { deletedUserHash?: string } | null)?.deletedUserHash,
+        ).length,
+      ).toBe(n);
+      await h.db.delete(auditLog).where(eq(auditLog.action, 'nplus1'));
+      return delta;
+    };
+    const one = await measure(1);
+    const five = await measure(5);
+    expect(five).toBe(one);
+  });
+
   it('DELETE /me cancels queued jobs first', async () => {
     const user = await h.asUser('me-delete-jobs@example.com');
     await user.patch('/me', { defaultCurrency: 'EUR' });

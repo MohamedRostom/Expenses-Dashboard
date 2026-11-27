@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { createApp, h, nextTick } from 'vue';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AuthBackdrop, { SCENE_COUNT, HOLD_MS } from './AuthBackdrop.vue';
@@ -20,6 +23,31 @@ async function mount(animate = true) {
 }
 const active = (el: HTMLElement) =>
   el.querySelector('.desk-auth-scene.is-active')?.getAttribute('data-scene');
+
+const source = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'AuthBackdrop.vue'),
+  'utf-8',
+);
+
+describe('AuthBackdrop ground (ADR-0008)', () => {
+  it('sits on the warm ground, not the cool auth-backdrop base', () => {
+    const root = source.slice(
+      source.indexOf('.desk-auth-backdrop {'),
+      source.indexOf('.desk-auth-scene {'),
+    );
+    expect(root).toContain('var(--ground-tint)');
+    expect(root).toContain('var(--ground-base)');
+    expect(source).not.toContain('--auth-backdrop-base');
+  });
+
+  it('derives every scene colour from the warm ground, not the cool auth-backdrop set', () => {
+    expect(source).not.toMatch(/--auth-backdrop-\d/);
+    for (const n of [1, 2, 3, 4]) {
+      const decl = source.match(new RegExp(`--ab-${n}:\\s*([^;]+);`))?.[1] ?? '';
+      expect(decl, `--ab-${n}`).toContain('var(--ground-tint)');
+    }
+  });
+});
 
 describe('AuthBackdrop (signed-out pages, ADR-0007 amendment 2026-10-18)', () => {
   let app: ReturnType<typeof createApp> | undefined;

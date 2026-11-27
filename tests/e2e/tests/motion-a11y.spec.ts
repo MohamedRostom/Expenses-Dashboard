@@ -163,16 +163,27 @@ test('prefers-reduced-transparency: panels are opaque while the saved switch sti
   await emulate(page, [{ name: 'prefers-reduced-transparency', value: 'reduce' }]);
   expect(alphaOf(await surfaceBg(page))).toBe(1);
   expect(await surfaceBlur(page)).toBe('none');
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await expect(page.getByRole('switch', { name: 'Translucent panels' })).toHaveAttribute(
     'aria-checked',
     'true',
   );
 });
 
-test('the header has no backdrop-filter and an opaque background (FR-009)', async ({ page }) => {
+// ADR-0008 replaces FR-009: the top bar is a strong glass surface by default, and opaque with no
+// backdrop-filter when panels are solid. Dialogs, menus, sheets and toasts stay opaque (their own specs).
+test('the top bar is glass by default and opaque with no backdrop-filter when panels are solid (ADR-0008)', async ({
+  page,
+}) => {
   await signedIn(page, 'header');
-  const header = page.locator('header.desk-header');
+  const header = page.locator('header.desk-topbar');
+  expect(await header.evaluate((e) => getComputedStyle(e).backdropFilter)).not.toBe('none');
+  expect(alphaOf(await header.evaluate((e) => getComputedStyle(e).backgroundColor))).toBeLessThan(
+    1,
+  );
+  await page.goto('/settings#sg-look');
+  await page.getByRole('switch', { name: 'Translucent panels' }).click();
+  await expect(page.locator('html')).toHaveAttribute('data-panels', 'solid');
   expect(await header.evaluate((e) => getComputedStyle(e).backdropFilter)).toBe('none');
   expect(alphaOf(await header.evaluate((e) => getComputedStyle(e).backgroundColor))).toBe(1);
 });

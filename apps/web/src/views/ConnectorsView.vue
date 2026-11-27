@@ -121,8 +121,6 @@ onMounted(load);
 
 <template>
   <main class="desk-connectors">
-    <h1>Notion sync</h1>
-
     <div class="desk-connectors-grid board-grid">
       <PanelFrame v-if="loading" heading="Notion">
         <div class="desk-connectors-body"><p>Loading…</p></div>
@@ -194,15 +192,8 @@ onMounted(load);
   font-family: var(--font-sans);
   color: var(--color-fg);
 }
-h1,
 p {
   margin: 0;
-}
-h1 {
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
 }
 .desk-connectors-body {
   padding: var(--space-2) var(--space-4);

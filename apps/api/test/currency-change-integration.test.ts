@@ -64,4 +64,50 @@ describe('currency.change against real RowSources', () => {
       await h.close();
     }
   });
+
+  it('writes a batch in a constant number of statements however many rows it holds', async () => {
+    const h: Harness = await startHarness(new FakeRates());
+    try {
+      const user = await h.asUser('currency-change-n1@example.com');
+      const { category } = await j(
+        await user.post('/categories', { name: 'Food', colour: '#1f6e5a' }),
+      );
+      await user.patch(`/categories/${category.id}`, { budgetMinor: 10000 });
+      const add = (n: number) =>
+        Promise.all(
+          Array.from({ length: n }, (_, i) =>
+            user.post('/expenses', {
+              description: `e${i}`,
+              date: '2026-09-18',
+              categoryId: category.id,
+              paidWith: 'card',
+              kind: 'variable',
+              amount: { minor: 1000 + i, currency: 'GBP' },
+            }),
+          ),
+        );
+      const run = async () => {
+        const before = h.queries();
+        await runCurrencyChange(
+          { userId: user.userId, fromCurrency: 'GBP', toCurrency: 'EUR', changeDate: '2026-09-18' },
+          combinedRowSource(categoriesRowSource(h.db), expensesRowSource(h.db)),
+          async () => ({ rate: '1.1' }),
+          { updateProgress: async () => {} },
+        );
+        return h.queries() - before;
+      };
+      await add(1);
+      await run(); // warm-up: first statements on a connection also fetch types
+      const one = await run();
+      await add(5);
+      const many = await run();
+      expect(many).toBe(one);
+
+      const list = await j(await user.get('/expenses?month=2026-09'));
+      const e3 = list.expenses.find((e: { description: string }) => e.description === 'e3');
+      expect(e3.amountDefault).toBe(1103); // 1003 GBP minor at 1.1
+    } finally {
+      await h.close();
+    }
+  });
 });

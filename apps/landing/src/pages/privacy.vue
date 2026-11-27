@@ -88,7 +88,7 @@ const providers = Object.entries(PROVIDER_PRIVACY_TEXT) as [
 .draft-notice {
   background: color-mix(in srgb, var(--color-warn) 15%, transparent);
   border: 1px solid var(--color-warn);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-field);
   padding: var(--space-3);
   font-size: var(--text-sm);
 }

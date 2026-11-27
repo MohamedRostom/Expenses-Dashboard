@@ -189,6 +189,30 @@ describe('panels.refresh job — calendar (T027)', () => {
     expect(other).toMatchObject({ name: 'Other', isPrimary: false, enabled: false });
   });
 
+  it('statement count does not grow with calendars listed or events cached (no N+1)', async () => {
+    async function run(n: number): Promise<number> {
+      const account = await insertAccount();
+      const { source } = fakeCalendarSource(
+        Array.from({ length: n }, (_, i) => ({
+          id: `n1-${i}`,
+          name: `Cal ${i}`,
+          isPrimary: i === 0,
+        })),
+        () => ({
+          events: Array.from({ length: n }, (_, i) => occurrence({ providerEventId: `n1-e${i}` })),
+          full: true,
+        }),
+      );
+      const before = harness.queries();
+      await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+      return harness.queries() - before;
+    }
+
+    const one = await run(1);
+    const five = await run(5);
+    expect(five).toBe(one);
+  });
+
   it('full fetch upserts rows (exact titles/times) and deletes a pre-seeded row not in the result', async () => {
     const account = await insertAccount();
     const calendar = await insertCalendar(account.id, account.userId);
@@ -585,6 +609,23 @@ describe('panels.refresh job — mail (T042/T050)', () => {
       unread: true,
       link: 'https://mail.example.com/new-message',
     });
+  });
+
+  it('statement count does not grow with the number of messages cached (no N+1)', async () => {
+    async function run(n: number): Promise<number> {
+      const { account } = await insertAccount();
+      const { source } = fakeMailSource(() => ({
+        messages: Array.from({ length: n }, (_, i) => message({ providerMessageId: `n1-m${i}` })),
+        full: true,
+      }));
+      const before = harness.queries();
+      await panelsRefreshJob(deps({ google: source }))({ accountId: account.id }, noopCtx);
+      return harness.queries() - before;
+    }
+
+    const one = await run(1);
+    const five = await run(5);
+    expect(five).toBe(one);
   });
 
   it('incremental fetch (full: false) appends new rows, passes the stored cursor back, and keeps existing ones', async () => {

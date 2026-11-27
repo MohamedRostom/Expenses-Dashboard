@@ -133,7 +133,7 @@ function useLocation() {
   background: var(--color-surface);
   color: var(--color-fg);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-field);
   font: inherit;
   cursor: pointer;
 }

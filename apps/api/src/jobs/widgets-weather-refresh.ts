@@ -63,4 +63,6 @@ export async function ensureRecurring(db: Db, name: string, now: Date) {
 export const ensureWidgetJobs = async (db: Db, now: Date) => {
   await ensureRecurring(db, 'widgets.weather_refresh', now);
   await ensureRecurring(db, 'widgets.purge', now);
+  // Hourly rate refresh (rates.warm re-queues itself); without this nothing ever queued it.
+  await ensureRecurring(db, 'rates.warm', now);
 };

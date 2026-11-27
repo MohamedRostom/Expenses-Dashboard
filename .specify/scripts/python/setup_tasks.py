@@ -29,7 +29,8 @@ except ImportError:  # pragma: no cover - direct execution from unusual cwd
 
 
 def _json_line(payload: object) -> str:
-    return json.dumps(payload, ensure_ascii=False, separators=(",", ":")) + "\n"
+    # ASCII escapes keep the JSON intact on a legacy Windows stdout code page.
+    return json.dumps(payload, ensure_ascii=True, separators=(",", ":")) + "\n"
 
 
 def _help_text(argv0: str) -> str:
@@ -87,7 +88,6 @@ def _check_dir(path: Path, description: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    sys.stdout.reconfigure(encoding="utf-8")  # Windows consoles default to cp1252; the template has non-Latin-1 glyphs
     json_mode = False
     for arg in list(argv if argv is not None else sys.argv[1:]):
         if arg == "--json":
@@ -172,5 +172,16 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _configure_utf8_streams() -> None:
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            try:
+                reconfigure(encoding="utf-8", errors="backslashreplace")
+            except (AttributeError, OSError, ValueError):
+                pass
+
+
 if __name__ == "__main__":
+    _configure_utf8_streams()
     raise SystemExit(main())

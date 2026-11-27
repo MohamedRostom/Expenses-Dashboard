@@ -38,7 +38,7 @@ test('flag off: no controls, a still ground, translucent panels; flag on restore
 
   // Flag off: the saved choice is kept but not applied.
   setFlag(email, 'off');
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await page.waitForLoadState('networkidle');
   await expect(page.getByRole('heading', { name: 'Theme' })).toBeVisible();
   await expect(page.getByRole('radiogroup', { name: 'Background motion' })).toHaveCount(0);

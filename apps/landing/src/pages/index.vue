@@ -96,7 +96,7 @@ const failed = reactive(new Set<string>());
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   font-weight: 600;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   text-decoration: none;
   background: var(--color-accent);
   color: var(--color-accent-fg);
@@ -160,7 +160,7 @@ const failed = reactive(new Set<string>());
   display: block;
   width: 100%;
   height: auto;
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-field);
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-raised);
 }

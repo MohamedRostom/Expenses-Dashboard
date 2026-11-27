@@ -71,6 +71,41 @@ describe('session store (C8: offline cold start)', () => {
     await expect(session.load()).rejects.toBeInstanceOf(TypeError);
   });
 
+  it('carries the free colours through the cache, null included', async () => {
+    const coloured: User = {
+      ...user,
+      accentCustom: '#e8c11a',
+      groundTint: '#2244aa',
+      navColour: null,
+    };
+    const { apiFetch } = await import('../api/client.js');
+    vi.mocked(apiFetch).mockResolvedValueOnce({ user: coloured });
+    await useSessionStore().load();
+    expect(JSON.parse(localStorage.getItem(CACHE_KEY)!)).toMatchObject({
+      accentCustom: '#e8c11a',
+      groundTint: '#2244aa',
+      navColour: null,
+    });
+
+    setActivePinia(createPinia());
+    vi.mocked(apiFetch).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+    const offline = useSessionStore();
+    await offline.load();
+    expect(offline.user).toEqual(coloured);
+  });
+
+  it('an older cache without the free colours still loads, with the fields absent', async () => {
+    localStorage.setItem(CACHE_KEY, JSON.stringify(user));
+    const { apiFetch } = await import('../api/client.js');
+    vi.mocked(apiFetch).mockRejectedValue(new TypeError('Failed to fetch'));
+    const session = useSessionStore();
+    await session.load();
+    expect(session.user?.email).toBe('a@b.com');
+    expect(session.user?.accentCustom).toBeUndefined();
+    expect(session.user?.groundTint).toBeUndefined();
+    expect(session.user?.navColour).toBeUndefined();
+  });
+
   it('a 401 clears the user and the cache, not falls back to it', async () => {
     localStorage.setItem(CACHE_KEY, JSON.stringify(user));
     const { apiFetch } = await import('../api/client.js');

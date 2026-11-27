@@ -228,8 +228,6 @@ onMounted(loadProfiles);
 
 <template>
   <main class="desk-import-view">
-    <h1>Import expenses</h1>
-
     <PanelFrame v-if="step === 1" heading="1. Choose a CSV file">
       <div class="desk-import-body">
         <label class="desk-import-picker">
@@ -385,13 +383,6 @@ onMounted(loadProfiles);
   flex-direction: column;
   gap: var(--space-4);
 }
-.desk-import-view h1 {
-  margin: 0;
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
-}
 .desk-import-body {
   display: flex;
   flex-direction: column;
@@ -431,7 +422,7 @@ onMounted(loadProfiles);
   min-block-size: var(--target-min);
   padding: var(--space-2) var(--space-4);
   border: 1px solid var(--color-fg);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   font-size: var(--text-sm);
   line-height: var(--leading-sm);
   font-weight: 600;
@@ -482,6 +473,7 @@ onMounted(loadProfiles);
   min-inline-size: var(--target-min);
 }
 .desk-import-fix {
+  border-radius: var(--radius-field);
   inline-size: 100%;
   min-inline-size: 0;
   font-family: var(--font-mono);

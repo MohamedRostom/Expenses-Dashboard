@@ -34,16 +34,19 @@ async function signedInWithFlag(page: Page, tag: string, on = true): Promise<str
   const email = uniqueEmail(tag);
   await signUpAndVerify(page, email, PASSWORD);
   if (on) setUserFlag(email, 'on');
-  await page.goto('/settings');
+  await page.goto('/settings#sg-look');
   await page.waitForLoadState('networkidle');
   return email;
 }
 
 const accentOf = (page: Page) => page.evaluate(() => document.documentElement.dataset['accent']);
-const group = (page: Page) => page.getByRole('radiogroup', { name: 'Accent colour' });
+const group = (page: Page) =>
+  page.getByRole('radiogroup', { name: 'Accent colour presets', exact: true });
+// Settings is tabbed, so "Change email" sits in a hidden panel here: includeHidden.
 const bg = (page: Page, name: string) =>
   page
-    .getByRole('button', { name, exact: true })
+    .getByRole('button', { name, includeHidden: true })
+    .first()
     .evaluate((el) => getComputedStyle(el).backgroundColor);
 
 test('with the flag off the accent group is absent and data-accent is not set', async ({
@@ -144,7 +147,7 @@ test('axe is clean on / and /settings for every preset in light and dark', async
     expect(res.ok()).toBe(true);
     for (const scheme of ['light', 'dark'] as const) {
       await page.emulateMedia({ colorScheme: scheme });
-      for (const path of ['/', '/settings']) {
+      for (const path of ['/', '/settings', '/settings#sg-look']) {
         await page.goto(path);
         await page.waitForLoadState('networkidle');
         if (preset.id !== 'signal-green') expect(await accentOf(page)).toBe(preset.id);
@@ -173,7 +176,7 @@ for (const vp of [360, 1280]) {
           json: { flags: { ...body.flags, 'appearance.accent': true } },
         });
       });
-      await page.goto('/settings');
+      await page.goto('/settings#sg-look');
       await page.waitForLoadState('networkidle');
       const g = group(page);
       await g.scrollIntoViewIfNeeded();

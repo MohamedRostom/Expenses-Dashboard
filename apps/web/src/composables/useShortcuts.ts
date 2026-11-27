@@ -4,7 +4,16 @@ export interface ShortcutHandlers {
   onNew?: () => void;
   onPrevMonth?: () => void;
   onNextMonth?: () => void;
+  onHelp?: () => void;
 }
+
+/** What the help dialog lists; keep in step with matchShortcut. */
+export const SHORTCUTS = [
+  { key: 'n', label: 'New expense' },
+  { key: '[', label: 'Previous month' },
+  { key: ']', label: 'Next month' },
+  { key: '?', label: 'Show shortcuts' },
+] as const;
 
 /** True when the event's key matches a registered shortcut and no handler should
  * run because the user is typing into a field. Pure so it's cheap to unit test. */
@@ -24,10 +33,11 @@ export function matchShortcut(key: string): keyof ShortcutHandlers | null {
   if (key === 'n') return 'onNew';
   if (key === '[') return 'onPrevMonth';
   if (key === ']') return 'onNextMonth';
+  if (key === '?') return 'onHelp';
   return null;
 }
 
-/** Registers window-level single-key shortcuts (n, [, ]) for MonthView, ignoring
+/** Registers window-level single-key shortcuts (n, [, ], ?) for MonthView, ignoring
  * keystrokes while an input/textarea/select is focused. */
 export function useShortcuts(handlers: ShortcutHandlers): void {
   function onKeydown(e: KeyboardEvent) {

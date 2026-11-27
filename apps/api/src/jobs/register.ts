@@ -43,7 +43,10 @@ export function registerAllJobs(deps: {
       deps.db,
     ),
   );
-  registerJob('rates.warm', ratesWarmJob(deps.db, deps.ratesProvider));
+  registerJob(
+    'rates.warm',
+    ratesWarmJob(deps.db, deps.ratesProvider, { now: () => new Date() }, deps.enqueue),
+  );
   registerJob(
     BACKFILL_JOB,
     widgetsRatesBackfillJob(deps.db, deps.ratesProvider, { now: () => new Date() }, logger),

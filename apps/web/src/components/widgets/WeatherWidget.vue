@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { TemperatureUnitT, WidgetT } from '@desk/contracts';
 
 type Figures = NonNullable<Extract<WidgetT, { kind: 'weather' }>['figures']>;
@@ -9,9 +8,6 @@ const props = defineProps<{ figures: Figures; unit: TemperatureUnitT }>();
 const show = (c: number) => Math.round(props.unit === 'F' ? (c * 9) / 5 + 32 : c);
 const day = (iso: string) =>
   new Date(`${iso}T12:00:00Z`).toLocaleDateString([], { weekday: 'short', timeZone: 'UTC' });
-const asOf = computed(() =>
-  new Date(props.figures.observedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-);
 
 // Names mirror WEATHER_ICONS in @desk/connectors/open-meteo/wmo (not a web dependency).
 const ICONS: Record<string, string> = {
@@ -29,14 +25,13 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
 
 <template>
   <div class="desk-weather">
-    <p class="desk-weather-place">{{ figures.place }}</p>
     <div class="desk-weather-now">
       <svg
         class="desk-weather-icon"
         :data-icon="figures.icon"
         viewBox="0 0 24 24"
-        width="32"
-        height="32"
+        width="36"
+        height="36"
         fill="none"
         stroke="currentColor"
         stroke-width="1.6"
@@ -48,19 +43,22 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
         <path :d="path(figures.icon)" />
       </svg>
       <strong class="desk-weather-temp">{{ show(figures.temperatureC) }}°{{ unit }}</strong>
+      <div class="desk-weather-side">
+        <p class="desk-weather-condition">{{ figures.condition }}</p>
+        <p class="desk-weather-range">
+          H <span class="desk-weather-num">{{ show(figures.todayMaxC) }}°</span> · L
+          <span class="desk-weather-num">{{ show(figures.todayMinC) }}°</span>
+        </p>
+      </div>
     </div>
-    <p class="desk-weather-condition">{{ figures.condition }}</p>
-    <p class="desk-weather-range">
-      H {{ show(figures.todayMaxC) }}° · L {{ show(figures.todayMinC) }}°
-    </p>
-    <ul class="desk-weather-outlook">
+    <ul class="desk-weather-outlook" data-layout="row">
       <li v-for="d in figures.outlook" :key="d.date" data-testid="outlook-day">
-        <span>{{ day(d.date) }}</span>
+        <span class="desk-weather-day">{{ day(d.date) }}</span>
         <svg
           :data-icon="d.icon"
           viewBox="0 0 24 24"
-          width="18"
-          height="18"
+          width="20"
+          height="20"
           fill="none"
           stroke="currentColor"
           stroke-width="1.6"
@@ -74,7 +72,6 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
         <span class="desk-weather-num">{{ show(d.maxC) }}° / {{ show(d.minC) }}°</span>
       </li>
     </ul>
-    <p class="desk-weather-meta">as of {{ asOf }} · {{ figures.attribution }}</p>
   </div>
 </template>
 
@@ -95,7 +92,6 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
   gap: var(--space-2);
 }
 .desk-weather-temp,
-.desk-weather-range,
 .desk-weather-num {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
@@ -109,16 +105,23 @@ const path = (icon: string) => ICONS[icon] ?? ICONS.cloud;
   list-style: none;
   margin: var(--space-1) 0 0;
   padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
 }
 .desk-weather-outlook li {
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
 }
-.desk-weather-meta {
+.desk-weather-side {
+  display: flex;
+  flex-direction: column;
+  margin-inline-start: var(--space-2);
+  color: var(--color-fg-muted);
+}
+.desk-weather-day {
   font-size: var(--text-xs);
   line-height: var(--leading-xs);
   color: var(--color-fg-muted);

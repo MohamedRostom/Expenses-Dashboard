@@ -9,6 +9,7 @@ import {
   ResetPasswordRequest,
   type UserResponseT,
   type AccentId,
+  type FontId,
   type MotionPresetId,
 } from '@desk/contracts';
 import type { AppDeps, AppVariables } from '../app.js';
@@ -32,6 +33,10 @@ function toUserResponse(user: UserRow): UserResponseT {
     motionColour: user.motionColour,
     panelsTranslucent: user.panelsTranslucent,
     motionPaused: user.motionPaused,
+    accentCustom: user.accentCustom,
+    groundTint: user.groundTint,
+    navColour: user.navColour,
+    font: user.font as FontId,
     timeZone: user.timeZone,
     onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null,
     emailVerified: user.emailVerifiedAt !== null,

@@ -36,6 +36,14 @@ describe('Button', () => {
     expect(b.classList.contains('ghost')).toBe(true);
     expect(b.classList.contains('sm')).toBe(true);
   });
+  it('disabled shows by fill as well as opacity, per variant', () => {
+    const rule = source.match(/\.desk-btn:disabled\s*\{[^}]*\}/)![0];
+    expect(rule).toContain('background');
+    expect(rule).toContain('var(--color-fg-muted)');
+    expect(source).toMatch(
+      /\.desk-btn\.secondary:disabled,\s*\.desk-btn\.ghost:disabled\s*\{[^}]*background:\s*transparent/,
+    );
+  });
   it('md size adds no extra class so the default render is unchanged', async () => {
     expect(mount({}).classList.contains('md')).toBe(false);
   });

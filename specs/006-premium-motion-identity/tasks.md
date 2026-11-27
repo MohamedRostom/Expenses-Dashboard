@@ -153,6 +153,7 @@ Rostom found the build differs from the approved board (https://claude.ai/artifa
 **Wave 1 — independent (different files):**
 
 - [x] **T030** [P] Add `/` and `/settings` with Particles and with Aurora drift (the costliest preset) to the Lighthouse run and assert they are not below the spec 004 numbers (`/` 0.69, `/settings` 0.86), accessibility ≥ 0.95, and landing ≥ 0.90 / 0.95 (SC-006, FR-021) · `lighthouserc.json`
+- [ ] **T051** [P] Profile and optimize signed-in Lighthouse performance on `/` and `/settings` to meet constitution "green" (≥ 0.90): investigate `backdrop-filter` cost, reduce panel count, optimize motion CSS, or add `will-change` hints; target ≥ 0.90 perf with Particles · `packages/ui/src/motion.css`, `packages/ui/src/tokens.css`, `apps/web/src/views/`
 - [x] **T031** [P] Run the design tools per CLAUDE.md (redesign-existing-projects audit, `npx -y impeccable@4.1.0 detect` at 360 and 1280, `impeccable-finish-reviewer`) and fix or justify every non-advisory finding · `specs/006-premium-motion-identity/design-tools.md`
 - [x] **T032** [P] CHANGELOG line, `docs/ROADMAP.md` entry, and the CLAUDE.md design-system section and current state for ADR-0007 · `CHANGELOG.md`, `docs/ROADMAP.md`, `CLAUDE.md`
 

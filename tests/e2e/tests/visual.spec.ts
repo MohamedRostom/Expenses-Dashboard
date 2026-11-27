@@ -1,8 +1,24 @@
 /// <reference lib="dom" />
 import { readdirSync } from 'node:fs';
-import { expect, test, type Page, type Route } from '@playwright/test';
+import { expect, test, type Locator, type Page, type Route } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
+
+// Baselines need a deterministic page. AuthBackdrop shuffles its scene order with Math.random while
+// appearance.motion is on (default on since migration 0014), so signed-out screens drew a random
+// scene each run. A seeded generator (mulberry32) fixes the order; it still yields distinct values,
+// so ids built from Math.random (CurrencyPicker's listbox) stay unique on a page.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    let s = 0x2f6b1d;
+    Math.random = () => {
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  });
+});
 
 // T013 / research R5, R6: one visual block per UI story, rendered by the catalogue at `/__ui`.
 //
@@ -14,6 +30,12 @@ import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 //   </section>
 // `/__ui#<Block>` must show that section; each column's inner element carries `data-theme`.
 // The catalogue makes no `/api` request. No psql() here: the visual project runs in a container.
+
+// One frozen instant (local time) for every screen that shows a date, a month or a days-left
+// figure: the browser clock is fixed to it (openScreen) and seeds/mocks are built from it, so the
+// baselines are the same on any day. 2026-11-16 09:00: "a day for 15 days", "November 2026".
+const FIXED_NOW = new Date(2026, 10, 16, 9, 0, 0);
+const FIXED_MONTH = '2026-11';
 
 const stories = ['components', 'charts'].flatMap((d) =>
   readdirSync(new URL(`../../../packages/ui/src/${d}/`, import.meta.url))
@@ -49,7 +71,7 @@ for (const block of stories) {
   test(`@visual ${block} axe in both themes`, async ({ page }) => {
     await page.goto(`/__ui#${block}`);
     await expect(page.locator(`section#${block}`)).toBeVisible();
-    // Scoped to this block's columns, so app chrome on the page (e.g. the feedback widget) and other
+    // Scoped to this block's columns, so app chrome on the page (e.g. the sidebar's Feedback button) and other
     // blocks never fail this block's check.
     for (const theme of ['light', 'dark'] as const) {
       await axeCheck(page, {
@@ -321,7 +343,8 @@ const EDGE_CATEGORY = 'Annual professional membership and training fees'; // 48 
 // T033 helpers: open the add sheet with `n`; fail the save; fill the form and save.
 const openSheet = async (page: Page) => {
   // The 'n' shortcut exists only once MonthView has mounted (its route chunk loads lazily).
-  await expect(page.getByRole('button', { name: 'Add expense' }).first()).toBeVisible();
+  // The top-bar Add button is hidden below 1024, so wait for the month board instead.
+  await expect(page.locator('main [data-tile]').first()).toBeVisible();
   await page.keyboard.press('n');
   await expect(page.getByRole('dialog', { name: 'Add expense' })).toBeVisible();
 };
@@ -356,7 +379,7 @@ const seedCategory = async (page: Page, ctx: SeedCtx) => {
 // T037: a fixed /panels/today payload (a Google and a Microsoft account), built from the local
 // clock so "Today" and "Tomorrow" headings and the message times hold on any day.
 const at = (dayOffset: number, h: number, m: number) => {
-  const d = new Date();
+  const d = new Date(FIXED_NOW);
   d.setDate(d.getDate() + dayOffset);
   d.setHours(h, m, 0, 0);
   return d;
@@ -379,7 +402,7 @@ const mockToday = (page: Page) =>
       colour,
       capabilities: ['calendar', 'mail'],
       status: 'connected',
-      lastRefreshAt: new Date().toISOString(),
+      lastRefreshAt: FIXED_NOW.toISOString(),
       lastError: null,
       stale: false,
       purged: false,
@@ -424,7 +447,7 @@ const mockToday = (page: Page) =>
     return route.fulfill({
       contentType: 'application/json',
       body: JSON.stringify({
-        generatedAt: new Date().toISOString(),
+        generatedAt: FIXED_NOW.toISOString(),
         accounts: [
           account('a1', 'google', 'mo@example.test', 2, 'teal'),
           account('a2', 'microsoft', 'work@example.test', 0, 'blue'),
@@ -469,7 +492,7 @@ const mockToday = (page: Page) =>
 // baselines); the old year.spec.ts snapshots moved into the 'year' entry.
 const json = (body: unknown) => ({ contentType: 'application/json', body: JSON.stringify(body) });
 const mockYear = async (page: Page) => {
-  const year = new Date().getFullYear();
+  const year = FIXED_NOW.getFullYear();
   const spent = [42_000, 51_500, 38_250, 47_900, 120_000, 44_100, 0, 0, 0, 0, 0, 0];
   await page.route('**/summary/year*', (route) =>
     route.fulfill(
@@ -625,12 +648,14 @@ const mockWidgets = async (page: Page) => {
 
 export const SCREENS: Screen[] = [
   {
-    // T031: the shared header and the open Feedback panel, on the signed-in month view.
+    // T031: the shared header and the open Feedback panel. The trigger is a sidebar-footer button
+    // from 1024 up and a Settings row below it, so the phone viewport opens it from /settings.
     name: 'shell',
     route: '/',
     signedIn: true,
-    panels: ['header.desk-header', '.feedback-form'],
+    panels: ['header.desk-topbar', '.feedback-form'],
     afterLoad: async (page) => {
+      if ((page.viewportSize()?.width ?? 0) < 1024) await page.goto('/settings');
       await page.getByRole('button', { name: 'Feedback' }).click();
       await expect(page.getByRole('button', { name: 'Close feedback' })).toBeVisible();
     },
@@ -649,7 +674,7 @@ export const SCREENS: Screen[] = [
         route.fulfill({
           contentType: 'application/json',
           body: JSON.stringify({
-            month: new Date().toISOString().slice(0, 7),
+            month: FIXED_MONTH,
             currency: 'USD',
             spentToDate: 33_500,
             committedFixed: 0,
@@ -660,6 +685,8 @@ export const SCREENS: Screen[] = [
       ),
     states: ['loading', 'empty', 'error'],
     force: {
+      // Only the month list fails (its response carries the summary), so the panel's own error shows.
+      error: { setup: (page) => failGet(page, '**/expenses?month=*') },
       empty: {
         setup: async (page) => {
           await page.route('**/expenses?month=*', (route) =>
@@ -668,7 +695,7 @@ export const SCREENS: Screen[] = [
               body: JSON.stringify({
                 expenses: [],
                 summary: {
-                  month: new Date().toISOString().slice(0, 7),
+                  month: FIXED_MONTH,
                   currency: 'GBP',
                   spent: 0,
                   budgeted: 0,
@@ -684,7 +711,7 @@ export const SCREENS: Screen[] = [
             route.fulfill({
               contentType: 'application/json',
               body: JSON.stringify({
-                month: new Date().toISOString().slice(0, 7),
+                month: FIXED_MONTH,
                 currency: 'GBP',
                 spentToDate: 0,
                 committedFixed: 0,
@@ -747,6 +774,7 @@ export const SCREENS: Screen[] = [
     seed: seedCategory,
     states: ['loading', 'empty', 'error'],
     force: {
+      error: { setup: (page) => failGet(page, '**/categories') },
       empty: {
         setup: (page) =>
           page.route('**/categories', (route) =>
@@ -777,6 +805,7 @@ export const SCREENS: Screen[] = [
     signedIn: true,
     seed: seedCategory,
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/summary/category/*') } },
   },
   {
     // T035: settings. Section index + flap sections; one <main>, content inset by the gutter.
@@ -795,7 +824,7 @@ export const SCREENS: Screen[] = [
               {
                 id: 'visual-session-1',
                 current: true,
-                lastSeenAt: new Date(new Date().getFullYear(), 2, 14, 9, 30).toISOString(),
+                lastSeenAt: new Date(FIXED_NOW.getFullYear(), 2, 14, 9, 30).toISOString(),
                 userAgent:
                   'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36',
               },
@@ -804,6 +833,7 @@ export const SCREENS: Screen[] = [
         ),
       ),
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/me/sessions') } },
   },
   {
     name: 'login',
@@ -862,6 +892,7 @@ export const SCREENS: Screen[] = [
     mock: mockToday,
     states: ['loading', 'empty', 'error', 'offline'],
     force: {
+      error: { setup: (page) => failGet(page, '**/panels/today') },
       empty: {
         setup: (page) =>
           page.route('**/panels/today', (route) =>
@@ -872,7 +903,7 @@ export const SCREENS: Screen[] = [
                     days: [],
                     messages: [],
                     accounts: [],
-                    generatedAt: new Date().toISOString(),
+                    generatedAt: FIXED_NOW.toISOString(),
                   }),
                 })
               : route.fallback(),
@@ -889,13 +920,17 @@ export const SCREENS: Screen[] = [
     mock: mockYear,
     panels: ['section[role="region"]:has(.desk-year-bars)', '[data-testid="month-compare"]'],
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/summary/year*') } },
   },
   {
     // T040: the CSV import, step one (the file chooser). The later steps need an uploaded file.
     name: 'import',
     route: '/import',
     signedIn: true,
-    states: ['loading'],
+    // The step-one chooser has no data call of its own, so its error state is the boot failure: every GET
+    // fails, /me with it, and the app shows BootError instead of the shell. The one baseline of that state.
+    states: ['loading', 'error'],
+    force: { error: { setup: (page) => failFetches(page) } },
   },
   {
     // T040: the bin with one deleted expense.
@@ -905,6 +940,7 @@ export const SCREENS: Screen[] = [
     seed: seedBin,
     states: ['loading', 'empty', 'error'],
     force: {
+      error: { setup: (page) => failGet(page, '**/expenses?*includeDeleted*') },
       empty: {
         setup: (page) =>
           page.route('**/expenses?*', (route) => route.fulfill(json({ expenses: [] }))),
@@ -920,6 +956,7 @@ export const SCREENS: Screen[] = [
     mock: mockWidgets,
     panels: ['[data-testid="widget-strip"]'],
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/widgets') } },
   },
   {
     // T042: the same strip on Today.
@@ -932,6 +969,21 @@ export const SCREENS: Screen[] = [
       await mockToday(page);
     },
     panels: ['[data-testid="widget-strip"]'],
+  },
+  {
+    // Review 2026-11-26: the currency tile with its frame expanded (on phones the frame is one line
+    // until tapped open), so the tile layout is checked at 360 as well as 1280.
+    name: 'widgets-currency-expanded',
+    route: '/',
+    signedIn: true,
+    flags: 'widgets',
+    mock: mockWidgets,
+    panels: ['[data-widget-id="w1"]'],
+    afterLoad: async (page) => {
+      const toggle = page.locator('[data-widget-id="w1"]').getByTestId('widget-toggle');
+      if (await toggle.isVisible()) await toggle.click();
+      await expect(page.locator('[data-widget-id="w1"] .desk-currency-row')).toBeVisible();
+    },
   },
   {
     // T042: the add-widget sheet (Dialog) open over the strip.
@@ -1057,6 +1109,7 @@ export const SCREENS: Screen[] = [
     route: '/settings/capture',
     signedIn: true,
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/capture/tokens') } },
   },
   {
     name: 'connectors',
@@ -1069,6 +1122,7 @@ export const SCREENS: Screen[] = [
     route: '/settings/connections',
     signedIn: true,
     states: ['loading', 'error'],
+    force: { error: { setup: (page) => failGet(page, '**/connections') } },
   },
 ];
 
@@ -1103,7 +1157,7 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
         user: { defaultCurrency: string };
       };
       const currency = me.user.defaultCurrency;
-      const month = new Date().toISOString().slice(0, 7);
+      const month = FIXED_MONTH;
       const post = (description: string, minor: number, day: string) =>
         page.request.post('/expenses', {
           headers,
@@ -1136,6 +1190,28 @@ async function prepare(page: Page, screen: Screen): Promise<SeedCtx> {
           kind: 'variable',
         },
       });
+      // The newest row (the list is newest first) is a foreign one with a pinned rate, so the
+      // converted-row treatment (tint, second line) has a baseline. Create takes no rate override,
+      // so the rate is set by a patch.
+      const foreign = currency === 'EUR' ? 'GBP' : 'EUR';
+      const eur = await page.request.post('/expenses', {
+        headers,
+        data: {
+          description: 'Hotel abroad',
+          amount: { minor: 12_000, currency: foreign },
+          date: `${month}-12`,
+          categoryId,
+          paidWith: 'card',
+          kind: 'variable',
+        },
+      });
+      expect(eur.ok()).toBe(true);
+      const eurId = ((await eur.json()) as { expense: { id: string } }).expense.id;
+      const rated = await page.request.patch(`/expenses/${eurId}`, {
+        headers,
+        data: { rateOverride: { rate: '0.85' } },
+      });
+      expect(rated.ok()).toBe(true);
     }
     await screen.seed?.(page, ctx);
   }
@@ -1150,8 +1226,8 @@ const holdFetches = (page: Page) =>
   page.route('**/*', (route) =>
     route.request().resourceType() === 'fetch' ? new Promise<void>(() => {}) : route.fallback(),
   );
-const failFetches = (page: Page) =>
-  page.route('**/*', (route) =>
+const failGet = (page: Page, glob: string) =>
+  page.route(glob, (route) =>
     route.request().resourceType() === 'fetch' && route.request().method() === 'GET'
       ? route.fulfill({
           status: 500,
@@ -1160,13 +1236,21 @@ const failFetches = (page: Page) =>
         })
       : route.fallback(),
   );
+// Fallback for screens without their own setup: every GET fails, so /me does too and the app shows
+// its boot error (BootError) instead of the screen.
+const failFetches = (page: Page) => failGet(page, '**/*');
 
 // Ready = the app has mounted something, no skeleton is showing and the DOM has been quiet for 500 ms
 // (data arriving re-renders it). networkidle is not used: it also counts sockets, fonts and the
 // like, and timed out on bin/empty; requests answered through the service worker are invisible to
 // request events, so those cannot be counted either.
-async function ready(page: Page) {
+async function ready(page: Page, routed = true) {
   await expect(page.locator('#app > *').first()).toBeVisible();
+  // The shell mounts before the routed screen: wait for the screen's own content inside <main>, or
+  // a capture can show only the backdrop and the shell. routed=false is for a boot failure (every
+  // fetch failed, so /me did too): there is no routed screen, the app shows BootError instead, and
+  // openScreen then waits for the error state itself rather than snapshotting a blank page.
+  if (routed) await expect(page.locator('main > *').first()).toBeVisible({ timeout: 15_000 });
   await page.waitForFunction(
     () =>
       new Promise<boolean>((resolve) => {
@@ -1187,14 +1271,30 @@ async function ready(page: Page) {
   );
 }
 
+/** Hides the fixed chrome for the rest of the test; the page is not reused afterwards. */
+const hideChrome = (panel: Locator) =>
+  panel.evaluate((el) => {
+    for (const c of document.querySelectorAll<HTMLElement>(
+      '[data-testid="skip-link"], [data-testid="top-bar"], [data-testid="bottom-bar"]',
+    ))
+      if (!c.contains(el) && !el.contains(c)) c.style.visibility = 'hidden';
+  });
+
 async function openScreen(page: Page, screen: Screen, ctx: SeedCtx, state: ScreenState) {
+  // After prepare() (sign-up needs the real clock for its links) and before the first screen load.
+  // install, not setFixedTime: with Date alone frozen the widget menu's Settings dialog never opens.
+  await page.clock.install({ time: FIXED_NOW });
   await screen.mock?.(page);
   if (state === 'loading') await holdFetches(page);
   else if (state === 'error') await (screen.force?.error?.setup ?? failFetches)(page);
   else if (state === 'empty') await screen.force?.empty?.setup?.(page);
   await page.goto(routeOf(screen, ctx));
   if (state !== 'loading') {
-    await ready(page);
+    await ready(page, state !== 'error' || !!screen.force?.error?.setup);
+    // ErrorState drops role="alert" after its first render, so match its class as well as the role.
+    // Screens whose error only appears after an `after` hook (a failed save) are asserted there.
+    if (state === 'error' && !screen.force?.error?.after)
+      await expect(page.locator('.desk-error-state, [role="alert"]').first()).toBeVisible();
     if (state !== 'default') await screen.force?.[state]?.after?.(page);
   }
   if (state === 'default') await screen.afterLoad?.(page);
@@ -1248,6 +1348,19 @@ async function motionFailures(page: Page): Promise<string[]> {
     .map(([tag, t, a]) => `${tag} transition ${t} animation ${a}`);
 }
 
+// The month baselines must not move with the real date: the browser clock is frozen (openScreen)
+// and the expenses are seeded into the frozen month, so the greeting, the days-left note and the
+// month label read the same whenever the suite runs.
+test('@visual screen month reads the frozen date, not the real one', async ({ page }) => {
+  const screen = SCREENS.find((s) => s.name === 'month')!;
+  await page.setViewportSize({ width: 1280, height: 800 });
+  const ctx = await prepare(page, screen);
+  await openScreen(page, screen, ctx, 'default');
+  await expect(page.getByText('Good morning')).toBeVisible();
+  await expect(page.getByText('November 2026')).toBeVisible();
+  await expect(page.getByText(/a day for 15 days/)).toBeVisible();
+});
+
 // T032 edge and FR-011 assertions on the real month view (copied from the mock-up tests above).
 for (const vp of viewports) {
   test(`@visual screen month edge fixture and primary figure ${vp.width}`, async ({ page }) => {
@@ -1281,11 +1394,20 @@ for (const vp of viewports) {
       expect(box.y + box.height).toBeLessThanOrEqual(tileBox.y + tileBox.height + 0.5);
     }
 
+    // ADR-0008: the month view shows the 8 most recent entries behind a "View all N entries" toggle.
+    const entryAmounts = page.locator('[data-testid="entry-amount"]');
+    await expect(entryAmounts).toHaveCount(8);
+    const viewAll = page.getByRole('button', { name: /^View all \d+ entries$/ });
+    await expect(viewAll).toBeVisible();
+    const total = Number(/\d+/.exec((await viewAll.textContent())!)![0]);
+    expect(total).toBeGreaterThanOrEqual(30);
+    await viewAll.click();
+
     // 30-entry day: amounts share one right edge.
-    const rights = await page
-      .locator('[data-testid="entry-amount"]')
-      .evaluateAll((els) => els.map((e) => e.getBoundingClientRect().right));
-    expect(rights.length).toBeGreaterThanOrEqual(30);
+    await expect.poll(() => entryAmounts.count()).toBeGreaterThanOrEqual(30);
+    const rights = await entryAmounts.evaluateAll((els) =>
+      els.map((e) => e.getBoundingClientRect().right),
+    );
     expect(Math.max(...rights) - Math.min(...rights)).toBeLessThanOrEqual(1);
 
     // No sideways scroll (the 13px overflow at 360).
@@ -1320,19 +1442,33 @@ for (const vp of viewports) {
   });
 }
 
-// Finish-review: at 360 the first viewport holds the departure tile, the smaller tiles and the head
-// of the first board (Categories since spec 006 T044; the widget strip sits after the tiles and is
-// empty with no widgets), and the add sheet's submit button is inside the viewport without scrolling.
-test('@visual screen month categories board starts inside the first viewport 360', async ({
+// ADR-0008 phone order: greeting, hero, stat tiles, entries, chart, categories.
+test('@visual screen month hero starts in the first viewport, categories follow entries 360', async ({
   page,
 }) => {
   const screen = SCREENS.find((s) => s.name === 'month')!;
   await page.setViewportSize({ width: 360, height: 800 });
   const ctx = await prepare(page, screen);
   await openScreen(page, screen, ctx, 'default');
-  const box = (await page.locator('[data-panel="categories"]').boundingBox())!;
-  expect(box.y, 'categories panel top').toBeLessThan(800);
+  const hero = page
+    .locator('[data-tile]')
+    .filter({ has: page.locator('[data-tile-primary="figure"]') });
+  expect((await hero.boundingBox())!.y, 'hero top').toBeLessThan(800);
+  const categories = page.locator('[data-panel="categories"]');
+  await expect(categories).toHaveCount(1);
+  const entriesFirst = await page.evaluate(
+    () =>
+      !!(
+        document
+          .querySelector('[data-panel="entries"]')!
+          .compareDocumentPosition(document.querySelector('[data-panel="categories"]')!) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+      ),
+  );
+  expect(entriesFirst, 'categories after entries').toBe(true);
 });
+
+// The add sheet's submit button is inside the viewport without scrolling.
 
 test('@visual screen add-sheet submit is visible without scrolling 360', async ({ page }) => {
   const screen = SCREENS.find((s) => s.name === 'add-sheet')!;
@@ -1353,19 +1489,25 @@ for (const vp of viewports) {
     const ctx = await prepare(page, screen);
     await openScreen(page, screen, ctx, 'default');
     await expect(page.locator('main')).toHaveCount(1);
-    await expect(page.locator('main h1')).toBeVisible();
-    const left = (sel: string) =>
-      page.evaluate((s) => document.querySelector(s)!.getBoundingClientRect().left, sel);
-    const settingsLeft = await left('main h1');
+    // The h1 now lives in the top bar; the gutter shared with the month view is main's inner edge.
+    await expect(page.locator('header.desk-topbar h1')).toBeVisible();
+    const inner = (sel: string) =>
+      page.evaluate((s) => {
+        const m = document.querySelector(s)!;
+        return m.getBoundingClientRect().left + parseFloat(getComputedStyle(m).paddingLeft);
+      }, sel);
+    const settingsInner = await inner('main');
+    const settingsLeft = await page.evaluate(
+      () => document.querySelector('header.desk-topbar h1')!.getBoundingClientRect().left,
+    );
     await page.goto('/');
     await expect(page.locator('main')).toBeVisible();
-    const homeLeft = await left('main');
-    const homeInner = await page.evaluate(() => {
-      const m = document.querySelector('main')!;
-      return m.getBoundingClientRect().left + parseFloat(getComputedStyle(m).paddingLeft);
-    });
+    const homeLeft = await page.evaluate(
+      () => document.querySelector('main')!.getBoundingClientRect().left,
+    );
+    const homeInner = await inner('main');
     expect(settingsLeft).toBeGreaterThanOrEqual(16);
-    expect(Math.abs(settingsLeft - homeInner)).toBeLessThanOrEqual(1);
+    expect(Math.abs(settingsInner - homeInner)).toBeLessThanOrEqual(1);
     expect(homeLeft).toBeGreaterThanOrEqual(0);
   });
 }
@@ -1400,8 +1542,14 @@ for (const screen of SCREENS) {
         let i = 0;
         for (const selector of screen.panels ?? []) {
           i += 1;
+          // Settings is tabbed: `#st-SECTION` in the hash selects the tab that holds the section.
+          if (selector.startsWith('#st-'))
+            await page.evaluate((h) => (location.hash = h), selector);
           const panel = page.locator(selector).first();
           await panel.scrollIntoViewIfNeeded();
+          // A tall panel is captured in scrolled slices: hide the fixed chrome (skip link, sticky top
+          // bar, bottom bar) so it does not print over the slices. Not the panel itself when it is one.
+          await hideChrome(panel);
           await expect(panel).toHaveScreenshot(
             `screen-${screen.name}-panel${i}-${theme}-${vp.width}.png`,
           );

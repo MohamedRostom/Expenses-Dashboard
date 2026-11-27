@@ -2,7 +2,7 @@
 // rate, progress written per batch (research.md R7). The batching/progress/idempotency SHAPE is
 // covered by currency-change.test.ts against an injected fake RowSource; categoriesRowSource and
 // expensesRowSource below are the real Drizzle-backed sources.
-import { and, eq, isNotNull, isNull, ne } from 'drizzle-orm';
+import { and, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { categories, expenses } from '@desk/db';
 import { convert } from '@desk/core';
 import type { JobHandler } from './index.js';
@@ -30,7 +30,11 @@ export interface RowSource {
     limit: number,
     fromCurrency: string,
   ): Promise<ConvertibleRow[]>;
-  applyConversion(row: ConvertibleRow, rate: string, toCurrency: string): Promise<void>;
+  /** One write for a whole batch: every item's row converted at its own rate. */
+  applyConversions(
+    items: { row: ConvertibleRow; rate: string }[],
+    toCurrency: string,
+  ): Promise<void>;
 }
 
 export type CurrencyChangePayload = {
@@ -52,17 +56,25 @@ export async function runCurrencyChange(
   const total = await source.countTotal(payload.userId);
   let done = 0;
   await ctx.updateProgress(done, total);
+  // Date and target are fixed for the run, so one lookup per currency serves every row.
+  const rates = new Map<string, ReturnType<RateLookup>>();
 
   for (let offset = 0; offset < total; offset += BATCH_SIZE) {
     const rows = await source.fetchBatch(payload.userId, offset, BATCH_SIZE, payload.fromCurrency);
+    const items: { row: ConvertibleRow; rate: string }[] = [];
     for (const row of rows) {
-      const outcome = await getRate(payload.changeDate, row.currency, payload.toCurrency);
+      let lookup = rates.get(row.currency);
+      if (!lookup)
+        rates.set(
+          row.currency,
+          (lookup = getRate(payload.changeDate, row.currency, payload.toCurrency)),
+        );
+      const outcome = await lookup;
       // ponytail: unresolved rate → leave the row alone, rates.retry sweeps it later.
-      if (!('unsupported' in outcome)) {
-        await source.applyConversion(row, outcome.rate, payload.toCurrency);
-      }
+      if (!('unsupported' in outcome)) items.push({ row, rate: outcome.rate });
       done += 1;
     }
+    if (items.length > 0) await source.applyConversions(items, payload.toCurrency);
     await ctx.updateProgress(done, total);
   }
 }
@@ -75,7 +87,7 @@ export const NULL_ROW_SOURCE: RowSource = {
   async fetchBatch() {
     return [];
   },
-  async applyConversion() {
+  async applyConversions() {
     // no-op
   },
 };
@@ -107,16 +119,19 @@ export function categoriesRowSource(db: Db): RowSource {
         currency: fromCurrency,
       }));
     },
-    async applyConversion(row, rate, toCurrency) {
-      const converted = convert(
-        { minor: row.amountMinor, currency: row.currency },
-        rate,
-        toCurrency,
-      );
-      await db
-        .update(categories)
-        .set({ budgetMinor: converted.minor, updatedAt: new Date() })
-        .where(eq(categories.id, row.id));
+    async applyConversions(items, toCurrency) {
+      const values = items.map(({ row, rate }) => {
+        const { minor } = convert(
+          { minor: row.amountMinor, currency: row.currency },
+          rate,
+          toCurrency,
+        );
+        return sql`(${row.id}::uuid, ${minor}::bigint)`;
+      });
+      await db.execute(sql`
+        UPDATE categories AS t SET budget_minor = v.budget_minor, updated_at = now()
+        FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, budget_minor)
+        WHERE t.id = v.id`);
     },
   };
 }
@@ -162,21 +177,20 @@ export function expensesRowSource(db: Db): RowSource {
         currency: r.currencyOriginal,
       }));
     },
-    async applyConversion(row, rate, toCurrency) {
-      const converted = convert(
-        { minor: row.amountMinor, currency: row.currency },
-        rate,
-        toCurrency,
-      );
-      await db
-        .update(expenses)
-        .set({
-          amountDefault: converted.minor,
-          rateToDefault: rate,
-          rateSource: 'currency-change',
-          updatedAt: new Date(),
-        })
-        .where(eq(expenses.id, row.id));
+    async applyConversions(items, toCurrency) {
+      const values = items.map(({ row, rate }) => {
+        const { minor } = convert(
+          { minor: row.amountMinor, currency: row.currency },
+          rate,
+          toCurrency,
+        );
+        return sql`(${row.id}::uuid, ${minor}::bigint, ${rate}::numeric)`;
+      });
+      await db.execute(sql`
+        UPDATE expenses AS t SET amount_default = v.amount_default, rate_to_default = v.rate,
+          rate_source = 'currency-change', updated_at = now()
+        FROM (VALUES ${sql.join(values, sql`, `)}) AS v(id, amount_default, rate)
+        WHERE t.id = v.id`);
     },
   };
 }
@@ -185,7 +199,7 @@ export function expensesRowSource(db: Db): RowSource {
  * all of them as if they were a single source (C2: a currency change touches both categories and
  * expenses, not either/or). */
 export function combinedRowSource(...sources: RowSource[]): RowSource {
-  // Tags each row object (by reference) with which source produced it, so applyConversion can
+  // Tags each row object (by reference) with which source produced it, so applyConversions can
   // route to the right one — a plain try/catch-and-retry wouldn't work here since an UPDATE
   // against the wrong table's id just matches zero rows rather than throwing.
   const originOf = new WeakMap<ConvertibleRow, RowSource>();
@@ -211,10 +225,15 @@ export function combinedRowSource(...sources: RowSource[]): RowSource {
       }
       return rows;
     },
-    async applyConversion(row, rate, toCurrency) {
-      const source = originOf.get(row);
-      if (!source) throw new Error('combinedRowSource: applyConversion called on an unknown row');
-      await source.applyConversion(row, rate, toCurrency);
+    async applyConversions(items, toCurrency) {
+      const bySource = new Map<RowSource, typeof items>();
+      for (const item of items) {
+        const source = originOf.get(item.row);
+        if (!source)
+          throw new Error('combinedRowSource: applyConversions called on an unknown row');
+        bySource.set(source, [...(bySource.get(source) ?? []), item]);
+      }
+      for (const [source, group] of bySource) await source.applyConversions(group, toCurrency);
     },
   };
 }

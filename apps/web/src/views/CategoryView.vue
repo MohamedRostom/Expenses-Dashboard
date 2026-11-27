@@ -53,8 +53,6 @@ const currency = () => session.user?.defaultCurrency ?? 'GBP';
 
 <template>
   <main class="desk-category-view">
-    <h1>Category history</h1>
-
     <PanelFrame heading="Spend by month">
       <Skeleton v-if="loading" height="12rem" />
       <ErrorState v-else-if="error" :code="error ?? undefined" />
@@ -83,13 +81,6 @@ const currency = () => session.user?.defaultCurrency ?? 'GBP';
 </template>
 
 <style scoped>
-.desk-category-view h1 {
-  margin: 0;
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
-}
 .desk-category-view {
   max-width: var(--content-max);
   margin: 0 auto;

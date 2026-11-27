@@ -21,17 +21,36 @@ function build(motion: string | undefined): (page: string) => string {
 afterAll(() => dirs.forEach((d) => rmSync(d, { recursive: true, force: true })));
 
 describe('landing build', { timeout: 180_000 }, () => {
-  it('has no motion layer by default and puts the content on .surface panels', () => {
+  it('always draws the warm ground, with data-motion none and no tint by default, on .surface panels', () => {
     const read = build(undefined);
     const index = read('index.html');
-    expect(index).not.toContain('desk-motion');
-    expect(index).not.toContain('data-motion');
+    expect(index).toContain('data-testid="background-motion"');
+    expect(index).toContain('desk-motion__ground');
+    expect(index).toMatch(/<html[^>]*data-motion="none"/);
+    expect(index).not.toContain('data-motion="particles"');
+    expect(index).not.toContain('--motion-tint');
+    for (const page of ['privacy.html', 'terms.html']) {
+      expect(read(page)).toContain('desk-motion__ground');
+      expect(read(page)).toMatch(/<html[^>]*data-motion="none"/);
+    }
     for (const cls of ['hero', 'steps', 'screenshots']) {
       expect(index).toMatch(new RegExp(`<section[^>]*class="[^"]*\\b${cls}\\b[^"]*\\bsurface\\b`));
     }
     for (const page of ['privacy.html', 'terms.html']) {
       expect(read(page)).toMatch(/<main[^>]*class="[^"]*\bsurface\b/);
     }
+  });
+
+  it('shapes buttons as pills and panels/cards from ADR-0008 tokens, with no old radius scale', () => {
+    const src = (f: string) => readFileSync(join(__dirname, f), 'utf8');
+    expect(src('pages/index.vue')).toMatch(
+      /\.cta-link\s*\{[^}]*border-radius:\s*var\(--radius-pill\)/,
+    );
+    for (const f of ['pages/index.vue', 'pages/privacy.vue', 'pages/terms.vue']) {
+      expect(src(f)).not.toMatch(/--radius-(sm|md|lg)\b/);
+    }
+    // Panels get their 24px corners from .surface (surface.css), so pages must not override them.
+    expect(src('pages/index.vue')).toMatch(/class="hero surface"/);
   });
 
   it('mounts Particles in the Signal mint tints when VITE_APPEARANCE_MOTION is true', () => {

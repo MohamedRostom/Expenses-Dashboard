@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, lte, max, sql } from 'drizzle-orm';
+import { and, asc, eq, gte, inArray, lte, max, or, sql } from 'drizzle-orm';
 import { categories, expenses, fxRates, weatherReadings, type Db } from '@desk/db';
 import {
   WEATHER_ATTRIBUTION,
@@ -41,7 +41,12 @@ type FigureContext = {
   latestRateDate: () => Promise<string | null>;
   pausedUntil: () => Promise<Date | null>;
   rollups: () => ReturnType<typeof monthRollups>;
+  /** Weather readings for every place in the request, keyed by `coordKey`. */
+  readings: () => Promise<Map<string, typeof weatherReadings.$inferSelect>>;
 };
+
+const coordKey = (p: { lat: number; lon: number }) =>
+  `${roundCoord(p.lat).toFixed(2)}:${roundCoord(p.lon).toFixed(2)}`;
 
 const once = <T>(f: () => Promise<T>) => {
   let p: Promise<T> | undefined;
@@ -122,24 +127,21 @@ const currency: Builder = async (db, user, widget, ctx) => {
   }
   if (rows.every((r) => 'pending' in r)) return { state: 'error', cause: 'rate_unavailable' };
   const latest = (await ctx.latestRateDate()) ?? '';
-  const stale = rows.some((r) => 'rateDate' in r && r.rateDate < latest);
+  // Stale when a newer rate exists, or when nothing has been published for longer than a long
+  // weekend plus a holiday: then the rates job itself has stopped, and the newest rate is old too.
+  const stopped = (newest: string) =>
+    Date.parse(ctx.day) - Date.parse(newest) > RATE_STALE_AFTER_DAYS * 86_400_000;
+  const stale = rows.some((r) => 'rateDate' in r && (r.rateDate < latest || stopped(r.rateDate)));
   return { state: stale ? 'stale' : 'ready', figures: { rows }, ...(newest && { asOf: newest }) };
 };
 
 const STALE_AFTER_MS = 3600_000;
+const RATE_STALE_AFTER_DAYS = 5;
 
 /** T044/T059: the shared reading for the widget's rounded place plus its state and cause. */
-async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContext) {
+async function reading(place: WidgetPlace | undefined, ctx: FigureContext) {
   if (!place) return { fail: { state: 'error', cause: 'place_not_found' } as Built };
-  const [r] = await db
-    .select()
-    .from(weatherReadings)
-    .where(
-      and(
-        eq(weatherReadings.lat, roundCoord(place.lat).toFixed(2)),
-        eq(weatherReadings.lon, roundCoord(place.lon).toFixed(2)),
-      ),
-    );
+  const r = (await ctx.readings()).get(coordKey(place));
   const paused = await ctx.pausedUntil();
   const cause: WidgetCauseT | undefined = paused
     ? 'source_limit_reached'
@@ -160,8 +162,8 @@ async function reading(db: Db, place: WidgetPlace | undefined, ctx: FigureContex
   };
 }
 
-const weather: Builder = async (db, _user, widget, ctx) => {
-  const r = await reading(db, widget.place, ctx);
+const weather: Builder = async (_db, _user, widget, ctx) => {
+  const r = await reading(widget.place, ctx);
   if ('fail' in r) return r.fail;
   const { current, daily } = r;
   const today = daily[0]!;
@@ -190,8 +192,8 @@ const weather: Builder = async (db, _user, widget, ctx) => {
   };
 };
 
-const sunrise: Builder = async (db, user, widget, ctx) => {
-  const r = await reading(db, widget.place, ctx);
+const sunrise: Builder = async (_db, user, widget, ctx) => {
+  const r = await reading(widget.place, ctx);
   if ('fail' in r) return r.fail;
   const today = r.daily[0]!;
   const noTimes = today.sunrise === null || today.sunset === null;
@@ -323,6 +325,26 @@ export async function figuresFor(
     }),
     pausedUntil: once(() => weatherPausedUntil(db, now)),
     rollups: once(() => monthRollups(db, user, month)),
+    readings: once(async () => {
+      const cells = new Map(
+        widgets.flatMap((w) => (w.place ? [[coordKey(w.place), w.place] as const] : [])),
+      );
+      if (cells.size === 0) return new Map();
+      const rows = await db
+        .select()
+        .from(weatherReadings)
+        .where(
+          or(
+            ...[...cells.values()].map((p) =>
+              and(
+                eq(weatherReadings.lat, roundCoord(p.lat).toFixed(2)),
+                eq(weatherReadings.lon, roundCoord(p.lon).toFixed(2)),
+              ),
+            ),
+          ),
+        );
+      return new Map(rows.map((r) => [`${r.lat}:${r.lon}`, r]));
+    }),
   };
   const built = await Promise.all(
     widgets.map((w) => builders[w.kind as WidgetKindT](db, user, w, ctx)),

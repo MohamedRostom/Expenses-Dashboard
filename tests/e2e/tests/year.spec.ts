@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { axeCheck, signUpAndVerify } from '../fixtures/index.js';
+import { axeCheck, csrfHeaders, signUpAndVerify } from '../fixtures/index.js';
 
 // Not a real phrase — see tests/e2e/fixtures/index.ts's signUpAndVerify comment.
 const PASSWORD = 'xk-e2e-Tr0ub4-fixture-2026';
@@ -28,7 +28,11 @@ async function addExpense(page: Page, description: string, amount: string, categ
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill(description);
   await page.getByLabel(/^amount$/i).fill(amount);
-  if (category) await page.getByLabel(/category/i).selectOption({ label: category });
+  if (category)
+    await page
+      .getByRole('dialog')
+      .getByLabel(/category/i)
+      .selectOption({ label: category });
   await page
     .getByRole('dialog')
     .getByRole('button', { name: /^add expense$/i })
@@ -42,7 +46,7 @@ async function openYear(page: Page, tag: string): Promise<void> {
   await addExpense(page, 'Groceries run', '42');
   await expect(page.getByText('Groceries run')).toBeVisible();
   await page.goto('/year');
-  await expect(page.locator('.desk-year-view-total')).toContainText('42');
+  await expect(page.locator('[data-tile]', { hasText: 'Year total' })).toContainText('42');
 }
 
 async function openCategory(page: Page, tag: string): Promise<void> {
@@ -66,6 +70,53 @@ test('year view shows month bars and a working table fallback', async ({ page })
   await axeCheck(page);
   // Accessible table fallback (CLAUDE.md: "table view always available").
   await expect(page.getByRole('table', { name: /monthly totals/i })).toBeVisible();
+});
+
+// Below 768 the labels are hidden (the table carries the values); from 768 the compact figure above
+// a bar must fit its column.
+test('year bar value labels are hidden at 360 and 480 and not clipped from 768 up', async ({
+  page,
+}) => {
+  await signUpAndVerify(page, uniqueEmail('year-labels'), PASSWORD);
+  const me = (await (await page.request.get('/me')).json()) as {
+    user: { defaultCurrency: string };
+  };
+  const year = new Date().getFullYear();
+  for (const [month, minor] of [
+    ['01', 123_456],
+    ['02', 1_234_567],
+    ['03', 12_345_678],
+  ] as const) {
+    const res = await page.request.post('/expenses', {
+      headers: await csrfHeaders(page),
+      data: {
+        description: `Big ${month}`,
+        amount: { minor, currency: me.user.defaultCurrency },
+        date: `${year}-${month}-10`,
+        categoryId: null,
+        paidWith: 'card',
+        kind: 'variable',
+      },
+    });
+    expect(res.ok()).toBe(true);
+  }
+  await page.setViewportSize({ width: 360, height: 800 });
+  await page.goto('/year');
+  const values = page.locator('.desk-year-bars-value');
+  await expect(values).toHaveCount(3);
+  await expect(values.first()).toBeHidden();
+  await page.setViewportSize({ width: 480, height: 800 });
+  await expect(values.first()).toBeHidden();
+  for (const width of [768, 1280]) {
+    await page.setViewportSize({ width, height: 800 });
+    await expect(values.first()).toBeVisible();
+    const clipped = await values.evaluateAll((els) =>
+      els
+        .filter((e) => e.scrollWidth > e.clientWidth || e.scrollHeight > e.clientHeight)
+        .map((e) => e.textContent?.trim()),
+    );
+    expect(clipped, `labels wider than their column at ${width}`).toEqual([]);
+  }
 });
 
 // T040: the year view's @visual snapshots moved into the SCREENS table in visual.spec.ts ('year').

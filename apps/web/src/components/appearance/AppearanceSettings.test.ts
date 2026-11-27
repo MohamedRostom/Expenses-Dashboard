@@ -1,6 +1,7 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createApp, nextTick } from 'vue';
 import type { Component } from 'vue';
+import { contrastRatio, safeAccent, useToast } from '@desk/ui';
 import { beforeAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../../api/client.js', () => ({
@@ -30,7 +31,11 @@ const baseUser = {
   motionPaused: false,
 };
 
-async function setup(theme = 'light', user: Record<string, unknown> = {}) {
+async function setup(
+  theme = 'light',
+  user: Record<string, unknown> = {},
+  props: Record<string, unknown> = {},
+) {
   const { apiFetch, ApiError } = await import('../../api/client.js');
   const { useSessionStore } = await import('../../stores/session.js');
   const { default: AppearanceSettings } = await import('./AppearanceSettings.vue');
@@ -40,7 +45,9 @@ async function setup(theme = 'light', user: Record<string, unknown> = {}) {
   session.user = { ...baseUser, ...user } as typeof session.user;
   const el = document.createElement('div');
   document.body.appendChild(el);
-  newApp(AppearanceSettings, { theme }).use(pinia).mount(el);
+  newApp(AppearanceSettings, { theme, ...props })
+    .use(pinia)
+    .mount(el);
   await nextTick();
   return { el, session, api: vi.mocked(apiFetch), ApiError };
 }
@@ -284,5 +291,251 @@ describe('AppearanceSettings save errors', () => {
     const internal = b.el.querySelector('[role="alert"]')!.textContent;
     expect(unauth).toContain('Sign in');
     expect(internal).not.toBe(unauth);
+  });
+});
+
+describe('AppearanceSettings free colours (ADR-0008)', () => {
+  const FIELDS = [
+    ['Accent colour', 'accentCustom'],
+    ['Background colour', 'groundTint'],
+    ['Selected menu item', 'navColour'],
+  ] as const;
+  const on = { colours: true };
+  const input = (el: HTMLElement, label: string) =>
+    [...el.querySelectorAll<HTMLLabelElement>('label')]
+      .find((l) => l.textContent?.includes(label))!
+      .querySelector<HTMLInputElement>('input[type="color"]')!;
+  const reset = (el: HTMLElement, label: string) =>
+    el.querySelector<HTMLButtonElement>(`button[aria-label="Reset ${label.toLowerCase()}"]`)!;
+  const change = (i: HTMLInputElement, value: string) => {
+    i.value = value;
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+    i.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+
+  it('is absent unless the colours prop (appearance.accent) is on', async () => {
+    const { el } = await setup('light', {}, {});
+    expect(el.querySelectorAll('input[type="color"][aria-label="Custom colour"]')).toHaveLength(1);
+    for (const [label] of FIELDS) {
+      expect(el.textContent).not.toContain(label);
+    }
+    expect(el.querySelectorAll('input[type="color"]')).toHaveLength(1); // only motion's custom
+  });
+
+  it('shows three labelled colour inputs, each with a Reset, at 44 px targets', async () => {
+    const { el } = await setup('light', {}, on);
+    for (const [label] of FIELDS) {
+      expect(input(el, label)).not.toBeNull();
+      expect(reset(el, label)).not.toBeNull();
+    }
+    const src = (await import('./AppearanceSettings.vue?raw')).default;
+    expect(src).toMatch(/desk-colour-row[\s\S]*min-height: var\(--target-min\)/);
+  });
+
+  it('can hide the motion controls (only appearance.accent on)', async () => {
+    const { el } = await setup('light', {}, { colours: true, motion: false });
+    expect(el.querySelector('[aria-label="Background motion"]')).toBeNull();
+    expect(el.textContent).toContain('Accent colour');
+  });
+
+  it.each(FIELDS)(
+    '%s previews on input and saves lower-case-ready hex on change',
+    async (label, key) => {
+      const { el, session, api } = await setup('light', {}, on);
+      api.mockResolvedValue({ user: { ...session.user, [key]: '#aabbcc' } } as never);
+      change(input(el, label), '#aabbcc');
+      expect(session.user?.[key]).toBe('#aabbcc');
+      await vi.advanceTimersByTimeAsync(401);
+      expect(api).toHaveBeenCalledTimes(1);
+      expect(bodyOf(api, 0)).toEqual({ [key]: '#aabbcc' });
+    },
+  );
+
+  it.each(FIELDS)('%s: Reset sends null and previews the default', async (label, key) => {
+    const { el, session, api } = await setup('light', { [key]: '#aabbcc' }, on);
+    api.mockResolvedValue({ user: { ...session.user, [key]: null } } as never);
+    expect(reset(el, label).disabled).toBe(false);
+    reset(el, label).click();
+    expect(session.user?.[key]).toBeNull();
+    await vi.advanceTimersByTimeAsync(401);
+    expect(bodyOf(api, 0)).toEqual({ [key]: null });
+    await nextTick();
+    expect(reset(el, label).disabled).toBe(true);
+  });
+
+  it('notes when the drawn accent differs from the picked one, and not otherwise', async () => {
+    const dim = '#ffee00'; // too light to show a bar on white glass: moved toward black
+    expect(safeAccent(dim, false)).not.toBe(dim);
+    const a = await setup('light', { accentCustom: dim }, on);
+    expect(a.el.textContent).toMatch(/drawn a little darker so bars stay visible/i);
+    document.body.innerHTML = '';
+    const b = await setup('dark', { accentCustom: '#0e3d2a' }, on);
+    expect(safeAccent('#0e3d2a', true)).not.toBe('#0e3d2a');
+    expect(b.el.textContent).toMatch(/drawn a little lighter so bars stay visible/i);
+    document.body.innerHTML = '';
+    const strong = '#0e3d2a';
+    expect(contrastRatio(safeAccent(strong, false), '#ffffff')).toBeGreaterThanOrEqual(3);
+    const c = await setup('light', { accentCustom: strong }, on);
+    expect(c.el.textContent).not.toMatch(/drawn a little/i);
+    document.body.innerHTML = '';
+    const d = await setup('light', { accentCustom: null }, on);
+    expect(d.el.textContent).not.toMatch(/drawn a little/i);
+  });
+
+  describe('accent presets', () => {
+    const presetRadios = (el: HTMLElement) => [
+      ...el.querySelectorAll<HTMLInputElement>(
+        '[role="radiogroup"][aria-label="Accent colour presets"] input[type="radio"]',
+      ),
+    ];
+    const choose = (el: HTMLElement, name: string) => {
+      const i = presetRadios(el).find((r) => r.closest('label')?.textContent?.includes(name))!;
+      i.checked = true;
+      i.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    it('renders six named presets beside the custom colour, none when colours is off', async () => {
+      const { el } = await setup('light', {}, on);
+      const rs = presetRadios(el);
+      expect(rs).toHaveLength(6);
+      expect(rs.map((r) => r.closest('label')!.textContent!.trim())).toEqual([
+        'Signal Green',
+        'Concourse Blue',
+        'Platform Teal',
+        'Violet',
+        'Slate',
+        'Plum',
+      ]);
+      expect(rs.every((r) => r.closest('label')!.hasAttribute('data-accent'))).toBe(true);
+      expect(rs.every((r) => r.closest('label')!.getAttribute('data-theme') === 'light')).toBe(
+        true,
+      );
+      document.body.innerHTML = '';
+      const off = await setup('light', {}, {});
+      expect(presetRadios(off.el)).toHaveLength(0);
+    });
+
+    it('a pick sets data-accent and PATCHes /me with the accent id, and clears the custom colour', async () => {
+      const { el, session, api } = await setup('light', { accentCustom: '#aabbcc' }, on);
+      api.mockResolvedValue({
+        user: { ...session.user, accent: 'violet', accentCustom: null },
+      } as never);
+      choose(el, 'Violet');
+      expect(document.documentElement.dataset.accent).toBe('violet');
+      expect(session.user?.accentCustom).toBeNull();
+      await vi.advanceTimersByTimeAsync(401);
+      expect(api).toHaveBeenCalledTimes(1);
+      expect(bodyOf(api, 0)).toEqual({ accent: 'violet', accentCustom: null });
+      await nextTick();
+      expect(
+        presetRadios(el)
+          .find((r) => r.checked)
+          ?.closest('label')?.textContent,
+      ).toContain('Violet');
+    });
+
+    it('a custom colour leaves the preset id untouched', async () => {
+      const { el, session, api } = await setup('light', { accent: 'plum' }, on);
+      api.mockResolvedValue({ user: session.user } as never);
+      change(input(el, 'Accent colour'), '#aabbcc');
+      await vi.advanceTimersByTimeAsync(401);
+      expect(bodyOf(api, 0)).toEqual({ accentCustom: '#aabbcc' });
+      expect(session.user?.accent).toBe('plum');
+    });
+
+    it('a quick second pick wins: the first pick’s late response or failure does not revert it', async () => {
+      const { el, session, api, ApiError } = await setup('light', {}, on);
+      let first!: { resolve: (v: unknown) => void; reject: (e: unknown) => void };
+      api.mockImplementationOnce(
+        () => new Promise((resolve, reject) => (first = { resolve, reject })),
+      );
+      api.mockResolvedValueOnce({ user: { ...session.user, accent: 'signal-green' } } as never);
+      choose(el, 'Plum');
+      choose(el, 'Signal Green');
+      await vi.advanceTimersByTimeAsync(1);
+      first.resolve({ user: { ...session.user, accent: 'plum' } });
+      await vi.advanceTimersByTimeAsync(1);
+      await nextTick();
+      expect(session.user?.accent).toBe('signal-green');
+      expect(document.documentElement.dataset.accent).toBeUndefined();
+
+      // Same race, but the stale request fails: no revert to the accent before it, no toast.
+      api.mockImplementationOnce(
+        () => new Promise((resolve, reject) => (first = { resolve, reject })),
+      );
+      api.mockResolvedValueOnce({ user: { ...session.user, accent: 'violet' } } as never);
+      choose(el, 'Slate');
+      choose(el, 'Violet');
+      await vi.advanceTimersByTimeAsync(1);
+      first.reject(new ApiError('internal', 'Nope', 500));
+      await vi.advanceTimersByTimeAsync(1);
+      await nextTick();
+      expect(session.user?.accent).toBe('violet');
+      expect(document.documentElement.dataset.accent).toBe('violet');
+      expect(useToast().toasts.map((t) => t.text)).not.toContain('Nope');
+    });
+
+    it('a failed save puts the old accent back and toasts', async () => {
+      const { el, session, api, ApiError } = await setup('light', { accent: 'plum' }, on);
+      api.mockRejectedValueOnce(new ApiError('internal', 'Nope', 500));
+      choose(el, 'Slate');
+      await vi.advanceTimersByTimeAsync(401);
+      await nextTick();
+      expect(session.user?.accent).toBe('plum');
+      expect(document.documentElement.dataset.accent).toBe('plum');
+      expect(useToast().toasts.map((t) => t.text)).toContain('Nope');
+    });
+  });
+
+  it('failure keeps the preview, alerts by code and Try again resends', async () => {
+    const { el, session, api, ApiError } = await setup('light', {}, on);
+    api.mockRejectedValueOnce(new ApiError('validation_failed', 'x', 400));
+    change(input(el, 'Background colour'), '#aabbcc');
+    await vi.advanceTimersByTimeAsync(401);
+    expect(el.querySelector('[role="alert"]')!.textContent).toContain('not accepted');
+    expect(session.user?.groundTint).toBe('#aabbcc');
+    api.mockResolvedValue({ user: { ...session.user } } as never);
+    [...el.querySelectorAll('button')].find((b) => b.textContent?.trim() === 'Try again')!.click();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(bodyOf(api, 1)).toEqual({ groundTint: '#aabbcc' });
+  });
+});
+
+describe('AppearanceSettings page font', () => {
+  const fontRadios = (el: HTMLElement) => radios(el, 'Page font');
+
+  it('offers System, Serif, Rounded and Humanist', async () => {
+    const { el } = await setup('light', {}, { colours: true });
+    const labels = fontRadios(el).map((i) => i.closest('label')!);
+    expect(labels.map((l) => l.querySelector('.desk-appearance-name')?.textContent)).toEqual([
+      'System',
+      'Serif',
+      'Rounded',
+      'Humanist',
+    ]);
+  });
+
+  it('checks the saved font, system when none is saved', async () => {
+    const { el } = await setup('light', {}, { colours: true });
+    expect(fontRadios(el).find((i) => i.checked)?.value).toBe('system');
+    document.body.innerHTML = '';
+    const again = await setup('light', { font: 'serif' }, { colours: true });
+    expect(fontRadios(again.el).find((i) => i.checked)?.value).toBe('serif');
+  });
+
+  it('previews at once and saves the pick on the account', async () => {
+    const { el, session, api } = await setup('light', {}, { colours: true });
+    api.mockResolvedValue({ user: { ...baseUser, font: 'rounded' } });
+    const input = fontRadios(el).find((i) => i.value === 'rounded')!;
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    expect(session.user?.font).toBe('rounded');
+    await vi.advanceTimersByTimeAsync(401);
+    expect(bodyOf(api, 0)).toEqual({ font: 'rounded' });
+  });
+
+  it('is absent when the colours prop (appearance.accent) is off', async () => {
+    const { el } = await setup('light', {}, { colours: false });
+    expect(fontRadios(el)).toHaveLength(0);
   });
 });

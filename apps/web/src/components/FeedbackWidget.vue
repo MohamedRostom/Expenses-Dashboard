@@ -3,6 +3,7 @@
 // navigator.onLine check toPanelErrorKind/ExpenseForm.vue already use — no new detection
 // pattern); shows the rate-limit message inline on a 429.
 import { computed, onUnmounted, reactive, ref } from 'vue';
+import { useFeedback } from '../composables/useFeedback.js';
 import { useRoute } from 'vue-router';
 import { Button } from '@desk/ui';
 import { apiFetch, ApiError } from '../api/client.js';
@@ -12,7 +13,7 @@ const MAX_LENGTH = 2000;
 const route = useRoute();
 const page = computed(() => (typeof route.name === 'string' ? route.name : location.pathname));
 
-const open = ref(false);
+const { open, closeFeedback } = useFeedback();
 const message = ref('');
 const contactOk = ref(false);
 const status = reactive<{ kind: 'idle' | 'sending' | 'sent' | 'rate_limited' | 'error' }>({
@@ -26,10 +27,15 @@ function goOnline() {
 function goOffline() {
   isOnline.value = false;
 }
+function onKey(e: KeyboardEvent) {
+  if (e.key === 'Escape' && open.value) closeFeedback();
+}
 if (typeof window !== 'undefined') {
   window.addEventListener('online', goOnline);
   window.addEventListener('offline', goOffline);
+  document.addEventListener('keydown', onKey);
   onUnmounted(() => {
+    document.removeEventListener('keydown', onKey);
     window.removeEventListener('online', goOnline);
     window.removeEventListener('offline', goOffline);
   });
@@ -66,17 +72,8 @@ async function submit() {
 </script>
 
 <template>
-  <div class="feedback-widget">
-    <Button
-      class="feedback-toggle"
-      variant="secondary"
-      :aria-expanded="open"
-      aria-controls="feedback-form"
-      @click="open = !open"
-    >
-      {{ open ? 'Close feedback' : 'Feedback' }}
-    </Button>
-    <form v-if="open" id="feedback-form" class="feedback-form" @submit.prevent="submit">
+  <div v-if="open" class="feedback-widget">
+    <form id="feedback-form" class="feedback-form" @submit.prevent="submit">
       <p v-if="!isOnline" class="feedback-offline" role="status">
         You're offline — feedback can't be sent right now.
       </p>
@@ -95,7 +92,10 @@ async function submit() {
         <input v-model="contactOk" type="checkbox" class="feedback-check" :disabled="!isOnline" />
         <span class="feedback-consent-text">OK to contact me about this</span>
       </label>
-      <Button type="submit" :disabled="!canSubmit || status.kind === 'sending'">Send</Button>
+      <div class="feedback-actions">
+        <Button type="submit" :disabled="!canSubmit || status.kind === 'sending'">Send</Button>
+        <Button variant="secondary" @click="closeFeedback">Close feedback</Button>
+      </div>
       <p v-if="status.kind === 'sent'" role="status">Thanks — feedback sent.</p>
       <p v-if="status.kind === 'rate_limited'" role="alert">
         Too much feedback for now — try again in a bit.
@@ -116,15 +116,19 @@ async function submit() {
   font-family: var(--font-sans);
   z-index: 20;
 }
-/* A flap on the Raised shadow; the panel above it is an overlay. */
-.feedback-toggle {
-  order: 2;
-  background: var(--color-surface-raised);
-  box-shadow: var(--shadow-raised);
+/* Below 1024px the signed-in shell floats a bottom bar; lift the widget above it and the safe area. */
+@media (max-width: 1023px) {
+  body:has(.desk-bottom-bar) .feedback-widget {
+    bottom: calc(var(--space-24) + env(safe-area-inset-bottom));
+  }
+}
+/* Opened from the sidebar or Settings; the panel is an overlay. */
+.feedback-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 .feedback-form {
-  order: 1;
-  margin-bottom: var(--space-2);
   width: 18rem;
   max-width: calc(100vw - 2 * var(--space-4));
   box-sizing: border-box;

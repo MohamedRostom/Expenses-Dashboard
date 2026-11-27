@@ -234,6 +234,28 @@ const colClass = (c: BoardColumn) => [
     white-space: normal;
     overflow-wrap: anywhere;
   }
+  /* An item marked --meta (the entries board) keeps date and category on one meta line under the
+     name: the date, then the category after a dot, cut with an ellipsis. */
+  .desk-data-table.desk-data-table--board :deep(.desk-item--meta) {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: var(--space-1);
+  }
+  .desk-data-table :deep(.desk-item--meta > *) {
+    grid-column: 1 / -1;
+  }
+  .desk-data-table :deep(.desk-item--meta > .desk-item-date) {
+    grid-column: 1;
+  }
+  .desk-data-table.desk-data-table--board :deep(.desk-item--meta > .desk-item-cat) {
+    grid-column: 2;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .desk-data-table.desk-data-table--board :deep(.desk-item--meta > .desk-item-cat)::before {
+    content: '\00b7\00a0' / '';
+  }
 }
 /* Heads take the Label role: small spaced capitals over a 1px Frame Line. */
 .desk-data-table thead th {
@@ -380,12 +402,12 @@ const colClass = (c: BoardColumn) => [
     width: var(--space-16);
   }
   .desk-data-table :deep(.desk-col--amount) {
-    width: 8rem;
+    width: 7rem;
   }
   .desk-data-table :deep(th.desk-col--md),
   .desk-data-table :deep(td.desk-col--md) {
     display: table-cell;
-    width: 7.5rem;
+    width: 8rem;
     color: var(--color-fg-muted);
     overflow: hidden;
     text-overflow: ellipsis;

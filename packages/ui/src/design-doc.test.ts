@@ -137,10 +137,20 @@ describe('DESIGN.md (data-model.md §Design direction)', () => {
   });
 });
 
-describe('DESIGN.md accent rule (T061)', () => {
-  it('allows one accent at a time, user-selectable from the presets', () => {
+// ADR-0008 replaces ADR-0007's "one accent at a time, from the presets" with a rule that lets the
+// selected nav item take a second chosen colour.
+describe('DESIGN.md accent rule (T061, ADR-0008)', () => {
+  it('allows one accent for actions and spend, and a second chosen colour for the selected nav item', () => {
     const colors = section('Colors');
-    expect(colors).toContain('One accent at a time');
+    expect(colors).toContain('One accent for actions and spend');
+    expect(colors).toContain('selected nav item may take a second chosen colour');
     expect(colors).not.toContain('is the only accent');
+  });
+  it('states that ADR-0008 is approved and supersedes ADR-0007', () => {
+    const overview = section('Overview');
+    expect(overview).toMatch(/^State:\s*Approved/m);
+    expect(overview).toContain('ADR-0008');
+    expect(overview).toContain('2026-11-24');
+    expect(overview).toContain('supersedes ADR-0007');
   });
 });

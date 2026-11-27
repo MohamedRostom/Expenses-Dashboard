@@ -10,7 +10,6 @@ function back() {
 
 <template>
   <main class="desk-add-view">
-    <h1>Add expense</h1>
     <ExpenseForm autofocus @saved="back" @cancel="back" />
   </main>
 </template>
@@ -22,10 +21,5 @@ function back() {
   padding: var(--space-6) var(--gutter-fluid);
   font-family: var(--font-sans);
   color: var(--color-fg);
-}
-.desk-add-view h1 {
-  margin: 0 0 var(--space-4);
-  font-size: var(--text-xl);
-  line-height: var(--leading-xl);
 }
 </style>

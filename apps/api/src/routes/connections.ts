@@ -2,7 +2,7 @@ import type { Context } from 'hono';
 import { Hono } from 'hono';
 import { openCredential, sealCredential } from '../lib/credential.js';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import type { Db } from '@desk/db';
 import { accountCalendars, auditLog, connectedAccounts, resolveAllFlags } from '@desk/db';
 import {
@@ -557,40 +557,37 @@ export function createConnectionsRoutes(deps: ConnectionsRouteDeps) {
       .where(eq(accountCalendars.accountId, accountId));
     const existingByProviderId = new Map(existingRows.map((r) => [r.providerCalendarId, r]));
 
-    const calendars: CalendarT[] = [];
-    for (const cal of listed) {
-      const prior = existingByProviderId.get(cal.id);
-      const enabled = prior ? prior.enabled : cal.isPrimary;
-      const [row] = await deps.db
-        .insert(accountCalendars)
-        .values({
-          userId: account.userId,
-          accountId,
-          providerCalendarId: cal.id,
-          name: cal.name,
-          isPrimary: cal.isPrimary,
-          enabled,
-          colour: cal.colour ?? null,
-        })
-        .onConflictDoUpdate({
-          target: [accountCalendars.accountId, accountCalendars.providerCalendarId],
-          set: {
-            name: cal.name,
-            isPrimary: cal.isPrimary,
-            colour: cal.colour ?? null,
-            updatedAt: deps.clock.now(),
-          },
-        })
-        .returning();
-      if (row) {
-        calendars.push({
-          id: row.id,
-          name: row.name,
-          isPrimary: row.isPrimary,
-          enabled: row.enabled,
-        });
-      }
-    }
+    const rows = listed.length
+      ? await deps.db
+          .insert(accountCalendars)
+          .values(
+            listed.map((cal) => ({
+              userId: account.userId,
+              accountId,
+              providerCalendarId: cal.id,
+              name: cal.name,
+              isPrimary: cal.isPrimary,
+              enabled: existingByProviderId.get(cal.id)?.enabled ?? cal.isPrimary,
+              colour: cal.colour ?? null,
+            })),
+          )
+          .onConflictDoUpdate({
+            target: [accountCalendars.accountId, accountCalendars.providerCalendarId],
+            set: {
+              name: sql`excluded.name`,
+              isPrimary: sql`excluded.is_primary`,
+              colour: sql`excluded.colour`,
+              updatedAt: deps.clock.now(),
+            },
+          })
+          .returning()
+      : [];
+    const calendars: CalendarT[] = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      isPrimary: row.isPrimary,
+      enabled: row.enabled,
+    }));
 
     const body: CalendarsResponseT = { calendars };
     return c.json(body);

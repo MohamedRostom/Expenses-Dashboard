@@ -617,6 +617,16 @@ describe('GET /connections/:id/calendars (T035)', () => {
             if ((cred as { refreshToken?: string }).refreshToken === 'revoked') {
               throw new AuthError('access revoked');
             }
+            const many = /^many:(\d+)$/.exec(
+              (cred as { refreshToken?: string }).refreshToken ?? '',
+            );
+            if (many) {
+              return Array.from({ length: Number(many[1]) }, (_, i) => ({
+                id: `cal-${i}`,
+                name: `Cal ${i}`,
+                isPrimary: i === 0,
+              }));
+            }
             return [
               { id: 'cal-primary', name: 'Primary', isPrimary: true },
               { id: 'cal-other', name: 'Other', isPrimary: false },
@@ -638,7 +648,11 @@ describe('GET /connections/:id/calendars (T035)', () => {
     await harness.close();
   });
 
-  async function insertAccount(userId: string, refreshToken = 'rt') {
+  async function insertAccount(
+    userId: string,
+    refreshToken = 'rt',
+    address = 'calendars-route@example.com',
+  ) {
     const box = createSecretBox(TEST_SECRET_BOX_KEY);
     const credentialEnc = await sealCredential(box, { refreshToken });
     const [account] = await harness.db
@@ -646,7 +660,7 @@ describe('GET /connections/:id/calendars (T035)', () => {
       .values({
         userId,
         provider: 'google',
-        address: 'calendars-route@example.com',
+        address,
         label: 'Acct',
         colour: 'teal',
         capabilities: ['calendar'],
@@ -689,6 +703,27 @@ describe('GET /connections/:id/calendars (T035)', () => {
       { provider_calendar_id: 'cal-other', enabled: false },
       { provider_calendar_id: 'cal-primary', enabled: false },
     ]);
+  });
+
+  it('issues the same number of queries for 1 listed calendar as for 5 (no N+1)', async () => {
+    const user = await harness.asUser('calendars-nplus1@test.com');
+    const measure = async (n: number) => {
+      const accountId = await insertAccount(
+        user.userId,
+        `many:${n}`,
+        `${crypto.randomUUID()}@example.com`,
+      );
+      const before = harness.queries();
+      const res = await user.get(`/connections/${accountId}/calendars`);
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { calendars: unknown[] };
+      expect(body.calendars).toHaveLength(n);
+      return harness.queries() - before;
+    };
+    await measure(1); // warm-up: first request pays one-off lookups
+    const one = await measure(1);
+    const five = await measure(5);
+    expect(five).toBe(one);
   });
 
   // T084: pins the AuthError → reconnect_needed/access_revoked path this route already has
@@ -861,6 +896,66 @@ describe('PATCH/DELETE/reconnect /connections/:id (T059/T060)', () => {
         accountId: account.id,
       },
     );
+  });
+
+  it('toggling 2 calendars issues the same number of queries as toggling 5 (no N+1), ignoring foreign ids', async () => {
+    const user = await harness.asUser('patch-nplus1@test.com');
+    const other = await harness.asUser('patch-nplus1-other@test.com');
+    const foreignAccount = await insertAccount(other.userId);
+    const [foreign] = await harness.db
+      .insert(accountCalendars)
+      .values({
+        userId: other.userId,
+        accountId: foreignAccount.id,
+        providerCalendarId: 'f',
+        name: 'F',
+        isPrimary: false,
+        enabled: false,
+      })
+      .returning();
+    const measure = async (n: number) => {
+      const account = await insertAccount(user.userId);
+      const cals = await harness.db
+        .insert(accountCalendars)
+        .values(
+          Array.from({ length: n }, (_, i) => ({
+            userId: user.userId,
+            accountId: account.id,
+            providerCalendarId: `c${i}`,
+            name: `C${i}`,
+            isPrimary: false,
+            enabled: i % 2 === 1,
+          })),
+        )
+        .returning();
+      const before = harness.queries();
+      const res = await user.patch(`/connections/${account.id}`, {
+        calendars: [
+          ...cals.map((c, i) => ({ id: c.id, enabled: i % 2 === 0 })),
+          { id: foreign!.id, enabled: true },
+        ],
+      });
+      expect(res.status).toBe(200);
+      const delta = harness.queries() - before;
+      const rows = await harness.db
+        .select()
+        .from(accountCalendars)
+        .where(eq(accountCalendars.accountId, account.id));
+      for (const c of cals) {
+        const i = cals.indexOf(c);
+        expect(rows.find((r) => r.id === c.id)?.enabled).toBe(i % 2 === 0);
+      }
+      return delta;
+    };
+    await measure(2); // warm-up: first request pays one-off lookups
+    const one = await measure(2);
+    const five = await measure(5);
+    expect(five).toBe(one);
+    const [f] = await harness.db
+      .select()
+      .from(accountCalendars)
+      .where(eq(accountCalendars.id, foreign!.id));
+    expect(f!.enabled).toBe(false);
   });
 
   it('POST /connections/:id/reconnect returns 200 { url } for an OAuth provider and keeps the row (audited)', async () => {

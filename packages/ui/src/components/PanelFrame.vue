@@ -151,6 +151,10 @@ const errorCopy = computed(() => (props.code ? COPY[props.code] : COPY.server_er
   .desk-panel-frame-flap > :deep(.desk-data-table-wrap) tr > :first-child {
     padding-inline-start: 0;
   }
+  /* With the first cell flush, a row lamp sits in the panel inset, never over the text. */
+  .desk-panel-frame-flap > :deep(.desk-data-table-wrap) tr > :first-child .desk-row-lamp {
+    left: calc(-1 * var(--space-3));
+  }
 }
 .desk-panel-frame-flap {
   padding: 0 0 var(--space-2);

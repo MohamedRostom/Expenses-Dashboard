@@ -15,7 +15,11 @@ export default defineConfig({
   reporter: process.env['CI'] ? [['list'], ['html', { open: 'never' }], ['github']] : 'list',
   use: { trace: 'on-first-retry' },
   // R6: tight, shared tolerance; the `visual` project renders in the pinned Playwright image.
-  expect: { toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: 'disabled' } },
+  // Screenshots wait for two identical frames; 5 s timed out under --workers=2 load (BackgroundMotion, capture).
+  expect: {
+    timeout: 15_000,
+    toHaveScreenshot: { maxDiffPixelRatio: 0.005, animations: 'disabled' },
+  },
   projects: [
     {
       name: 'ci',

@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
 import {
   users as usersTable,
   sessions as sessionsTable,
@@ -26,6 +26,7 @@ import {
   type ExportDocumentT,
   type ConfirmEmailResponseT,
   type AccentId,
+  type FontId,
   type MotionPresetId,
 } from '@desk/contracts';
 import type { AppVariables, JobsDep } from '../app.js';
@@ -64,6 +65,10 @@ function toUserResponse(u: SessionUser): MeResponseT['user'] {
     motionColour: u.motionColour,
     panelsTranslucent: u.panelsTranslucent,
     motionPaused: u.motionPaused,
+    accentCustom: u.accentCustom,
+    groundTint: u.groundTint,
+    navColour: u.navColour,
+    font: u.font as FontId,
     timeZone: u.timeZone,
     temperatureUnit: u.temperatureUnit === 'F' ? 'F' : 'C',
     onboardingCompletedAt: u.onboardingCompletedAt ? u.onboardingCompletedAt.toISOString() : null,
@@ -99,8 +104,12 @@ export function createMeRoutes(deps: MeRoutesDeps) {
     if (patchBody.theme !== undefined) patch.theme = patchBody.theme;
     if (patchBody.accent !== undefined) patch.accent = patchBody.accent;
     if (patchBody.motionPreset !== undefined) patch.motionPreset = patchBody.motionPreset;
+    if (patchBody.font !== undefined) patch.font = patchBody.font;
     if (patchBody.motionColour !== undefined)
       patch.motionColour = patchBody.motionColour.toLowerCase();
+    for (const k of ['accentCustom', 'groundTint', 'navColour'] as const) {
+      if (patchBody[k] !== undefined) patch[k] = patchBody[k]?.toLowerCase() ?? null;
+    }
     if (patchBody.panelsTranslucent !== undefined)
       patch.panelsTranslucent = patchBody.panelsTranslucent;
     if (patchBody.motionPaused !== undefined) patch.motionPaused = patchBody.motionPaused;
@@ -285,19 +294,13 @@ export function createMeRoutes(deps: MeRoutesDeps) {
           and(eq(jobsTable.userId, user.id), inArray(jobsTable.status, ['queued', 'running'])),
         );
 
-      const auditRows = await tx.select().from(auditLog).where(eq(auditLog.userId, user.id));
-      for (const row of auditRows) {
-        await tx
-          .update(auditLog)
-          .set({
-            userId: null,
-            details: {
-              ...(row.details as Record<string, unknown> | null),
-              deletedUserHash: pseudonym,
-            },
-          })
-          .where(eq(auditLog.id, row.id));
-      }
+      await tx
+        .update(auditLog)
+        .set({
+          userId: null,
+          details: sql`coalesce(${auditLog.details}, '{}'::jsonb) || jsonb_build_object('deletedUserHash', ${pseudonym}::text)`,
+        })
+        .where(eq(auditLog.userId, user.id));
 
       await tx.delete(usersTable).where(eq(usersTable.id, user.id));
     });

@@ -1,6 +1,7 @@
 /* Light selector lists [data-theme='light'] first: palette.test.ts finds the light block by indexOf(':root {'). */
 /* Design tokens: three theme states. bare :root = light; system dark unless the user chose light;
-   explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10). */
+   explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10); glass, radii and the
+   warm ground follow ADR-0008 (Proposed, implemented 2026-11-14), numbers fixed by contrast.test.ts. */
 [data-theme='light'],
 :root {
   color-scheme: light;
@@ -18,9 +19,17 @@
   --color-warn: #8a5a00;
   --color-critical: #b00020;
   --color-selection: #d8e6de;
+  --color-converted-hue: #6f8fb3; /* fixed steel blue: not the accent, ground, amber or red */
+  --color-row-converted: color-mix(in srgb, var(--color-converted-hue) 10%, transparent);
   --shadow-raised: 0 1px 2px rgb(20 23 27 / 0.06), 0 16px 40px rgb(20 23 27 / 0.08);
-  --color-surface-glass: rgb(255 255 255 / 0.68);
-  --color-glass-line: rgb(20 23 27 / 0.1);
+  --color-surface-glass: rgb(255 255 255 / 0.76);
+  --color-surface-glass-strong: rgb(255 255 255 / 0.82); /* sidebar and top bar */
+  --color-glass-line: rgb(255 255 255 / 0.6);
+  /* Warm ground (ADR-0008): the tint is user-chosen and shared by both themes, mixed into the base at
+     no more than --ground-cap percent (glassyColours.ts GROUND_CAP). */
+  --ground-tint: #a8501f;
+  --ground-base: #ffffff;
+  --ground-cap: 40;
   --motion-alpha-aurora: 0.49;
   --motion-alpha-aurora-blue: 0.35;
   --motion-alpha-aurora-amber: 0.32;
@@ -72,8 +81,10 @@
   --radius-sm: 2px;
   --radius-md: 4px;
   --radius-lg: 8px;
-  --radius-xl: 16px;
-  --blur-surface: 20px;
+  --radius-xl: 24px; /* panels, tiles, widget frames, dialogs and sheets (free edges) */
+  --radius-pill: 9999px; /* buttons, chips, segmented controls, tabs */
+  --radius-field: 12px; /* inputs and selects */
+  --blur-surface: 24px;
   --motion-stagger: 40ms;
   --motion-fast: 120ms;
   --motion-base: 200ms;
@@ -113,9 +124,13 @@
     --color-warn: #ffb000;
     --color-critical: #ff6b6b;
     --color-selection: #20332b;
+    --color-row-converted: color-mix(in srgb, var(--color-converted-hue) 24%, transparent);
     --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38);
-    --color-surface-glass: rgb(21 26 33 / 0.66);
-    --color-glass-line: rgb(242 242 238 / 0.11);
+    --color-surface-glass: rgb(26 21 18 / 0.7);
+    --color-surface-glass-strong: rgb(26 21 18 / 0.84);
+    --color-glass-line: rgb(255 255 255 / 0.12);
+    --ground-base: #000000;
+    --ground-cap: 30;
     --motion-alpha-aurora: 0.39;
     --motion-alpha-aurora-blue: 0.32;
     --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
@@ -156,9 +171,13 @@
   --color-warn: #ffb000;
   --color-critical: #ff6b6b;
   --color-selection: #20332b;
+  --color-row-converted: color-mix(in srgb, var(--color-converted-hue) 24%, transparent);
   --shadow-raised: inset 0 1px 0 rgb(255 255 255 / 0.04), 0 16px 40px rgb(0 0 0 / 0.38);
-  --color-surface-glass: rgb(21 26 33 / 0.66);
-  --color-glass-line: rgb(242 242 238 / 0.11);
+  --color-surface-glass: rgb(26 21 18 / 0.7);
+  --color-surface-glass-strong: rgb(26 21 18 / 0.84);
+  --color-glass-line: rgb(255 255 255 / 0.12);
+  --ground-base: #000000;
+  --ground-cap: 30;
   --motion-alpha-aurora: 0.39;
   --motion-alpha-aurora-blue: 0.32;
   --motion-aurora-blue: rgb(52 78 170); /* deep companions in dark (board) */
@@ -296,4 +315,25 @@
   --color-accent: #2c7452;
   --color-accent-fg: #f2f2ee;
   --color-selection: #20332b;
+}
+
+/* Page font (Settings › Appearance): installed fonts only, nothing downloaded. The chosen stack
+ * replaces both the word and the figure font; figures keep tabular-nums wherever they set it. */
+:root[data-font='serif'] {
+  --font-sans: ui-serif, Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+  --font-mono: ui-serif, Charter, 'Bitstream Charter', 'Sitka Text', Cambria, Georgia, serif;
+}
+:root[data-font='rounded'] {
+  --font-sans:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT',
+    'Arial Rounded MT Bold', Calibri, source-sans-pro, sans-serif;
+  --font-mono:
+    ui-rounded, 'Hiragino Maru Gothic ProN', Quicksand, Comfortaa, Manjari, 'Arial Rounded MT',
+    'Arial Rounded MT Bold', Calibri, source-sans-pro, sans-serif;
+}
+:root[data-font='humanist'] {
+  --font-sans:
+    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
+  --font-mono:
+    Seravek, 'Gill Sans Nova', Ubuntu, Calibri, 'DejaVu Sans', source-sans-pro, sans-serif;
 }

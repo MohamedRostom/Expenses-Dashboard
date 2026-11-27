@@ -48,7 +48,7 @@ function toggle() {
   padding: 0 var(--space-3);
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   font: inherit;
   font-size: var(--text-sm);
@@ -76,7 +76,7 @@ function toggle() {
   flex: none;
   width: var(--space-3);
   height: var(--space-3);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   background: var(--chip-color);
 }
 @media (min-width: 1024px) {

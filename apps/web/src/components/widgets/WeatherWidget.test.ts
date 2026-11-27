@@ -29,10 +29,19 @@ async function mount(unit: TemperatureUnitT) {
 }
 
 describe('WeatherWidget', () => {
-  it('shows place, temperature, condition, icon, high/low, outlook, as-of and attribution', async () => {
+  it('sets the H and L labels in the UI face and only the figures in mono', async () => {
+    const el = await mount('C');
+    const range = el.querySelector('.desk-weather-range')!;
+    expect(range.classList.contains('desk-weather-num')).toBe(false);
+    expect([...range.querySelectorAll('.desk-weather-num')].map((n) => n.textContent)).toEqual([
+      '22°',
+      '10°',
+    ]);
+  });
+  it('shows temperature, condition, icon, high/low and outlook; place, as-of and credit live in the frame and strip', async () => {
     const el = await mount('C');
     const text = el.textContent ?? '';
-    expect(text).toContain('Manchester');
+    expect(text).not.toContain('Manchester');
     expect(text).toContain('20°C');
     expect(text).toContain('Partly cloudy');
     expect(text).toContain('H 22°');
@@ -40,8 +49,9 @@ describe('WeatherWidget', () => {
     expect(el.querySelector('[data-icon="partly-cloudy"]')).not.toBeNull();
     expect(el.querySelectorAll('[data-testid="outlook-day"]')).toHaveLength(3);
     expect(el.querySelector('[data-testid="outlook-day"] [data-icon="rain"]')).not.toBeNull();
-    expect(text).toMatch(/as of/i);
-    expect(text).toContain('Weather data by Open-Meteo.com');
+    expect(text).not.toMatch(/as of/i);
+    expect(text).not.toContain('Weather data by Open-Meteo.com');
+    expect(el.querySelector('.desk-weather-outlook')?.getAttribute('data-layout')).toBe('row');
     const labels = [...el.querySelectorAll('[data-testid="outlook-day"] svg')].map((s) => [
       s.getAttribute('role'),
       s.getAttribute('aria-label'),

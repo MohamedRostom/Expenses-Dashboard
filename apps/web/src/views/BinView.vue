@@ -44,9 +44,16 @@ async function load() {
   }
 }
 
+/** Optimistic: the row leaves the bin at once and comes back if the restore fails. */
 async function onRestore(id: string) {
-  await store.restore(id);
-  deleted.value = deleted.value.filter((e) => e.id !== id);
+  const previous = deleted.value;
+  deleted.value = previous.filter((e) => e.id !== id);
+  try {
+    await store.restore(id);
+  } catch (err) {
+    deleted.value = previous;
+    throw err;
+  }
 }
 
 onMounted(load);
@@ -54,7 +61,6 @@ onMounted(load);
 
 <template>
   <main class="desk-bin-view">
-    <h1>Bin</h1>
     <PanelFrame heading="Deleted expenses">
       <Skeleton v-if="loading" height="8rem" />
       <ErrorState v-else-if="error" :code="error ?? undefined" />
@@ -71,7 +77,7 @@ onMounted(load);
           </td>
           <td class="desk-col--amount">{{ formatMoney(e.amountOriginal, e.currencyOriginal) }}</td>
           <td class="desk-col--action">
-            <Button variant="ghost" size="sm" @click="onRestore(e.id)">Restore</Button>
+            <Button variant="secondary" @click="onRestore(e.id)">Restore</Button>
           </td>
         </tr>
       </DataTable>
@@ -90,14 +96,26 @@ onMounted(load);
   flex-direction: column;
   gap: var(--space-4);
 }
-.desk-bin-view h1 {
-  margin: 0;
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
+/* The table's action column is sized for an icon; Restore is a labelled 44px button. */
+.desk-bin-view :deep(th.desk-col--action),
+.desk-bin-view :deep(td.desk-col--action) {
+  width: auto;
+  white-space: nowrap;
+}
+/* Restore meets the panel's inner right edge and clears the row rules above and below. */
+.desk-bin-view :deep(td.desk-col--action) {
+  text-align: end;
+  padding-block: var(--space-1);
+  padding-inline: var(--space-1) var(--space-2);
+}
+/* A gap between the panel title and the column heads. */
+.desk-bin-view :deep(.desk-data-table-wrap) {
+  padding-block-start: var(--space-3);
 }
 @media (min-width: 768px) {
+  .desk-bin-view :deep(td.desk-col--action) {
+    padding-inline-end: var(--space-3);
+  }
   .desk-bin-date {
     display: none;
   }

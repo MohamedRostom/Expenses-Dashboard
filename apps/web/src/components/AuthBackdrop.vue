@@ -84,18 +84,49 @@ onBeforeUnmount(() => {
 <!-- Not scoped: every class is prefixed. -->
 <style>
 .desk-auth-backdrop {
-  /* Palette from tokens.css, which switches it with the three theme states. */
-  --ab-base: var(--auth-backdrop-base);
-  --ab-1: var(--auth-backdrop-1);
-  --ab-2: var(--auth-backdrop-2);
-  --ab-3: var(--auth-backdrop-3);
-  --ab-4: var(--auth-backdrop-4);
+  /* Scene colours are steps of the user's warm tint toward the theme's base (lighter in light,
+     darker in dark), so every scene is warm. tokens.css's --auth-backdrop-* set is now unused. */
+  --ab-1: var(--ground-tint);
+  --ab-2: color-mix(in srgb, var(--ground-tint) 65%, var(--ground-base));
+  --ab-3: color-mix(in srgb, var(--ground-tint) 35%, var(--ground-base));
+  --ab-4: color-mix(in srgb, var(--ground-tint) 50%, var(--ground-base));
+  /* Warm ground, the same recipe as BackgroundMotion.vue (ADR-0008): the user's --ground-tint mixed
+     into --ground-base at no more than --ground-cap percent. Scene 6's vignette uses --ground-s5. */
+  --ground-s1: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 1 * 1%),
+    var(--ground-base)
+  );
+  --ground-s2: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.8 * 1%),
+    var(--ground-base)
+  );
+  --ground-s3: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.55 * 1%),
+    var(--ground-base)
+  );
+  --ground-s4: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.4 * 1%),
+    var(--ground-base)
+  );
+  --ground-s5: color-mix(
+    in srgb,
+    var(--ground-tint) calc(var(--ground-cap) * 0.5 * 1%),
+    var(--ground-base)
+  );
   position: fixed;
   inset: 0;
   z-index: -1;
   overflow: hidden;
   pointer-events: none;
-  background: var(--ab-base);
+  background:
+    radial-gradient(60% 50% at 12% 18%, var(--ground-s4) 0%, transparent 70%),
+    radial-gradient(50% 60% at 88% 12%, var(--ground-s2) 0%, transparent 70%),
+    radial-gradient(70% 60% at 72% 92%, var(--ground-s1) 0%, transparent 70%),
+    radial-gradient(50% 50% at 18% 88%, var(--ground-s3) 0%, transparent 70%), var(--ground-s5);
 }
 .desk-auth-scene {
   position: absolute;
@@ -201,7 +232,7 @@ onBeforeUnmount(() => {
 /* 6. Halo */
 .desk-auth-scene--6 {
   background:
-    radial-gradient(70% 70% at 50% 50%, transparent 35%, var(--ab-base) 100%),
+    radial-gradient(70% 70% at 50% 50%, transparent 35%, var(--ground-s5) 100%),
     conic-gradient(
       from 200deg at 72% 38%,
       color-mix(in srgb, var(--ab-1) 40%, transparent),

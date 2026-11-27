@@ -59,7 +59,7 @@ test.describe('weather widget against the real Open-Meteo @local', () => {
       const weather = page.getByRole('article', { name: 'Weather' });
       await expect(weather).toContainText(/\d+°C/, REMOTE);
       await expect(weather).toContainText(/as of \d{2}:\d{2}/);
-      await expect(weather).toContainText('Open-Meteo');
+      await expect(page.getByTestId('widget-strip')).toContainText('Open-Meteo');
 
       const ageOk = async () => {
         const w = await weatherWidget(page);

@@ -22,11 +22,9 @@ const shot = (page: Page, screen: string, theme: string, vp: string) =>
   });
 
 async function openAddSheet(page: Page) {
-  // The month view keeps the dialog's own submit ("Add expense") in the DOM; the header one is first.
-  await page
-    .getByRole('button', { name: /add expense/i })
-    .first()
-    .click();
+  // The top-bar Add button is hidden below 1024px; the n shortcut opens the sheet at every width.
+  await page.locator('body').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('n');
   await page.getByLabel(/description/i).waitFor();
 }
 

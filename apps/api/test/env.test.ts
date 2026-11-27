@@ -1,3 +1,4 @@
+import { ALL_FLAGS } from '@desk/db';
 import { parseEnv } from '../src/env.js';
 
 const required = {
@@ -187,5 +188,13 @@ describe('parseEnv', () => {
     expect(() =>
       parseEnv({ ...required, FLAGS_ON: 'widgets.currency', FLY_APP_NAME: 'ros-desk-pr-26' }),
     ).not.toThrow();
+  });
+
+  it('FLAGS_ON=all expands to every flag key and is still refused on production', () => {
+    expect(parseEnv({ ...required, FLAGS_ON: 'all' }).FLAGS_ON).toEqual([...ALL_FLAGS]);
+    expect(ALL_FLAGS).toEqual(expect.arrayContaining(['appearance.motion', 'panels.standards']));
+    expect(() =>
+      parseEnv({ ...required, FLAGS_ON: 'all', FLY_APP_NAME: 'ros-desk-production' }),
+    ).toThrow(/FLAGS_ON/);
   });
 });

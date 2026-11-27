@@ -77,11 +77,14 @@ jobs:
           GOOGLE_PANELS_CLIENT_ID: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_ID }}
           GOOGLE_PANELS_CLIENT_SECRET: ${{ secrets.PREVIEW_GOOGLE_PANELS_CLIENT_SECRET }}
 
+      # TODO: disable FLAGS_ON=all later. It turns on panels.google_mail too, so previews ask for
+      # gmail.readonly before the CASA assessment passes (ADR-0004). Kept for now on purpose
+      # (security review 2026-11-26); go back to an explicit list without panels.google_mail.
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --app "$APP" --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --build-arg VITE_UI_CATALOGUE=true --remote-only --strategy immediate --ha=false
-          --env FLAGS_ON=widgets.currency,widgets.weather,widgets.sunrise,widgets.spend_pace,widgets.fixed_costs,panels.today
+          --env FLAGS_ON=all
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           gh pr comment ${{ github.event.number }} --edit-last --create-if-none

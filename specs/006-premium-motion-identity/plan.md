@@ -50,7 +50,7 @@ tests/e2e/tests/motion.spec.ts              NEW  picker, persistence, pause, red
 | III. Money Is Exact | PASS. No money path changes; figures keep tabular mono. |
 | IV. Every User Is an Island | PASS. The columns sit on the caller's own row behind `PATCH /me`, and the ownership matrix asserts it. `/flags/public` exposes no user data and only its allowlist. |
 | V. Decide Once, Write It Down | PASS once ADR-0007 and the constitution amendment are accepted; both are the first tasks. |
-| VI. Simplicity and Finished Surfaces | **Amendment needed.** Principle VI names ADR-0006's identity, and `DESIGN.md` forbids looping effects. ADR-0007 and constitution v1.3.0 replace the identity reference and allow exactly one loop, the opt-in background. The look change ships unflagged as 1.1.1 allows; the controls sit behind `appearance.motion`. |
+| VI. Simplicity and Finished Surfaces | **PASS.** Principle VI amended via ADR-0007 (constitution v1.3.0, accepted 2026-10-16): identity reference updated to ADR-0007, tokens sourced from `packages/ui`, exactly one opt-in looping effect allowed (background motion layer, still under reduced motion). The panel look ships unflagged per 1.1.1; controls gated by `appearance.motion`. |
 
 ### Complexity Tracking
 

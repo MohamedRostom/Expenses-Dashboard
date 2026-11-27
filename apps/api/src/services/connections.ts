@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import type { Db } from '@desk/db';
 import { accountCalendars, auditLog, connectedAccounts } from '@desk/db';
 import type { AccountPatchT, CapabilityT, StandardsCreateT } from '@desk/contracts';
@@ -174,18 +174,31 @@ export class ConnectionsService {
     accountId: string,
     calendars: Array<{ id: string; enabled: boolean }>,
   ): Promise<void> {
-    let anyNewlyEnabled = false;
-    for (const cal of calendars) {
-      const [existing] = await this.deps.db
-        .select()
-        .from(accountCalendars)
-        .where(and(eq(accountCalendars.id, cal.id), eq(accountCalendars.accountId, accountId)));
-      if (!existing) continue;
-      if (cal.enabled && !existing.enabled) anyNewlyEnabled = true;
+    const owned = await this.deps.db
+      .select()
+      .from(accountCalendars)
+      .where(
+        and(
+          inArray(
+            accountCalendars.id,
+            calendars.map((c) => c.id),
+          ),
+          eq(accountCalendars.accountId, accountId),
+        ),
+      );
+    const existing = new Map(owned.map((r) => [r.id, r]));
+    const toEnable = calendars.filter((c) => c.enabled && existing.has(c.id)).map((c) => c.id);
+    const toDisable = calendars.filter((c) => !c.enabled && existing.has(c.id)).map((c) => c.id);
+    const anyNewlyEnabled = toEnable.some((id) => !existing.get(id)!.enabled);
+    for (const [ids, enabled] of [
+      [toEnable, true],
+      [toDisable, false],
+    ] as const) {
+      if (!ids.length) continue;
       await this.deps.db
         .update(accountCalendars)
-        .set({ enabled: cal.enabled, updatedAt: this.now() })
-        .where(eq(accountCalendars.id, cal.id));
+        .set({ enabled, updatedAt: this.now() })
+        .where(inArray(accountCalendars.id, ids));
     }
     if (anyNewlyEnabled) {
       await this.deps.enqueue('panels.refresh', { accountId }, { userId });

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { RouterLink, useRoute, useRouter } from 'vue-router';
 import {
   Button,
   DataTable,
@@ -13,9 +13,7 @@ import {
   useToast,
 } from '@desk/ui';
 import type { BoardColumn } from '@desk/ui';
-import { ACCENT_IDS } from '@desk/contracts';
 import type {
-  AccentId,
   JobResponseT,
   PatchMeResponseT,
   SessionSummaryT,
@@ -24,14 +22,17 @@ import type {
 import { ApiError, apiFetch } from '../api/client.js';
 import { describeDevice, formatSeen } from '../utils/format.js';
 import { useSessionStore } from '../stores/session.js';
+import { useFeedback } from '../composables/useFeedback.js';
 import { useFlagsStore } from '../stores/flags.js';
 import { useWidgetsStore } from '../stores/widgets.js';
 import CurrencyPicker from '../components/CurrencyPicker.vue';
 import AppearanceSettings from '../components/appearance/AppearanceSettings.vue';
-import { applyAccent, applyTheme } from './theme.js';
+import { applyTheme } from './theme.js';
 
 const session = useSessionStore();
+const { openFeedback } = useFeedback();
 const router = useRouter();
+const route = useRoute();
 const toast = useToast();
 
 const newEmail = ref('');
@@ -47,7 +48,7 @@ const currencySubmitting = ref(false);
 const job = ref<JobResponseT | null>(null);
 let jobTimer: ReturnType<typeof setTimeout> | undefined;
 
-// The index mirrors the grouped panels below; keep the two in the same order.
+// One source for the tab labels, the panels' order and hash resolution.
 const ALL_GROUPS = [
   {
     id: 'account',
@@ -84,12 +85,9 @@ const ALL_GROUPS = [
     ],
   },
 ];
-// Appearance (spec 006) exists only while the flag is on, in the index and as a panel.
-const GROUPS = computed(() =>
-  ALL_GROUPS.map((g) => ({
-    ...g,
-    sections: g.sections.filter((s) => s.id !== 'appearance' || flags.isOn('appearance.motion')),
-  })),
+// Appearance exists only while a flag is on (motion: spec 006; accent and colours: ADR-0008).
+const showAppearance = computed(
+  () => flags.isOn('appearance.motion') || flags.isOn('appearance.accent'),
 );
 const sessionColumns: BoardColumn[] = [
   { key: 'device', label: 'Device' },
@@ -98,25 +96,7 @@ const sessionColumns: BoardColumn[] = [
 const theme = ref<string>(session.user?.theme ?? 'system');
 const themeSubmitting = ref(false);
 
-// US5 (FR-019): the accent picker shows only with `appearance.accent`.
 const flags = useFlagsStore();
-const ACCENT_NAMES: Record<AccentId, string> = {
-  'signal-green': 'Signal Green',
-  'concourse-blue': 'Concourse Blue',
-  'platform-teal': 'Platform Teal',
-  violet: 'Violet',
-  slate: 'Slate',
-  plum: 'Plum',
-};
-const accent = ref<AccentId>(session.user?.accent ?? 'signal-green');
-// Each swatch resolves its own preset colour from tokens.css, which needs a concrete theme.
-const swatchTheme = computed(() =>
-  theme.value === 'system'
-    ? typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches
-      ? 'dark'
-      : 'light'
-    : theme.value,
-);
 
 const timeZone = ref<string>(
   session.user?.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -163,7 +143,80 @@ async function changeUnit(unit: TemperatureUnitT) {
   }
 }
 
+// Tabs: `#sg-GROUP` selects a tab; `#st-SECTION` (and the legacy `#appearance`, the sidebar link)
+// selects the tab holding that section, then scrolls to it. The router has no scrollBehavior, so
+// this runs on mount and whenever the hash changes while Settings is open.
+type GroupId = (typeof ALL_GROUPS)[number]['id'];
+const activeTab = ref<GroupId>('account');
+function selectFromHash() {
+  const h = route.hash;
+  const sectionId = h === '#appearance' ? 'appearance' : h.startsWith('#st-') ? h.slice(4) : '';
+  const group =
+    ALL_GROUPS.find((g) => h === `#sg-${g.id}`) ??
+    ALL_GROUPS.find((g) => g.sections.some((s) => s.id === sectionId));
+  if (!group) return;
+  activeTab.value = group.id;
+  // With the flags off there is no Appearance panel: the Look tab opens with nothing to scroll to.
+  if (sectionId && (sectionId !== 'appearance' || showAppearance.value))
+    void nextTick(() => document.getElementById(`st-${sectionId}`)?.scrollIntoView());
+}
+watch(() => route.hash, selectFromHash);
+function selectTab(id: GroupId) {
+  activeTab.value = id;
+  void router.replace({ hash: `#sg-${id}` });
+}
+function onTabKey(e: KeyboardEvent, i: number) {
+  const n = ALL_GROUPS.length;
+  const to = { ArrowRight: (i + 1) % n, ArrowLeft: (i + n - 1) % n, Home: 0, End: n - 1 }[e.key];
+  if (to === undefined) return;
+  e.preventDefault();
+  selectTab(ALL_GROUPS[to]!.id);
+  (e.currentTarget as HTMLElement).parentElement
+    ?.querySelectorAll<HTMLElement>('[role="tab"]')
+    [to]?.focus();
+}
+
+// Replaces the old header links the four-item nav dropped; Mail and calendar accounts follows its flag.
+const TOOLS = computed(() => [
+  { to: '/settings/categories', label: 'Categories', hint: 'Names, kinds and monthly budgets.' },
+  { to: '/import', label: 'Import', hint: 'Bring in expenses from a CSV file.' },
+  { to: '/bin', label: 'Bin', hint: 'Restore or permanently remove deleted expenses.' },
+  {
+    to: '/settings/connectors',
+    label: 'Notion sync',
+    hint: 'Link Notion to keep expenses in sync.',
+  },
+  ...(flags.isOn('panels.today')
+    ? [
+        {
+          to: '/settings/connections',
+          label: 'Mail and calendar accounts',
+          hint: 'Calendar and inbox accounts for the Today view.',
+        },
+      ]
+    : []),
+  { to: '/settings/capture', label: 'Capture', hint: 'Your phone capture address and key.' },
+]);
+
+// Columns for the tools grid: 3 when the count divides, else 2 or 3; the last item takes the
+// remaining cells of its row, so the grid has no hole with or without the Connections flag.
+const toolCols = computed(() => {
+  const n = TOOLS.value.length;
+  return n % 3 === 0 || n % 2 !== 0 ? 3 : 2;
+});
+const toolSpan = (i: number) => {
+  const n = TOOLS.value.length;
+  const cols = toolCols.value;
+  return i === n - 1 && n % cols !== 0 ? cols - (n % cols) + 1 : 1;
+};
+
+async function signOut() {
+  await session.logout();
+  await router.replace('/login');
+}
+
 onMounted(() => {
+  selectFromHash();
   void loadSessions();
   widgetsStore.load().catch(() => {});
 });
@@ -276,24 +329,6 @@ async function changeTheme(value: string) {
   }
 }
 
-// Optimistic: apply at once, put the old accent back if the save fails.
-async function changeAccent(value: AccentId) {
-  const previous = accent.value;
-  accent.value = value;
-  applyAccent(value, true);
-  try {
-    const res = await apiFetch<PatchMeResponseT>('/me', {
-      method: 'PATCH',
-      body: JSON.stringify({ accent: value }),
-    });
-    if (res.user) session.user = res.user as typeof session.user;
-  } catch (err) {
-    accent.value = previous;
-    applyAccent(previous, true);
-    toast.push(err instanceof ApiError ? err.message : 'Something went wrong.', 'critical');
-  }
-}
-
 async function changeTimeZone() {
   timeZoneSubmitting.value = true;
   try {
@@ -362,49 +397,88 @@ async function confirmDelete() {
 
 <template>
   <main class="desk-settings-view">
-    <h1 class="desk-settings-title">Settings</h1>
-
-    <nav class="desk-settings-index" aria-label="Settings sections">
-      <div v-for="g in GROUPS" :key="g.id" class="desk-settings-index-group">
-        <a :href="`#sg-${g.id}`" class="desk-settings-index-heading">{{ g.title }}</a>
-        <a
-          v-for="s in g.sections"
-          :key="s.id"
-          :href="`#st-${s.id}`"
-          class="desk-settings-index-link"
-          >{{ s.title }}</a
-        >
-      </div>
-    </nav>
-
     <div class="desk-settings-sections">
-      <section id="sg-account" class="desk-settings-group" aria-labelledby="sg-account-h">
-        <h2 id="sg-account-h" class="desk-settings-group-title">Account</h2>
+      <section class="desk-settings-tools surface" aria-labelledby="desk-tools-h">
+        <h2 id="desk-tools-h" class="desk-settings-group-title">Data and tools</h2>
+        <ul
+          class="desk-settings-tools-list"
+          data-testid="data-tools"
+          :style="{ '--cols': toolCols }"
+        >
+          <li v-for="(t, i) in TOOLS" :key="t.to" :style="{ '--span': toolSpan(i) }">
+            <RouterLink :to="t.to" class="desk-settings-tool">{{ t.label }}</RouterLink>
+            <p class="desk-settings-help">{{ t.hint }}</p>
+          </li>
+        </ul>
+        <div class="desk-settings-feedback">
+          <Button variant="secondary" data-testid="feedback-settings" @click="openFeedback">
+            Feedback
+          </Button>
+        </div>
+        <div class="desk-settings-signout">
+          <Button variant="secondary" data-testid="sign-out-settings" @click="signOut">
+            Sign out
+          </Button>
+        </div>
+      </section>
+
+      <div class="desk-settings-tabs" role="tablist" aria-label="Settings sections">
+        <button
+          v-for="(g, i) in ALL_GROUPS"
+          :id="`sg-tab-${g.id}`"
+          :key="g.id"
+          type="button"
+          role="tab"
+          class="desk-settings-tab"
+          :aria-selected="activeTab === g.id"
+          :aria-controls="`sg-${g.id}`"
+          :tabindex="activeTab === g.id ? 0 : -1"
+          @click="selectTab(g.id)"
+          @keydown="onTabKey($event, i)"
+        >
+          {{ g.title }}
+        </button>
+      </div>
+
+      <div
+        v-show="activeTab === 'account'"
+        id="sg-account"
+        class="desk-settings-group"
+        role="tabpanel"
+        aria-labelledby="sg-tab-account"
+        tabindex="0"
+      >
         <div class="board-grid desk-settings-group-grid">
-          <PanelFrame id="st-profile" heading="Profile" class="desk-settings-section">
-            <div class="desk-settings-body">
-              <p class="desk-settings-row">
-                <span class="desk-settings-label">Email</span>
-                <span class="desk-settings-value">{{ session.user?.email }}</span>
-                <span v-if="session.user?.emailVerified === false" class="desk-settings-status"
-                  >Unverified</span
-                >
-              </p>
-              <div v-if="session.user?.emailVerified === false" class="desk-settings-note">
-                <p>
-                  Confirm your address within 7 days of signing up, or sign-in is paused until you
-                  do.
+          <PanelFrame
+            id="st-profile"
+            heading="Profile"
+            class="desk-settings-section desk-settings-section--wide"
+          >
+            <div class="desk-settings-body desk-settings-body--split">
+              <div class="desk-settings-identity">
+                <p class="desk-settings-row">
+                  <span class="desk-settings-label">Email</span>
+                  <span class="desk-settings-value">{{ session.user?.email }}</span>
+                  <span v-if="session.user?.emailVerified === false" class="desk-settings-status"
+                    >Unverified</span
+                  >
                 </p>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  :loading="verifySending"
-                  :disabled="verifySending"
-                  @click="resendVerification"
-                >
-                  Resend verification email
-                </Button>
-                <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
+                <div v-if="session.user?.emailVerified === false" class="desk-settings-note">
+                  <p>
+                    Confirm your address within 7 days of signing up, or sign-in is paused until you
+                    do.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    :loading="verifySending"
+                    :disabled="verifySending"
+                    @click="resendVerification"
+                  >
+                    Resend verification email
+                  </Button>
+                  <p v-if="verifyNotice" role="status">{{ verifyNotice }}</p>
+                </div>
               </div>
               <form class="desk-settings-form" @submit.prevent="changeEmail">
                 <Input
@@ -420,7 +494,7 @@ async function confirmDelete() {
                 />
                 <p v-if="emailNotice" role="status">{{ emailNotice }}</p>
                 <p v-if="emailError" role="alert" class="desk-settings-error">{{ emailError }}</p>
-                <div>
+                <div class="desk-settings-actions">
                   <Button type="submit" :loading="emailSubmitting" :disabled="emailSubmitting">
                     Change email
                   </Button>
@@ -429,7 +503,11 @@ async function confirmDelete() {
             </div>
           </PanelFrame>
 
-          <PanelFrame id="st-sessions" heading="Sessions" class="desk-settings-section">
+          <PanelFrame
+            id="st-sessions"
+            heading="Sessions"
+            class="desk-settings-section desk-settings-section--wide"
+          >
             <div v-if="sessionsLoading" class="desk-settings-skeleton" aria-busy="true">
               <p class="desk-sr-only">Loading sessions…</p>
               <Skeleton v-for="i in 3" :key="i" height="1.25rem" />
@@ -469,11 +547,17 @@ async function confirmDelete() {
             </DataTable>
           </PanelFrame>
         </div>
-      </section>
+      </div>
 
-      <section id="sg-preferences" class="desk-settings-group" aria-labelledby="sg-preferences-h">
-        <h2 id="sg-preferences-h" class="desk-settings-group-title">Preferences</h2>
-        <div class="board-grid desk-settings-group-grid">
+      <div
+        v-show="activeTab === 'preferences'"
+        id="sg-preferences"
+        class="desk-settings-group"
+        role="tabpanel"
+        aria-labelledby="sg-tab-preferences"
+        tabindex="0"
+      >
+        <div class="board-grid desk-settings-group-grid desk-settings-group-grid--thirds">
           <PanelFrame id="st-currency" heading="Default currency" class="desk-settings-section">
             <div class="desk-settings-body">
               <CurrencyPicker
@@ -500,7 +584,7 @@ async function confirmDelete() {
               </p>
               <form class="desk-settings-form" @submit.prevent="changeTimeZone">
                 <Input v-model="timeZone" label="IANA time zone" placeholder="Europe/London" />
-                <div>
+                <div class="desk-settings-actions">
                   <Button
                     type="submit"
                     :loading="timeZoneSubmitting"
@@ -540,72 +624,65 @@ async function confirmDelete() {
             </div>
           </PanelFrame>
         </div>
-      </section>
+      </div>
 
-      <section id="sg-look" class="desk-settings-group" aria-labelledby="sg-look-h">
-        <h2 id="sg-look-h" class="desk-settings-group-title">Look and feel</h2>
+      <div
+        v-show="activeTab === 'look'"
+        id="sg-look"
+        class="desk-settings-group"
+        role="tabpanel"
+        aria-labelledby="sg-tab-look"
+        tabindex="0"
+      >
         <div class="board-grid desk-settings-group-grid">
-          <PanelFrame id="st-theme" heading="Theme" class="desk-settings-section">
+          <PanelFrame
+            id="st-theme"
+            heading="Theme"
+            class="desk-settings-section desk-settings-section--wide"
+          >
             <div class="desk-settings-body desk-settings-body--start">
               <ThemeToggle v-model="theme" label="Theme" @update:model-value="changeTheme" />
-              <fieldset
-                v-if="flags.isOn('appearance.accent')"
-                class="desk-settings-accents"
-                role="radiogroup"
-              >
-                <legend class="desk-settings-label">Accent colour</legend>
-                <label
-                  v-for="id in ACCENT_IDS"
-                  :key="id"
-                  class="desk-settings-accent"
-                  :data-accent="id"
-                  :data-theme="swatchTheme"
-                >
-                  <input
-                    :checked="accent === id"
-                    type="radio"
-                    name="settings-accent"
-                    :value="id"
-                    @change="changeAccent(id)"
-                  />
-                  <span>{{ ACCENT_NAMES[id] }}</span>
-                </label>
-              </fieldset>
             </div>
           </PanelFrame>
 
           <PanelFrame
-            v-if="flags.isOn('appearance.motion')"
+            v-if="showAppearance"
             id="st-appearance"
             heading="Appearance"
-            class="desk-settings-section"
+            class="desk-settings-section desk-settings-section--wide"
           >
-            <div class="desk-settings-body">
-              <AppearanceSettings :theme="theme" />
+            <div id="appearance" class="desk-settings-body">
+              <AppearanceSettings
+                :theme="theme"
+                :motion="flags.isOn('appearance.motion')"
+                :colours="flags.isOn('appearance.accent')"
+              />
             </div>
           </PanelFrame>
         </div>
-      </section>
+      </div>
 
-      <section id="sg-data" class="desk-settings-group" aria-labelledby="sg-data-h">
-        <h2 id="sg-data-h" class="desk-settings-group-title">Your data</h2>
-        <div class="board-grid desk-settings-group-grid">
+      <div
+        v-show="activeTab === 'data'"
+        id="sg-data"
+        class="desk-settings-group"
+        role="tabpanel"
+        aria-labelledby="sg-tab-data"
+        tabindex="0"
+      >
+        <div class="board-grid desk-settings-group-grid desk-settings-group-grid--thirds">
           <PanelFrame id="st-capture" heading="Phone capture" class="desk-settings-section">
             <div class="desk-settings-body">
               <p class="desk-settings-help">
                 Send expenses from your phone (iOS Shortcuts, MacroDroid) without opening the app.
               </p>
-              <div>
-                <Button variant="secondary" @click="router.push('/settings/capture')">
-                  Manage capture address
-                </Button>
-              </div>
+              <p class="desk-settings-help">Manage the address under Data and tools above.</p>
             </div>
           </PanelFrame>
 
           <PanelFrame id="st-export" heading="Export" class="desk-settings-section">
             <div class="desk-settings-body">
-              <div>
+              <div class="desk-settings-actions">
                 <Button variant="secondary" @click="downloadExport">Download my data</Button>
               </div>
             </div>
@@ -613,11 +690,13 @@ async function confirmDelete() {
 
           <PanelFrame id="st-delete" heading="Delete account" class="desk-settings-section">
             <div class="desk-settings-body">
-              <div><Button variant="danger" @click="deleteOpen = true">Delete account</Button></div>
+              <div class="desk-settings-actions">
+                <Button variant="danger" @click="deleteOpen = true">Delete account</Button>
+              </div>
             </div>
           </PanelFrame>
         </div>
-      </section>
+      </div>
     </div>
 
     <Dialog :open="deleteOpen" title="Delete your account" @close="deleteOpen = false">
@@ -654,7 +733,8 @@ async function confirmDelete() {
   white-space: nowrap;
 }
 .desk-settings-view {
-  max-width: var(--content-max);
+  /* The month view's 1160px panel grid, plus the gutters this padding takes out. */
+  max-width: calc(1160px + 2 * var(--gutter-fluid));
   margin: 0 auto;
   padding: var(--space-4) var(--gutter-fluid) var(--space-12);
   font-family: var(--font-sans);
@@ -664,49 +744,81 @@ async function confirmDelete() {
   align-content: start;
   gap: var(--space-4);
 }
-.desk-settings-title {
-  margin: 0;
-  font-size: var(--text-2xl);
-  line-height: var(--leading-2xl);
-  font-weight: 600;
-  letter-spacing: var(--tracking-tight);
+/* Data and tools: a glass panel of real links, with Sign out set apart below a rule. */
+.desk-settings-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
 }
-/* The section index is a scrolling row of links; the panels below reflow on .board-grid. */
-.desk-settings-index {
+.desk-settings-tools-list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.desk-settings-tools-list p {
+  margin: 0;
+}
+.desk-settings-tool {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--target-min);
+  color: var(--color-fg);
+  font-weight: 600;
+  text-underline-offset: 3px;
+}
+.desk-settings-tool:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-field);
+}
+.desk-settings-feedback {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--color-border);
+}
+/* The sidebar carries Feedback and Sign out from 1024px; the page rows are for phones. They stay
+   in the DOM (the sign-out test hook and focus order are unchanged). */
+@media (min-width: 1024px) {
+  .desk-settings-feedback,
+  .desk-settings-signout {
+    display: none;
+  }
+}
+/* Tabs: one row of four, scrolling sideways if a phone is too narrow; the panels below reflow on .board-grid. */
+.desk-settings-tabs {
   display: flex;
   gap: var(--space-4);
-  margin-inline: calc(-1 * var(--gutter-fluid));
-  padding-inline: var(--gutter-fluid);
   overflow-x: auto;
-  scroll-padding-inline: var(--gutter-fluid);
   scrollbar-width: none;
   border-bottom: 1px solid var(--color-border);
 }
-/* Below 1024 the row lists the groups only; the per-section links join them in the sticky column. */
-.desk-settings-index-group {
-  display: contents;
-}
-.desk-settings-index-heading,
-.desk-settings-index-link {
-  display: flex;
-  align-items: center;
+.desk-settings-tab {
   flex: none;
   min-height: var(--target-min);
+  padding: 0 var(--space-1);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
   color: var(--color-fg-muted);
+  font: inherit;
   font-size: var(--text-sm);
   font-weight: 600;
   white-space: nowrap;
-  text-decoration: none;
+  cursor: pointer;
 }
-.desk-settings-index-link {
-  display: none;
-}
-.desk-settings-index-heading:hover,
-.desk-settings-index-link:hover {
+.desk-settings-tab:hover {
   color: var(--color-fg);
 }
-.desk-settings-index-heading:focus-visible,
-.desk-settings-index-link:focus-visible {
+.desk-settings-tab[aria-selected='true'] {
+  color: var(--color-fg);
+  border-bottom-color: var(--color-accent);
+}
+.desk-settings-tab:focus-visible,
+.desk-settings-group:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 2px;
 }
@@ -720,7 +832,6 @@ async function confirmDelete() {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  scroll-margin-top: var(--space-4);
 }
 .desk-settings-group-title {
   margin: 0;
@@ -731,19 +842,51 @@ async function confirmDelete() {
   text-transform: uppercase;
   color: var(--color-fg-muted);
 }
+/* One column below 768, two from 768 (three for the short-card groups from 1440, where the sidebar leaves them room). Cards in a row
+   stretch to one height; a wide card or a lone last card takes the whole row, so there are no holes
+   whichever flags hide a card. */
 .desk-settings-group-grid {
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-4);
   width: 100%;
+  max-width: none;
   margin-inline: 0;
+  align-items: stretch;
 }
 .desk-settings-section {
   scroll-margin-top: var(--space-4);
 }
+/* The flap fills the cell, and the body fills the flap, so an action row can sit at the bottom. */
+.desk-settings-section :deep(.desk-panel-frame-flap) {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
 .desk-settings-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4) var(--space-3);
+}
+.desk-settings-body--split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: var(--space-4) var(--space-8);
+  align-content: start;
+}
+.desk-settings-identity {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
+  min-width: 0;
+}
+/* The action row of a card sits at its bottom-left, whatever the card above it holds. */
+.desk-settings-actions {
+  margin-top: auto;
+}
+.desk-settings-form {
+  flex: 1;
 }
 .desk-settings-body--start > :first-child {
   align-self: flex-start;
@@ -799,7 +942,7 @@ async function confirmDelete() {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  max-width: 28rem;
+  max-width: 36rem;
 }
 .desk-settings-error {
   color: var(--color-critical);
@@ -864,63 +1007,6 @@ async function confirmDelete() {
   gap: var(--space-2);
   justify-content: flex-end;
 }
-/* Accent swatches: native radios drawn as filled squares in the preset's own colour. Selected shows
-   as a ring plus an inner rule (not colour alone); the name always sits beside the swatch. */
-.desk-settings-accents {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-4);
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.desk-settings-accents legend {
-  width: 100%;
-  padding: 0;
-  margin-bottom: var(--space-2);
-}
-.desk-settings-accent {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  min-height: var(--target-min);
-  cursor: pointer;
-}
-.desk-settings-accent input {
-  appearance: none;
-  flex: none;
-  width: var(--space-6);
-  height: var(--space-6);
-  margin: 0;
-  border-radius: var(--radius-sm);
-  background: var(--color-accent);
-  cursor: pointer;
-}
-.desk-settings-accent input:checked {
-  outline: 2px solid var(--color-fg);
-  outline-offset: 2px;
-  box-shadow: inset 0 0 0 var(--space-1) var(--color-accent-fg);
-}
-.desk-settings-accent input:focus-visible {
-  outline: 2px solid var(--color-focus);
-  outline-offset: 2px;
-}
-.desk-settings-accent input:checked + span {
-  font-weight: 600;
-}
-@media (max-width: 767px) {
-  .desk-settings-accents {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .desk-settings-accents legend {
-    grid-column: 1 / -1;
-  }
-  .desk-settings-accent input {
-    width: var(--target-min);
-    height: var(--target-min);
-  }
-}
 /* The panel heading already names the field; its label stays as the accessible name only. */
 .desk-settings-currency :deep(.desk-field-label) {
   position: absolute;
@@ -938,53 +1024,31 @@ async function confirmDelete() {
 :deep(.desk-sessions-table.desk-data-table .desk-item-cat) {
   display: block;
 }
-@media (min-width: 1024px) {
-  .desk-settings-view {
-    grid-template-columns: 12rem minmax(0, 1fr);
-    grid-template-areas:
-      'title title'
-      'index sections';
-    column-gap: var(--space-10);
+/* A gap between the Sessions title and its column heads (Bin does the same for its table). */
+.desk-settings-section :deep(.desk-data-table-wrap--board) {
+  padding-block-start: var(--space-3);
+}
+@media (min-width: 768px) {
+  .desk-settings-group-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .desk-settings-title {
-    grid-area: title;
+  .desk-settings-section--wide,
+  .desk-settings-section:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
   }
-  .desk-settings-index {
-    grid-area: index;
-    flex-direction: column;
-    align-self: start;
-    gap: 0;
-    margin-inline: 0;
-    padding-inline: 0;
-    overflow: visible;
-    position: sticky;
-    top: var(--space-4);
-    border-bottom: 0;
-    border-left: 1px solid var(--color-border);
+  .desk-settings-tools-list {
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
   }
-  .desk-settings-index-group {
-    display: flex;
-    flex-direction: column;
+  .desk-settings-tools-list > li:last-child {
+    grid-column: span var(--span);
   }
-  .desk-settings-index-group + .desk-settings-index-group {
-    margin-top: var(--space-3);
+}
+@media (min-width: 1440px) {
+  .desk-settings-group-grid--thirds {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .desk-settings-index-heading {
-    min-height: var(--space-8);
-    padding-left: var(--space-3);
-    font-size: var(--text-xs);
-    letter-spacing: var(--tracking-wide);
-    text-transform: uppercase;
-  }
-  .desk-settings-index-link {
-    display: flex;
-    min-height: var(--space-8);
-    padding-left: var(--space-6);
-    font-weight: 400;
-  }
-  .desk-settings-sections {
-    grid-area: sections;
-    margin-inline: 0;
+  .desk-settings-group-grid--thirds > .desk-settings-section:last-child:nth-child(odd) {
+    grid-column: auto;
   }
 }
 </style>

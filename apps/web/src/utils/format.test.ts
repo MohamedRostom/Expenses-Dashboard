@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeDevice, formatDate, formatMoney, formatSeen } from './format.js';
+import { describeDevice, formatDate, formatMoney, formatMonth, formatSeen } from './format.js';
 
 describe('formatSeen', () => {
   const now = new Date(2026, 9, 18, 12, 0);
@@ -59,5 +59,15 @@ describe('describeDevice', () => {
 
   it('falls back to "Unknown device" for an unrecognised user agent', () => {
     expect(describeDevice('curl/8.4.0')).toBe('Unknown device');
+  });
+});
+
+describe('formatMonth', () => {
+  it.each([
+    ['2026-11', 'Nov 2026'],
+    ['2026-01', 'Jan 2026'],
+    ['2026-12', 'Dec 2026'],
+  ])('%s -> %s', (month, label) => {
+    expect(formatMonth(month, 'en-GB')).toBe(label);
   });
 });

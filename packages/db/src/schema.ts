@@ -28,24 +28,40 @@ const bytea = customType<{ data: Uint8Array }>({
   },
 });
 
-export const users = pgTable('users', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').notNull().unique(),
-  emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
-  passwordHash: text('password_hash'),
-  defaultCurrency: text('default_currency').notNull(),
-  theme: text('theme').notNull().default('system'),
-  accent: text('accent').notNull().default('signal-green'),
-  motionPreset: text('motion_preset').notNull().default('particles'),
-  motionColour: text('motion_colour').notNull().default('#7fd1a8'),
-  panelsTranslucent: boolean('panels_translucent').notNull().default(true),
-  motionPaused: boolean('motion_paused').notNull().default(false),
-  timeZone: text('time_zone').notNull().default('UTC'),
-  temperatureUnit: text('temperature_unit').notNull().default('C'),
-  onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
-  lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    email: text('email').notNull().unique(),
+    emailVerifiedAt: timestamp('email_verified_at', { withTimezone: true }),
+    passwordHash: text('password_hash'),
+    defaultCurrency: text('default_currency').notNull(),
+    theme: text('theme').notNull().default('system'),
+    accent: text('accent').notNull().default('signal-green'),
+    motionPreset: text('motion_preset').notNull().default('particles'),
+    motionColour: text('motion_colour').notNull().default('#7fd1a8'),
+    panelsTranslucent: boolean('panels_translucent').notNull().default(true),
+    motionPaused: boolean('motion_paused').notNull().default(false),
+    // Free colours (ADR-0008): lowercase #rrggbb, NULL = the default.
+    accentCustom: text('accent_custom'),
+    groundTint: text('ground_tint'),
+    navColour: text('nav_colour'),
+    // Page font preset (FONT_IDS); words and figures both use it.
+    font: text('font').notNull().default('system'),
+    timeZone: text('time_zone').notNull().default('UTC'),
+    temperatureUnit: text('temperature_unit').notNull().default('C'),
+    onboardingCompletedAt: timestamp('onboarding_completed_at', { withTimezone: true }),
+    lastActiveAt: timestamp('last_active_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // Housekeeping sweeps (migration 0016): idle purge, unverified-account sweep.
+    index('users_last_active_at_idx').on(t.lastActiveAt),
+    index('users_unverified_created_at_idx')
+      .on(t.createdAt)
+      .where(sql`email_verified_at IS NULL`),
+  ],
+);
 
 export const oauthAccounts = pgTable(
   'oauth_accounts',
@@ -106,7 +122,10 @@ export const rateLimits = pgTable(
     windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
     count: integer('count').notNull().default(0),
   },
-  (t) => [primaryKey({ columns: [t.key, t.windowStart] })],
+  (t) => [
+    primaryKey({ columns: [t.key, t.windowStart] }),
+    index('rate_limits_window_start_idx').on(t.windowStart),
+  ],
 );
 
 export const fxRates = pgTable(
@@ -119,7 +138,11 @@ export const fxRates = pgTable(
     source: text('source').notNull(),
     fetchedAt: timestamp('fetched_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [primaryKey({ columns: [t.rateDate, t.base, t.quote] })],
+  (t) => [
+    primaryKey({ columns: [t.rateDate, t.base, t.quote] }),
+    // Lookups are by pair, newest date first; the PK leads with the date.
+    index('fx_rates_base_quote_rate_date_idx').on(t.base, t.quote, t.rateDate),
+  ],
 );
 
 export const jobs = pgTable(
@@ -142,6 +165,7 @@ export const jobs = pgTable(
     index('jobs_status_run_after_idx').on(t.status, t.runAfter),
     // cancelForUser() (jobs/runner.ts) and DELETE /me both query/update by user_id — unindexed.
     index('jobs_user_id_idx').on(t.userId),
+    index('jobs_name_status_idx').on(t.name, t.status),
   ],
 );
 
@@ -181,7 +205,10 @@ export const auditLog = pgTable(
     details: jsonb('details'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('audit_log_user_id_idx').on(t.userId)],
+  (t) => [
+    index('audit_log_user_id_idx').on(t.userId),
+    index('audit_log_created_at_idx').on(t.createdAt),
+  ],
 );
 
 export const categories = pgTable(
@@ -302,6 +329,8 @@ export const expenses = pgTable(
     index('expenses_user_id_expense_date_idx').on(t.userId, t.expenseDate),
     index('expenses_user_id_deleted_at_idx').on(t.userId, t.deletedAt),
     index('expenses_user_id_category_id_idx').on(t.userId, t.categoryId),
+    // List paging and the currency re-derive sort by id within a user.
+    index('expenses_user_id_id_idx').on(t.userId, t.id),
     uniqueIndex('expenses_user_id_notion_page_id_unique')
       .on(t.userId, t.notionPageId)
       .where(sql`notion_page_id IS NOT NULL`),
@@ -403,7 +432,8 @@ export const expenseVersions = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    index('expense_versions_expense_id_idx').on(t.expenseId),
+    index('expense_versions_expense_id_created_at_idx').on(t.expenseId, t.createdAt),
+    index('expense_versions_created_at_idx').on(t.createdAt),
     index('expense_versions_user_id_idx').on(t.userId),
   ],
 );
@@ -465,6 +495,7 @@ export const connectedAccounts = pgTable(
       t.provider,
       t.address,
     ),
+    index('connected_accounts_next_refresh_at_idx').on(t.nextRefreshAt),
   ],
 );
 
@@ -529,6 +560,7 @@ export const cachedEvents = pgTable(
       t.providerEventId,
     ),
     index('cached_events_user_id_starts_at_idx').on(t.userId, t.startsAt),
+    index('cached_events_account_id_starts_at_idx').on(t.accountId, t.startsAt),
   ],
 );
 

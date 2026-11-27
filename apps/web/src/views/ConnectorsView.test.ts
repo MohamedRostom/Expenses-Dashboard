@@ -24,7 +24,7 @@ describe('ConnectorsView board look (spec 006 T050c)', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
     createApp(ConnectorsView).mount(el);
-    expect(el.querySelector('h1')?.textContent).toBe('Notion sync');
+    expect(el.querySelector('h1')).toBeNull();
     await vi.waitFor(() =>
       expect(
         [...el.querySelectorAll('.desk-panel-frame')].map(

@@ -21,6 +21,10 @@ const fakeUser = {
   motionColour: '#7fd1a8',
   panelsTranslucent: true,
   motionPaused: false,
+  accentCustom: null,
+  groundTint: null,
+  navColour: null,
+  font: 'system',
   onboardingCompletedAt: null,
   createdAt: new Date(),
   // Recent, so the middleware skips the last_active_at write (FakeDb has no update()).

@@ -323,6 +323,24 @@ describe('ownership matrix', () => {
       }
     });
 
+    it("PATCH /me by user A leaves user B's free colours unchanged", async () => {
+      const keys = ['accentCustom', 'groundTint', 'navColour'];
+      const read = async () =>
+        ((await (await userB.get('/me')).json()) as { user: Record<string, unknown> }).user;
+      const before = await read();
+      const res = await userA.patch('/me', {
+        accentCustom: '#112233',
+        groundTint: '#445566',
+        navColour: '#778899',
+      });
+      expect(res.status).toBe(200);
+      const after = await read();
+      for (const k of keys) expect(after[k]).toEqual(before[k]);
+      // and A's own reset does not touch B either
+      await userA.patch('/me', { accentCustom: null, groundTint: null, navColour: null });
+      expect(await read()).toMatchObject(Object.fromEntries(keys.map((k) => [k, before[k]])));
+    });
+
     it('GET /flags/public is public and returns only the appearance.motion allowlist', async () => {
       const res = await harness.app.request('/flags/public');
       expect(res.status).toBe(200);

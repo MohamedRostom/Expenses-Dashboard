@@ -103,14 +103,28 @@ export const useWidgetsStore = defineStore('widgets', {
       return widget;
     },
 
+    /** Optimistic: the unit switches at once and switches back if the save fails. */
     async setTemperatureUnit(unit: TemperatureUnitT) {
-      await apiFetch('/me', { method: 'PATCH', body: JSON.stringify({ temperatureUnit: unit }) });
+      const previous = this.temperatureUnit;
       this.temperatureUnit = unit;
+      try {
+        await apiFetch('/me', { method: 'PATCH', body: JSON.stringify({ temperatureUnit: unit }) });
+      } catch (err) {
+        this.temperatureUnit = previous;
+        throw err;
+      }
     },
 
+    /** Optimistic: the widget goes at once and returns to its place if the delete fails. */
     async remove(id: string) {
-      await deleteWidget(id);
-      this.widgets = this.widgets.filter((w) => w.id !== id);
+      const previous = this.widgets;
+      this.widgets = previous.filter((w) => w.id !== id);
+      try {
+        await deleteWidget(id);
+      } catch (err) {
+        this.widgets = previous;
+        throw err;
+      }
     },
 
     /** POST /widgets/refresh only when a reading is stale or older than its window. */
@@ -124,6 +138,18 @@ export const useWidgetsStore = defineStore('widgets', {
       } catch (err) {
         // 429 is not an error: the next poll shows whatever the server has.
         if (!(err instanceof ApiError && err.code === 'rate_limited')) throw err;
+      }
+    },
+
+    /** The strip's refresh button: ask the server to re-fetch the sources now (a 429 "just
+     * asked" is fine), then reload what it has. */
+    async refreshNow() {
+      try {
+        await postWidgetsRefresh();
+      } catch (err) {
+        if (!(err instanceof ApiError && err.code === 'rate_limited')) throw err;
+      } finally {
+        await this.load();
       }
     },
 

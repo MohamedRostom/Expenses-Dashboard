@@ -31,7 +31,7 @@ test('over-budget category shows critical state and a negative remaining tile', 
   await page.getByRole('button', { name: /add expense/i }).click();
   await page.getByLabel(/description/i).fill('Big shop');
   await page.getByLabel(/^amount$/i).fill('50');
-  const categorySelect = page.getByLabel(/category/i);
+  const categorySelect = page.getByRole('dialog').getByLabel(/category/i);
   if (await categorySelect.count()) {
     await categorySelect.selectOption({ label: 'Groceries' });
   }

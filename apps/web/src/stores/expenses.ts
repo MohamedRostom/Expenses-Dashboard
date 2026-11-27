@@ -99,20 +99,59 @@ export const useExpensesStore = defineStore('expenses', {
       }
     },
 
+    /** Optimistic: the edit shows at once. A new amount, date or rate leaves the converted figure
+     * pending (as a new expense does) until the server answers; a failed save restores the row. */
     async update(id: string, patch: PatchExpenseRequestT) {
-      const res = await apiFetch<{ expense: ExpenseResponseT }>(`/expenses/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(patch),
-      });
       const i = this.expenses.findIndex((e) => e.id === id);
-      if (i !== -1) this.expenses[i] = res.expense;
-      return res.expense;
+      const before = this.expenses[i];
+      if (before) {
+        const { amount } = patch;
+        // Plain fields copy across as sent; amount and rateOverride are not row fields.
+        const fields = Object.fromEntries(
+          Object.entries(patch).filter(
+            ([k, v]) => v !== undefined && k !== 'amount' && k !== 'rateOverride',
+          ),
+        ) as Partial<ExpenseResponseT>;
+        const reconvert = amount !== undefined || 'date' in patch || 'rateOverride' in patch;
+        this.expenses[i] = {
+          ...before,
+          ...fields,
+          ...(amount && { amountOriginal: amount.minor, currencyOriginal: amount.currency }),
+          ...(reconvert && {
+            amountDefault: null,
+            rateToDefault: null,
+            rateDate: null,
+            rateSource: null,
+          }),
+        };
+      }
+      try {
+        const res = await apiFetch<{ expense: ExpenseResponseT }>(`/expenses/${id}`, {
+          method: 'PATCH',
+          body: JSON.stringify(patch),
+        });
+        const j = this.expenses.findIndex((e) => e.id === id);
+        if (j !== -1) this.expenses[j] = res.expense;
+        return res.expense;
+      } catch (err) {
+        const j = this.expenses.findIndex((e) => e.id === id);
+        if (before && j !== -1) this.expenses[j] = before;
+        throw err;
+      }
     },
 
-    /** Soft delete — used both by "delete" in MonthView and by the create-undo toast. */
+    /** Soft delete — used both by "delete" in MonthView and by the create-undo toast. Optimistic:
+     * the row goes at once and returns to its place if the server refuses. */
     async remove(id: string) {
-      await apiFetch<void>(`/expenses/${id}`, { method: 'DELETE' });
+      const i = this.expenses.findIndex((e) => e.id === id);
+      const gone = this.expenses[i];
       this.expenses = this.expenses.filter((e) => e.id !== id);
+      try {
+        await apiFetch<void>(`/expenses/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        if (gone) this.expenses.splice(Math.min(i, this.expenses.length), 0, gone);
+        throw err;
+      }
     },
 
     async restore(id: string) {

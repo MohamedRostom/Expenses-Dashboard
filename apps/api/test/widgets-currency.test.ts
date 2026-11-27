@@ -289,6 +289,18 @@ describe('currency widget', () => {
     ).toEqual([]);
   });
 
+  it('enqueueIfShort checks every code in one query (no N+1)', async () => {
+    for (const base of ['SEK', 'DKK', 'CHF', 'PLN'])
+      await seed('2026-08-01', base, 'CZK', '1.0000000000'); // long history: none is short
+    await enqueueIfShort(h.db, ['SEK'], 'CZK', '2026-09-30'); // warm-up connection
+    const q0 = h.queries();
+    await enqueueIfShort(h.db, ['SEK'], 'CZK', '2026-09-30');
+    const one = h.queries() - q0;
+    const q1 = h.queries();
+    await enqueueIfShort(h.db, ['SEK', 'DKK', 'CHF', 'PLN'], 'CZK', '2026-09-30');
+    expect(h.queries() - q1).toBe(one);
+  });
+
   it('one pair throwing in the warm loop still enqueues the short widget pair (T092)', async () => {
     h.clock.set(WED);
     const u = await setUser('wc-warm-throw@example.com', { defaultCurrency: 'NOK' });
@@ -301,8 +313,32 @@ describe('currency widget', () => {
       },
       range: rates.range.bind(rates),
     };
-    await expect(ratesWarmJob(h.db, throwing, h.clock)({}, ctx)).rejects.toThrow('boom');
+    // A failing pair is logged and skipped, never rethrown: the job re-queues itself hourly, and a
+    // runner retry on top of that successor would fork the chain.
+    await expect(ratesWarmJob(h.db, throwing, h.clock)({}, ctx)).resolves.toBeUndefined();
     expect((await queued()).map((p) => `${p.base}:${p.quote}`)).toContain('EUR:NOK');
+  });
+
+  it('rates.warm queues its next run an hour later, also when a pair fails (hourly refresh)', async () => {
+    h.clock.set(WED);
+    const calls: { name: string; runAfter?: Date }[] = [];
+    const enqueue = async (name: string, _p: unknown, opts?: { runAfter?: Date }) => {
+      calls.push({ name, ...(opts?.runAfter ? { runAfter: opts.runAfter } : {}) });
+      return 'id';
+    };
+    const throwing = {
+      rate: async () => {
+        throw new Error('boom');
+      },
+      range: rates.range.bind(rates),
+    };
+    for (const provider of [rates, throwing]) {
+      calls.length = 0;
+      await ratesWarmJob(h.db, provider, h.clock, enqueue)({}, ctx);
+      expect(calls).toEqual([
+        { name: 'rates.warm', runAfter: new Date(WED.getTime() + 60 * 60 * 1000) },
+      ]);
+    }
   });
 
   it('a pair with no fx_rates row is an error with rate_unavailable', async () => {
@@ -369,5 +405,23 @@ describe('currency widget', () => {
     const w = await figures(u);
     expect(w.state).toBe('stale');
     expect(w.figures.rows[0].rateDate).toBe('2026-09-29');
+  });
+
+  it('every rate is stale once the newest published date is more than 5 days old (rates job stopped)', async () => {
+    await seedEurGbp(); // newest published date in the table is 2026-09-30
+    h.clock.set(new Date('2026-10-20T12:00:00Z'));
+    const u = await h.asUser('wc-stopped@example.com');
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
+    const w = await figures(u);
+    expect(w.figures.rows[0].rateDate).toBe('2026-09-30');
+    expect(w.state).toBe('stale');
+  });
+
+  it('a Friday rate read on Monday is not stale (no publication at the weekend)', async () => {
+    await seedEurGbp(); // 2026-09-30 is a Wednesday; read it the following Monday
+    h.clock.set(new Date('2026-10-05T12:00:00Z'));
+    const u = await h.asUser('wc-weekend@example.com');
+    await u.post('/widgets', { kind: 'currency', settings: { currencies: ['EUR'] } });
+    expect((await figures(u)).state).toBe('ready');
   });
 });

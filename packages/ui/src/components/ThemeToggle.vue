@@ -55,7 +55,7 @@ function onKey(e: KeyboardEvent) {
 .desk-theme {
   display: inline-flex;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
   padding: var(--space-1);
   gap: var(--space-1);
   background: var(--color-surface);
@@ -68,7 +68,7 @@ function onKey(e: KeyboardEvent) {
   color: var(--color-fg-muted);
   background: transparent;
   border: 0;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition:
     background-color var(--motion-fast) var(--ease-standard),

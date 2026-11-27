@@ -50,12 +50,37 @@ const categoryOptions = computed(() => [
     .map((c) => ({ value: c.id, label: c.name })),
 ]);
 const formEl = ref<HTMLFormElement | null>(null);
+// Editing opens More when it holds anything but the defaults, so a saved value is never hidden.
+const moreOpen =
+  !!props.expense &&
+  (props.expense.paidWith !== 'card' ||
+    props.expense.kind !== 'variable' ||
+    !!props.expense.notes ||
+    props.expense.rateOverridden);
+
+const LAST_CATEGORY_KEY = 'desk.lastCategoryId';
+function readLastCategory(): string | null {
+  try {
+    return localStorage.getItem(LAST_CATEGORY_KEY);
+  } catch {
+    return null;
+  }
+}
+function rememberCategory(id: string) {
+  try {
+    localStorage.setItem(LAST_CATEGORY_KEY, id);
+  } catch {
+    // storage unavailable: the prefill is a convenience only
+  }
+}
 
 onMounted(async () => {
   if (props.autofocus) formEl.value?.querySelector('input')?.focus();
   try {
     const res = await apiFetch<{ categories: CategoryResponseT[] }>('/categories');
     categories.value = res.categories;
+    const last = isEdit.value || categoryId.value ? null : readLastCategory();
+    if (last && res.categories.some((c) => c.id === last && !c.archivedAt)) categoryId.value = last;
   } catch {
     categories.value = [];
   }
@@ -158,6 +183,7 @@ async function onSubmit() {
         kind: kind.value as never,
         notes: notes.value || undefined,
       });
+      if (categoryId.value) rememberCategory(categoryId.value);
     }
     emit('saved');
   } catch (err) {
@@ -170,7 +196,6 @@ async function onSubmit() {
 
 <template>
   <form ref="formEl" class="desk-expense-form" @submit.prevent="onSubmit">
-    <Input v-model="description" label="Description" />
     <div class="desk-expense-form-row">
       <Input
         v-model="amountMajor"
@@ -181,30 +206,35 @@ async function onSubmit() {
       />
       <CurrencyPicker v-model="currency" label="Currency" />
     </div>
-    <p v-if="previewLoading" class="desk-expense-form-preview">Checking rate…</p>
+    <p v-if="previewLoading" class="desk-expense-form-preview">Checking rate�</p>
     <p v-else-if="convertedPreview" class="desk-expense-form-preview">{{ convertedPreview }}</p>
 
+    <Input v-model="description" label="Description" />
+    <Select v-model="categoryId" label="Category" :options="categoryOptions" />
     <Input v-model="date" type="date" label="Date" />
 
-    <Select v-model="categoryId" label="Category" :options="categoryOptions" />
+    <details class="desk-expense-form-more" :open="moreOpen">
+      <summary>More</summary>
+      <div class="desk-expense-form-more-body">
+        <Select v-model="paidWith" label="Paid with" :options="paidWithOptions" />
+        <Select v-model="kind" label="Kind" :options="kindOptions" />
+        <Input v-model="notes" label="Notes (optional)" />
 
-    <Select v-model="paidWith" label="Paid with" :options="paidWithOptions" />
-    <Select v-model="kind" label="Kind" :options="kindOptions" />
-    <Input v-model="notes" label="Notes (optional)" />
-
-    <button
-      type="button"
-      class="desk-expense-form-toggle"
-      @click="showRateOverride = !showRateOverride"
-    >
-      {{ showRateOverride ? 'Hide' : 'Set' }} manual rate
-    </button>
-    <Input
-      v-if="showRateOverride"
-      v-model="rateOverride"
-      label="Rate override"
-      placeholder="e.g. 1.234"
-    />
+        <button
+          type="button"
+          class="desk-expense-form-toggle"
+          @click="showRateOverride = !showRateOverride"
+        >
+          {{ showRateOverride ? 'Hide' : 'Set' }} manual rate
+        </button>
+        <Input
+          v-if="showRateOverride"
+          v-model="rateOverride"
+          label="Rate override"
+          placeholder="e.g. 1.234"
+        />
+      </div>
+    </details>
 
     <p v-if="submitError" role="alert" class="desk-expense-form-error">{{ submitError }}</p>
 
@@ -241,12 +271,43 @@ async function onSubmit() {
   color: var(--color-fg-muted);
   margin: calc(-1 * var(--space-2)) 0 0;
 }
+.desk-expense-form-more > summary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--target-min);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+/* A chevron that turns when the group opens (display:flex drops the native marker). */
+.desk-expense-form-more > summary::before {
+  content: '';
+  flex: none;
+  inline-size: var(--space-2);
+  block-size: var(--space-2);
+  border-inline-end: 2px solid currentcolor;
+  border-block-end: 2px solid currentcolor;
+  transform: rotate(-45deg);
+}
+.desk-expense-form-more[open] > summary::before {
+  transform: rotate(45deg);
+}
+.desk-expense-form-more > summary:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
+}
+.desk-expense-form-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
 .desk-expense-form-toggle {
   align-self: flex-start;
   min-height: var(--target-min);
   background: none;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-pill);
   color: var(--color-fg);
   text-decoration: underline;
   cursor: pointer;

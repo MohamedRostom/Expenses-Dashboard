@@ -16,6 +16,10 @@ const user = {
   motionColour: '#7fd1a8',
   panelsTranslucent: true,
   motionPaused: false,
+  accentCustom: null,
+  groundTint: null,
+  navColour: null,
+  font: 'system',
 };
 
 describe('accent ids', () => {
@@ -60,5 +64,33 @@ describe('motion appearance fields (spec 006 contracts/me-appearance.md)', () =>
     expect(() => PatchMeRequest.parse({ motionColour: '#fff' })).toThrow();
     expect(() => PatchMeRequest.parse({ panelsTranslucent: 'yes' })).toThrow();
     expect(() => PatchMeRequest.parse({ motionPaused: 1 })).toThrow();
+  });
+});
+
+describe('free colours (ADR-0008)', () => {
+  const FIELDS = ['accentCustom', 'groundTint', 'navColour'] as const;
+
+  it('patch accepts hex of either case and null (reset) for each field, and omission', () => {
+    for (const k of FIELDS) {
+      expect(PatchMeRequest.parse({ [k]: '#A8501f' })[k]).toBe('#A8501f');
+      expect(PatchMeRequest.parse({ [k]: null })[k]).toBeNull();
+      expect(PatchMeRequest.parse({})[k]).toBeUndefined();
+    }
+  });
+
+  it.each(['red', '#fff', '#12345g', '123456', '#1234567', ''])('patch rejects %j', (bad) => {
+    for (const k of FIELDS) expect(() => PatchMeRequest.parse({ [k]: bad })).toThrow();
+  });
+
+  it('the user carries each field as hex or null, and requires it', () => {
+    const full = { ...user, accent: 'signal-green' };
+    expect(UserResponse.parse(full).accentCustom).toBeNull();
+    expect(UserResponse.parse({ ...full, navColour: '#aabbcc' }).navColour).toBe('#aabbcc');
+    for (const k of FIELDS) {
+      const rest: Record<string, unknown> = { ...full };
+      delete rest[k];
+      expect(() => UserResponse.parse(rest)).toThrow();
+      expect(() => UserResponse.parse({ ...full, [k]: 'red' })).toThrow();
+    }
   });
 });

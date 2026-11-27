@@ -85,6 +85,17 @@ describe('DataTable board column sizing (T048)', () => {
     const { readFileSync } = await import('node:fs');
     const src = readFileSync('src/components/DataTable.vue', 'utf8');
     expect(src).not.toContain('width: 30%');
-    expect(src).toMatch(/td\.desk-col--md\) \{[^}]*width: 7.5rem/);
+    expect(src).toMatch(/td\.desk-col--md\) \{[^}]*width: 8rem/);
+  });
+});
+
+describe('DataTable phone rows (finish review)', () => {
+  it('puts date and category on one ellipsised meta line below 480, so a row stays short', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync('src/components/DataTable.vue', 'utf8');
+    const phone = src.slice(src.indexOf('@media (max-width: 479px)'), src.indexOf('/* Heads take'));
+    expect(phone).toMatch(/\.desk-item--meta\) \{[^}]*display: grid/);
+    expect(phone).toMatch(/\.desk-item--meta > \.desk-item-cat\) \{[^}]*white-space: nowrap/);
+    expect(phone).toMatch(/\.desk-item--meta > \.desk-item-cat\) \{[^}]*text-overflow: ellipsis/);
   });
 });

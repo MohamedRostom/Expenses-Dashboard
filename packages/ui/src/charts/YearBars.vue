@@ -16,6 +16,8 @@ const props = defineProps<{
   currency: string;
   /** C7: caller supplies currency-aware formatting (@desk/ui has no @desk/core dependency). */
   formatMoney?: (minor: number) => string;
+  /** Label for the table's month column ("Jan 2026"); defaults to the raw 'YYYY-MM'. */
+  formatMonth?: (month: string) => string;
 }>();
 
 const emit = defineEmits<{ select: [month: string] }>();
@@ -23,6 +25,14 @@ const emit = defineEmits<{ select: [month: string] }>();
 function formatMinor(amount: number): string {
   return props.formatMoney ? props.formatMoney(amount) : (amount / 100).toFixed(2);
 }
+
+// Compact figure for the bar head, e.g. 1.2K; shown from 768px up, the currency is in the chart's
+// label and caption. One format for every bar.
+const compactFmt = new Intl.NumberFormat(undefined, {
+  notation: 'compact',
+  maximumFractionDigits: 1,
+});
+const compact = (minor: number) => compactFmt.format(minor / 100);
 
 function monthLabel(month: string): string {
   const [, m] = month.split('-');
@@ -61,6 +71,11 @@ defineExpose({ barPct, isOverBudget, monthLabel });
         :aria-label="`${monthLabel(m.month)}: ${formatMinor(m.spent)} ${currency}`"
         @click="emit('select', m.month)"
       >
+        <span v-if="m.spent > 0" class="desk-year-bars-value" aria-hidden="true">
+          {{ compact(m.spent) }}
+        </span>
+        <!-- Zero months print nothing, but keep the line so every bar shares one baseline. -->
+        <span v-else class="desk-year-bars-spacer" aria-hidden="true" />
         <svg class="desk-year-bars-svg" viewBox="0 0 10 100" preserveAspectRatio="none">
           <rect x="0" y="0" width="10" height="100" class="desk-year-bars-track" />
           <rect
@@ -88,7 +103,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
       </thead>
       <tbody>
         <tr v-for="m in months" :key="m.month">
-          <th scope="row">{{ m.month }}</th>
+          <th scope="row">{{ formatMonth ? formatMonth(m.month) : m.month }}</th>
           <td>{{ formatMinor(m.spent) }}</td>
           <td>{{ formatMinor(m.budgeted) }}</td>
         </tr>
@@ -106,7 +121,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
 }
 .desk-year-bars-chart {
   display: grid;
-  grid-template-columns: repeat(12, 1fr);
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   /* Grid items must stretch (the default — align-items:end was here before) so each column's
      height:100% below resolves to the full 10rem row; the bar itself still visually grows from
      the bottom via the SVG rect's own y="100 - barPct" math, not via this alignment. Without
@@ -156,12 +171,34 @@ defineExpose({ barPct, isOverBudget, monthLabel });
   fill: var(--color-critical);
 }
 .desk-year-bars-label {
-  font-size: 0.7rem;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
+}
+.desk-year-bars-value,
+.desk-year-bars-spacer {
+  display: block;
+  block-size: var(--leading-xs);
+  max-inline-size: 100%;
+}
+.desk-year-bars-value {
+  font-size: var(--text-xs);
+  line-height: var(--leading-xs);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
+}
+/* Below 768 a month column is under 40px, narrower than a figure like "123.5K"; the table beneath
+   carries the values. */
+@media (max-width: 767px) {
+  .desk-year-bars-value,
+  .desk-year-bars-spacer {
+    display: none;
+  }
 }
 .desk-year-bars-caption {
   text-align: left;
-  font-size: 0.8rem;
+  font-size: var(--text-xs);
   opacity: 0.7;
   padding-bottom: 0.35rem;
 }
@@ -169,7 +206,7 @@ defineExpose({ barPct, isOverBudget, monthLabel });
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-sans);
-  font-size: 0.85rem;
+  font-size: var(--text-sm);
 }
 .desk-year-bars-table th,
 .desk-year-bars-table td {

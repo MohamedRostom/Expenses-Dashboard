@@ -1,6 +1,6 @@
 # ADR-0007: Premium identity with ambient motion
 
-**Status:** Accepted (2026-10-16)
+**Status:** Superseded by ADR-0008 (2026-11-24); accepted 2026-10-16
 **Date:** 2026-10-16 (proposed and accepted)
 **Deciders:** Rostom (owner)
 **Supersedes:** ADR-0006 (Concourse Board)

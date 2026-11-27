@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
 import { createApp, h, nextTick } from 'vue';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 type WidgetT = { kind: string } & Record<string, unknown>;
 import PanelFrame from './WidgetFrame.vue';
+import source from './WidgetFrame.vue?raw';
 
 const widget = (over: Partial<WidgetT> = {}): WidgetT =>
   ({
@@ -81,26 +82,116 @@ describe('WidgetFrame menu (T052)', () => {
     const { el } = await mount({ atLimit: true });
     expect(btn(el, 'Duplicate')?.disabled).toBe(true);
   });
+});
 
-  it('drag handle captures the pointer and relays move and up', async () => {
+describe('WidgetFrame: the menu button is also the drag handle (review 2026-11-26)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    document.body.innerHTML = '';
+  });
+  const handleOf = (el: HTMLElement) =>
+    el.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+  const fire = (target: HTMLElement, type: string, x = 5, y = 6) => {
+    const e = new Event(type, { bubbles: true, cancelable: true });
+    Object.assign(e, { pointerId: 7, clientX: x, clientY: y });
+    target.dispatchEvent(e);
+    return e;
+  };
+
+  it('there is no separate grip: the handle is the menu summary', async () => {
+    const { el } = await mount({});
+    expect(handleOf(el).tagName).toBe('SUMMARY');
+    expect(el.querySelectorAll('.desk-widget-grip')).toHaveLength(0);
+  });
+
+  it('holding the handle starts a drag, relays moves, and the release does not open the menu', async () => {
+    vi.useFakeTimers();
     const { el, events } = await mount({});
-    const grip = el.querySelector<HTMLElement>('[data-testid="widget-grip"]')!;
+    const handle = handleOf(el);
     let captured: number | null = null;
-    grip.setPointerCapture = (id: number) => {
-      captured = id;
-    };
-    const ev = (type: string) => {
-      const e = new Event(type, { bubbles: true });
-      Object.assign(e, { pointerId: 7, clientX: 5, clientY: 6 });
-      return e;
-    };
-    grip.dispatchEvent(ev('pointerdown'));
-    grip.dispatchEvent(ev('pointermove'));
-    grip.dispatchEvent(ev('pointerup'));
+    handle.setPointerCapture = (id: number) => void (captured = id);
+    fire(handle, 'pointerdown');
+    expect(events.dragStart).toBeUndefined();
+    vi.advanceTimersByTime(450);
     expect(captured).toBe(7);
     expect(events.dragStart).toHaveLength(1);
+    fire(handle, 'pointermove', 6, 7);
+    fire(handle, 'pointerup', 6, 7);
     expect(events.dragMove).toHaveLength(1);
     expect(events.dragEnd).toHaveLength(1);
+    expect(fire(handle, 'click').defaultPrevented).toBe(true);
+  });
+
+  it('pressing and moving past the slop starts a drag at once (mouse drag)', async () => {
+    const { el, events } = await mount({});
+    const handle = handleOf(el);
+    fire(handle, 'pointerdown', 0, 0);
+    fire(handle, 'pointermove', 0, 30);
+    expect(events.dragStart).toHaveLength(1);
+    expect(events.dragMove).toHaveLength(1);
+  });
+
+  it('a short tap is a tap: no drag, and the click opens the menu as before', async () => {
+    vi.useFakeTimers();
+    const { el, events } = await mount({});
+    const handle = handleOf(el);
+    fire(handle, 'pointerdown');
+    vi.advanceTimersByTime(100);
+    fire(handle, 'pointerup');
+    vi.advanceTimersByTime(1000);
+    expect(events.dragStart).toBeUndefined();
+    expect(events.dragEnd).toBeUndefined();
+    expect(fire(handle, 'click').defaultPrevented).toBe(false);
+  });
+
+  it('the handle stays a touch target, blocks page scroll while held, and has no long-press menu', async () => {
+    const { el } = await mount({});
+    const handle = handleOf(el);
+    expect(fire(handle, 'contextmenu').defaultPrevented).toBe(true);
+    const start = source.indexOf('\n.desk-widget-menu summary {');
+    const rule = source.slice(start, source.indexOf('}', start));
+    expect(rule).toContain('var(--target-min)');
+    expect(rule).toContain('touch-action: none');
+  });
+});
+
+describe('WidgetFrame menu closes', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  const open = (el: HTMLElement) => {
+    const d = el.querySelector('details')!;
+    d.open = true;
+    return d;
+  };
+
+  it('after an item is chosen, with focus back on the summary', async () => {
+    const { el, events } = await mount({});
+    const d = open(el);
+    btn(el, 'Duplicate')?.click();
+    expect(d.open).toBe(false);
+    expect(events.duplicate).toHaveLength(1);
+    expect(document.activeElement).toBe(d.querySelector('summary'));
+  });
+
+  it('on Escape, with focus back on the summary', async () => {
+    const { el } = await mount({});
+    const d = open(el);
+    btn(el, 'Settings')!.focus();
+    btn(el, 'Settings')!.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    expect(d.open).toBe(false);
+    expect(document.activeElement).toBe(d.querySelector('summary'));
+  });
+
+  it('on a click outside, but not on a click inside', async () => {
+    const { el } = await mount({});
+    const d = open(el);
+    d.querySelector('.desk-widget-menu-items')!.dispatchEvent(
+      new MouseEvent('click', { bubbles: true }),
+    );
+    expect(d.open).toBe(true);
+    document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    expect(d.open).toBe(false);
   });
 });
 
@@ -152,5 +243,123 @@ describe('WidgetFrame surface (T012)', () => {
       true,
     );
     expect(el.querySelector('.desk-widget-menu-items')?.classList.contains('surface')).toBe(false);
+  });
+});
+
+describe('WidgetFrame menu is not clipped', () => {
+  // Declarations of the rule whose selector is exactly `sel`; fails loudly when it is absent.
+  const rule = (sel: string) => {
+    const start = source.indexOf(`\n${sel} {`);
+    expect(start, `rule ${sel}`).toBeGreaterThan(-1);
+    return source.slice(start, source.indexOf('}', start));
+  };
+  it('the frame does not clip overflow, so the menu can extend past 12rem', () => {
+    expect(rule('.desk-widget-frame')).not.toMatch(/overflow:\s*hidden/);
+  });
+  it('figures taller than the 12rem frame scroll inside the body instead of being cut off', () => {
+    expect(rule('.desk-widget-body')).toMatch(/overflow-y:\s*auto/);
+  });
+  it('the scrolling body is reachable by keyboard and named (axe scrollable-region-focusable)', () => {
+    const body = source.match(/<div[^>]*class="desk-widget-body"[^>]*>/)?.[0] ?? '';
+    expect(body).toContain('tabindex="0"');
+    expect(body).toContain('role="region"');
+    expect(body).toMatch(/:aria-label="`\$\{frameTitle\} figures`"/);
+  });
+  it('a frame with its menu open is raised above sibling panels', () => {
+    expect(rule('.desk-widget-frame:has(.desk-widget-menu[open])')).toMatch(/z-index:\s*\d+/);
+  });
+});
+
+describe('WidgetFrame header: no repeated lines (review 2026-11-25)', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('shows the place as a subtitle beside the title', async () => {
+    const { el } = await mount({ subtitle: 'Cambridge' });
+    expect(el.querySelector('[data-testid="widget-subtitle"]')?.textContent).toBe('Cambridge');
+  });
+  it('a generic stale reading is said once, in the as-of chip, not as a second banner line', async () => {
+    const { el } = await mount({ widget: widget({ state: 'stale' }) });
+    expect(el.querySelector('.desk-widget-banner')).toBeNull();
+    const chip = el.querySelector('.desk-widget-asof')!;
+    expect(chip.textContent).toContain('last reading');
+    expect(chip.getAttribute('data-stale')).toBe('true');
+  });
+  it('a stale reading with a specific cause keeps its banner', async () => {
+    const { el } = await mount({ widget: widget({ state: 'stale', cause: 'source_unreachable' }) });
+    expect(el.querySelector('.desk-widget-banner')?.textContent).toContain("Couldn't reach");
+  });
+  it('sunrise times do not go out of date: no as-of chip and no stale note', async () => {
+    const { el } = await mount({ widget: widget({ kind: 'sunrise', state: 'stale' }) });
+    expect(el.querySelector('.desk-widget-asof')).toBeNull();
+    expect(el.querySelector('.desk-widget-banner')).toBeNull();
+  });
+  it("the header fits a 14rem column: the as-of chip takes its own line, not the menu's place", () => {
+    const rule = (sel: string) => {
+      const start = source.indexOf(`\n${sel} {`);
+      return source.slice(start, source.indexOf('}', start));
+    };
+    expect(rule('.desk-widget-head')).toContain('flex-wrap: wrap');
+    expect(rule('.desk-widget-asof')).toContain('flex-basis: 100%');
+  });
+  it('with no grip, the as-of chip sits flush under the title (no indent past a grip)', () => {
+    const start = source.indexOf('\n.desk-widget-asof {');
+    expect(source.slice(start, source.indexOf('}', start))).not.toContain('padding-inline-start');
+  });
+  it('the menu button reaches into the frame padding, so the header takes less height', () => {
+    const start = source.indexOf('\n.desk-widget-menu {');
+    expect(source.slice(start, source.indexOf('}', start))).toMatch(/margin:[^;]*\* -1/);
+  });
+});
+
+describe('WidgetFrame compact (phones): one line that expands', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('collapsed: a button with the summary, aria-expanded false, figures hidden', async () => {
+    const { el } = await mount({ compact: true, summary: '5° Overcast · H 7° L 1°' });
+    const toggle = el.querySelector<HTMLButtonElement>('[data-testid="widget-toggle"]')!;
+    expect(toggle.getAttribute('aria-expanded')).toBe('false');
+    expect(toggle.textContent).toContain('5° Overcast');
+    expect(el.querySelector('.figs')).toBeNull();
+  });
+  it('tapping expands to the full figures and back', async () => {
+    const { el } = await mount({ compact: true, summary: 'x' });
+    const toggle = el.querySelector<HTMLButtonElement>('[data-testid="widget-toggle"]')!;
+    toggle.click();
+    await nextTick();
+    expect(toggle.getAttribute('aria-expanded')).toBe('true');
+    expect(el.querySelector('.figs')).not.toBeNull();
+    toggle.click();
+    await nextTick();
+    expect(el.querySelector('.figs')).toBeNull();
+  });
+  it('not compact: no toggle, figures shown', async () => {
+    const { el } = await mount({});
+    expect(el.querySelector('[data-testid="widget-toggle"]')).toBeNull();
+    expect(el.querySelector('.figs')).not.toBeNull();
+  });
+});
+
+describe('WidgetFrame compact keeps status visible', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('an unavailable widget says so even while collapsed', async () => {
+    const { el } = await mount({
+      compact: true,
+      summary: null,
+      widget: widget({ state: 'unavailable', figures: undefined }),
+    });
+    expect(el.querySelector('.desk-widget-banner')?.textContent).toContain('unavailable right now');
+  });
+});
+
+describe('WidgetFrame compact header stays one line', () => {
+  afterEach(() => (document.body.innerHTML = ''));
+  it('collapsed and fresh: no as-of chip beside the summary; stale still shows it', async () => {
+    const fresh = await mount({ compact: true, summary: 'x' });
+    expect(fresh.el.querySelector('.desk-widget-asof')).toBeNull();
+    document.body.innerHTML = '';
+    const stale = await mount({ compact: true, summary: 'x', widget: widget({ state: 'stale' }) });
+    expect(stale.el.querySelector('.desk-widget-asof')?.textContent).toContain('last reading');
+  });
+  it('the as-of chip never wraps', () => {
+    const start = source.indexOf('\n.desk-widget-asof {');
+    expect(source.slice(start, source.indexOf('}', start))).toContain('white-space: nowrap');
   });
 });
