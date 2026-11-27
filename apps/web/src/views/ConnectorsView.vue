@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { Button, Dialog, PanelFrame, Select, useToast } from '@desk/ui';
+import { computed, onMounted, ref } from 'vue';
+import { Button, Dialog, PanelFrame, Select, Skeleton, useToast } from '@desk/ui';
 import type {
   ListNotionDatabasesResponseT,
   NotionConnectionResponseT,
@@ -26,8 +26,31 @@ const directionOptions = [
   { value: 'both', label: 'Both ways' },
 ];
 
+const unavailable = ref(false);
+
+// One state drives the template; later states (reconnect_needed, ?notion=<outcome>) slot in here.
+const viewState = computed<'loading' | 'unavailable' | 'not_connected' | 'connected'>(() =>
+  loading.value
+    ? 'loading'
+    : unavailable.value
+      ? 'unavailable'
+      : connected.value
+        ? 'connected'
+        : 'not_connected',
+);
+const liveMessage = computed(
+  () =>
+    ({
+      loading: 'Loading Notion connection…',
+      unavailable: "Notion sync isn't available on this server yet.",
+      not_connected: 'Notion is not connected.',
+      connected: 'Notion is connected.',
+    })[viewState.value],
+);
+
 async function load() {
   loading.value = true;
+  unavailable.value = false;
   try {
     const res = await apiFetch<{ connection: NotionConnectionResponseT }>('/notion/connection');
     connection.value = res.connection;
@@ -35,9 +58,12 @@ async function load() {
     direction.value = res.connection.direction;
     if (connected.value) await loadDatabases();
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      connection.value = null;
-      connected.value = false;
+    connection.value = null;
+    connected.value = false;
+    if (err instanceof ApiError && err.code === 'feature_unavailable') {
+      unavailable.value = true;
+    } else if (err instanceof ApiError && err.code === 'not_found') {
+      // not connected: nothing to show beyond the Connect prompt
     } else {
       toast.push(
         err instanceof ApiError ? err.message : 'Failed to load Notion connection.',
@@ -122,11 +148,23 @@ onMounted(load);
 <template>
   <main class="desk-connectors">
     <div class="desk-connectors-grid board-grid">
-      <PanelFrame v-if="loading" heading="Notion">
-        <div class="desk-connectors-body"><p>Loading…</p></div>
+      <p class="desk-sr-only" role="status" aria-live="polite">{{ liveMessage }}</p>
+
+      <PanelFrame v-if="viewState === 'loading'" heading="Notion">
+        <div class="desk-connectors-body" aria-busy="true">
+          <Skeleton height="1.25rem" />
+          <Skeleton height="2.5rem" />
+        </div>
       </PanelFrame>
 
-      <PanelFrame v-else-if="!connected" heading="Notion">
+      <PanelFrame v-else-if="viewState === 'unavailable'" heading="Notion">
+        <div class="desk-connectors-body">
+          <p>Notion sync isn't available on this server yet.</p>
+          <div><Button disabled>Connect Notion</Button></div>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame v-else-if="viewState === 'not_connected'" heading="Notion">
         <div class="desk-connectors-body">
           <p>Connect a Notion workspace to keep expenses in sync with a Notion database.</p>
           <div><Button @click="connect">Connect Notion</Button></div>
@@ -182,6 +220,15 @@ onMounted(load);
 </template>
 
 <style scoped>
+.desk-sr-only {
+  position: absolute;
+  font-size: var(--text-md);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .desk-connectors {
   display: flex;
   flex-direction: column;

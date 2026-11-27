@@ -22,6 +22,19 @@ describe('apiFetch', () => {
     Object.defineProperty(document, 'cookie', { value: '', configurable: true });
   });
 
+  it('rejects a 200 HTML body with ApiError internal (spec 005 T011)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(new Response('<!doctype html><html></html>', { status: 200 })),
+    );
+    await expect(apiFetch('/notion/connection')).rejects.toMatchObject({
+      name: 'ApiError',
+      code: 'internal',
+      message: 'Unexpected response from the server',
+      status: 200,
+    });
+  });
+
   it('sends the CSRF header on non-GET requests', async () => {
     Object.defineProperty(document, 'cookie', {
       value: '__Host-desk_csrf=abc',
