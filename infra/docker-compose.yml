@@ -55,6 +55,10 @@ services:
       GOOGLE_PANELS_CLIENT_SECRET: dev-google-panels-client-secret
       MICROSOFT_CLIENT_ID: dev-microsoft-client-id
       MICROSOFT_CLIENT_SECRET: dev-microsoft-client-secret
+      # BUG-001: without these the api runs with Notion unconfigured (feature_unavailable);
+      # infra/docker-compose.no-notion.yml blanks them for the ci-no-notion project.
+      NOTION_CLIENT_ID: dev-notion-client-id
+      NOTION_CLIENT_SECRET: dev-notion-client-secret
       # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
       # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
       # rates against the live API instead of the fixed-date FakeRates fixtures.

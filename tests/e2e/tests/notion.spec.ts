@@ -94,6 +94,9 @@ test.describe('Notion two-way sync @local', () => {
 const MOCKS_URL = process.env['MOCKS_URL'] ?? 'http://localhost:4000';
 
 test.describe('Notion connect outcomes', () => {
+  // The Notion mock's switches are one global state, so a parallel test's reset would undo
+  // another's `denied` or `sharedContent: false`.
+  test.describe.configure({ mode: 'serial' });
   test.afterEach(async ({ request }) => {
     await request.post(`${MOCKS_URL}/notion/__control`, { data: { reset: true } });
   });
@@ -159,10 +162,15 @@ test.describe('Notion unavailable @no-notion', () => {
     await signUpAndVerify(page, uniqueEmail('notion-unavailable'), PASSWORD);
 
     await page.goto('/settings/connectors');
-    await expect(page.getByText("Notion sync isn't available on this server yet.")).toBeVisible();
+    // The copy is shown in the panel and also announced by the page's polite status region.
+    await expect(
+      page.locator('p:not(.desk-sr-only)', {
+        hasText: "Notion sync isn't available on this server yet.",
+      }),
+    ).toBeVisible();
     await expect(page.getByRole('button', { name: /connect notion/i })).toBeDisabled();
-    await expect(page.getByRole('status')).toHaveCount(0);
-    await expect(page.getByRole('alert')).toHaveCount(0);
+    // No toast of any tone (Toast.vue renders each as .desk-toast).
+    await expect(page.locator('.desk-toast')).toHaveCount(0);
 
     await axeCheck(page);
   });
