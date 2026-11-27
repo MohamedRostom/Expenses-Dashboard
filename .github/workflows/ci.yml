@@ -128,6 +128,14 @@ jobs:
           # T082: global-setup.ts waits for Mailpit + the API before any test runs; docker
           # compose --wait doesn't cover this since mailpit has no healthcheck.
           E2E_WAIT_FOR_STACK: 'true'
+      # Spec 005 T018: restart the api without Notion credentials (as on previews) and run only
+      # the @no-notion scenario. Placed before Lighthouse, which needs the original stack's state.
+      - run: docker compose -f infra/docker-compose.yml -f infra/docker-compose.no-notion.yml up -d --wait api
+      - run: pnpm test:e2e --project=ci-no-notion
+        env:
+          CI: 'true'
+          E2E_WAIT_FOR_STACK: 'true'
+      - run: docker compose -f infra/docker-compose.yml up -d --wait api
       - run: pnpm --filter @desk/e2e lighthouse
         env:
           LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}

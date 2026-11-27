@@ -147,6 +147,10 @@ export interface WorkersBindings {
   SECRET_BOX_KEY?: string | undefined;
   RESEND_API_KEY?: string | undefined;
   MAIL_FROM?: string | undefined;
+  // Spec 005 T024: Notion public-integration credentials and mock base, as node.ts reads them.
+  NOTION_CLIENT_ID?: string | undefined;
+  NOTION_CLIENT_SECRET?: string | undefined;
+  NOTION_API_BASE?: string | undefined;
 }
 
 export function parseWorkersBindings(source: unknown): Bindings & WorkersBindings {
@@ -169,5 +173,8 @@ export function parseWorkersBindings(source: unknown): Bindings & WorkersBinding
     SECRET_BOX_KEY: env.SECRET_BOX_KEY,
     RESEND_API_KEY: env.RESEND_API_KEY,
     MAIL_FROM: env.MAIL_FROM,
+    NOTION_CLIENT_ID: env.NOTION_CLIENT_ID,
+    NOTION_CLIENT_SECRET: env.NOTION_CLIENT_SECRET,
+    NOTION_API_BASE: env.NOTION_API_BASE,
   };
 }

@@ -58,10 +58,19 @@ export function buildDeps(
     clock: { now: () => new Date() },
     build: { version: pkg.version, sha: env.GIT_SHA },
     appOrigin: env.APP_ORIGIN,
-    // Not wired until a later task adds Cloudflare secrets — /auth/google/* and /notion/* 404
-    // on Workers for now.
+    // Not wired until a later task adds Cloudflare secrets — /auth/google/* 404s on Workers for now.
     google: undefined,
-    notion: undefined,
+    // Same as node.ts: both credentials set builds the config, otherwise /notion/* answers
+    // feature_unavailable.
+    notion:
+      env.NOTION_CLIENT_ID && env.NOTION_CLIENT_SECRET
+        ? {
+            clientId: env.NOTION_CLIENT_ID,
+            clientSecret: env.NOTION_CLIENT_SECRET,
+            appOrigin: env.APP_ORIGIN,
+            apiBase: env.NOTION_API_BASE,
+          }
+        : undefined,
     googlePanels: undefined,
     microsoft: undefined,
   };

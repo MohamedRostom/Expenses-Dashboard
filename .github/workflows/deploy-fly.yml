@@ -5,7 +5,9 @@ name: deploy-fly
 # v1.* tags go to deploy-cf.yml instead (Cloudflare cut-over, T118) — this workflow ignores them.
 # Needs repo secrets FLY_API_TOKEN, STAGING_DATABASE_URL, STAGING_SESSION_SECRET,
 # STAGING_SECRET_BOX_KEY and (for the promote step) PRODUCTION_DATABASE_URL,
-# PRODUCTION_SESSION_SECRET, PRODUCTION_SECRET_BOX_KEY. ros-desk-production already exists
+# PRODUCTION_SESSION_SECRET, PRODUCTION_SECRET_BOX_KEY. Optional Notion pairs (both or neither):
+# STAGING_/PRODUCTION_NOTION_CLIENT_ID + _NOTION_CLIENT_SECRET (docs/runbooks/notion-integration.md).
+# ros-desk-production already exists
 # (Rostom ran `fly apps create ros-desk-production --org personal`).
 # Repo variable DEPLOYMENT_FLAG=false pauses the whole pipeline (skipped, not failed) — shared
 # with deploy-staging.yml.
@@ -63,6 +65,19 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
           MAIL_FROM: ${{ secrets.STAGING_MAIL_FROM }}
+      - name: Notion secrets, only when both STAGING_NOTION_CLIENT_ID and STAGING_NOTION_CLIENT_SECRET are set
+        # Neither set: /notion/* answers feature_unavailable. Exactly one set is a config mistake
+        # (env.ts refuses it at start), so fail here with a clear message instead.
+        run: |
+          if [ -n "$NOTION_CLIENT_ID" ] && [ -n "$NOTION_CLIENT_SECRET" ]; then
+            flyctl secrets set --config infra/fly/fly.toml --stage NOTION_CLIENT_ID="$NOTION_CLIENT_ID" NOTION_CLIENT_SECRET="$NOTION_CLIENT_SECRET"
+          elif [ -n "$NOTION_CLIENT_ID" ] || [ -n "$NOTION_CLIENT_SECRET" ]; then
+            echo "::error::Set both STAGING_NOTION_CLIENT_ID and STAGING_NOTION_CLIENT_SECRET, or neither"
+            exit 1
+          fi
+        env:
+          NOTION_CLIENT_ID: ${{ secrets.STAGING_NOTION_CLIENT_ID }}
+          NOTION_CLIENT_SECRET: ${{ secrets.STAGING_NOTION_CLIENT_SECRET }}
       - run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile
           --build-arg GIT_SHA=${{ github.sha }} --remote-only --ha=false
@@ -122,6 +137,19 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.PRODUCTION_RESEND_API_KEY }}
           MAIL_FROM: ${{ secrets.PRODUCTION_MAIL_FROM }}
+      - name: Notion secrets, only when both PRODUCTION_NOTION_CLIENT_ID and PRODUCTION_NOTION_CLIENT_SECRET are set
+        # Neither set: /notion/* answers feature_unavailable. Exactly one set is a config mistake
+        # (env.ts refuses it at start), so fail here with a clear message instead.
+        run: |
+          if [ -n "$NOTION_CLIENT_ID" ] && [ -n "$NOTION_CLIENT_SECRET" ]; then
+            flyctl secrets set --app ros-desk-production --stage NOTION_CLIENT_ID="$NOTION_CLIENT_ID" NOTION_CLIENT_SECRET="$NOTION_CLIENT_SECRET"
+          elif [ -n "$NOTION_CLIENT_ID" ] || [ -n "$NOTION_CLIENT_SECRET" ]; then
+            echo "::error::Set both PRODUCTION_NOTION_CLIENT_ID and PRODUCTION_NOTION_CLIENT_SECRET, or neither"
+            exit 1
+          fi
+        env:
+          NOTION_CLIENT_ID: ${{ secrets.PRODUCTION_NOTION_CLIENT_ID }}
+          NOTION_CLIENT_SECRET: ${{ secrets.PRODUCTION_NOTION_CLIENT_SECRET }}
       # Remember the live image so a failed promote can redeploy it (flyctl has no `releases
       # rollback`). Empty on the very first deploy: nothing to roll back to.
       - id: previous
