@@ -129,6 +129,7 @@ const app = createApp({
           clientSecret: env.NOTION_CLIENT_SECRET,
           appOrigin: env.APP_ORIGIN,
           apiBase: env.NOTION_API_BASE,
+          authorizeBrowserBase: env.NOTION_AUTHORIZE_BROWSER_BASE,
         }
       : undefined,
   googlePanels:

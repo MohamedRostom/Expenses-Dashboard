@@ -40,6 +40,7 @@ services:
       # hostname the host browser can resolve too. `mocks` is published on 4000:4000, so
       # localhost:4000 reaches the same server from the host.
       GOOGLE_OAUTH_BROWSER_BASE: http://localhost:4000/google
+      NOTION_AUTHORIZE_BROWSER_BASE: http://localhost:4000/notion
       MICROSOFT_LOGIN_BROWSER_BASE: http://localhost:4000/graph
       CALDAV_TEST_URL: http://mocks:4000/caldav/dav/
       IMAP_TEST_HOST: mocks

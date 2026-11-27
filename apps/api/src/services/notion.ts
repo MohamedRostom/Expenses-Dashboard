@@ -30,6 +30,9 @@ export type NotionConfig = {
   appOrigin: string;
   /** Overridable for mocks/tests; defaults to the real Notion API inside NotionClient. */
   apiBase?: string | undefined;
+  /** Browser-reachable base for the authorize redirect (compose/e2e: the mock isn't reachable
+   * from the browser at apiBase). Unset means the real Notion authorize URL. */
+  authorizeBrowserBase?: string | undefined;
   /** Overridable fetch (mocks/tests route it at an in-process Hono fake instead of a real
    * network call — see infra/mocks/src/notion-fake-routes.ts). Defaults to global fetch. */
   fetchImpl?: typeof fetch | undefined;
@@ -97,7 +100,10 @@ export function createNotionService(
   }
 
   function client(accessToken: string): NotionClient {
-    return new NotionClient(accessToken, config.fetchImpl ?? fetch, config.apiBase);
+    return new NotionClient(accessToken, config.fetchImpl ?? fetch, config.apiBase, {
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+    });
   }
 
   async function getConnection(userId: string) {
@@ -110,7 +116,11 @@ export function createNotionService(
   }
 
   function authorizeUrl(state: string, redirectUri: string): string {
-    const url = new URL(AUTHORIZE_URL);
+    const url = new URL(
+      config.authorizeBrowserBase
+        ? `${config.authorizeBrowserBase}/oauth/authorize`
+        : AUTHORIZE_URL,
+    );
     url.searchParams.set('client_id', config.clientId);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('owner', 'user');
@@ -126,6 +136,7 @@ export function createNotionService(
     redirectUri: string,
   ): Promise<{
     access_token: string;
+    refresh_token?: string | undefined;
     workspace_id: string;
     workspace_name: string;
     bot_id: string;
@@ -145,6 +156,7 @@ export function createNotionService(
     }
     return (await res.json()) as {
       access_token: string;
+      refresh_token?: string | undefined;
       workspace_id: string;
       workspace_name: string;
       bot_id: string;
@@ -155,9 +167,18 @@ export function createNotionService(
    * to direction 'both' and no database until the user picks/creates one via setConnection. */
   async function connect(
     userId: string,
-    token: { access_token: string; workspace_id: string; workspace_name: string; bot_id: string },
+    token: {
+      access_token: string;
+      refresh_token?: string | undefined;
+      workspace_id: string;
+      workspace_name: string;
+      bot_id: string;
+    },
   ): Promise<void> {
     const enc = await secretBox.seal(token.access_token);
+    const refreshEnc = token.refresh_token
+      ? new TextEncoder().encode(await secretBox.seal(token.refresh_token))
+      : null;
     const existing = await getConnection(userId);
     if (existing) {
       await db
@@ -167,6 +188,13 @@ export function createNotionService(
           workspaceName: token.workspace_name,
           botId: token.bot_id,
           accessTokenEnc: new TextEncoder().encode(enc),
+          refreshTokenEnc: refreshEnc,
+          // A different workspace means the old database/data source/cursor point at nothing.
+          ...(existing.workspaceId !== token.workspace_id && {
+            databaseId: null,
+            dataSourceId: null,
+            cursor: null,
+          }),
           status: 'connected',
           lastError: null,
           updatedAt: clock.now(),
@@ -179,10 +207,16 @@ export function createNotionService(
         workspaceName: token.workspace_name,
         botId: token.bot_id,
         accessTokenEnc: new TextEncoder().encode(enc),
+        refreshTokenEnc: refreshEnc,
         direction: 'both',
         status: 'connected',
       });
     }
+  }
+
+  /** True when the integration can see at least one page (post-connect "nothing shared" check). */
+  function hasSharedContent(accessToken: string): Promise<boolean> {
+    return client(accessToken).hasSharedContent();
   }
 
   async function requireConnection(userId: string) {
@@ -558,6 +592,7 @@ export function createNotionService(
     authorizeUrl,
     exchangeCode,
     connect,
+    hasSharedContent,
     getConnection,
     listDatabases,
     createDatabase,

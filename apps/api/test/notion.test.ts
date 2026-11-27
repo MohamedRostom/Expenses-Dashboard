@@ -1,7 +1,12 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { expenses as expensesTable, expenseVersions, notionConnections } from '@desk/db';
-import { startHarness, type Harness } from './harness.js';
+import { Hono } from 'hono';
+import { startHarness, TEST_SECRET_BOX_KEY, type Harness } from './harness.js';
+import { createSecretBox } from '../src/adapters/secret-box.js';
+import { createNotionService } from '../src/services/notion.js';
+import { createNotionRoutes } from '../src/routes/notion.js';
+import type { ExpensesService } from '../src/services/expenses.js';
 import { SESSION_COOKIE } from '../src/middleware/session.js';
 
 const CSRF_COOKIE = '__Host-desk_csrf';
@@ -20,21 +25,226 @@ afterAll(async () => {
 /** Drives GET /notion/start -> GET /notion/callback directly against h.app (bypassing the
  * ApiClient wrapper, which fixes its cookie header) so the oauth-state cookie set by /start
  * can be threaded into /callback, exactly as a real browser redirect would. */
-async function connectViaOAuth(sessionToken: string): Promise<Response> {
+const OAUTH_COOKIE = '__Host-desk_notion_oauth';
+
+/** Runs /notion/start as the user and returns the oauth cookie pair, ready to send back. */
+async function startAttempt(sessionToken: string): Promise<{ pair: string; state: string }> {
   const sessionCookie = `${SESSION_COOKIE}=${sessionToken}; ${CSRF_COOKIE}=${CSRF_TOKEN}`;
   const startRes = await h.app.request('/notion/start', { headers: { cookie: sessionCookie } });
   expect(startRes.status).toBe(302);
-  const setCookie = startRes.headers.get('set-cookie') ?? '';
-  const stateCookieMatch = /desk_notion_oauth_state=([^;]+)/.exec(setCookie);
-  const state = stateCookieMatch?.[1];
-  expect(state).toBeTruthy();
+  const m = new RegExp(`${OAUTH_COOKIE}=([^;]+)`).exec(startRes.headers.get('set-cookie') ?? '');
+  expect(m?.[1]).toBeTruthy();
+  return { pair: `${OAUTH_COOKIE}=${m![1]}`, state: m![1]!.split('.')[0]! };
+}
 
-  return h.app.request(`/notion/callback?code=fake-code&state=${state}`, {
-    headers: { cookie: `${sessionCookie}; desk_notion_oauth_state=${state}` },
+async function callback(query: string, cookies: string[]): Promise<Response> {
+  return h.app.request(`/notion/callback?${query}`, { headers: { cookie: cookies.join('; ') } });
+}
+
+async function connectViaOAuth(sessionToken: string): Promise<Response> {
+  const sessionCookie = `${SESSION_COOKIE}=${sessionToken}; ${CSRF_COOKIE}=${CSRF_TOKEN}`;
+  const { pair, state } = await startAttempt(sessionToken);
+  return callback(`code=fake-code&state=${state}`, [sessionCookie, pair]);
+}
+
+const rowFor = async (userId: string) =>
+  (await h.db.select().from(notionConnections).where(eq(notionConnections.userId, userId)))[0];
+
+/** Asserts the contract's callback shape: 302 to the outcome, cookie cleared, no body. */
+async function expectOutcome(res: Response, outcome: string): Promise<void> {
+  expect(res.status).toBe(302);
+  expect(res.headers.get('location')).toBe(`/settings/connectors?notion=${outcome}`);
+  expect(res.headers.get('set-cookie') ?? '').toMatch(new RegExp(`${OAUTH_COOKIE}=;`));
+  expect(await res.text()).toBe('');
+}
+
+/** Same routes over a real service with a scripted fetch/authorize base, signed in as `userId`. */
+function appWith(userId: string, cfg: { fetchImpl?: typeof fetch; authorizeBrowserBase?: string }) {
+  const svc = createNotionService(
+    h.db,
+    createSecretBox(TEST_SECRET_BOX_KEY),
+    {
+      clientId: 'cid',
+      clientSecret: 'csecret',
+      appOrigin: 'https://app.test',
+      apiBase: 'https://notion.mock',
+      ...cfg,
+    },
+    {} as ExpensesService,
+    { now: () => new Date() },
+  );
+  const app = new Hono<{ Variables: { user: { id: string } } }>();
+  app.use('*', async (c, next) => {
+    c.set('user', { id: userId });
+    await next();
   });
+  app.route('/', createNotionRoutes({ notion: svc, appOrigin: 'https://app.test' }) as never);
+  return app;
 }
 
 describe('Notion OAuth + connection', () => {
+  it('start: signed out goes to login; signed in sets the host-prefixed attempt cookie', async () => {
+    const out = await h.app.request('/notion/start');
+    expect(out.status).toBe(302);
+    expect(out.headers.get('location')).toBe('/login?next=/settings/connectors');
+
+    const user = await h.asUser('notion-start@test.com');
+    const res = await h.app.request('/notion/start', {
+      headers: { cookie: `${SESSION_COOKIE}=${user.sessionToken}` },
+    });
+    const sc = res.headers.get('set-cookie') ?? '';
+    expect(sc).toMatch(new RegExp(`${OAUTH_COOKIE}=[^;]+\\.${user.userId};`));
+    expect(sc).toContain('HttpOnly');
+    expect(sc).toContain('Secure');
+    expect(sc).toContain('Path=/');
+    expect(sc).toContain('Max-Age=600');
+    expect(res.headers.get('location')).toMatch(
+      /^https:\/\/api\.notion\.com\/v1\/oauth\/authorize\?/,
+    );
+  });
+
+  it('start: NOTION_AUTHORIZE_BROWSER_BASE, when set, is the authorize base', async () => {
+    const user = await h.asUser('notion-browser-base@test.com');
+    const res = await appWith(user.userId, {
+      authorizeBrowserBase: 'http://localhost:4000/notion',
+    }).request('/notion/start');
+    expect(res.headers.get('location')).toMatch(
+      /^http:\/\/localhost:4000\/notion\/oauth\/authorize\?/,
+    );
+  });
+
+  it('callback stores both tokens sealed and redirects with notion=connected', async () => {
+    const user = await h.asUser('notion-both-tokens@test.com');
+    await expectOutcome(await connectViaOAuth(user.sessionToken), 'connected');
+    const row = await rowFor(user.userId);
+    const dec = (b: Uint8Array | null) => new TextDecoder().decode(b ?? new Uint8Array());
+    expect(row!.refreshTokenEnc).toBeTruthy();
+    expect(dec(row!.accessTokenEnc)).not.toBe('fake-notion-access-token');
+    expect(dec(row!.refreshTokenEnc)).not.toBe('fake-notion-refresh-token');
+    expect(dec(row!.refreshTokenEnc)).not.toBe('');
+  });
+
+  describe('callback outcomes', () => {
+    const sess = (t: string) => `${SESSION_COOKIE}=${t}; ${CSRF_COOKIE}=${CSRF_TOKEN}`;
+
+    it('error=access_denied -> denied, nothing stored', async () => {
+      const u = await h.asUser('notion-o-denied@test.com');
+      const { pair, state } = await startAttempt(u.sessionToken);
+      await expectOutcome(
+        await callback(`error=access_denied&state=${state}`, [sess(u.sessionToken), pair]),
+        'denied',
+      );
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('any other error -> failed, nothing stored', async () => {
+      const u = await h.asUser('notion-o-failed@test.com');
+      const { pair, state } = await startAttempt(u.sessionToken);
+      await expectOutcome(
+        await callback(`error=server_error&state=${state}`, [sess(u.sessionToken), pair]),
+        'failed',
+      );
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('no cookie -> expired', async () => {
+      const u = await h.asUser('notion-o-nocookie@test.com');
+      await expectOutcome(await callback('code=c&state=x', [sess(u.sessionToken)]), 'expired');
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('wrong state -> expired', async () => {
+      const u = await h.asUser('notion-o-badstate@test.com');
+      const { pair } = await startAttempt(u.sessionToken);
+      await expectOutcome(
+        await callback('code=c&state=other', [sess(u.sessionToken), pair]),
+        'expired',
+      );
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('cookie minted for another user -> expired', async () => {
+      const a = await h.asUser('notion-o-a@test.com');
+      const b = await h.asUser('notion-o-b@test.com');
+      const { pair, state } = await startAttempt(a.sessionToken);
+      await expectOutcome(
+        await callback(`code=c&state=${state}`, [sess(b.sessionToken), pair]),
+        'expired',
+      );
+      expect(await rowFor(b.userId)).toBeUndefined();
+    });
+
+    it('signed out -> expired', async () => {
+      const u = await h.asUser('notion-o-signedout@test.com');
+      const { pair, state } = await startAttempt(u.sessionToken);
+      await expectOutcome(await callback(`code=c&state=${state}`, [pair]), 'expired');
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('replayed link (cookie already cleared) -> expired', async () => {
+      const u = await h.asUser('notion-o-replay@test.com');
+      const { state } = await startAttempt(u.sessionToken);
+      await expectOutcome(
+        await callback(`code=c&state=${state}`, [sess(u.sessionToken)]),
+        'expired',
+      );
+    });
+
+    it('exchange 4xx -> failed, nothing stored', async () => {
+      const u = await h.asUser('notion-o-exch4xx@test.com');
+      const { pair, state } = await startAttempt(u.sessionToken);
+      const app = appWith(u.userId, {
+        fetchImpl: async () => new Response('{"error":"invalid_grant"}', { status: 400 }),
+      });
+      await expectOutcome(
+        await app.request(`/notion/callback?code=c&state=${state}`, { headers: { cookie: pair } }),
+        'failed',
+      );
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('Notion unreachable -> failed, nothing stored', async () => {
+      const u = await h.asUser('notion-o-unreach@test.com');
+      const { pair, state } = await startAttempt(u.sessionToken);
+      const app = appWith(u.userId, {
+        fetchImpl: async () => {
+          throw new TypeError('fetch failed');
+        },
+      });
+      await expectOutcome(
+        await app.request(`/notion/callback?code=c&state=${state}`, { headers: { cookie: pair } }),
+        'failed',
+      );
+      expect(await rowFor(u.userId)).toBeUndefined();
+    });
+
+    it('nothing shared -> no_pages, connection stored', async () => {
+      const u = await h.asUser('notion-o-nopages@test.com');
+      h.notionFake.setSharedContent(false);
+      try {
+        await expectOutcome(await connectViaOAuth(u.sessionToken), 'no_pages');
+      } finally {
+        h.notionFake.setSharedContent(true);
+      }
+      expect((await rowFor(u.userId))?.status).toBe('connected');
+    });
+  });
+
+  it('reconnecting to a different workspace clears database, data source and cursor', async () => {
+    const u = await h.asUser('notion-ws-change@test.com');
+    await connectViaOAuth(u.sessionToken);
+    await h.db
+      .update(notionConnections)
+      .set({ databaseId: 'db-1', dataSourceId: 'ds-1', cursor: new Date(), workspaceId: 'old-ws' })
+      .where(eq(notionConnections.userId, u.userId));
+    await connectViaOAuth(u.sessionToken); // mock returns workspace_id 'fake-workspace-id'
+    const row = await rowFor(u.userId);
+    expect(row!.workspaceId).toBe('fake-workspace-id');
+    expect(row!.databaseId).toBeNull();
+    expect(row!.dataSourceId).toBeNull();
+    expect(row!.cursor).toBeNull();
+  });
+
   it('callback stores an encrypted access token and a connected status', async () => {
     const user = await h.asUser('notion-oauth@test.com');
     const callbackRes = await connectViaOAuth(user.sessionToken);
