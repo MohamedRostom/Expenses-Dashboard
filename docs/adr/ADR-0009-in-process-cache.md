@@ -48,7 +48,7 @@ test harness gets its own copy):
 ## Consequences
 
 ### Positive
-- A gated request no longer reads the `flags` table; repeat conversions for a published date cost
+- A gated request reads only the per-user overrides, not the global rows; repeat conversions for a published date cost
   no query. `apps/api/test/flags.test.ts` and `expenses.test.ts` count the queries to prove it.
 - Nothing new to deploy, and the code is the same on Node and Workers.
 
