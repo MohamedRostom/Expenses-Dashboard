@@ -546,6 +546,8 @@ describe('Notion token renewal and revoke', () => {
 
   function rig(wrap?: (next: typeof fetch) => typeof fetch) {
     const clock = { t: new Date('2026-10-01T00:00:00Z') };
+    const enqueued: string[] = [];
+    const logged: Array<Record<string, unknown>> = [];
     const mock = createNotionMockApp(h.notionFake);
     const calls = { n: 0 };
     const real: typeof fetch = async (input, init) => {
@@ -564,11 +566,18 @@ describe('Notion token renewal and revoke', () => {
       },
       {} as ExpensesService,
       { now: () => clock.t },
+      async (name) => {
+        enqueued.push(name);
+        return 'j';
+      },
+      { log: (e) => logged.push(e as unknown as Record<string, unknown>) },
     );
     return {
       svc,
       clock,
       calls,
+      enqueued,
+      logged,
       advance: () => {
         clock.t = new Date(clock.t.getTime() + 11_000);
       },
@@ -660,6 +669,61 @@ describe('Notion token renewal and revoke', () => {
       bot_id: 'b',
     });
     expect((await rowFor(id))!.status).toBe('connected');
+  });
+
+  // Code review 2026-11-27: the sync loop stops at reconnect_needed/disconnected, so a reconnect
+  // to the same workspace (database kept) must start it again.
+  it('reconnecting after reconnect_needed or disconnect schedules notion.sync again', async () => {
+    const { svc, enqueued } = rig();
+    const id = await connected(svc, 'notion-resume@test.com');
+    const token = {
+      access_token: 'at-new',
+      refresh_token: 'rt-new',
+      workspace_id: 'w',
+      workspace_name: 'W',
+      bot_id: 'b',
+    };
+    enqueued.length = 0;
+
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    expect((await svc.syncNow(id)).status).toBe('reconnect_needed');
+    await svc.connect(id, token);
+    expect(enqueued).toEqual(['notion.sync']);
+
+    await svc.disconnectConnection(id);
+    await svc.connect(id, token);
+    expect(enqueued).toEqual(['notion.sync', 'notion.sync']);
+
+    // already connected: the loop is still running, so no second one
+    await svc.connect(id, token);
+    expect(enqueued).toHaveLength(2);
+  });
+
+  it('a token exchange without a refresh token keeps the stored one', async () => {
+    const { svc } = rig();
+    const id = await connected(svc, 'notion-keep-rt@test.com');
+    await svc.connect(id, {
+      access_token: 'at-2',
+      workspace_id: 'w',
+      workspace_name: 'W',
+      bot_id: 'b',
+    });
+    expect(await open((await rowFor(id))!.refreshTokenEnc)).toBe('rt-old');
+  });
+
+  it('a refused renewal during a database call is a 409 conflict, logged as notion.databases', async () => {
+    const { svc, logged } = rig();
+    const id = await connected(svc, 'notion-db-refused@test.com');
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    await expect(svc.listDatabases(id)).rejects.toMatchObject({ code: 'conflict', status: 409 });
+    expect((await rowFor(id))!.status).toBe('reconnect_needed');
+    expect(logged.find((e) => e.outcome === 'access_refused')?.event).toBe('notion.databases');
+
+    h.notionFake.failNextWith('unauthorized');
+    h.notionFake.failNextWith('refresh_refused');
+    await expect(svc.createDatabase(id, 'page', 'T')).rejects.toMatchObject({ status: 409 });
   });
 
   it('SC-001.4: the job reschedules within 5 minutes, and refused renewal flags the same run', async () => {

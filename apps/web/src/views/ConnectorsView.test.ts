@@ -154,4 +154,15 @@ describe('ConnectorsView connect outcomes (spec 005 T028)', () => {
       [...el.querySelectorAll('button')].some((b) => b.textContent?.includes('Reconnect Notion')),
     ).toBe(true);
   });
+
+  it('a 409 from the databases list switches to the Reconnect Notion state, no toast', async () => {
+    const conflict = await apiError('conflict', 409);
+    apiFetch.mockImplementation(async (url: string) => {
+      if (url === '/notion/databases') throw conflict;
+      return { connection: { status: 'connected', direction: 'both', workspaceName: 'W' } };
+    });
+    const el = await mount();
+    await vi.waitFor(() => expect(el.textContent).toContain('Reconnect Notion'));
+    expect(push).not.toHaveBeenCalled();
+  });
 });

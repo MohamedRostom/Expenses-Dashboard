@@ -114,6 +114,11 @@ async function loadDatabases() {
       selectedDatabaseId.value = connection.value.databaseId;
     }
   } catch (err) {
+    // 409: Notion no longer accepts the connection; the API has marked it reconnect_needed.
+    if (err instanceof ApiError && err.code === 'conflict' && connection.value) {
+      connection.value = { ...connection.value, status: 'reconnect_needed' };
+      return;
+    }
     toast.push(
       err instanceof ApiError ? err.message : 'Failed to load Notion databases.',
       'critical',
