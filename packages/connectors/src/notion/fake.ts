@@ -16,14 +16,54 @@ export class FakeNotion {
   private readonly pages = new Map<string, NotionPageResult>();
   private readonly databaseProperties = new Set<string>(['Expense', 'Amount']); // a sparse starting layout, like Rostom's existing table
   private failNext: 'rate_limited' | 'unauthorized' | null = null;
+  private failOauth: 'refresh_refused' | 'revoke_error' | null = null;
+  private sharedContent = true;
+  private tokenCounter = 0;
 
   constructor(seed: NotionPageResult[] = queryFixture.response.body.results as NotionPageResult[]) {
     for (const p of seed) this.pages.set(p.id, p);
   }
 
   /** Makes the next call throw/behave as if Notion returned this status once. */
-  failNextWith(kind: 'rate_limited' | 'unauthorized'): void {
-    this.failNext = kind;
+  failNextWith(kind: 'rate_limited' | 'unauthorized' | 'refresh_refused' | 'revoke_error'): void {
+    if (kind === 'refresh_refused' || kind === 'revoke_error') this.failOauth = kind;
+    else this.failNext = kind;
+  }
+
+  setSharedContent(shared: boolean): void {
+    this.sharedContent = shared;
+  }
+
+  /** Tokens passed to refreshToken / revokeToken, in call order, for tests to assert on. */
+  readonly refreshed: string[] = [];
+  readonly revoked: string[] = [];
+
+  async refreshToken(
+    refreshToken: string,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    this.refreshed.push(refreshToken);
+    if (this.failOauth === 'refresh_refused') {
+      this.failOauth = null;
+      throw new NotionAuthError('Notion refused the refresh token');
+    }
+    this.tokenCounter += 1;
+    return {
+      access_token: `fake-notion-access-token-${this.tokenCounter}`,
+      refresh_token: `fake-notion-refresh-token-${this.tokenCounter}`,
+    };
+  }
+
+  async revokeToken(token: string): Promise<void> {
+    this.revoked.push(token);
+    if (this.failOauth === 'revoke_error') {
+      this.failOauth = null;
+      throw new NotionApiError('Notion revoke 500', 500);
+    }
+  }
+
+  async hasSharedContent(): Promise<boolean> {
+    this.maybeFail();
+    return this.sharedContent;
   }
 
   private maybeFail(): void {

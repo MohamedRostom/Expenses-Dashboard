@@ -1,0 +1,10 @@
+{
+  "request": { "grant_type": "refresh_token", "refresh_token": "REDACTED-revoked-refresh" },
+  "response": {
+    "status": 400,
+    "body": {
+      "error": "invalid_grant",
+      "error_description": "The refresh token is invalid or has been revoked."
+    }
+  }
+}

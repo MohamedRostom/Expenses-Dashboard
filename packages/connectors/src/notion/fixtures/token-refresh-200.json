@@ -1,0 +1,14 @@
+{
+  "request": { "grant_type": "refresh_token", "refresh_token": "REDACTED-old-refresh" },
+  "response": {
+    "status": 200,
+    "body": {
+      "access_token": "REDACTED-new-access",
+      "refresh_token": "REDACTED-new-refresh",
+      "token_type": "bearer",
+      "bot_id": "bot-1",
+      "workspace_id": "ws-1",
+      "workspace_name": "Fake Workspace"
+    }
+  }
+}

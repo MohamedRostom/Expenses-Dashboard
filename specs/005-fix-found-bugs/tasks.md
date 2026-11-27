@@ -24,9 +24,9 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 **Purpose**: contract values every story uses.
 
-- [ ] T001 [P] Add `'feature_unavailable'` to the `ErrorCode` enum in `packages/contracts/src/errors.ts` (research R1)
-- [ ] T002 [P] In `packages/contracts/src/notion.ts`, extend `NotionConnectionStatus` to `['connected', 'error', 'reconnect_needed', 'disconnected']` and add `NotionConnectOutcome = z.enum(['connected', 'no_pages', 'denied', 'expired', 'failed', 'unavailable'])`; export both (and their `T` types) from `packages/contracts/src/index.ts` (data-model §Callback outcome, R9)
-- [ ] T003 Regenerate `packages/contracts/openapi.json` with `pnpm --filter @desk/contracts generate:openapi` and commit it (CI `lint` fails when stale)
+- [x] T001 [P] Add `'feature_unavailable'` to the `ErrorCode` enum in `packages/contracts/src/errors.ts` (research R1)
+- [x] T002 [P] In `packages/contracts/src/notion.ts`, extend `NotionConnectionStatus` to `['connected', 'error', 'reconnect_needed', 'disconnected']` and add `NotionConnectOutcome = z.enum(['connected', 'no_pages', 'denied', 'expired', 'failed', 'unavailable'])`; export both (and their `T` types) from `packages/contracts/src/index.ts` (data-model §Callback outcome, R9)
+- [x] T003 Regenerate `packages/contracts/openapi.json` with `pnpm --filter @desk/contracts generate:openapi` and commit it (CI `lint` fails when stale)
 
 ---
 
@@ -34,11 +34,11 @@ pnpm monorepo: `apps/api/src`, `apps/api/test`, `apps/web/src`, `packages/{contr
 
 **Purpose**: schema and connector surface that US2–US4 build on. US1 can start after Phase 1.
 
-- [ ] T004 Add nullable `refreshTokenEnc: bytea('refresh_token_enc')` to `notionConnections` in `packages/db/src/schema.ts` and generate migration `packages/db/migrations/0009_*.sql` with the project's Drizzle generate script; confirm it contains only `ALTER TABLE "notion_connections" ADD COLUMN "refresh_token_enc" bytea;` (data-model §notion_connections)
-- [ ] T005 [P] Record Notion fixtures for the new calls in `packages/connectors/src/notion/fixtures/`: `token-refresh-200.json` (new `access_token` + `refresh_token`), `token-refresh-400-invalid-grant.json`, `revoke-200.json`, `search-empty-200.json` (`results: []`), shaped like the existing recorded fixtures (secrets redacted)
-- [ ] T006 [P] Write failing contract tests in `packages/connectors/src/notion/client.test.ts` for `refreshToken(refreshToken)` (POST `/v1/oauth/token`, `grant_type: 'refresh_token'`, Basic auth; returns both tokens; throws `NotionAuthError` on 400/401), `revokeToken(token)` (POST to the revoke endpoint, Basic auth, body `{ token }`; resolves on 200; rejects on error or after a 5 s abort) and `hasSharedContent()` (search `page_size: 1`; `false` for empty results), each against the T005 fixtures; add the same cases for `FakeNotion` so the fake is validated against the same fixtures
-- [ ] T007 Implement `refreshToken`, `revokeToken` and `hasSharedContent` in `packages/connectors/src/notion/client.ts` and their scripted equivalents in `packages/connectors/src/notion/fake.ts` (add `failNextWith('refresh_refused' | 'revoke_error')` and a `setSharedContent(boolean)` switch) until T006 passes
-- [ ] T008 [P] Add routes to `infra/mocks/src/notion-fake-routes.ts` for token refresh, revoke, an empty-search mode, and an authorize page that can return `error=access_denied`, so e2e-ci can drive every callback outcome
+- [x] T004 Add nullable `refreshTokenEnc: bytea('refresh_token_enc')` to `notionConnections` in `packages/db/src/schema.ts` and generate migration `packages/db/migrations/0009_*.sql` with the project's Drizzle generate script; confirm it contains only `ALTER TABLE "notion_connections" ADD COLUMN "refresh_token_enc" bytea;` (data-model §notion_connections)
+- [x] T005 [P] Record Notion fixtures for the new calls in `packages/connectors/src/notion/fixtures/`: `token-refresh-200.json` (new `access_token` + `refresh_token`), `token-refresh-400-invalid-grant.json`, `revoke-200.json`, `search-empty-200.json` (`results: []`), shaped like the existing recorded fixtures (secrets redacted)
+- [x] T006 [P] Write failing contract tests in `packages/connectors/src/notion/client.test.ts` for `refreshToken(refreshToken)` (POST `/v1/oauth/token`, `grant_type: 'refresh_token'`, Basic auth; returns both tokens; throws `NotionAuthError` on 400/401), `revokeToken(token)` (POST to the revoke endpoint, Basic auth, body `{ token }`; resolves on 200; rejects on error or after a 5 s abort) and `hasSharedContent()` (search `page_size: 1`; `false` for empty results), each against the T005 fixtures; add the same cases for `FakeNotion` so the fake is validated against the same fixtures
+- [x] T007 Implement `refreshToken`, `revokeToken` and `hasSharedContent` in `packages/connectors/src/notion/client.ts` and their scripted equivalents in `packages/connectors/src/notion/fake.ts` (add `failNextWith('refresh_refused' | 'revoke_error')` and a `setSharedContent(boolean)` switch) until T006 passes
+- [x] T008 [P] Add routes to `infra/mocks/src/notion-fake-routes.ts` for token refresh, revoke, an empty-search mode, and an authorize page that can return `error=access_denied`, so e2e-ci can drive every callback outcome
 
 **Checkpoint**: migration applies from scratch in the API test harness; connector contract tests green.
 

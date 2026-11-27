@@ -1,0 +1,7 @@
+{
+  "request": { "page_size": 1 },
+  "response": {
+    "status": 200,
+    "body": { "object": "list", "results": [], "next_cursor": null, "has_more": false }
+  }
+}

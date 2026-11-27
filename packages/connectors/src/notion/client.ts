@@ -45,7 +45,60 @@ export class NotionClient {
     private readonly accessToken: string,
     private readonly fetchImpl: typeof fetch = fetch,
     private readonly baseUrl: string = BASE_URL,
+    /** Needed only by refreshToken/revokeToken (Basic auth). */
+    private readonly oauth?: { clientId: string; clientSecret: string },
   ) {}
+
+  private async oauthPost(path: string, body: unknown, timeoutMs: number): Promise<Response> {
+    if (!this.oauth) throw new Error('NotionClient: oauth credentials not configured');
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
+      return await this.fetchImpl(`${this.baseUrl}${path}`, {
+        method: 'POST',
+        signal: ctrl.signal,
+        headers: {
+          Authorization: `Basic ${btoa(`${this.oauth.clientId}:${this.oauth.clientSecret}`)}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  /** Renews the access token (Notion rotates the refresh token too). 400/401 = refused. */
+  async refreshToken(
+    refreshToken: string,
+  ): Promise<{ access_token: string; refresh_token: string }> {
+    const res = await this.oauthPost(
+      '/oauth/token',
+      { grant_type: 'refresh_token', refresh_token: refreshToken },
+      10_000,
+    );
+    if (res.status === 400 || res.status === 401)
+      throw new NotionAuthError('Notion refused the refresh token');
+    if (!res.ok) throw new NotionApiError(`Notion token refresh ${res.status}`, res.status);
+    const b = (await res.json()) as { access_token: string; refresh_token: string };
+    return { access_token: b.access_token, refresh_token: b.refresh_token };
+  }
+
+  /** Best-effort revoke; rejects on non-2xx or after 5 s so callers can log and carry on. */
+  async revokeToken(token: string): Promise<void> {
+    const res = await this.oauthPost('/oauth/revoke', { token }, 5_000);
+    if (!res.ok) throw new NotionApiError(`Notion revoke ${res.status}`, res.status);
+  }
+
+  /** True when the integration can see at least one page or data source. */
+  async hasSharedContent(): Promise<boolean> {
+    const res = await this.request('/search', {
+      method: 'POST',
+      body: JSON.stringify({ page_size: 1 }),
+    });
+    const body = (await res.json()) as { results: unknown[] };
+    return body.results.length > 0;
+  }
 
   private async request(
     path: string,
