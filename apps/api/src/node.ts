@@ -157,7 +157,12 @@ const app = createApp({
 app.use('/*', serveStatic({ root: './public' }));
 app.use('/*', async (c) => {
   // SPA fallback: any route serveStatic didn't match (client routes like /login, /register, ...)
-  // gets index.html with the per-request CSP nonce substituted in.
+  // gets index.html with the per-request CSP nonce substituted in. Only for page navigations
+  // (GET/HEAD accepting text/html): an API call to an unknown path gets the JSON 404 (BUG-001).
+  const wantsPage =
+    (c.req.method === 'GET' || c.req.method === 'HEAD') &&
+    (c.req.header('accept') ?? '').includes('text/html');
+  if (!wantsPage) return c.notFound();
   const html = await readFile('./public/index.html', 'utf8');
   return c.html(html.replaceAll('%NONCE%', c.get('cspNonce')));
 });
