@@ -813,3 +813,71 @@ describe('MonthView month switcher arrows (review 2026-11-25)', () => {
     expect(rule).toContain('padding-inline: 0');
   });
 });
+
+describe('MonthView Notion reconnect indicator (spec 005 T035)', () => {
+  const link = () =>
+    document.querySelector<HTMLAnchorElement>('#top-bar-actions a[href="/settings/connectors"]');
+  async function mountWith(conn: () => unknown) {
+    const { apiFetch } = await import('../api/client.js');
+    const mocked = vi.mocked(apiFetch);
+    const impl = mocked.getMockImplementation()!;
+    mocked.mockImplementation(async (path: string, init?: RequestInit) => {
+      if (path === '/notion/connection') return conn();
+      return impl(path, init);
+    });
+    setActivePinia(createPinia());
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', component: MonthView },
+        { path: '/settings/connectors', component: { template: '<div />' } },
+      ],
+    });
+    const app = createApp(MonthView);
+    app.use(router).use(createPinia());
+    document.querySelector('#top-bar-actions')?.remove();
+    const bar = document.createElement('div');
+    bar.id = 'top-bar-actions';
+    document.body.appendChild(bar);
+    const el = document.createElement('div');
+    document.body.appendChild(el);
+    await router.push('/');
+    app.mount(el);
+    await flush();
+    return () => {
+      app.unmount();
+      mocked.mockImplementation(impl);
+    };
+  }
+
+  it('shows a link to Connectors when the connection needs reconnecting', async () => {
+    const done = await mountWith(() => ({ connection: { status: 'reconnect_needed' } }));
+    expect(link()?.textContent).toContain('Reconnect Notion');
+    expect(link()?.querySelector('.desk-notion-reconnect-text')?.textContent).toBe(
+      'Reconnect Notion',
+    );
+    expect(link()?.nextElementSibling?.className).not.toContain('desk-month-switcher');
+    done();
+  });
+
+  it('is hidden for connected, 404 and 503, and never toasts or blocks the month', async () => {
+    const { ApiError } = await import('../api/client.js');
+    for (const conn of [
+      () => ({ connection: { status: 'connected' } }),
+      () => {
+        throw new ApiError('not_found', 'x', 404);
+      },
+      () => {
+        throw new ApiError('feature_unavailable', 'x', 503);
+      },
+      () => {
+        throw new Error('network');
+      },
+    ]) {
+      const done = await mountWith(conn);
+      expect(link()).toBeNull();
+      expect(document.querySelector('[data-panel="entries"]')).not.toBeNull();
+      done();
+    }
+  });
+});

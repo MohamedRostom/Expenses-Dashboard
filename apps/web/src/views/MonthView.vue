@@ -97,6 +97,18 @@ async function loadCategoryNames() {
   }
 }
 
+// A Notion connection that needs reconnecting gets a small link in the top bar. Any failure
+// (404 not connected, 503 unavailable, network) just means no indicator: never a toast, never blocking.
+const notionReconnect = ref(false);
+async function loadNotionStatus() {
+  try {
+    const res = await apiFetch<{ connection: { status: string } }>('/notion/connection');
+    notionReconnect.value = res.connection.status === 'reconnect_needed';
+  } catch {
+    notionReconnect.value = false;
+  }
+}
+
 async function loadTrend() {
   const year = store.currentMonth.slice(0, 4);
   try {
@@ -136,6 +148,7 @@ onMounted(() => {
   store.loadMonth(month);
   loadTrend();
   loadCategoryNames();
+  void loadNotionStatus();
   loadQueue();
   window.addEventListener('online', onBackOnline);
 });
@@ -455,6 +468,12 @@ const entryColumns: BoardColumn[] = [
           </svg>
         </Button>
       </div>
+      <RouterLink v-if="notionReconnect" to="/settings/connectors" class="desk-notion-reconnect">
+        <svg viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M8 2 1.5 13.5h13L8 2Zm0 4.5v3.5m0 2v.01" />
+        </svg>
+        <span class="desk-notion-reconnect-text">Reconnect Notion</span>
+      </RouterLink>
       <Button class="desk-topbar-add" aria-keyshortcuts="n" title="Add expense (n)" @click="openAdd"
         >Add expense <kbd class="desk-key-hint" aria-hidden="true">n</kbd></Button
       >
@@ -856,6 +875,49 @@ const entryColumns: BoardColumn[] = [
   min-inline-size: var(--target-min);
   padding-inline: 0;
   justify-content: center;
+}
+.desk-notion-reconnect {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-block-size: var(--target-min);
+  padding-inline: var(--space-3);
+  border: 1px solid var(--color-warn);
+  border-radius: var(--radius-pill);
+  color: var(--color-fg);
+  font-size: var(--text-sm);
+  text-decoration: none;
+}
+.desk-notion-reconnect svg {
+  inline-size: var(--space-4);
+  block-size: var(--space-4);
+  fill: none;
+  stroke: var(--color-warn);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.desk-notion-reconnect-text {
+  white-space: nowrap;
+}
+/* Phones: icon only, the text stays as the accessible name, so the sticky bar keeps one row. */
+@media (max-width: 479px) {
+  .desk-notion-reconnect {
+    inline-size: var(--target-min);
+    justify-content: center;
+    padding-inline: 0;
+  }
+  .desk-notion-reconnect-text {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+}
+.desk-notion-reconnect:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 2px;
 }
 /* The bottom bar carries Add below 1024px (the n shortcut works at every width). */
 @media (max-width: 1023px) {
