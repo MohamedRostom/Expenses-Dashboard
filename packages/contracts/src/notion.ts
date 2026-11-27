@@ -3,8 +3,24 @@ import { z } from 'zod';
 export const NotionDirection = z.enum(['to_notion', 'from_notion', 'both']);
 export type NotionDirectionT = z.infer<typeof NotionDirection>;
 
-export const NotionConnectionStatus = z.enum(['connected', 'error', 'disconnected']);
+export const NotionConnectionStatus = z.enum([
+  'connected',
+  'error',
+  'reconnect_needed',
+  'disconnected',
+]);
 export type NotionConnectionStatusT = z.infer<typeof NotionConnectionStatus>;
+
+/** Result of the OAuth callback, carried back to the web app as a query value. */
+export const NotionConnectOutcome = z.enum([
+  'connected',
+  'no_pages',
+  'denied',
+  'expired',
+  'failed',
+  'unavailable',
+]);
+export type NotionConnectOutcomeT = z.infer<typeof NotionConnectOutcome>;
 
 export const NotionConnectionResponse = z.object({
   workspaceName: z.string(),

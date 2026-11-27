@@ -403,6 +403,7 @@ export const notionConnections = pgTable(
     workspaceName: text('workspace_name').notNull(),
     botId: text('bot_id').notNull(),
     accessTokenEnc: bytea('access_token_enc').notNull(),
+    refreshTokenEnc: bytea('refresh_token_enc'),
     databaseId: text('database_id'),
     dataSourceId: text('data_source_id'),
     direction: text('direction').notNull(),
