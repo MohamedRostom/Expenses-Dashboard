@@ -40,6 +40,7 @@ services:
       # hostname the host browser can resolve too. `mocks` is published on 4000:4000, so
       # localhost:4000 reaches the same server from the host.
       GOOGLE_OAUTH_BROWSER_BASE: http://localhost:4000/google
+      NOTION_AUTHORIZE_BROWSER_BASE: http://localhost:4000/notion
       MICROSOFT_LOGIN_BROWSER_BASE: http://localhost:4000/graph
       CALDAV_TEST_URL: http://mocks:4000/caldav/dav/
       IMAP_TEST_HOST: mocks
@@ -54,6 +55,10 @@ services:
       GOOGLE_PANELS_CLIENT_SECRET: dev-google-panels-client-secret
       MICROSOFT_CLIENT_ID: dev-microsoft-client-id
       MICROSOFT_CLIENT_SECRET: dev-microsoft-client-secret
+      # BUG-001: without these the api runs with Notion unconfigured (feature_unavailable);
+      # infra/docker-compose.no-notion.yml blanks them for the ci-no-notion project.
+      NOTION_CLIENT_ID: dev-notion-client-id
+      NOTION_CLIENT_SECRET: dev-notion-client-secret
       # C10/Important-fix: without this, e2e-ci hits the live frankfurter.app API on every run.
       # Override with `RATES_PROVIDER=live` on the host env when manually testing real conversion
       # rates against the live API instead of the fixed-date FakeRates fixtures.

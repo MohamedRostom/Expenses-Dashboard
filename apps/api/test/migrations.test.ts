@@ -50,6 +50,21 @@ describe('migrations', () => {
     }
   });
 
+  // Migration 0017: Notion refresh token, nullable so existing connections stay valid.
+  it('adds a nullable bytea notion_connections.refresh_token_enc', async () => {
+    const url = container.getConnectionUri();
+    await runMigrations(url);
+    const sql = postgres(url);
+    try {
+      const rows = await sql<{ data_type: string; is_nullable: string }[]>`
+        SELECT data_type, is_nullable FROM information_schema.columns
+        WHERE table_name = 'notion_connections' AND column_name = 'refresh_token_enc'`;
+      expect(rows).toEqual([{ data_type: 'bytea', is_nullable: 'YES' }]);
+    } finally {
+      await sql.end();
+    }
+  });
+
   // Migration 0016: an index behind each column a query filters, ranges or sorts on.
   it('indexes the columns queries search and sort by', async () => {
     const url = container.getConnectionUri();

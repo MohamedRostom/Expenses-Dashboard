@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import { setGlobalFlag } from '@desk/db';
 import type { MailSource } from '@desk/connectors/panels';
 import { startHarness, type ApiClient, type Harness } from './harness.js';
+import { requestAs, unconfiguredNotionApp } from './unconfigured.js';
 
 /** T070: connect a standards account with the correct password every time — ownership isolation
  * is what this file tests, not verification failure paths (covered in connections.test.ts). */
@@ -264,8 +265,8 @@ async function createConnectedAccount(userB: ApiClient): Promise<string> {
 
 describe('ownership matrix', () => {
   let harness: Harness;
-  let userA: ApiClient & { userId: string };
-  let userB: ApiClient & { userId: string };
+  let userA: ApiClient & { userId: string; sessionToken: string };
+  let userB: ApiClient & { userId: string; sessionToken: string };
 
   beforeAll(async () => {
     harness = await startHarness(undefined, {
@@ -303,6 +304,37 @@ describe('ownership matrix', () => {
     expect(res.status).toBe(404);
     const json = (await res.json()) as { error?: { code?: string } };
     expect(json.error?.code).toBe('not_found');
+  });
+
+  // T013 / BUG-001: with Notion unconfigured every /notion/* route answers the same 503 to both
+  // users, and nothing in either response names the other user.
+  describe('/notion/* on the unconfigured stub', () => {
+    const notionRoutes: [string, string][] = [
+      ['GET', '/notion/connection'],
+      ['PUT', '/notion/connection'],
+      ['DELETE', '/notion/connection'],
+      ['GET', '/notion/databases'],
+      ['POST', '/notion/databases'],
+      ['POST', '/notion/sync'],
+    ];
+    it.each(notionRoutes)(
+      '%s %s: users A and B both get 503, no cross-user data',
+      async (method, path) => {
+        const app = unconfiguredNotionApp(harness);
+        for (const [me, other] of [
+          [userA, userB],
+          [userB, userA],
+        ] as const) {
+          const res = await requestAs(app, me, method, path);
+          expect(res.status).toBe(503);
+          const text = await res.text();
+          expect((JSON.parse(text) as { error: { code: string } }).error.code).toBe(
+            'feature_unavailable',
+          );
+          expect(text).not.toContain(other.userId);
+        }
+      },
+    );
   });
 
   describe('appearance (spec 006)', () => {

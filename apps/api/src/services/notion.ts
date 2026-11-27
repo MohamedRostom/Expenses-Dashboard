@@ -11,7 +11,12 @@ import {
   users as usersTable,
   type Db,
 } from '@desk/db';
-import { NotionClient, NotionAuthError, KNOWN_LAYOUT } from '@desk/connectors/notion';
+import {
+  NotionClient,
+  NotionAuthError,
+  NotionApiError,
+  KNOWN_LAYOUT,
+} from '@desk/connectors/notion';
 import type { NotionPageResult } from '@desk/connectors/notion';
 import {
   diff,
@@ -23,6 +28,7 @@ import {
 import type { SecretBox } from '../adapters/secret-box.js';
 import type { ExpensesService } from './expenses.js';
 import { ApiError } from '../lib/api-error.js';
+import { hashUserId, logger as defaultLogger, type Logger } from '../adapters/logger.js';
 
 export type NotionConfig = {
   clientId: string;
@@ -30,6 +36,9 @@ export type NotionConfig = {
   appOrigin: string;
   /** Overridable for mocks/tests; defaults to the real Notion API inside NotionClient. */
   apiBase?: string | undefined;
+  /** Browser-reachable base for the authorize redirect (compose/e2e: the mock isn't reachable
+   * from the browser at apiBase). Unset means the real Notion authorize URL. */
+  authorizeBrowserBase?: string | undefined;
   /** Overridable fetch (mocks/tests route it at an in-process Hono fake instead of a real
    * network call — see infra/mocks/src/notion-fake-routes.ts). Defaults to global fetch. */
   fetchImpl?: typeof fetch | undefined;
@@ -39,6 +48,22 @@ export type Clock = { now(): Date };
 
 const AUTHORIZE_URL = 'https://api.notion.com/v1/oauth/authorize';
 const TOKEN_URL = 'https://api.notion.com/v1/oauth/token';
+
+/** A failed code exchange; `notionError` is Notion's own error string (never free text). */
+export class NotionOAuthError extends Error {
+  constructor(public readonly notionError: string) {
+    super('Notion token exchange failed');
+    this.name = 'NotionOAuthError';
+  }
+}
+
+/** Only Notion's error code ever reaches a log line: no messages, bodies or tokens. */
+function notionErrorCode(err: unknown): string {
+  if (err instanceof NotionOAuthError) return err.notionError;
+  if (err instanceof NotionAuthError) return 'unauthorized';
+  if (err instanceof NotionApiError) return `http_${err.status}`;
+  return 'network_error';
+}
 
 const ADDED_VIA_TO_NOTION: Record<string, string> = {
   dashboard: 'Dashboard',
@@ -68,7 +93,29 @@ export function createNotionService(
   /** C1: enqueues the recurring `notion.sync` job the first time a table is connected — without
    * this nothing ever schedules the 5-minute cron sync (only the debounced write trigger ran). */
   enqueue?: (name: string, payload: unknown, opts?: { userId?: string }) => Promise<string>,
+  /** Spec 005 R10: failure events go through the app's Logger. */
+  logger: Logger = defaultLogger,
 ) {
+  /** One structured line per failed exchange, renewal, revoke or refused access (FR-001.12). */
+  async function logFailure(
+    event: 'notion.oauth' | 'notion.sync' | 'notion.databases',
+    outcome: string,
+    userId: string | null,
+    cause: unknown,
+  ): Promise<void> {
+    const notionError = typeof cause === 'string' ? cause : notionErrorCode(cause);
+    logger.log({
+      requestId: '',
+      hashedUserId: userId ? await hashUserId(userId) : null,
+      route: event,
+      status: 0,
+      durationMs: 0,
+      event,
+      outcome,
+      notionError,
+    });
+  }
+
   // ponytail: both debounce maps below are in-memory per-process — fine for Stage 1's single
   // Fly container; a Workers deployment (Stage 2) would need these moved to a DB-backed
   // "last requested at" column, since timers don't survive across isolates.
@@ -97,7 +144,10 @@ export function createNotionService(
   }
 
   function client(accessToken: string): NotionClient {
-    return new NotionClient(accessToken, config.fetchImpl ?? fetch, config.apiBase);
+    return new NotionClient(accessToken, config.fetchImpl, config.apiBase, {
+      clientId: config.clientId,
+      clientSecret: config.clientSecret,
+    });
   }
 
   async function getConnection(userId: string) {
@@ -110,7 +160,11 @@ export function createNotionService(
   }
 
   function authorizeUrl(state: string, redirectUri: string): string {
-    const url = new URL(AUTHORIZE_URL);
+    const url = new URL(
+      config.authorizeBrowserBase
+        ? `${config.authorizeBrowserBase}/oauth/authorize`
+        : AUTHORIZE_URL,
+    );
     url.searchParams.set('client_id', config.clientId);
     url.searchParams.set('response_type', 'code');
     url.searchParams.set('owner', 'user');
@@ -126,6 +180,7 @@ export function createNotionService(
     redirectUri: string,
   ): Promise<{
     access_token: string;
+    refresh_token?: string | undefined;
     workspace_id: string;
     workspace_name: string;
     bot_id: string;
@@ -141,10 +196,15 @@ export function createNotionService(
       body: JSON.stringify({ grant_type: 'authorization_code', code, redirect_uri: redirectUri }),
     });
     if (!res.ok) {
-      throw new ApiError('validation_failed', 'Notion token exchange failed', 400);
+      const body = (await res.json().catch(() => ({}))) as { error?: unknown; code?: unknown };
+      const errCode = [body.error, body.code].find(
+        (v) => typeof v === 'string' && /^[\w.-]{1,64}$/.test(v),
+      );
+      throw new NotionOAuthError((errCode as string | undefined) ?? `http_${res.status}`);
     }
     return (await res.json()) as {
       access_token: string;
+      refresh_token?: string | undefined;
       workspace_id: string;
       workspace_name: string;
       bot_id: string;
@@ -155,9 +215,18 @@ export function createNotionService(
    * to direction 'both' and no database until the user picks/creates one via setConnection. */
   async function connect(
     userId: string,
-    token: { access_token: string; workspace_id: string; workspace_name: string; bot_id: string },
+    token: {
+      access_token: string;
+      refresh_token?: string | undefined;
+      workspace_id: string;
+      workspace_name: string;
+      bot_id: string;
+    },
   ): Promise<void> {
     const enc = await secretBox.seal(token.access_token);
+    const refreshEnc = token.refresh_token
+      ? new TextEncoder().encode(await secretBox.seal(token.refresh_token))
+      : null;
     const existing = await getConnection(userId);
     if (existing) {
       await db
@@ -167,11 +236,38 @@ export function createNotionService(
           workspaceName: token.workspace_name,
           botId: token.bot_id,
           accessTokenEnc: new TextEncoder().encode(enc),
+          // A response without a refresh token must not wipe a working one.
+          refreshTokenEnc: refreshEnc ?? existing.refreshTokenEnc,
+          // A different workspace means the old database/data source/cursor point at nothing.
+          ...(existing.workspaceId !== token.workspace_id && {
+            databaseId: null,
+            dataSourceId: null,
+            cursor: null,
+          }),
           status: 'connected',
           lastError: null,
           updatedAt: clock.now(),
         })
         .where(eq(notionConnections.userId, userId));
+      if (existing.workspaceId !== token.workspace_id) {
+        // The old workspace's page ids mean nothing in the new one (as in setConnection).
+        await db
+          .update(expensesTable)
+          .set({ notionPageId: null, notionLastEditedAt: null })
+          .where(eq(expensesTable.userId, userId));
+      }
+      // The sync job stops at reconnect_needed/disconnected; restart it when the same table
+      // stays connected (a new workspace waits for setConnection's first-connection enqueue).
+      const loopStopped =
+        existing.status === 'reconnect_needed' || existing.status === 'disconnected';
+      if (
+        loopStopped &&
+        existing.workspaceId === token.workspace_id &&
+        existing.databaseId &&
+        enqueue
+      ) {
+        await enqueue('notion.sync', { userId }, { userId });
+      }
     } else {
       await db.insert(notionConnections).values({
         userId,
@@ -179,10 +275,16 @@ export function createNotionService(
         workspaceName: token.workspace_name,
         botId: token.bot_id,
         accessTokenEnc: new TextEncoder().encode(enc),
+        refreshTokenEnc: refreshEnc,
         direction: 'both',
         status: 'connected',
       });
     }
+  }
+
+  /** True when the integration can see at least one page (post-connect "nothing shared" check). */
+  function hasSharedContent(accessToken: string): Promise<boolean> {
+    return client(accessToken).hasSharedContent();
   }
 
   async function requireConnection(userId: string) {
@@ -191,10 +293,104 @@ export function createNotionService(
     return conn;
   }
 
-  async function listDatabases(userId: string) {
+  const openToken = (b: Uint8Array) => secretBox.open(new TextDecoder().decode(b));
+
+  type CallEvent = 'notion.sync' | 'notion.databases';
+
+  async function markReconnectNeeded(
+    userId: string,
+    err: unknown,
+    event: CallEvent,
+  ): Promise<void> {
+    await db
+      .update(notionConnections)
+      .set({
+        status: 'reconnect_needed',
+        lastError: 'Notion no longer accepts this connection',
+        lastSyncAt: clock.now(),
+      })
+      .where(eq(notionConnections.userId, userId));
+    await logFailure(event, 'access_refused', userId, err);
+  }
+
+  /** Runs `fn` with the stored token. On a 401 it renews once (storing both new tokens, guarded
+   * so a concurrent renewal wins cleanly) and retries `fn` once; a refused renewal or a legacy
+   * row with no refresh token ends in reconnect_needed. Other errors pass through untouched. */
+  async function withFreshToken<T>(
+    userId: string,
+    event: CallEvent,
+    fn: (notion: NotionClient) => Promise<T>,
+  ): Promise<T> {
     const conn = await requireConnection(userId);
-    const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
-    const dbs = await client(token).searchDatabases();
+    try {
+      return await fn(client(await openToken(conn.accessTokenEnc)));
+    } catch (err) {
+      if (!(err instanceof NotionAuthError)) throw err;
+      if (!conn.refreshTokenEnc?.length) {
+        await markReconnectNeeded(userId, err, event);
+        throw err;
+      }
+      let access: string;
+      try {
+        const next = await client(await openToken(conn.accessTokenEnc)).refreshToken(
+          await openToken(conn.refreshTokenEnc),
+        );
+        const stored = await db
+          .update(notionConnections)
+          .set({
+            accessTokenEnc: new TextEncoder().encode(await secretBox.seal(next.access_token)),
+            refreshTokenEnc: new TextEncoder().encode(await secretBox.seal(next.refresh_token)),
+            updatedAt: clock.now(),
+          })
+          .where(
+            and(
+              eq(notionConnections.userId, userId),
+              eq(notionConnections.refreshTokenEnc, conn.refreshTokenEnc),
+            ),
+          )
+          .returning({ id: notionConnections.userId });
+        // Zero rows: another process renewed first; use what it stored.
+        access =
+          stored.length > 0
+            ? next.access_token
+            : await openToken((await requireConnection(userId)).accessTokenEnc);
+      } catch (renewErr) {
+        await logFailure('notion.oauth', 'refresh_failed', userId, renewErr);
+        if (!(renewErr instanceof NotionAuthError)) throw renewErr;
+        // A refusal may just mean another process already spent this refresh token.
+        const cur = await requireConnection(userId);
+        const raced =
+          cur.refreshTokenEnc && Buffer.compare(cur.refreshTokenEnc, conn.refreshTokenEnc) !== 0;
+        if (!raced) {
+          await markReconnectNeeded(userId, renewErr, event);
+          throw renewErr;
+        }
+        access = await openToken(cur.accessTokenEnc);
+      }
+      try {
+        return await fn(client(access));
+      } catch (retryErr) {
+        if (retryErr instanceof NotionAuthError) await markReconnectNeeded(userId, retryErr, event);
+        throw retryErr;
+      }
+    }
+  }
+
+  /** Database calls the user makes from Settings: a connection Notion no longer accepts is a 409
+   * conflict (as in routes/connections.ts), so the UI can show its reconnect state. */
+  async function databaseCall<T>(userId: string, fn: (n: NotionClient) => Promise<T>) {
+    try {
+      return await withFreshToken(userId, 'notion.databases', fn);
+    } catch (err) {
+      if (err instanceof NotionAuthError) {
+        throw new ApiError('conflict', 'Notion needs to be reconnected', 409);
+      }
+      throw err;
+    }
+  }
+
+  async function listDatabases(userId: string) {
+    const dbs = await databaseCall(userId, (n) => n.searchDatabases());
     return dbs.map((d) => ({
       databaseId: d.databaseId,
       dataSourceId: d.dataSourceId,
@@ -204,9 +400,7 @@ export function createNotionService(
   }
 
   async function createDatabase(userId: string, parentPageId: string, title: string) {
-    const conn = await requireConnection(userId);
-    const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
-    return await client(token).createDatabase(parentPageId, title);
+    return await databaseCall(userId, (n) => n.createDatabase(parentPageId, title));
   }
 
   /** PUT /notion/connection: reconnecting to the same table resumes links; to a different
@@ -250,15 +444,30 @@ export function createNotionService(
     }
   }
 
+  /** Best-effort revoke (the 5 s cap lives in the client): a Notion outage must never trap the
+   * user in a connection they want gone, so every failure is logged and swallowed. */
+  async function revokeAtNotion(userId: string): Promise<void> {
+    try {
+      const conn = await getConnection(userId);
+      if (!conn?.accessTokenEnc.length) return;
+      const token = await openToken(conn.accessTokenEnc);
+      await client(token).revokeToken(token);
+    } catch (err) {
+      await logFailure('notion.oauth', 'revoke_failed', userId, err);
+    }
+  }
+
   /** DELETE /notion/connection: keeps the row and every expense's notion_page_id, only stops
    * syncing and drops the secret. */
   async function disconnectConnection(userId: string): Promise<void> {
     await requireConnection(userId);
+    await revokeAtNotion(userId);
     await db
       .update(notionConnections)
       .set({
         status: 'disconnected',
         accessTokenEnc: new Uint8Array(),
+        refreshTokenEnc: null,
         updatedAt: clock.now(),
       })
       .where(eq(notionConnections.userId, userId));
@@ -307,26 +516,55 @@ export function createNotionService(
    * source, diffs against local rows, applies both directions, writes versions, updates
    * connection status/cursor. */
   async function applySync(userId: string): Promise<{
-    status: 'connected' | 'error';
+    status: 'connected' | 'error' | 'reconnect_needed' | 'disconnected';
     applied: number;
     skipped: number;
     conflicts: number;
   }> {
     const conn = await requireConnection(userId);
-    if (conn.status === 'disconnected' || !conn.databaseId || !conn.dataSourceId) {
+    if (
+      conn.status === 'disconnected' ||
+      conn.status === 'reconnect_needed' ||
+      !conn.databaseId ||
+      !conn.dataSourceId
+    ) {
       return {
-        status: conn.status === 'error' ? 'error' : 'connected',
+        status: conn.status as 'connected' | 'error' | 'reconnect_needed' | 'disconnected',
         applied: 0,
         skipped: 0,
         conflicts: 0,
       };
     }
 
+    const { databaseId, dataSourceId } = conn;
     try {
+      return await withFreshToken(userId, 'notion.sync', (notion) =>
+        syncWith(notion, { ...conn, databaseId, dataSourceId }, userId),
+      );
+    } catch (err) {
+      if (err instanceof NotionAuthError) {
+        return { status: 'reconnect_needed', applied: 0, skipped: 0, conflicts: 0 };
+      }
+      const message = err instanceof Error ? err.message : String(err);
+      await db
+        .update(notionConnections)
+        .set({ status: 'error', lastError: message, lastSyncAt: clock.now() })
+        .where(eq(notionConnections.userId, userId));
+      return { status: 'error', applied: 0, skipped: 0, conflicts: 0 };
+    }
+  }
+
+  async function syncWith(
+    notion: NotionClient,
+    conn: NonNullable<Awaited<ReturnType<typeof getConnection>>> & {
+      databaseId: string;
+      dataSourceId: string;
+    },
+    userId: string,
+  ) {
+    {
       const [user] = await db.select().from(usersTable).where(eq(usersTable.id, userId)).limit(1);
       const defaultCurrency = user?.defaultCurrency ?? 'GBP';
-      const token = await secretBox.open(new TextDecoder().decode(conn.accessTokenEnc));
-      const notion = client(token);
 
       const remotePages: NotionPageResult[] = [];
       let cursor: string | undefined;
@@ -486,23 +724,11 @@ export function createNotionService(
         .where(eq(notionConnections.userId, userId));
 
       return {
-        status: 'connected',
+        status: 'connected' as const,
         applied,
         skipped: result.skipped.length,
         conflicts: result.conflicts.length,
       };
-    } catch (err) {
-      const message =
-        err instanceof NotionAuthError
-          ? err.message
-          : err instanceof Error
-            ? err.message
-            : String(err);
-      await db
-        .update(notionConnections)
-        .set({ status: 'error', lastError: message, lastSyncAt: clock.now() })
-        .where(eq(notionConnections.userId, userId));
-      return { status: 'error', applied: 0, skipped: 0, conflicts: 0 };
     }
   }
 
@@ -510,7 +736,7 @@ export function createNotionService(
    * window is a no-op that returns the connection's current (unchanged) status rather than
    * re-hitting Notion. */
   async function syncNow(userId: string): Promise<{
-    status: 'connected' | 'error' | 'disconnected';
+    status: 'connected' | 'error' | 'reconnect_needed' | 'disconnected';
     applied: number;
     skipped: number;
     conflicts: number;
@@ -523,7 +749,7 @@ export function createNotionService(
     if (now - last < DEBOUNCE_MS) {
       const conn = await requireConnection(userId);
       return {
-        status: conn.status as 'connected' | 'error' | 'disconnected',
+        status: conn.status as 'connected' | 'error' | 'reconnect_needed' | 'disconnected',
         applied: 0,
         skipped: 0,
         conflicts: 0,
@@ -558,11 +784,14 @@ export function createNotionService(
     authorizeUrl,
     exchangeCode,
     connect,
+    hasSharedContent,
     getConnection,
     listDatabases,
     createDatabase,
     setConnection,
     disconnectConnection,
+    revokeAtNotion,
+    logFailure,
     applySync,
     syncNow,
     triggerSyncSoon,

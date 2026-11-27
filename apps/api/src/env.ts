@@ -34,6 +34,9 @@ const envObjectSchema = z.object({
   NOTION_CLIENT_ID: z.string().optional(),
   NOTION_CLIENT_SECRET: z.string().optional(),
   NOTION_API_BASE: z.string().optional(),
+  // Like GOOGLE_OAUTH_BROWSER_BASE: the browser-reachable base for Notion's authorize redirect
+  // (the token/search calls use NOTION_API_BASE from inside the api container). Unset in prod.
+  NOTION_AUTHORIZE_BROWSER_BASE: z.string().url().optional(),
   OPEN_METEO_API_BASE: z.string().url().optional(),
   // T113: optional Sentry DSN — logger-node.ts/logger-worker.ts are no-ops without it.
   SENTRY_DSN: z.string().optional(),
@@ -147,6 +150,11 @@ export interface WorkersBindings {
   SECRET_BOX_KEY?: string | undefined;
   RESEND_API_KEY?: string | undefined;
   MAIL_FROM?: string | undefined;
+  // Spec 005 T024: Notion public-integration credentials and mock base, as node.ts reads them.
+  NOTION_CLIENT_ID?: string | undefined;
+  NOTION_CLIENT_SECRET?: string | undefined;
+  NOTION_API_BASE?: string | undefined;
+  NOTION_AUTHORIZE_BROWSER_BASE?: string | undefined;
 }
 
 export function parseWorkersBindings(source: unknown): Bindings & WorkersBindings {
@@ -169,5 +177,9 @@ export function parseWorkersBindings(source: unknown): Bindings & WorkersBinding
     SECRET_BOX_KEY: env.SECRET_BOX_KEY,
     RESEND_API_KEY: env.RESEND_API_KEY,
     MAIL_FROM: env.MAIL_FROM,
+    NOTION_CLIENT_ID: env.NOTION_CLIENT_ID,
+    NOTION_CLIENT_SECRET: env.NOTION_CLIENT_SECRET,
+    NOTION_API_BASE: env.NOTION_API_BASE,
+    NOTION_AUTHORIZE_BROWSER_BASE: env.NOTION_AUTHORIZE_BROWSER_BASE,
   };
 }

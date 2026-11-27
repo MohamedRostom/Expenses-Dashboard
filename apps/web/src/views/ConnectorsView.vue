@@ -1,15 +1,20 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
-import { Button, Dialog, PanelFrame, Select, useToast } from '@desk/ui';
-import type {
-  ListNotionDatabasesResponseT,
-  NotionConnectionResponseT,
-  NotionDirectionT,
-  SyncNotionResponseT,
+import { computed, onMounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
+import { Button, Dialog, PanelFrame, Select, Skeleton, useToast } from '@desk/ui';
+import {
+  NotionConnectOutcome,
+  type ListNotionDatabasesResponseT,
+  type NotionConnectOutcomeT,
+  type NotionConnectionResponseT,
+  type NotionDirectionT,
+  type SyncNotionResponseT,
 } from '@desk/contracts';
 import { ApiError, apiFetch } from '../api/client.js';
 
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 
 const connection = ref<NotionConnectionResponseT | null>(null);
 const connected = ref(false);
@@ -26,18 +31,69 @@ const directionOptions = [
   { value: 'both', label: 'Both ways' },
 ];
 
+const unavailable = ref(false);
+// The ?notion=<outcome> the OAuth callback redirected back with; read once, then dropped from the URL.
+const outcome = ref<NotionConnectOutcomeT | null>(null);
+const outcomeCopy: Record<NotionConnectOutcomeT, { text: string; action?: string }> = {
+  connected: { text: 'Connected to Notion.' },
+  no_pages: {
+    text: 'No pages were shared with Desk.',
+    action: 'Reconnect to choose pages',
+  },
+  denied: { text: "Notion wasn't connected.", action: 'Try again' },
+  expired: { text: 'That connection attempt expired. Try again.', action: 'Try again' },
+  failed: { text: "Couldn't connect to Notion. Try again.", action: 'Try again' },
+  unavailable: { text: "Notion sync isn't available on this server yet." },
+};
+const notice = computed(() => {
+  const o = outcome.value;
+  if (!o || o === 'unavailable') return null;
+  const c = outcomeCopy[o];
+  return o === 'connected' && connection.value?.workspaceName
+    ? { ...c, text: `Connected to ${connection.value.workspaceName}.` }
+    : c;
+});
+
+const viewState = computed<
+  'loading' | 'unavailable' | 'not_connected' | 'reconnect_needed' | 'connected'
+>(() =>
+  loading.value
+    ? 'loading'
+    : unavailable.value
+      ? 'unavailable'
+      : !connected.value
+        ? 'not_connected'
+        : connection.value?.status === 'reconnect_needed'
+          ? 'reconnect_needed'
+          : 'connected',
+);
+const liveMessage = computed(
+  () =>
+    ({
+      loading: 'Loading Notion connection…',
+      unavailable: "Notion sync isn't available on this server yet.",
+      not_connected: 'Notion is not connected.',
+      reconnect_needed: 'Notion needs to be reconnected.',
+      connected: 'Notion is connected.',
+    })[viewState.value],
+);
+
 async function load() {
   loading.value = true;
+  unavailable.value = false;
   try {
     const res = await apiFetch<{ connection: NotionConnectionResponseT }>('/notion/connection');
     connection.value = res.connection;
     connected.value = res.connection.status !== 'disconnected';
     direction.value = res.connection.direction;
-    if (connected.value) await loadDatabases();
+    if (connected.value && res.connection.status !== 'reconnect_needed') await loadDatabases();
   } catch (err) {
-    if (err instanceof ApiError && err.status === 404) {
-      connection.value = null;
-      connected.value = false;
+    connection.value = null;
+    connected.value = false;
+    if (err instanceof ApiError && err.code === 'feature_unavailable') {
+      unavailable.value = true;
+    } else if (err instanceof ApiError && err.code === 'not_found') {
+      // not connected: nothing to show beyond the Connect prompt
     } else {
       toast.push(
         err instanceof ApiError ? err.message : 'Failed to load Notion connection.',
@@ -45,6 +101,7 @@ async function load() {
       );
     }
   } finally {
+    if (outcome.value === 'unavailable') unavailable.value = true;
     loading.value = false;
   }
 }
@@ -57,6 +114,11 @@ async function loadDatabases() {
       selectedDatabaseId.value = connection.value.databaseId;
     }
   } catch (err) {
+    // 409: Notion no longer accepts the connection; the API has marked it reconnect_needed.
+    if (err instanceof ApiError && err.code === 'conflict' && connection.value) {
+      connection.value = { ...connection.value, status: 'reconnect_needed' };
+      return;
+    }
     toast.push(
       err instanceof ApiError ? err.message : 'Failed to load Notion databases.',
       'critical',
@@ -91,12 +153,16 @@ async function syncNow() {
   syncing.value = true;
   try {
     const res = await apiFetch<SyncNotionResponseT>('/notion/sync', { method: 'POST' });
-    toast.push(
-      res.status === 'error'
-        ? `Sync failed: ${res.lastError ?? 'unknown error'}`
-        : `Synced (${res.applied} applied, ${res.skipped} skipped).`,
-      res.status === 'error' ? 'critical' : undefined,
-    );
+    if (res.status === 'reconnect_needed') {
+      toast.push('Notion no longer accepts this connection. Reconnect Notion to sync.', 'critical');
+    } else {
+      toast.push(
+        res.status === 'error'
+          ? `Sync failed: ${res.lastError ?? 'unknown error'}`
+          : `Synced (${res.applied} applied, ${res.skipped} skipped).`,
+        res.status === 'error' ? 'critical' : undefined,
+      );
+    }
     await load();
   } catch (err) {
     toast.push(err instanceof ApiError ? err.message : 'Sync failed.', 'critical');
@@ -116,20 +182,62 @@ async function disconnect() {
   }
 }
 
-onMounted(load);
+onMounted(() => {
+  const parsed = NotionConnectOutcome.safeParse(route.query.notion);
+  if (parsed.success) outcome.value = parsed.data;
+  // Drop the parameter (valid or not) so a refresh doesn't replay the message.
+  if (route.query.notion !== undefined) {
+    const query = { ...route.query };
+    delete query.notion;
+    void router.replace({ query });
+  }
+  void load();
+});
 </script>
 
 <template>
   <main class="desk-connectors">
     <div class="desk-connectors-grid board-grid">
-      <PanelFrame v-if="loading" heading="Notion">
-        <div class="desk-connectors-body"><p>Loading…</p></div>
+      <p class="desk-sr-only" role="status" aria-live="polite">{{ liveMessage }}</p>
+
+      <PanelFrame v-if="notice" heading="Notion connection">
+        <p
+          class="desk-connectors-notice desk-connectors-body"
+          role="status"
+          :data-outcome="outcome"
+        >
+          {{ notice.text }}
+          <Button v-if="notice.action" variant="secondary" size="sm" @click="connect">{{
+            notice.action
+          }}</Button>
+        </p>
       </PanelFrame>
 
-      <PanelFrame v-else-if="!connected" heading="Notion">
+      <PanelFrame v-if="viewState === 'loading'" heading="Notion">
+        <div class="desk-connectors-body" aria-busy="true">
+          <Skeleton height="1.25rem" />
+          <Skeleton height="2.5rem" />
+        </div>
+      </PanelFrame>
+
+      <PanelFrame v-else-if="viewState === 'unavailable'" heading="Notion">
+        <div class="desk-connectors-body">
+          <p>Notion sync isn't available on this server yet.</p>
+          <div><Button disabled>Connect Notion</Button></div>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame v-else-if="viewState === 'not_connected'" heading="Notion">
         <div class="desk-connectors-body">
           <p>Connect a Notion workspace to keep expenses in sync with a Notion database.</p>
           <div><Button @click="connect">Connect Notion</Button></div>
+        </div>
+      </PanelFrame>
+
+      <PanelFrame v-else-if="viewState === 'reconnect_needed'" heading="Notion">
+        <div class="desk-connectors-body">
+          <p>Desk lost access to {{ connection?.workspaceName ?? 'your Notion workspace' }}.</p>
+          <div><Button @click="connect">Reconnect Notion</Button></div>
         </div>
       </PanelFrame>
 
@@ -182,6 +290,15 @@ onMounted(load);
 </template>
 
 <style scoped>
+.desk-sr-only {
+  position: absolute;
+  font-size: var(--text-md);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .desk-connectors {
   display: flex;
   flex-direction: column;
@@ -200,6 +317,13 @@ p {
 }
 .desk-connectors-body > * + * {
   margin-top: var(--space-3);
+}
+.desk-connectors-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  font-size: var(--text-sm);
 }
 .desk-connectors-grid {
   inline-size: 100%;

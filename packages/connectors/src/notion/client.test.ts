@@ -4,6 +4,10 @@ import createFixture from './fixtures/page-create.json' with { type: 'json' };
 import updateFixture from './fixtures/page-update.json' with { type: 'json' };
 import rateLimited from './fixtures/rate-limited-429.json' with { type: 'json' };
 import unauthorized from './fixtures/unauthorized-401.json' with { type: 'json' };
+import refreshOk from './fixtures/token-refresh-200.json' with { type: 'json' };
+import refreshInvalid from './fixtures/token-refresh-400-invalid-grant.json' with { type: 'json' };
+import revokeOk from './fixtures/revoke-200.json' with { type: 'json' };
+import searchEmpty from './fixtures/search-empty-200.json' with { type: 'json' };
 import { NotionClient, NotionAuthError } from './client.js';
 import { FakeNotion } from './fake.js';
 
@@ -158,6 +162,106 @@ describe('NotionClient (replaying hand-authored 2025-09-03 fixtures)', () => {
       title: '💷 Expenses',
       properties: {},
     });
+  });
+});
+
+describe('NotionClient OAuth + search helpers (BUG-001)', () => {
+  const oauth = { clientId: 'cid', clientSecret: 'secret' };
+  const basic = `Basic ${btoa('cid:secret')}`;
+  const make = (fetchImpl: unknown) =>
+    new NotionClient('token', fetchImpl as typeof fetch, undefined, oauth);
+
+  it('refreshToken: posts grant_type refresh_token with Basic auth and returns both tokens', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, refreshOk.response.body));
+    const out = await make(fetchImpl).refreshToken('old-refresh');
+    expect(out).toEqual({
+      access_token: refreshOk.response.body.access_token,
+      refresh_token: refreshOk.response.body.refresh_token,
+    });
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://api.notion.com/v1/oauth/token');
+    expect(init.method).toBe('POST');
+    expect((init.headers as Record<string, string>).Authorization).toBe(basic);
+    expect(JSON.parse(init.body as string)).toEqual({
+      grant_type: 'refresh_token',
+      refresh_token: 'old-refresh',
+    });
+  });
+
+  it.each([400, 401])('refreshToken: %s throws NotionAuthError', async (status) => {
+    const fetchImpl = vi.fn(async () => jsonResponse(status, refreshInvalid.response.body));
+    await expect(make(fetchImpl).refreshToken('x')).rejects.toBeInstanceOf(NotionAuthError);
+  });
+
+  it('revokeToken: posts { token } with Basic auth and resolves on 200', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(200, revokeOk.response.body));
+    await expect(make(fetchImpl).revokeToken('tok')).resolves.toBeUndefined();
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe('https://api.notion.com/v1/oauth/revoke');
+    expect((init.headers as Record<string, string>).Authorization).toBe(basic);
+    expect(JSON.parse(init.body as string)).toEqual({ token: 'tok' });
+  });
+
+  it('revokeToken: rejects on a non-2xx', async () => {
+    const fetchImpl = vi.fn(async () => jsonResponse(500, {}));
+    await expect(make(fetchImpl).revokeToken('tok')).rejects.toThrow();
+  });
+
+  it('revokeToken: rejects after a 5 s abort', async () => {
+    vi.useFakeTimers();
+    const fetchImpl = vi.fn(
+      (_url: string, init: RequestInit) =>
+        new Promise<Response>((_res, rej) => {
+          init.signal?.addEventListener('abort', () => rej(new Error('aborted')));
+        }),
+    );
+    const p = make(fetchImpl).revokeToken('tok');
+    const assertion = expect(p).rejects.toThrow();
+    await vi.advanceTimersByTimeAsync(5000);
+    await assertion;
+    vi.useRealTimers();
+  });
+
+  it('hasSharedContent: searches with page_size 1; false when empty, true otherwise', async () => {
+    const empty = vi.fn(async () => jsonResponse(200, searchEmpty.response.body));
+    expect(await make(empty).hasSharedContent()).toBe(false);
+    const [url, init] = empty.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toContain('/search');
+    expect(JSON.parse(init.body as string)).toEqual({ page_size: 1 });
+    const some = vi.fn(async () =>
+      jsonResponse(200, { ...searchEmpty.response.body, results: [{ id: 'p1' }] }),
+    );
+    expect(await make(some).hasSharedContent()).toBe(true);
+  });
+});
+
+describe('FakeNotion OAuth + search helpers (BUG-001)', () => {
+  it('refreshToken returns the shape of the recorded fixture', async () => {
+    const out = await new FakeNotion().refreshToken('r');
+    expect(Object.keys(out).sort()).toEqual(['access_token', 'refresh_token']);
+    expect(Object.keys(refreshOk.response.body)).toEqual(expect.arrayContaining(Object.keys(out)));
+    expect(out.refresh_token).not.toBe('r');
+  });
+
+  it('failNextWith("refresh_refused"): refreshToken throws NotionAuthError once', async () => {
+    const fake = new FakeNotion();
+    fake.failNextWith('refresh_refused');
+    await expect(fake.refreshToken('r')).rejects.toBeInstanceOf(NotionAuthError);
+    await expect(fake.refreshToken('r')).resolves.toBeDefined();
+  });
+
+  it('failNextWith("revoke_error"): revokeToken rejects once, then resolves', async () => {
+    const fake = new FakeNotion();
+    fake.failNextWith('revoke_error');
+    await expect(fake.revokeToken('t')).rejects.toThrow();
+    await expect(fake.revokeToken('t')).resolves.toBeUndefined();
+  });
+
+  it('setSharedContent drives hasSharedContent (default true)', async () => {
+    const fake = new FakeNotion();
+    expect(await fake.hasSharedContent()).toBe(true);
+    fake.setSharedContent(false);
+    expect(await fake.hasSharedContent()).toBe(false);
   });
 });
 

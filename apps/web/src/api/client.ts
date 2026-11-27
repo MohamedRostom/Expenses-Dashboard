@@ -69,5 +69,11 @@ export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise
   // error, so every one of those flows silently showed a generic "That didn't look right" banner
   // despite succeeding server-side. Read as text first so any empty-bodied 2xx returns undefined.
   const text = await res.text();
-  return (text ? JSON.parse(text) : undefined) as T;
+  if (!text) return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    // A 200 with an HTML body (an SPA fallback or proxy page answering an API path).
+    throw new ApiError('internal', 'Unexpected response from the server', res.status);
+  }
 }

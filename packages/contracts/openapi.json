@@ -2625,7 +2625,8 @@
           "source_limit_reached",
           "place_not_found",
           "source_paused",
-          "place_required"
+          "place_required",
+          "feature_unavailable"
         ]
       },
       "ErrorEnvelope": {
@@ -2655,7 +2656,8 @@
                   "source_limit_reached",
                   "place_not_found",
                   "source_paused",
-                  "place_required"
+                  "place_required",
+                  "feature_unavailable"
                 ]
               },
               "message": {
@@ -4302,6 +4304,11 @@
         ],
         "additionalProperties": false
       },
+      "NotionConnectOutcome": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": ["connected", "no_pages", "denied", "expired", "failed", "unavailable"]
+      },
       "NotionConnectionResponse": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "object",
@@ -4321,7 +4328,7 @@
           },
           "status": {
             "type": "string",
-            "enum": ["connected", "error", "disconnected"]
+            "enum": ["connected", "error", "reconnect_needed", "disconnected"]
           },
           "lastSyncAt": {
             "type": ["string", "null"]
@@ -4344,7 +4351,7 @@
       "NotionConnectionStatus": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
         "type": "string",
-        "enum": ["connected", "error", "disconnected"]
+        "enum": ["connected", "error", "reconnect_needed", "disconnected"]
       },
       "NotionDatabaseOption": {
         "$schema": "https://json-schema.org/draft/2020-12/schema",
@@ -5458,7 +5465,7 @@
         "properties": {
           "status": {
             "type": "string",
-            "enum": ["connected", "error", "disconnected"]
+            "enum": ["connected", "error", "reconnect_needed", "disconnected"]
           },
           "lastSyncAt": {
             "type": ["string", "null"]

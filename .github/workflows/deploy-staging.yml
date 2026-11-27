@@ -1,6 +1,8 @@
 name: deploy-staging
 
 # main -> ros-desk-staging.fly.dev. Needs repo secrets FLY_API_TOKEN and STAGING_DATABASE_URL.
+# Optional: STAGING_NOTION_CLIENT_ID + STAGING_NOTION_CLIENT_SECRET (both or neither; see
+# docs/runbooks/notion-integration.md).
 # Repo variable DEPLOYMENT_FLAG=false pauses this deploy (skipped, not failed); unset/true deploys
 # as normal. Also gates deploy-fly.yml's staging->smoke->promote pipeline.
 on:
@@ -65,6 +67,20 @@ jobs:
         env:
           RESEND_API_KEY: ${{ secrets.STAGING_RESEND_API_KEY }}
           MAIL_FROM: ${{ secrets.STAGING_MAIL_FROM }}
+      - if: steps.gate.outputs.skip != 'true'
+        name: Notion secrets, only when both STAGING_NOTION_CLIENT_ID and STAGING_NOTION_CLIENT_SECRET are set
+        # Neither set: /notion/* answers feature_unavailable. Exactly one set is a config mistake
+        # (env.ts refuses it at start), so fail here with a clear message instead.
+        run: |
+          if [ -n "$NOTION_CLIENT_ID" ] && [ -n "$NOTION_CLIENT_SECRET" ]; then
+            flyctl secrets set --config infra/fly/fly.toml --stage NOTION_CLIENT_ID="$NOTION_CLIENT_ID" NOTION_CLIENT_SECRET="$NOTION_CLIENT_SECRET"
+          elif [ -n "$NOTION_CLIENT_ID" ] || [ -n "$NOTION_CLIENT_SECRET" ]; then
+            echo "::error::Set both STAGING_NOTION_CLIENT_ID and STAGING_NOTION_CLIENT_SECRET, or neither"
+            exit 1
+          fi
+        env:
+          NOTION_CLIENT_ID: ${{ secrets.STAGING_NOTION_CLIENT_ID }}
+          NOTION_CLIENT_SECRET: ${{ secrets.STAGING_NOTION_CLIENT_SECRET }}
       - if: steps.gate.outputs.skip != 'true'
         run: >-
           flyctl deploy . --config infra/fly/fly.toml --dockerfile infra/fly/Dockerfile

@@ -1,6 +1,8 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
 import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
 import {
+  NotionConnectOutcome,
+  type NotionConnectOutcomeT,
   SetNotionConnectionRequest,
   CreateNotionDatabaseRequest,
   type NotionConnectionResponseT,
@@ -10,7 +12,9 @@ import { requireAuth } from '../lib/require-auth.js';
 import { ApiError } from '../lib/api-error.js';
 import type { NotionService } from '../services/notion.js';
 
-const OAUTH_STATE_COOKIE = 'desk_notion_oauth_state';
+// Value is `<state>.<userId>`. Secure always, like the other OAuth cookies (browsers treat
+// http://localhost as secure for the Secure attribute, so compose works unchanged).
+const OAUTH_STATE_COOKIE = '__Host-desk_notion_oauth';
 const OAUTH_STATE_MAX_AGE_S = 600;
 
 export type NotionRoutesDeps = { notion: NotionService; appOrigin: string };
@@ -44,9 +48,10 @@ export function createNotionRoutes(deps: NotionRoutesDeps) {
   const redirectUri = `${deps.appOrigin}/notion/callback`;
 
   app.get('/notion/start', (c) => {
-    requireAuth(c);
+    const user = c.get('user');
+    if (!user) return c.redirect('/login?next=/settings/connectors', 302);
     const state = crypto.randomUUID();
-    setCookie(c, OAUTH_STATE_COOKIE, state, {
+    setCookie(c, OAUTH_STATE_COOKIE, `${state}.${user.id}`, {
       httpOnly: true,
       secure: true,
       sameSite: 'Lax',
@@ -56,20 +61,51 @@ export function createNotionRoutes(deps: NotionRoutesDeps) {
     return c.redirect(deps.notion.authorizeUrl(state, redirectUri), 302);
   });
 
-  app.get('/notion/callback', async (c) => {
-    const user = requireAuth(c);
-    const code = c.req.query('code');
-    const returnedState = c.req.query('state');
-    const savedState = getCookie(c, OAUTH_STATE_COOKIE);
-    deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/' });
+  const outcomeRedirect = (c: Context, outcome: NotionConnectOutcomeT) =>
+    c.redirect(`/settings/connectors?notion=${NotionConnectOutcome.parse(outcome)}`, 302);
 
-    if (!code || !returnedState || !savedState || returnedState !== savedState) {
-      throw new ApiError('validation_failed', 'Missing or mismatched Notion OAuth state', 400);
+  // The one place a failed connect attempt lands (and is logged: code only, never a secret).
+  const failed = async (c: Context, outcome: string, userId: string | null, cause: unknown) => {
+    await deps.notion.logFailure('notion.oauth', outcome, userId, cause);
+    return outcomeRedirect(c, 'failed');
+  };
+
+  app.get('/notion/callback', async (c) => {
+    const user = c.get('user');
+    const saved = getCookie(c, OAUTH_STATE_COOKIE);
+    deleteCookie(c, OAUTH_STATE_COOKIE, { path: '/', secure: true });
+
+    const error = c.req.query('error');
+    if (error === 'access_denied') return outcomeRedirect(c, 'denied');
+    if (error) {
+      const code = /^[\w.-]{1,64}$/.test(error) ? error : 'unknown';
+      return await failed(c, 'authorize_failed', user?.id ?? null, code);
     }
 
-    const token = await deps.notion.exchangeCode(code, redirectUri);
-    await deps.notion.connect(user.id, token);
-    return c.redirect(`${deps.appOrigin}/settings/connectors`, 302);
+    const [savedState, savedUserId] = saved?.split('.') ?? [];
+    const returnedState = c.req.query('state');
+    if (
+      !user ||
+      !savedState ||
+      !returnedState ||
+      savedState !== returnedState ||
+      savedUserId !== user.id
+    ) {
+      return outcomeRedirect(c, 'expired');
+    }
+
+    try {
+      const code = c.req.query('code');
+      if (!code) return await failed(c, 'authorize_failed', user.id, 'missing_code');
+      const token = await deps.notion.exchangeCode(code, redirectUri);
+      await deps.notion.connect(user.id, token);
+      // The connection is stored from here on; the shared-pages check is advisory, so if it
+      // fails the honest answer is still "connected" (sync surfaces any later problem).
+      const shared = await deps.notion.hasSharedContent(token.access_token).catch(() => true);
+      return outcomeRedirect(c, shared ? 'connected' : 'no_pages');
+    } catch (err) {
+      return await failed(c, 'exchange_failed', user.id, err);
+    }
   });
 
   app.get('/notion/connection', async (c) => {

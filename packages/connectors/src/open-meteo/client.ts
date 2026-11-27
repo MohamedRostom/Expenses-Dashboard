@@ -59,7 +59,8 @@ export class OpenMeteoClient implements WeatherSource {
   private readonly now: () => Date;
 
   constructor(opts: { fetchImpl?: typeof fetch; baseUrl?: string; now?: () => Date } = {}) {
-    this.fetchImpl = opts.fetchImpl ?? fetch;
+    // Unbound: workerd rejects the global fetch called as a method ("Illegal invocation").
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
     let base = opts.baseUrl;
     while (base?.endsWith('/')) base = base.slice(0, -1);
     this.baseUrl = base;

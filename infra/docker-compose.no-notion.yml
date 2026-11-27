@@ -1,0 +1,9 @@
+# Spec 005 T018: overlay on docker-compose.yml for the `ci-no-notion` Playwright project — an api
+# with no Notion credentials, as on previews. Empty strings satisfy env.ts's both-or-neither rule
+# and are falsy in node.ts, so deps.notion stays undefined and /notion/* answers feature_unavailable.
+#   docker compose -f infra/docker-compose.yml -f infra/docker-compose.no-notion.yml up --build --wait
+services:
+  api:
+    environment:
+      NOTION_CLIENT_ID: ''
+      NOTION_CLIENT_SECRET: ''

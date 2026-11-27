@@ -175,6 +175,8 @@ export {
   type NotionDirectionT,
   NotionConnectionStatus,
   type NotionConnectionStatusT,
+  NotionConnectOutcome,
+  type NotionConnectOutcomeT,
   NotionConnectionResponse,
   type NotionConnectionResponseT,
   SetNotionConnectionRequest,

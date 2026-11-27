@@ -23,7 +23,18 @@ export default defineConfig({
   projects: [
     {
       name: 'ci',
-      grepInvert: /@local|@visual|@manual|@screenshots/,
+      grepInvert: /@local|@visual|@manual|@screenshots|@no-notion/,
+      use: {
+        ...devices['Desktop Edge'],
+        baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',
+        channel: 'msedge',
+      },
+    },
+    // Spec 005 T018: needs the stack started with infra/docker-compose.no-notion.yml (api without
+    // Notion credentials); ci.yml runs it as its own step after the `ci` project.
+    {
+      name: 'ci-no-notion',
+      grep: /@no-notion/,
       use: {
         ...devices['Desktop Edge'],
         baseURL: process.env['E2E_BASE_URL'] || 'http://localhost:5173',

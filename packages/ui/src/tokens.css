@@ -1,7 +1,7 @@
 /* Light selector lists [data-theme='light'] first: palette.test.ts finds the light block by indexOf(':root {'). */
 /* Design tokens: three theme states. bare :root = light; system dark unless the user chose light;
    explicit dark. Values: DESIGN.md frontmatter, ADR-0006 (accepted 2026-10-10); glass, radii and the
-   warm ground follow ADR-0008 (Proposed, implemented 2026-11-14), numbers fixed by contrast.test.ts. */
+   warm ground follow ADR-0008 (accepted 2026-11-24), numbers fixed by contrast.test.ts. */
 [data-theme='light'],
 :root {
   color-scheme: light;

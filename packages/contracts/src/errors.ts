@@ -21,6 +21,7 @@ export const ErrorCode = z.enum([
   'place_not_found',
   'source_paused',
   'place_required',
+  'feature_unavailable',
 ]);
 export type ErrorCodeT = z.infer<typeof ErrorCode>;
 

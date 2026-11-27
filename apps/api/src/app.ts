@@ -1,4 +1,6 @@
-import { Hono } from 'hono';
+import { Hono, type Context } from 'hono';
+import { requireAuth } from './lib/require-auth.js';
+import { ApiError } from './lib/api-error.js';
 import { sql } from 'drizzle-orm';
 import type { HealthResponseT } from '@desk/contracts';
 import type { Db } from '@desk/db';
@@ -256,6 +258,8 @@ export function createApp(deps: AppDeps) {
       appOrigin: deps.appOrigin,
       limiter: deps.limiter,
       connections: connectionsService,
+      // Lazy: notionService is built further down.
+      revokeNotion: (userId) => notionService?.revokeAtNotion(userId) ?? Promise.resolve(),
       jobs: deps.jobs,
     }),
   );
@@ -269,6 +273,7 @@ export function createApp(deps: AppDeps) {
         createExpensesService(deps.db, createRatesService(deps.db, deps.rates), deps.clock),
         deps.clock,
         deps.jobs?.enqueue.bind(deps.jobs),
+        deps.logger ?? defaultLogger,
       )
     : undefined;
 
@@ -278,7 +283,11 @@ export function createApp(deps: AppDeps) {
   if (notionService && deps.jobs) {
     registerJob(
       'notion.sync',
-      notionSyncJob({ notion: notionService, enqueue: deps.jobs.enqueue.bind(deps.jobs) }),
+      notionSyncJob({
+        notion: notionService,
+        enqueue: deps.jobs.enqueue.bind(deps.jobs),
+        clock: deps.clock,
+      }),
     );
   }
 
@@ -318,7 +327,23 @@ export function createApp(deps: AppDeps) {
 
   if (notionService && deps.notion) {
     app.route('/', createNotionRoutes({ notion: notionService, appOrigin: deps.notion.appOrigin }));
+  } else {
+    // BUG-001: without NOTION_CLIENT_ID/SECRET the web app must still get an answer it can show,
+    // not a 404 it mistakes for "not connected". Auth first, then 503; browser hops redirect.
+    const unavailable = new Hono<{ Variables: AppVariables }>();
+    const unavailableRedirect = (c: Context) =>
+      c.redirect('/settings/connectors?notion=unavailable', 302);
+    unavailable.get('/notion/start', unavailableRedirect);
+    unavailable.get('/notion/callback', unavailableRedirect);
+    unavailable.all('/notion/*', (c) => {
+      requireAuth(c);
+      throw new ApiError('feature_unavailable', 'Notion sync is not available on this server', 503);
+    });
+    app.route('/', unavailable);
   }
+
+  // Unmatched paths answer the JSON envelope (node.ts serves the SPA only to text/html navigations).
+  app.notFound((c) => c.json({ error: { code: 'not_found', message: 'Not found' } }, 404));
 
   // Panels service for Today and account refreshes
   const panelsService = new PanelsService({
